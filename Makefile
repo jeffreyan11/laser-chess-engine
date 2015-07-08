@@ -2,7 +2,10 @@ CC          = g++
 CFLAGS      = -Wall -ansi -pedantic -ggdb -std=c++0x -g -O3
 OBJS        = board.o
 
-all: perft
+all: uci perft
+
+uci: $(OBJS) uci.o
+	$(CC) -o $@ $^
 
 perft: $(OBJS) perft.o
 	$(CC) -o $@ $^
@@ -11,4 +14,4 @@ perft: $(OBJS) perft.o
 	$(CC) -c $(CFLAGS) -x c++ $< -o $@
 
 clean:
-	rm -f *.o perft
+	rm -f *.o uci perft
