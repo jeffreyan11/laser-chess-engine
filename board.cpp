@@ -1,7 +1,6 @@
 #include "board.h"
 
 Board::Board() {
-    pieces = new uint64_t[12];
     pieces[2] = 0x000000000000FF00; // white pawns
     pieces[0] = 0x00FF000000000000; // black pawns
     pieces[3] = 0x0000000000000042; // white knights
@@ -22,18 +21,33 @@ Board::Board() {
     blackCanQCastle = true;
     whiteCanEP = 0;
     blackCanEP = 0;
-    mailbox = new int[64];
     for(int i = 0; i < 64; i++) {
         mailbox[i] = initMailbox[i];
     }
 }
 
-Board::~Board() {
-    delete[] pieces;
-    delete[] mailbox;
+Board::~Board() {}
+
+Board Board::staticCopy() {
+    Board result;
+    for(int i = 0; i < 12; i++) {
+        result.pieces[i] = pieces[i];
+    }
+    result.whitePieces = whitePieces;
+    result.blackPieces = blackPieces;
+    result.whiteCanKCastle = whiteCanKCastle;
+    result.whiteCanQCastle = whiteCanQCastle;
+    result.blackCanKCastle = blackCanKCastle;
+    result.blackCanQCastle = blackCanQCastle;
+    result.whiteCanEP = whiteCanEP;
+    result.blackCanEP = blackCanEP;
+    for(int i = 0; i < 64; i++) {
+        result.mailbox[i] = mailbox[i];
+    }
+    return result;
 }
 
-Board *Board::copy() {
+Board *Board::dynamicCopy() {
     Board *result = new Board();
     for(int i = 0; i < 12; i++) {
         result->pieces[i] = pieces[i];
@@ -564,14 +578,12 @@ bool Board::isLegalMove(Move *m, int color) {
             return false;
     }
 
-    Board *b = copy();
-    b->doMove(m, color);
-    if((color == WHITE) ? b->getWinCheck() : b->getBinCheck()) {
-        delete b;
+    Board b = staticCopy();
+    b.doMove(m, color);
+    if((color == WHITE) ? b.getWinCheck() : b.getBinCheck()) {
         return false;
     }
 
-    delete b;
     return true;
 }
 
@@ -579,15 +591,13 @@ vector<Move *> Board::getLegalWMoves() {
     vector<Move *> moveList = getPseudoLegalWMoves();
 
     for(unsigned int i = 0; i < moveList.size(); i++) {
-        Board *b = copy();
-        b->doMove(moveList.at(i), WHITE);
+        Board b = staticCopy();
+        b.doMove(moveList.at(i), WHITE);
 
-        if(b->getWinCheck()) {
+        if(b.getWinCheck()) {
             moveList.erase(moveList.begin() + i);
             i--;
         }
-
-        delete b;
     }
 
     return moveList;
@@ -597,15 +607,13 @@ vector<Move *> Board::getLegalBMoves() {
     vector<Move *> moveList = getPseudoLegalBMoves();
 
     for(unsigned int i = 0; i < moveList.size(); i++) {
-        Board *b = copy();
-        b->doMove(moveList.at(i), BLACK);
+        Board b = staticCopy();
+        b.doMove(moveList.at(i), BLACK);
 
-        if(b->getBinCheck()) {
+        if(b.getBinCheck()) {
             moveList.erase(moveList.begin() + i);
             i--;
         }
-
-        delete b;
     }
 
     return moveList;
@@ -894,15 +902,13 @@ vector<Move *> Board::getLegalWCaptures() {
     vector<Move *> moveList = getPLWCaptures();
 
     for(unsigned int i = 0; i < moveList.size(); i++) {
-        Board *b = copy();
-        b->doMove(moveList.at(i), WHITE);
+        Board b = staticCopy();
+        b.doMove(moveList.at(i), WHITE);
 
-        if(b->getWinCheck()) {
+        if(b.getWinCheck()) {
             moveList.erase(moveList.begin() + i);
             i--;
         }
-
-        delete b;
     }
 
     return moveList;
@@ -912,15 +918,13 @@ vector<Move *> Board::getLegalBCaptures() {
     vector<Move *> moveList = getPLBCaptures();
 
     for(unsigned int i = 0; i < moveList.size(); i++) {
-        Board *b = copy();
-        b->doMove(moveList.at(i), BLACK);
+        Board b = staticCopy();
+        b.doMove(moveList.at(i), BLACK);
 
-        if(b->getBinCheck()) {
+        if(b.getBinCheck()) {
             moveList.erase(moveList.begin() + i);
             i--;
         }
-
-        delete b;
     }
 
     return moveList;
@@ -1899,37 +1903,6 @@ uint64_t Board::nwAttacks(uint64_t bishops, uint64_t empty) {
     flood |= bishops = (bishops << 7) & empty;
     flood |=         (bishops << 7) & empty;
     return           (flood << 7) & NOTH ;
-}
-
-// BSF and BSR algorithms from https://chessprogramming.wikispaces.com/BitScan
-int Board::bitScanForward(uint64_t bb) {
-    uint64_t debruijn64 = 0x03f79d71b4cb0a89;
-    int i = (int)(((bb ^ (bb-1)) * debruijn64) >> 58);
-    return index64[i];
-}
-
-int Board::bitScanReverse(uint64_t bb) {
-    uint64_t debruijn64 = 0x03f79d71b4cb0a89;
-    bb |= bb >> 1; 
-    bb |= bb >> 2;
-    bb |= bb >> 4;
-    bb |= bb >> 8;
-    bb |= bb >> 16;
-    bb |= bb >> 32;
-    return index64[(int) ((bb * debruijn64) >> 58)];
-}
-
-int Board::count(uint64_t bb) {
-/*int n = 0;
-while(bb != 0) {
-bb &= bb - 1;
-n++;
-}
-return n;*/
-    bb = bb - ((bb >> 1) & 0x5555555555555555);
-    bb = (bb & 0x3333333333333333) + ((bb >> 2) & 0x3333333333333333);
-    bb = (((bb + (bb >> 4)) & 0x0F0F0F0F0F0F0F0F) * 0x0101010101010101) >> 56;
-    return (int) bb;
 }
 
 /*

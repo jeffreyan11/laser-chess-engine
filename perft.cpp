@@ -1,17 +1,17 @@
 #include <chrono>
 #include "board.h"
-#include "standards.h"
+#include "common.h"
 
-uint64_t perft(Board *b, int color, int depth);
+uint64_t perft(Board b, int color, int depth);
 
 int captures = 0;
 
 int main(int argc, char **argv) {
-    Board *b = new Board();
+    Board b;
     using namespace std::chrono;
     auto start_time = high_resolution_clock::now();
 
-    cout << "Nodes: " << perft(b, 1, 4) << endl;
+    cout << "Nodes: " << perft(b, 1, 5) << endl;
     cout << "Captures: " << captures << endl;
 
     auto end_time = high_resolution_clock::now();
@@ -23,17 +23,17 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-uint64_t perft(Board *b, int color, int depth) {
+uint64_t perft(Board b, int color, int depth) {
 	if(depth == 0)
 		return 1;
 	
-	vector<Move *> pl = b->getPseudoLegalMoves(color);
-	vector<Move *> pc = b->getPLCaptures(color);
+	vector<Move *> pl = b.getPseudoLegalMoves(color);
+	vector<Move *> pc = b.getPLCaptures(color);
 	uint64_t nodes = 0;
 	
 	for(unsigned int i = 0; i < pl.size(); i++) {
-		Board *copy = b->copy();
-		if(!copy->doPLMove(pl.at(i), color))
+		Board copy = b.staticCopy();
+		if(!copy.doPLMove(pl.at(i), color))
 			continue;
 		/*if(!b->doPLMove(pl.get(i), color)) {
 			b->undoMove();
@@ -46,8 +46,8 @@ uint64_t perft(Board *b, int color, int depth) {
 	}
 	
 	for(unsigned int i = 0; i < pc.size(); i++) {
-		Board *copy = b->copy();
-		if(!copy->doPLMove(pc.at(i), color))
+		Board copy = b.staticCopy();
+		if(!copy.doPLMove(pc.at(i), color))
 			continue;
 		
 		captures++;
