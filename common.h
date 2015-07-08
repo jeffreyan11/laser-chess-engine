@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <iostream>
 #include <string>
-#include <vector>
 
 using namespace std;
 
@@ -58,7 +57,6 @@ int bitScanReverse(uint64_t bb);
 int count(uint64_t bb);
 
 class Move {
-
 public:
 	int piece;
 	bool isCapture;
@@ -71,6 +69,56 @@ public:
     ~Move() {}
 	
     string toString();
+};
+
+class MoveList {
+public:
+    Move **moves;
+    unsigned int length;
+
+    MoveList() {
+        moves = new Move *[128];
+        length = 0;
+    }
+    ~MoveList() { delete[] moves; }
+
+    unsigned int size() { return length; }
+
+    // Adds to the end of the list.
+    void add(Move *m) {
+        moves[length] = m;
+        length++;
+    }
+
+    Move *get(int i) { return moves[i]; }
+
+    Move *last() { return moves[length-1]; }
+
+    void set(int i, Move *m) { moves[i] = m; }
+
+    void remove(int i) {
+        for(unsigned int j = i; j < length-1; j++) {
+            moves[j] = moves[j+1];
+        }
+        length--;
+    }
+
+    // Reset the MoveList
+    void clear() {
+        for(unsigned int i = 0; i < length; i++) {
+            delete moves[i];
+        }
+        delete[] moves;
+        moves = new Move *[128];
+        length = 0;
+    }
+
+    // Call this after every MoveList is done being used.
+    void free() {
+        for(unsigned int i = 0; i < length; i++) {
+            delete moves[i];
+        }
+    }
 };
 
 #endif

@@ -287,18 +287,26 @@ const int initMailbox[64] = {
 class Board {
 
 private:
+    // 12 bitboards, one for each of the 12 piece types, indexed by the
+    // constants given in common.h
     uint64_t pieces[12];
+    // Bitboards for all white or all black pieces
     uint64_t whitePieces;
     uint64_t blackPieces;
+    // Booleans indicating whether castling is possible
     bool whiteCanKCastle;
     bool blackCanKCastle;
     bool whiteCanQCastle;
     bool blackCanQCastle;
+    // 0 if cannot en passant, if en passant is possible, the bitboard has a bit
+    // set at the square of the pawn being captured
     uint64_t whiteCanEP;
     uint64_t blackCanEP;
+
     // Stack<BMove> history = new Stack<BMove>();
 
 public:
+    // Redundant mailbox representation to make evaluation easier
     int mailbox[64];
 
     Board();
@@ -311,18 +319,18 @@ public:
     // void undoMove();
     bool isLegalMove(Move *m, int color);
 
-    vector<Move *> getLegalWMoves();
-    vector<Move *> getLegalBMoves();
-    vector<Move *> getLegalMoves(int color);
-    vector<Move *> getPseudoLegalWMoves();
-    vector<Move *> getPseudoLegalBMoves();
-    vector<Move *> getPseudoLegalMoves(int color);
-    vector<Move *> getLegalWCaptures();
-    vector<Move *> getLegalBCaptures();
-    vector<Move *> getLegalCaptures(int color);
-    vector<Move *> getPLWCaptures();
-    vector<Move *> getPLBCaptures();
-    vector<Move *> getPLCaptures(int color);
+    MoveList getLegalWMoves();
+    MoveList getLegalBMoves();
+    MoveList getLegalMoves(int color);
+    MoveList getPseudoLegalWMoves();
+    MoveList getPseudoLegalBMoves();
+    MoveList getPseudoLegalMoves(int color);
+    MoveList getLegalWCaptures();
+    MoveList getLegalBCaptures();
+    MoveList getLegalCaptures(int color);
+    MoveList getPLWCaptures();
+    MoveList getPLBCaptures();
+    MoveList getPLCaptures(int color);
 
     bool getWinCheck();
     bool getBinCheck();

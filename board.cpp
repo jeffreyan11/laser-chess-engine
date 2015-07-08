@@ -587,45 +587,45 @@ bool Board::isLegalMove(Move *m, int color) {
     return true;
 }
 
-vector<Move *> Board::getLegalWMoves() {
-    vector<Move *> moveList = getPseudoLegalWMoves();
+MoveList Board::getLegalWMoves() {
+    MoveList moves = getPseudoLegalWMoves();
 
-    for(unsigned int i = 0; i < moveList.size(); i++) {
+    for(unsigned int i = 0; i < moves.size(); i++) {
         Board b = staticCopy();
-        b.doMove(moveList.at(i), WHITE);
+        b.doMove(moves.get(i), WHITE);
 
         if(b.getWinCheck()) {
-            moveList.erase(moveList.begin() + i);
+            moves.remove(i);
             i--;
         }
     }
 
-    return moveList;
+    return moves;
 }
 
-vector<Move *> Board::getLegalBMoves() {
-    vector<Move *> moveList = getPseudoLegalBMoves();
+MoveList Board::getLegalBMoves() {
+    MoveList moves = getPseudoLegalBMoves();
 
-    for(unsigned int i = 0; i < moveList.size(); i++) {
+    for(unsigned int i = 0; i < moves.size(); i++) {
         Board b = staticCopy();
-        b.doMove(moveList.at(i), BLACK);
+        b.doMove(moves.get(i), BLACK);
 
         if(b.getBinCheck()) {
-            moveList.erase(moveList.begin() + i);
+            moves.remove(i);
             i--;
         }
     }
 
-    return moveList;
+    return moves;
 }
 
-vector<Move *> Board::getLegalMoves(int color) {
+MoveList Board::getLegalMoves(int color) {
     return (color == WHITE) ? getLegalWMoves() : getLegalBMoves();
 }
 
 //---------------------Pseudo-legal Moves---------------------------
-vector<Move *> Board::getPseudoLegalWMoves() {
-    vector<Move *> result;
+MoveList Board::getPseudoLegalWMoves() {
+    MoveList result;
     uint64_t pawns = pieces[WHITE+PAWNS];
     uint64_t knights = pieces[WHITE+KNIGHTS];
     uint64_t bishops = pieces[WHITE+BISHOPS];
@@ -652,17 +652,17 @@ vector<Move *> Board::getPseudoLegalWMoves() {
             mk->promotion = ROOKS;
             Move *mq = new Move(PAWNS, false, stsq, endsq);
             mk->promotion = QUEENS;
-            result.push_back(mk);
-            result.push_back(mb);
-            result.push_back(mr);
-            result.push_back(mq);
+            result.add(mk);
+            result.add(mb);
+            result.add(mr);
+            result.add(mq);
         }
         else {
             while(legal != 0) {
                 int endsq = bitScanForward(legal & -legal);
                 legal &= legal-1;
 
-                result.push_back(new Move(PAWNS, false, stsq, endsq));
+                result.add(new Move(PAWNS, false, stsq, endsq));
             }
         }
     }
@@ -677,7 +677,7 @@ vector<Move *> Board::getPseudoLegalWMoves() {
             int endsq = bitScanForward(legal & -legal);
             legal &= legal-1;
 
-            result.push_back(new Move(KNIGHTS, false, stsq, endsq));
+            result.add(new Move(KNIGHTS, false, stsq, endsq));
         }
     }
 
@@ -690,7 +690,7 @@ vector<Move *> Board::getPseudoLegalWMoves() {
             int endsq = bitScanForward(legal & -legal);
             legal &= legal-1;
 
-            result.push_back(new Move(BISHOPS, false, stsq, endsq));
+            result.add(new Move(BISHOPS, false, stsq, endsq));
         }
     }
 
@@ -703,7 +703,7 @@ vector<Move *> Board::getPseudoLegalWMoves() {
             int endsq = bitScanForward(legal & -legal);
             legal &= legal-1;
 
-            result.push_back(new Move(ROOKS, false, stsq, endsq));
+            result.add(new Move(ROOKS, false, stsq, endsq));
         }
     }
 
@@ -716,7 +716,7 @@ vector<Move *> Board::getPseudoLegalWMoves() {
             int endsq = bitScanForward(legal & -legal);
             legal &= legal-1;
 
-            result.push_back(new Move(QUEENS, false, stsq, endsq));
+            result.add(new Move(QUEENS, false, stsq, endsq));
         }
     }
 
@@ -726,7 +726,7 @@ vector<Move *> Board::getPseudoLegalWMoves() {
         int endsq = bitScanForward(legal & -legal);
         legal &= legal-1;
 
-        result.push_back(new Move(KINGS, false, stsq, endsq));
+        result.add(new Move(KINGS, false, stsq, endsq));
     }
 
     if(whiteCanKCastle) {
@@ -738,7 +738,7 @@ vector<Move *> Board::getPseudoLegalWMoves() {
             if((bAtt & (MOVEMASK[5] | MOVEMASK[6])) == 0) {
                 Move *m = new Move(KINGS, false, 4, 6);
                 m->isCastle = true;
-                result.push_back(m);
+                result.add(m);
             }
         }
     }
@@ -751,7 +751,7 @@ vector<Move *> Board::getPseudoLegalWMoves() {
             if((bAtt & (MOVEMASK[1] | MOVEMASK[2] | MOVEMASK[3])) == 0) {
                 Move *m = new Move(KINGS, false, 4, 2);
                 m->isCastle = true;
-                result.push_back(m);
+                result.add(m);
             }
         }
     }
@@ -759,8 +759,8 @@ vector<Move *> Board::getPseudoLegalWMoves() {
     return result;
 }
 
-vector<Move *> Board::getPseudoLegalBMoves() {
-    vector<Move *> result;
+MoveList Board::getPseudoLegalBMoves() {
+    MoveList result;
     uint64_t pawns = pieces[BLACK+PAWNS];
     uint64_t knights = pieces[BLACK+KNIGHTS];
     uint64_t bishops = pieces[BLACK+BISHOPS];
@@ -787,17 +787,17 @@ vector<Move *> Board::getPseudoLegalBMoves() {
             mk->promotion = ROOKS;
             Move *mq = new Move(PAWNS, false, stsq, endsq);
             mk->promotion = QUEENS;
-            result.push_back(mk);
-            result.push_back(mb);
-            result.push_back(mr);
-            result.push_back(mq);
+            result.add(mk);
+            result.add(mb);
+            result.add(mr);
+            result.add(mq);
         }
         else {
             while(legal != 0) {
                 int endsq = bitScanForward(legal & -legal);
                 legal &= legal-1;
 
-                result.push_back(new Move(PAWNS, false, stsq, endsq));
+                result.add(new Move(PAWNS, false, stsq, endsq));
             }
         }
     }
@@ -812,7 +812,7 @@ vector<Move *> Board::getPseudoLegalBMoves() {
             int endsq = bitScanForward(legal & -legal);
             legal &= legal-1;
 
-            result.push_back(new Move(KNIGHTS, false, stsq, endsq));
+            result.add(new Move(KNIGHTS, false, stsq, endsq));
         }
     }
 
@@ -825,7 +825,7 @@ vector<Move *> Board::getPseudoLegalBMoves() {
             int endsq = bitScanForward(legal & -legal);
             legal &= legal-1;
 
-            result.push_back(new Move(BISHOPS, false, stsq, endsq));
+            result.add(new Move(BISHOPS, false, stsq, endsq));
         }
     }
 
@@ -838,7 +838,7 @@ vector<Move *> Board::getPseudoLegalBMoves() {
             int endsq = bitScanForward(legal & -legal);
             legal &= legal-1;
 
-            result.push_back(new Move(ROOKS, false, stsq, endsq));
+            result.add(new Move(ROOKS, false, stsq, endsq));
         }
     }
 
@@ -851,7 +851,7 @@ vector<Move *> Board::getPseudoLegalBMoves() {
             int endsq = bitScanForward(legal & -legal);
             legal &= legal-1;
 
-            result.push_back(new Move(QUEENS, false, stsq, endsq));
+            result.add(new Move(QUEENS, false, stsq, endsq));
         }
     }
 
@@ -861,7 +861,7 @@ vector<Move *> Board::getPseudoLegalBMoves() {
         int endsq = bitScanForward(legal & -legal);
         legal &= legal-1;
 
-        result.push_back(new Move(KINGS, false, stsq, endsq));
+        result.add(new Move(KINGS, false, stsq, endsq));
     }
 
     if(blackCanKCastle) {
@@ -873,7 +873,7 @@ vector<Move *> Board::getPseudoLegalBMoves() {
             if((wAtt & (MOVEMASK[61] | MOVEMASK[62])) == 0) {
                 Move *m = new Move(KINGS, false, 60, 62);
                 m->isCastle = true;
-                result.push_back(m);
+                result.add(m);
             }
         }
     }
@@ -886,7 +886,7 @@ vector<Move *> Board::getPseudoLegalBMoves() {
             if((wAtt & (MOVEMASK[57] | MOVEMASK[58] | MOVEMASK[59])) == 0) {
                 Move *m = new Move(KINGS, false, 60, 58);
                 m->isCastle = true;
-                result.push_back(m);
+                result.add(m);
             }
         }
     }
@@ -894,48 +894,48 @@ vector<Move *> Board::getPseudoLegalBMoves() {
     return result;
 }
 
-vector<Move *> Board::getPseudoLegalMoves(int color) {
+MoveList Board::getPseudoLegalMoves(int color) {
     return (color == WHITE) ? getPseudoLegalWMoves() : getPseudoLegalBMoves();
 }
 
-vector<Move *> Board::getLegalWCaptures() {
-    vector<Move *> moveList = getPLWCaptures();
+MoveList Board::getLegalWCaptures() {
+    MoveList moves = getPLWCaptures();
 
-    for(unsigned int i = 0; i < moveList.size(); i++) {
+    for(unsigned int i = 0; i < moves.size(); i++) {
         Board b = staticCopy();
-        b.doMove(moveList.at(i), WHITE);
+        b.doMove(moves.get(i), WHITE);
 
         if(b.getWinCheck()) {
-            moveList.erase(moveList.begin() + i);
+            moves.remove(i);
             i--;
         }
     }
 
-    return moveList;
+    return moves;
 }
 
-vector<Move *> Board::getLegalBCaptures() {
-    vector<Move *> moveList = getPLBCaptures();
+MoveList Board::getLegalBCaptures() {
+    MoveList moves = getPLBCaptures();
 
-    for(unsigned int i = 0; i < moveList.size(); i++) {
+    for(unsigned int i = 0; i < moves.size(); i++) {
         Board b = staticCopy();
-        b.doMove(moveList.at(i), BLACK);
+        b.doMove(moves.get(i), BLACK);
 
         if(b.getBinCheck()) {
-            moveList.erase(moveList.begin() + i);
+            moves.remove(i);
             i--;
         }
     }
 
-    return moveList;
+    return moves;
 }
 
-vector<Move *> Board::getLegalCaptures(int color) {
+MoveList Board::getLegalCaptures(int color) {
     return (color == WHITE) ? getLegalWCaptures() : getLegalBCaptures();
 }
 
-vector<Move *> Board::getPLWCaptures() {
-    vector<Move *> result;
+MoveList Board::getPLWCaptures() {
+    MoveList result;
     uint64_t pawns = pieces[WHITE+PAWNS];
     uint64_t knights = pieces[WHITE+KNIGHTS];
     uint64_t bishops = pieces[WHITE+BISHOPS];
@@ -963,10 +963,10 @@ vector<Move *> Board::getPLWCaptures() {
             mk->promotion = ROOKS;
             Move *mq = new Move(PAWNS, true, stsq, endsq);
             mk->promotion = QUEENS;
-            result.push_back(mk);
-            result.push_back(mb);
-            result.push_back(mr);
-            result.push_back(mq);
+            result.add(mk);
+            result.add(mb);
+            result.add(mr);
+            result.add(mq);
 
             if(promotions != 0) {
                 endsq = bitScanForward(promotions);
@@ -978,10 +978,10 @@ vector<Move *> Board::getPLWCaptures() {
                 mk2->promotion = ROOKS;
                 Move *mq2 = new Move(PAWNS, true, stsq, endsq);
                 mk2->promotion = QUEENS;
-                result.push_back(mk2);
-                result.push_back(mb2);
-                result.push_back(mr2);
-                result.push_back(mq2);
+                result.add(mk2);
+                result.add(mb2);
+                result.add(mr2);
+                result.add(mq2);
             }
         }
         else {
@@ -989,7 +989,7 @@ vector<Move *> Board::getPLWCaptures() {
                 int endsq = bitScanForward(legal & -legal);
                 legal &= legal-1;
 
-                result.push_back(new Move(PAWNS, true, stsq, endsq));
+                result.add(new Move(PAWNS, true, stsq, endsq));
             }
         }
     }
@@ -997,12 +997,12 @@ vector<Move *> Board::getPLWCaptures() {
     if(whiteCanEP != 0) {
         uint64_t taker = (whiteCanEP << 1) & NOTA & pieces[WHITE+PAWNS];
         if(taker != 0) {
-            result.push_back(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(whiteCanEP << 8)));
+            result.add(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(whiteCanEP << 8)));
         }
         else {
             taker = (whiteCanEP >> 1) & NOTH & pieces[WHITE+PAWNS];
             if(taker != 0) {
-                result.push_back(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(whiteCanEP << 8)));
+                result.add(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(whiteCanEP << 8)));
             }
         }
     }
@@ -1016,7 +1016,7 @@ vector<Move *> Board::getPLWCaptures() {
             int endsq = bitScanForward(legal & -legal);
             legal &= legal-1;
 
-            result.push_back(new Move(KNIGHTS, true, stsq, endsq));
+            result.add(new Move(KNIGHTS, true, stsq, endsq));
         }
     }
 
@@ -1029,7 +1029,7 @@ vector<Move *> Board::getPLWCaptures() {
             int endsq = bitScanForward(legal & -legal);
             legal &= legal-1;
 
-            result.push_back(new Move(BISHOPS, true, stsq, endsq));
+            result.add(new Move(BISHOPS, true, stsq, endsq));
         }
     }
 
@@ -1042,7 +1042,7 @@ vector<Move *> Board::getPLWCaptures() {
             int endsq = bitScanForward(legal & -legal);
             legal &= legal-1;
 
-            result.push_back(new Move(ROOKS, true, stsq, endsq));
+            result.add(new Move(ROOKS, true, stsq, endsq));
         }
     }
 
@@ -1055,7 +1055,7 @@ vector<Move *> Board::getPLWCaptures() {
             int endsq = bitScanForward(legal & -legal);
             legal &= legal-1;
 
-            result.push_back(new Move(QUEENS, true, stsq, endsq));
+            result.add(new Move(QUEENS, true, stsq, endsq));
         }
     }
 
@@ -1065,14 +1065,14 @@ vector<Move *> Board::getPLWCaptures() {
         int endsq = bitScanForward(legal & -legal);
         legal &= legal-1;
 
-        result.push_back(new Move(KINGS, true, stsq, endsq));
+        result.add(new Move(KINGS, true, stsq, endsq));
     }
 
     return result;
 }
 
-vector<Move *> Board::getPLBCaptures() {
-    vector<Move *> result;
+MoveList Board::getPLBCaptures() {
+    MoveList result;
     uint64_t pawns = pieces[BLACK+PAWNS];
     uint64_t knights = pieces[BLACK+KNIGHTS];
     uint64_t bishops = pieces[BLACK+BISHOPS];
@@ -1099,10 +1099,10 @@ vector<Move *> Board::getPLBCaptures() {
             mk->promotion = ROOKS;
             Move *mq = new Move(PAWNS, true, stsq, endsq);
             mk->promotion = QUEENS;
-            result.push_back(mk);
-            result.push_back(mb);
-            result.push_back(mr);
-            result.push_back(mq);
+            result.add(mk);
+            result.add(mb);
+            result.add(mr);
+            result.add(mq);
 
             if(promotions != 0) {
                 endsq = bitScanForward(promotions);
@@ -1114,10 +1114,10 @@ vector<Move *> Board::getPLBCaptures() {
                 mk2->promotion = ROOKS;
                 Move *mq2 = new Move(PAWNS, true, stsq, endsq);
                 mk2->promotion = QUEENS;
-                result.push_back(mk2);
-                result.push_back(mb2);
-                result.push_back(mr2);
-                result.push_back(mq2);
+                result.add(mk2);
+                result.add(mb2);
+                result.add(mr2);
+                result.add(mq2);
             }
         }
         else {
@@ -1125,7 +1125,7 @@ vector<Move *> Board::getPLBCaptures() {
                 int endsq = bitScanForward(legal & -legal);
                 legal &= legal-1;
 
-                result.push_back(new Move(PAWNS, true, stsq, endsq));
+                result.add(new Move(PAWNS, true, stsq, endsq));
             }
         }
     }
@@ -1133,12 +1133,12 @@ vector<Move *> Board::getPLBCaptures() {
     if(blackCanEP != 0) {
         uint64_t taker = (blackCanEP << 1) & NOTA & pieces[BLACK+PAWNS];
         if(taker != 0) {
-            result.push_back(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(blackCanEP >> 8)));
+            result.add(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(blackCanEP >> 8)));
         }
         else {
             taker = (blackCanEP >> 1) & NOTH & pieces[BLACK+PAWNS];
             if(taker != 0) {
-                result.push_back(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(blackCanEP >> 8)));
+                result.add(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(blackCanEP >> 8)));
             }
         }
     }
@@ -1152,7 +1152,7 @@ vector<Move *> Board::getPLBCaptures() {
             int endsq = bitScanForward(legal & -legal);
             legal &= legal-1;
 
-            result.push_back(new Move(KNIGHTS, true, stsq, endsq));
+            result.add(new Move(KNIGHTS, true, stsq, endsq));
         }
     }
 
@@ -1165,7 +1165,7 @@ vector<Move *> Board::getPLBCaptures() {
             int endsq = bitScanForward(legal & -legal);
             legal &= legal-1;
 
-            result.push_back(new Move(BISHOPS, true, stsq, endsq));
+            result.add(new Move(BISHOPS, true, stsq, endsq));
         }
     }
 
@@ -1178,7 +1178,7 @@ vector<Move *> Board::getPLBCaptures() {
             int endsq = bitScanForward(legal & -legal);
             legal &= legal-1;
 
-            result.push_back(new Move(ROOKS, true, stsq, endsq));
+            result.add(new Move(ROOKS, true, stsq, endsq));
         }
     }
 
@@ -1191,7 +1191,7 @@ vector<Move *> Board::getPLBCaptures() {
             int endsq = bitScanForward(legal & -legal);
             legal &= legal-1;
 
-            result.push_back(new Move(QUEENS, true, stsq, endsq));
+            result.add(new Move(QUEENS, true, stsq, endsq));
         }
     }
 
@@ -1201,13 +1201,13 @@ vector<Move *> Board::getPLBCaptures() {
         int endsq = bitScanForward(legal & -legal);
         legal &= legal-1;
 
-        result.push_back(new Move(KINGS, true, stsq, endsq));
+        result.add(new Move(KINGS, true, stsq, endsq));
     }
 
     return result;
 }
 
-vector<Move *> Board::getPLCaptures(int color) {
+MoveList Board::getPLCaptures(int color) {
     return (color == WHITE) ? getPLWCaptures() : getPLBCaptures();
 }
 
@@ -1235,25 +1235,35 @@ bool Board::getBinCheck() {
 }
 
 bool Board::isWinMate() {
-    vector<Move *> temp = getLegalWMoves();
+    MoveList temp = getLegalWMoves();
+    bool isInMate = false;
     if(temp.size() == 0 && getWinCheck())
-        return true;
-    else return false;
+        isInMate = true;
+    
+    temp.free();
+    return isInMate;
 }
 
 bool Board::isBinMate() {
-    vector<Move *> temp = getLegalBMoves();
+    MoveList temp = getLegalBMoves();
+    bool isInMate = false;
     if(temp.size() == 0 && getBinCheck())
-        return true;
-    else return false;
+        isInMate = true;
+
+    temp.free();
+    return isInMate;
 }
 
 bool Board::isStalemate(int sideToMove) {
-    vector<Move *> temp = (sideToMove == WHITE) ? getLegalWMoves() : getLegalBMoves();
+    MoveList temp = (sideToMove == WHITE) ? getLegalWMoves() : getLegalBMoves();
+    bool isInStalemate = false;
 
-    if(temp.size() == 0 && !((sideToMove == WHITE) ? getBinCheck() : getWinCheck()))
-        return true;
-    else return false;
+    if(temp.size() == 0 &&
+            !((sideToMove == WHITE) ? getBinCheck() : getWinCheck()))
+        isInStalemate = true;
+    
+    temp.free();
+    return isInStalemate;
 }
 
 // TODO evaluation function
@@ -1510,33 +1520,33 @@ while(pawns != 0) {
 uint64_t single = pawns & -pawns;
 pawns &= pawns-1;
 int index = bitScanForward(single);
-result.push_back(new Piece(index%8, index/8, WHITE*PAWNS, pi));
+result.add(new Piece(index%8, index/8, WHITE*PAWNS, pi));
 }
 while(knights != 0) {
 uint64_t single = knights & -knights;
 knights &= knights-1;
 int index = bitScanForward(single);
-result.push_back(new Piece(index%8, index/8, WHITE*KNIGHTS, pi));
+result.add(new Piece(index%8, index/8, WHITE*KNIGHTS, pi));
 }
 while(bishops != 0) {
 int index = bitScanForward(bishops);
 bishops &= bishops-1;
-result.push_back(new Piece(index%8, index/8, WHITE*BISHOPS, pi));
+result.add(new Piece(index%8, index/8, WHITE*BISHOPS, pi));
 }
 while(rooks != 0) {
 int index = bitScanForward(rooks);
 rooks &= rooks-1;
-result.push_back(new Piece(index%8, index/8, WHITE*ROOKS, pi));
+result.add(new Piece(index%8, index/8, WHITE*ROOKS, pi));
 }
 while(queens != 0) {
 int index = bitScanForward(queens);
 queens &= queens-1;
-result.push_back(new Piece(index%8, index/8, WHITE*QUEENS, pi));
+result.add(new Piece(index%8, index/8, WHITE*QUEENS, pi));
 }
 while(kings != 0) {
 int index = bitScanForward(kings);
 kings &= kings-1;
-result.push_back(new Piece(index%8, index/8, WHITE*KINGS, pi));
+result.add(new Piece(index%8, index/8, WHITE*KINGS, pi));
 }
 
 pawns = pieces[BLACK+PAWNS];
@@ -1550,33 +1560,33 @@ while(pawns != 0) {
 uint64_t single = pawns & -pawns;
 pawns &= pawns-1;
 int index = bitScanForward(single);
-result.push_back(new Piece(index%8, index/8, BLACK*PAWNS, pi));
+result.add(new Piece(index%8, index/8, BLACK*PAWNS, pi));
 }
 while(knights != 0) {
 uint64_t single = knights & -knights;
 knights &= knights-1;
 int index = bitScanForward(single);
-result.push_back(new Piece(index%8, index/8, BLACK*KNIGHTS, pi));
+result.add(new Piece(index%8, index/8, BLACK*KNIGHTS, pi));
 }
 while(bishops != 0) {
 int index = bitScanForward(bishops);
 bishops &= bishops-1;
-result.push_back(new Piece(index%8, index/8, BLACK*BISHOPS, pi));
+result.add(new Piece(index%8, index/8, BLACK*BISHOPS, pi));
 }
 while(rooks != 0) {
 int index = bitScanForward(rooks);
 rooks &= rooks-1;
-result.push_back(new Piece(index%8, index/8, BLACK*ROOKS, pi));
+result.add(new Piece(index%8, index/8, BLACK*ROOKS, pi));
 }
 while(queens != 0) {
 int index = bitScanForward(queens);
 queens &= queens-1;
-result.push_back(new Piece(index%8, index/8, BLACK*QUEENS, pi));
+result.add(new Piece(index%8, index/8, BLACK*QUEENS, pi));
 }
 while(kings != 0) {
 int index = bitScanForward(kings);
 kings &= kings-1;
-result.push_back(new Piece(index%8, index/8, BLACK*KINGS, pi));
+result.add(new Piece(index%8, index/8, BLACK*KINGS, pi));
 }
 
 return result;

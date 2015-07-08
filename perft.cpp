@@ -23,17 +23,21 @@ int main(int argc, char **argv) {
     return 0;
 }
 
+/*
+ * Performs a PERFT.
+ * 7/8/15: PERFT 5, 1.46 s
+ */
 uint64_t perft(Board b, int color, int depth) {
 	if(depth == 0)
 		return 1;
 	
-	vector<Move *> pl = b.getPseudoLegalMoves(color);
-	vector<Move *> pc = b.getPLCaptures(color);
+	MoveList pl = b.getPseudoLegalMoves(color);
+	MoveList pc = b.getPLCaptures(color);
 	uint64_t nodes = 0;
 	
 	for(unsigned int i = 0; i < pl.size(); i++) {
 		Board copy = b.staticCopy();
-		if(!copy.doPLMove(pl.at(i), color))
+		if(!copy.doPLMove(pl.get(i), color))
 			continue;
 		/*if(!b->doPLMove(pl.get(i), color)) {
 			b->undoMove();
@@ -44,16 +48,20 @@ uint64_t perft(Board b, int color, int depth) {
 		
 		//b.undoMove();
 	}
+
+    pl.free();
 	
 	for(unsigned int i = 0; i < pc.size(); i++) {
 		Board copy = b.staticCopy();
-		if(!copy.doPLMove(pc.at(i), color))
+		if(!copy.doPLMove(pc.get(i), color))
 			continue;
 		
 		captures++;
 		
 		nodes += perft(copy, -color, depth-1);
 	}
+
+    pc.free();
 	
 	return nodes;
 }
