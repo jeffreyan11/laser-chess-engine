@@ -269,6 +269,7 @@ const int queenValues[64] = {
 -20,-10,-10, -5, -5,-10,-10,-20
 };
 
+// The initial board setup in mailbox form.
 const int initMailbox[64] = {
     7, 3, 6, 10, 11, 6, 3, 7,
     2, 2, 2, 2, 2, 2, 2, 2,
@@ -300,16 +301,27 @@ private:
     bool blackCanQCastle;
     // 0 if cannot en passant, if en passant is possible, the bitboard has a bit
     // set at the square of the pawn being captured
-    uint64_t whiteCanEP;
-    uint64_t blackCanEP;
+    uint64_t whiteEPCaptureSq;
+    uint64_t blackEPCaptureSq;
+    // Counts half moves for the 50-move rule
+    int fiftyMoveCounter;
+    // Move number
+    int moveNumber;
+    // Whose move is it?
+    int playerToMove;
 
     // Stack<BMove> history = new Stack<BMove>();
 
 public:
     // Redundant mailbox representation to make evaluation easier
+    // mailbox[0] is a1, mailbox[63] is h8
     int mailbox[64];
 
     Board();
+    Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
+            bool _whiteCanQCastle, bool _blackCanQCastle,
+            uint64_t _whiteEPCaptureSq, uint64_t _blackEPCaptureSq,
+            int _fiftyMoveCounter, int _moveNumber, int _playerToMove);
     ~Board();
     Board staticCopy();
     Board *dynamicCopy();
@@ -338,11 +350,13 @@ public:
     bool isBinMate();
     bool isStalemate(int sideToMove);
 
+    // Evaluation
     int evaluate();
     bool pieceOn(int color, int x, int y);
     int getWPseudoMobility();
     int getBPseudoMobility();
 
+    // Move generation
     uint64_t getWPawnMoves(uint64_t pawns);
     uint64_t getBPawnMoves(uint64_t pawns);
     uint64_t getKnightSquares(int single);
@@ -362,6 +376,7 @@ public:
     uint64_t getKingSquares(int single);
     uint64_t getKingAttacks(int color);
 
+    // Dumb7fill methods
     uint64_t southAttacks(uint64_t rooks, uint64_t empty);
     uint64_t northAttacks(uint64_t rooks, uint64_t empty);
     uint64_t eastAttacks(uint64_t rooks, uint64_t empty);
@@ -370,6 +385,18 @@ public:
     uint64_t westAttacks(uint64_t rooks, uint64_t empty);
     uint64_t swAttacks(uint64_t bishops, uint64_t empty);
     uint64_t nwAttacks(uint64_t bishops, uint64_t empty);
+
+    // Getter methods
+    bool getWhiteCanKCastle();
+    bool getBlackCanKCastle();
+    bool getWhiteCanQCastle();
+    bool getBlackCanQCastle();
+    uint64_t getWhiteEPCaptureSq();
+    uint64_t getBlackEPCaptureSq();
+    int getFiftyMoveCounter();
+    int getMoveNumber();
+    int getPlayerToMove();
+    int *getMailbox();
 };
 
 #endif

@@ -15,15 +15,95 @@ Board::Board() {
     pieces[9] = 0x1000000000000000; // black kings
     whitePieces = 0x000000000000FFFF;
     blackPieces = 0xFFFF000000000000;
+
     whiteCanKCastle = true;
     blackCanKCastle = true;
     whiteCanQCastle = true;
     blackCanQCastle = true;
-    whiteCanEP = 0;
-    blackCanEP = 0;
+    whiteEPCaptureSq = 0;
+    blackEPCaptureSq = 0;
+
     for(int i = 0; i < 64; i++) {
         mailbox[i] = initMailbox[i];
     }
+
+    fiftyMoveCounter = 0;
+    moveNumber = 1;
+    playerToMove = WHITE;
+}
+
+Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
+        bool _whiteCanQCastle, bool _blackCanQCastle, uint64_t _whiteEPCaptureSq,
+        uint64_t _blackEPCaptureSq, int _fiftyMoveCounter, int _moveNumber,
+        int _playerToMove) {
+    // Copy mailbox
+    for(int i = 0; i < 64; i++) {
+        mailbox[i] = mailboxBoard[i];
+    }
+
+    // Initialize bitboards
+    for(int i = 0; i < 12; i++) {
+        pieces[i] = 0;
+    }
+    for(int i = 0; i < 64; i++) {
+        switch(mailbox[i]) {
+            case -1: // empty
+                break;
+            case 2: // white pawn
+                pieces[2] |= MOVEMASK[i];
+                break;
+            case 0: // black pawn
+                pieces[0] |= MOVEMASK[i];
+                break;
+            case 3: // white knight
+                pieces[3] |= MOVEMASK[i];
+                break;
+            case 1: // black knight
+                pieces[1] |= MOVEMASK[i];
+                break;
+            case 6: // white bishop
+                pieces[6] |= MOVEMASK[i];
+                break;
+            case 4: // black bishop
+                pieces[4] |= MOVEMASK[i];
+                break;
+            case 7: // white rook
+                pieces[7] |= MOVEMASK[i];
+                break;
+            case 5: // black rook
+                pieces[5] |= MOVEMASK[i];
+                break;
+            case 10: // white queen
+                pieces[10] |= MOVEMASK[i];
+                break;
+            case 8: // black queen
+                pieces[8] |= MOVEMASK[i];
+                break;
+            case 11: // white king
+                pieces[11] |= MOVEMASK[i];
+                break;
+            case 9: // black king
+                pieces[9] |= MOVEMASK[i];
+                break;
+            default:
+                cerr << "Error in constructor." << endl;
+                break;
+        }
+    }
+    whitePieces = pieces[2] | pieces[3] | pieces[6] | pieces[7] | pieces[10]
+                | pieces[11];
+    blackPieces = pieces[0] | pieces[1] | pieces[4] | pieces[5] | pieces[8]
+                | pieces[9];
+    
+    whiteCanKCastle = _whiteCanKCastle;
+    whiteCanQCastle = _whiteCanQCastle;
+    blackCanKCastle = _blackCanKCastle;
+    blackCanQCastle = _blackCanQCastle;
+    whiteEPCaptureSq = _whiteEPCaptureSq;
+    blackEPCaptureSq = _blackEPCaptureSq;
+    fiftyMoveCounter = _fiftyMoveCounter;
+    moveNumber = _moveNumber;
+    playerToMove = _playerToMove;
 }
 
 Board::~Board() {}
@@ -39,11 +119,14 @@ Board Board::staticCopy() {
     result.whiteCanQCastle = whiteCanQCastle;
     result.blackCanKCastle = blackCanKCastle;
     result.blackCanQCastle = blackCanQCastle;
-    result.whiteCanEP = whiteCanEP;
-    result.blackCanEP = blackCanEP;
+    result.whiteEPCaptureSq = whiteEPCaptureSq;
+    result.blackEPCaptureSq = blackEPCaptureSq;
     for(int i = 0; i < 64; i++) {
         result.mailbox[i] = mailbox[i];
     }
+    result.fiftyMoveCounter = fiftyMoveCounter;
+    result.moveNumber = moveNumber;
+    result.playerToMove = playerToMove;
     return result;
 }
 
@@ -58,17 +141,20 @@ Board *Board::dynamicCopy() {
     result->whiteCanQCastle = whiteCanQCastle;
     result->blackCanKCastle = blackCanKCastle;
     result->blackCanQCastle = blackCanQCastle;
-    result->whiteCanEP = whiteCanEP;
-    result->blackCanEP = blackCanEP;
+    result->whiteEPCaptureSq = whiteEPCaptureSq;
+    result->blackEPCaptureSq = blackEPCaptureSq;
     for(int i = 0; i < 64; i++) {
         result->mailbox[i] = mailbox[i];
     }
+    result->fiftyMoveCounter = fiftyMoveCounter;
+    result->moveNumber = moveNumber;
+    result->playerToMove = playerToMove;
     return result;
 }
 
 void Board::doMove(Move *m, int color) {
 /* TODO undo move stuff
-    BMove record = new BMove(color, m->startsq, m->endsq, mailbox[m->endsq], whiteCanEP, blackCanEP, m->isCastle);
+    BMove record = new BMove(color, m->startsq, m->endsq, mailbox[m->endsq], whiteEPCaptureSq, blackEPCaptureSq, m->isCastle);
     if(m->promotion != -1)
         record->isPromotion = true;
     record->whiteCanKCastle = whiteCanKCastle;
@@ -155,8 +241,9 @@ void Board::doMove(Move *m, int color) {
             blackCanKCastle = false;
             blackCanQCastle = false;
         }
-        whiteCanEP = 0;
-        blackCanEP = 0;
+        whiteEPCaptureSq = 0;
+        blackEPCaptureSq = 0;
+        fiftyMoveCounter++;
     } // end castling
     else if(m->promotion != -1) {
         if(m->isCapture) {
@@ -191,26 +278,27 @@ void Board::doMove(Move *m, int color) {
 
         mailbox[m->startsq] = -1;
         mailbox[m->endsq] = m->promotion + color;
-        whiteCanEP = 0;
-        blackCanEP = 0;
+        whiteEPCaptureSq = 0;
+        blackEPCaptureSq = 0;
+        fiftyMoveCounter = 0;
     } // end promotion
     else if(m->isCapture) {
         if(mailbox[m->endsq] == -1 && m->piece == PAWNS) {
             pieces[PAWNS+color] &= ~MOVEMASK[m->startsq];
             pieces[PAWNS+color] |= MOVEMASK[m->endsq];
-            pieces[PAWNS-color] &= ~((color == WHITE) ? whiteCanEP : blackCanEP);
+            pieces[PAWNS-color] &= ~((color == WHITE) ? whiteEPCaptureSq : blackEPCaptureSq);
 
             if(color == WHITE) {
                 whitePieces &= ~MOVEMASK[m->startsq];
                 whitePieces |= MOVEMASK[m->endsq];
-                blackPieces &= ~((color == WHITE) ? whiteCanEP : blackCanEP);
-                mailbox[bitScanForward(whiteCanEP)] = -1;
+                blackPieces &= ~((color == WHITE) ? whiteEPCaptureSq : blackEPCaptureSq);
+                mailbox[bitScanForward(whiteEPCaptureSq)] = -1;
             }
             else {
                 blackPieces &= ~MOVEMASK[m->startsq];
                 blackPieces |= MOVEMASK[m->endsq];
-                whitePieces &= ~((color == WHITE) ? whiteCanEP : blackCanEP);
-                mailbox[bitScanForward(blackCanEP)] = -1;
+                whitePieces &= ~((color == WHITE) ? whiteEPCaptureSq : blackEPCaptureSq);
+                mailbox[bitScanForward(blackEPCaptureSq)] = -1;
             }
         
             mailbox[m->startsq] = -1;
@@ -235,8 +323,9 @@ void Board::doMove(Move *m, int color) {
             mailbox[m->startsq] = -1;
             mailbox[m->endsq] = m->piece + color;
         }
-        whiteCanEP = 0;
-        blackCanEP = 0;
+        whiteEPCaptureSq = 0;
+        blackEPCaptureSq = 0;
+        fiftyMoveCounter = 0;
     } // end capture
     else {
         pieces[m->piece+color] &= ~MOVEMASK[m->startsq];
@@ -257,21 +346,23 @@ void Board::doMove(Move *m, int color) {
         // check for en passant
         if(m->piece == PAWNS) {
             if(color == WHITE && m->startsq/8 == 1 && m->endsq/8 == 3) {
-                blackCanEP = MOVEMASK[m->endsq];
-                whiteCanEP = 0;
+                blackEPCaptureSq = MOVEMASK[m->endsq];
+                whiteEPCaptureSq = 0;
             }
             else if(m->startsq/8 == 6 && m->endsq/8 == 4) {
-                whiteCanEP = MOVEMASK[m->endsq];
-                blackCanEP = 0;
+                whiteEPCaptureSq = MOVEMASK[m->endsq];
+                blackEPCaptureSq = 0;
             }
             else {
-                whiteCanEP = 0;
-                blackCanEP = 0;
+                whiteEPCaptureSq = 0;
+                blackEPCaptureSq = 0;
             }
+            fiftyMoveCounter = 0;
         }
         else {
-            whiteCanEP = 0;
-            blackCanEP = 0;
+            whiteEPCaptureSq = 0;
+            blackEPCaptureSq = 0;
+            fiftyMoveCounter++;
         }
     } // end normal move
 
@@ -302,6 +393,10 @@ void Board::doMove(Move *m, int color) {
                 blackCanQCastle = false;
         }
     } // end castling flags
+
+    if(color == BLACK)
+        moveNumber++;
+    playerToMove = -color;
 }
 
 bool Board::doPLMove(Move *m, int color) {
@@ -312,7 +407,9 @@ bool Board::doPLMove(Move *m, int color) {
     else return true;
 }
 
-/*
+/* TODO:
+ * If using this function, fifty move rule, move number, and player to move need
+ * to be included.
 void Board::undoMove() {
     // BMove last = history.pop();
 
@@ -393,8 +490,8 @@ void Board::undoMove() {
             blackCanKCastle = last.blackCanKCastle;
             blackCanQCastle = last.blackCanQCastle;
         }
-        whiteCanEP = last.wEP;
-        blackCanEP = last.bEP;
+        whiteEPCaptureSq = last.wEP;
+        blackEPCaptureSq = last.bEP;
         return;
     } // end castling
     else if(last.isPromotion) {
@@ -439,14 +536,14 @@ void Board::undoMove() {
         if(last.color == WHITE) {
             whitePieces &= ~MOVEMASK[last.endsq];
             whitePieces |= MOVEMASK[last.stsq];
-            blackPieces |= whiteCanEP;
-            mailbox[bitScanForward(whiteCanEP)] = 0;
+            blackPieces |= whiteEPCaptureSq;
+            mailbox[bitScanForward(whiteEPCaptureSq)] = 0;
         }
         else {
             blackPieces &= ~MOVEMASK[last.endsq];
             blackPieces |= MOVEMASK[last.stsq];
-            whitePieces |= blackCanEP;
-            mailbox[bitScanForward(blackCanEP)] = 2;
+            whitePieces |= blackEPCaptureSq;
+            mailbox[bitScanForward(blackEPCaptureSq)] = 2;
         }
 
         mailbox[last.endsq] = -1;
@@ -491,8 +588,8 @@ void Board::undoMove() {
     }
 
     // reset en passant
-    whiteCanEP = last.wEP;
-    blackCanEP = last.bEP;
+    whiteEPCaptureSq = last.wEP;
+    blackEPCaptureSq = last.bEP;
 
     // change castling flags
     whiteCanKCastle = last.whiteCanKCastle;
@@ -994,15 +1091,15 @@ MoveList Board::getPLWCaptures() {
         }
     }
 
-    if(whiteCanEP != 0) {
-        uint64_t taker = (whiteCanEP << 1) & NOTA & pieces[WHITE+PAWNS];
+    if(whiteEPCaptureSq != 0) {
+        uint64_t taker = (whiteEPCaptureSq << 1) & NOTA & pieces[WHITE+PAWNS];
         if(taker != 0) {
-            result.add(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(whiteCanEP << 8)));
+            result.add(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(whiteEPCaptureSq << 8)));
         }
         else {
-            taker = (whiteCanEP >> 1) & NOTH & pieces[WHITE+PAWNS];
+            taker = (whiteEPCaptureSq >> 1) & NOTH & pieces[WHITE+PAWNS];
             if(taker != 0) {
-                result.add(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(whiteCanEP << 8)));
+                result.add(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(whiteEPCaptureSq << 8)));
             }
         }
     }
@@ -1130,15 +1227,15 @@ MoveList Board::getPLBCaptures() {
         }
     }
 
-    if(blackCanEP != 0) {
-        uint64_t taker = (blackCanEP << 1) & NOTA & pieces[BLACK+PAWNS];
+    if(blackEPCaptureSq != 0) {
+        uint64_t taker = (blackEPCaptureSq << 1) & NOTA & pieces[BLACK+PAWNS];
         if(taker != 0) {
-            result.add(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(blackCanEP >> 8)));
+            result.add(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(blackEPCaptureSq >> 8)));
         }
         else {
-            taker = (blackCanEP >> 1) & NOTH & pieces[BLACK+PAWNS];
+            taker = (blackEPCaptureSq >> 1) & NOTH & pieces[BLACK+PAWNS];
             if(taker != 0) {
-                result.add(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(blackCanEP >> 8)));
+                result.add(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(blackEPCaptureSq >> 8)));
             }
         }
     }
@@ -1273,12 +1370,14 @@ bool Board::isStalemate(int sideToMove) {
  */
 int Board::evaluate() {
     // special cases
-    if(isWinMate())
+    if(fiftyMoveCounter >= 100)
+        return 0;
+    else if(isWinMate())
         return 99999;
     else if(isBinMate())
         return -99999;
-    //else if(isStalemate())
-    //    return 0;
+    else if(isStalemate(playerToMove))
+        return 0;
 
     int value = 0;
 
@@ -1915,6 +2014,51 @@ uint64_t Board::nwAttacks(uint64_t bishops, uint64_t empty) {
     return           (flood << 7) & NOTH ;
 }
 
+// Getter methods
+bool Board::getWhiteCanKCastle() {
+    return whiteCanKCastle;
+}
+
+bool Board::getBlackCanKCastle() {
+    return blackCanKCastle;
+}
+
+bool Board::getWhiteCanQCastle() {
+    return whiteCanQCastle;
+}
+
+bool Board::getBlackCanQCastle() {
+    return blackCanQCastle;
+}
+
+uint64_t Board::getWhiteEPCaptureSq() {
+    return whiteEPCaptureSq;
+}
+
+uint64_t Board::getBlackEPCaptureSq() {
+    return blackEPCaptureSq;
+}
+
+int Board::getFiftyMoveCounter() {
+    return fiftyMoveCounter;
+}
+
+int Board::getMoveNumber() {
+    return moveNumber;
+}
+
+int Board::getPlayerToMove() {
+    return playerToMove;
+}
+
+int *Board::getMailbox() {
+    int *result = new int[64];
+    for(int i = 0; i < 64; i++) {
+        result[i] = mailbox[i];
+    }
+    return result;
+}
+
 /*
 public String toString() {
 String result = "";
@@ -1934,8 +2078,8 @@ public boolean equals(Object o) {
     Board other = (Board)o;
     if(mailbox.equals(other.mailbox) && whiteCanKCastle == other.whiteCanKCastle
     && whiteCanQCastle == other.whiteCanQCastle && blackCanKCastle == other.blackCanKCastle
-    && blackCanQCastle == other.blackCanQCastle && whiteCanEP == other.whiteCanEP
-    && blackCanEP == other.blackCanEP)
+    && blackCanQCastle == other.blackCanQCastle && whiteEPCaptureSq == other.whiteEPCaptureSq
+    && blackEPCaptureSq == other.blackEPCaptureSq)
         return true;
     else return false;
 }

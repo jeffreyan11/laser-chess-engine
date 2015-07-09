@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
 
 /*
  * Performs a PERFT.
- * 7/8/15: PERFT 5, 1.46 s
+ * 7/8/15: PERFT 5, 1.46 s (i5-2450m)
  */
 uint64_t perft(Board b, int color, int depth) {
 	if(depth == 0)
