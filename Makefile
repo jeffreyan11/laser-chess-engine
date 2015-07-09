@@ -1,6 +1,6 @@
 CC          = g++
 CFLAGS      = -Wall -ansi -pedantic -ggdb -std=c++0x -g -O3
-OBJS        = board.o common.o
+OBJS        = board.o common.o search.o
 
 all: uci perft
 
