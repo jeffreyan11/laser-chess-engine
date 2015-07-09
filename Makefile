@@ -14,4 +14,4 @@ perft: $(OBJS) perft.o
 	$(CC) -c $(CFLAGS) -x c++ $< -o $@
 
 clean:
-	rm -f *.o uci perft
+	rm -f *.o *.exe uci perft

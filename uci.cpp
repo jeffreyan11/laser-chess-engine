@@ -23,21 +23,131 @@ vector<string> split(const string &s, char d) {
     return v;
 }
 
-Board fenToBoard(string s) {
+// int* return type for testing
+int* fenToBoard(string s) {
     vector<string> components = split(s, ' ');
     vector<string> rows = split(components.at(0), '/');
-    int whoCanMove = (components.at(1) == "b") ? 1 : -1;
+    int mailbox[64];
+    
+    int colCounter, blankSquareCounter;
+    bool isBlankSquare;
+    
+    // iterate through rows, converting into mailbox format
+    for (int elem = 0; elem < 8; elem++) {
+        string rowAtElem = rows.at(elem);
+        
+        colCounter = 0;
+        
+        for (unsigned col = 0; col < rowAtElem.length(); col++) {
+            blankSquareCounter = 0;
+            isBlankSquare = false;
+            
+            // determine what piece is on rowAtElem.at(col) and fill out if not blank
+            switch (rowAtElem.at(col)) {
+                case '1':
+                    isBlankSquare = true;
+                    blankSquareCounter = 1;
+                    break;
+                case '2':
+                    isBlankSquare = true;
+                    blankSquareCounter = 2;
+                    break;
+                case '3':
+                    isBlankSquare = true;
+                    blankSquareCounter = 3;
+                    break;
+                case '4':
+                    isBlankSquare = true;
+                    blankSquareCounter = 4;
+                    break;
+                case '5':
+                    isBlankSquare = true;
+                    blankSquareCounter = 5;
+                    break;
+                case '6':
+                    isBlankSquare = true;
+                    blankSquareCounter = 6;
+                    break;
+                case '7':
+                    isBlankSquare = true;
+                    blankSquareCounter = 7;
+                    break;
+                case '8':
+                    isBlankSquare = true;
+                    blankSquareCounter = 8;
+                    break;
+                case 'P':
+                    mailbox[8 * (7 - elem) + colCounter] = WHITE + PAWNS;
+                    colCounter++;
+                    break;
+                case 'N':
+                    mailbox[8 * (7 - elem) + colCounter] = WHITE + KNIGHTS;
+                    colCounter++;
+                    break;
+                case 'B':
+                    mailbox[8 * (7 - elem) + colCounter] = WHITE + BISHOPS;
+                    colCounter++;
+                    break;
+                case 'R':
+                    mailbox[8 * (7 - elem) + colCounter] = WHITE + ROOKS;
+                    colCounter++;
+                    break;
+                case 'Q':
+                    mailbox[8 * (7 - elem) + colCounter] = WHITE + QUEENS;
+                    colCounter++;
+                    break;
+                case 'K':
+                    mailbox[8 * (7 - elem) + colCounter] = WHITE + KINGS;
+                    colCounter++;
+                    break;
+                case 'p':
+                    mailbox[8 * (7 - elem) + colCounter] = BLACK + PAWNS;
+                    colCounter++;
+                    break;
+                case 'n':
+                    mailbox[8 * (7 - elem) + colCounter] = BLACK + KNIGHTS;
+                    colCounter++;
+                    break;
+                case 'b':
+                    mailbox[8 * (7 - elem) + colCounter] = BLACK + BISHOPS;
+                    colCounter++;
+                    break;
+                case 'r':
+                    mailbox[8 * (7 - elem) + colCounter] = BLACK + ROOKS;
+                    colCounter++;
+                    break;
+                case 'q':
+                    mailbox[8 * (7 - elem) + colCounter] = BLACK + QUEENS;
+                    colCounter++;
+                    break;
+                case 'k':
+                    mailbox[8 * (7 - elem) + colCounter] = BLACK + KINGS;
+                    colCounter++;
+                    break;
+            }
+            
+            // fill out blank squares
+            if (isBlankSquare) {
+                for (int i = 0; i < blankSquareCounter; i++) {
+                    mailbox[8 * (7 - elem) + colCounter] = -1; // -1 is blank square
+                    colCounter++;
+                }
+            }
+        }
+    }
+    
+    int whoCanMove = (components.at(1) == "w") ? WHITE : BLACK;
     bool whiteCanKCastle = (components.at(2).find("K") != string::npos);
     bool whiteCanQCastle = (components.at(2).find("Q") != string::npos);
     bool blackCanKCastle = (components.at(2).find("k") != string::npos);
     bool blackCanQCastle = (components.at(2).find("q") != string::npos);
     // TODO finish other parameters
-    int whiteCanEP = 0;
-    int blackCanEP = 0;
-    int fiftyMoveCounter = 0;
-    int moveNumber = 0;
+    int whiteEPCaptureSq = 0;
+    int blackEPCaptureSq = 0;
+    int fiftyMoveCounter = stoi(components.at(4));
+    int moveNumber = stoi(components.at(5));
     Board board;
-    return board;
+    return mailbox;
 }
 
 int main() {
