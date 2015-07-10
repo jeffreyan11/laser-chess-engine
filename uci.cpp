@@ -139,9 +139,12 @@ Board fenToBoard(string s) {
     bool whiteCanQCastle = (components.at(2).find("Q") != string::npos);
     bool blackCanKCastle = (components.at(2).find("k") != string::npos);
     bool blackCanQCastle = (components.at(2).find("q") != string::npos);
-    // TODO finish other parameters
-    int whiteEPCaptureSq = 0;
-    int blackEPCaptureSq = 0;
+    
+    uint64_t whiteEPCaptureSq = 0, blackEPCaptureSq = 0;
+    if (components.at(3).find("6") != string::npos)
+        whiteEPCaptureSq = MOVEMASK[8 * (5 - 1) + (components.at(3).at(0) - 'a')];
+    if (components.at(3).find("3") != string::npos)
+        blackEPCaptureSq = MOVEMASK[8 * (4 - 1) + (components.at(3).at(0) - 'a')];
     int fiftyMoveCounter = stoi(components.at(4));
     int moveNumber = stoi(components.at(5));
     Board board = Board(mailbox, whiteCanKCastle, blackCanKCastle, whiteCanQCastle,
