@@ -218,7 +218,8 @@ int main() {
                     int color = board.getPlayerToMove();
                     int piece = board.getMailbox()[startsq] - color;
                     
-                    bool isCapture = (board.getMailbox()[endsq] != -1);
+                    bool isCapture = ((board.getMailbox()[endsq] != -1)
+                            || (piece == PAWNS && abs(abs(startsq - endsq) - 8) == 1));
                     bool isCastle = ((piece == KINGS)
                             && ((color == WHITE && endsq == 6 && board.getWhiteCanKCastle())
                             || (color == WHITE && endsq == 2 && board.getWhiteCanQCastle())
