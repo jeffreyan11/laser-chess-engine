@@ -219,10 +219,11 @@ int main() {
                     int piece = board.getMailbox()[startsq] - color;
                     
                     bool isCapture = (board.getMailbox()[endsq] != -1);
-                    bool isCastle = ((color == WHITE && endsq == 6 && board.getWhiteCanKCastle())
+                    bool isCastle = ((piece == KINGS)
+                            && ((color == WHITE && endsq == 6 && board.getWhiteCanKCastle())
                             || (color == WHITE && endsq == 2 && board.getWhiteCanQCastle())
                             || (color == BLACK && endsq == 62 && board.getBlackCanKCastle())
-                            || (color == BLACK && endsq == 58 && board.getBlackCanQCastle()));
+                            || (color == BLACK && endsq == 58 && board.getBlackCanQCastle())));
                     
                     int promotion = -1;
                     
@@ -249,7 +250,7 @@ int main() {
         }
         
         if (input.substr (0, 2) == "go") {
-            int depth = 4;
+            int depth = 2;
             if (input.find("depth") != string::npos) {
                 inputVector = split(input, ' ');
                 
