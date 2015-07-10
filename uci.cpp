@@ -163,9 +163,6 @@ int main() {
     
     cout << name << " " << version << " by " << author << '\n';
     
-    // test code
-    fenToBoard(STARTPOS);
-    
     while (input != "quit") {
         getline(cin, input);
         
@@ -192,7 +189,11 @@ int main() {
             if (input.find("startpos") != string::npos)
                 pos = STARTPOS;
             
-            // TODO: make pos = FEN string when not startpos
+            if (input.find("fen") != string::npos) {
+                inputVector = split(input, ' ');
+                pos = inputVector.at(2) + ' ' + inputVector.at(3) + ' ' + inputVector.at(4) + ' '
+                        + inputVector.at(5) + ' ' + inputVector.at(6) + ' ' + inputVector.at(7);
+            }
             
             board = fenToBoard(pos);
             
@@ -245,7 +246,7 @@ int main() {
         }
         
         if (input.substr (0, 2) == "go") {
-            int depth = 2;
+            int depth = 4;
             if (input.find("depth") != string::npos) {
                 inputVector = split(input, ' ');
                 
