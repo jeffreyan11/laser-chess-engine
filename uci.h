@@ -3,5 +3,6 @@
 
 #include "common.h"
 #include "board.h"
+#include "search.h"
 
 #endif

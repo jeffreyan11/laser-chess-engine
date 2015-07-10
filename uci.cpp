@@ -7,13 +7,12 @@
 using namespace std;
 
 // Splits a string s with delimiter d into vector v.
-vector<string> &split(const string &s, char d, vector<string> &v) {
+void split(const string &s, char d, vector<string> &v) {
     stringstream ss(s);
     string item;
     while (getline(ss, item, d)) {
         v.push_back(item);
     }
-    return v;
 }
 
 // Splits a string s with delimiter d.
@@ -23,8 +22,7 @@ vector<string> split(const string &s, char d) {
     return v;
 }
 
-// int* return type for testing
-int* fenToBoard(string s) {
+Board fenToBoard(string s) {
     vector<string> components = split(s, ' ');
     vector<string> rows = split(components.at(0), '/');
     int mailbox[64];
@@ -136,7 +134,7 @@ int* fenToBoard(string s) {
         }
     }
     
-    int whoCanMove = (components.at(1) == "w") ? WHITE : BLACK;
+    int playerToMove = (components.at(1) == "w") ? WHITE : BLACK;
     bool whiteCanKCastle = (components.at(2).find("K") != string::npos);
     bool whiteCanQCastle = (components.at(2).find("Q") != string::npos);
     bool blackCanKCastle = (components.at(2).find("k") != string::npos);
@@ -146,20 +144,27 @@ int* fenToBoard(string s) {
     int blackEPCaptureSq = 0;
     int fiftyMoveCounter = stoi(components.at(4));
     int moveNumber = stoi(components.at(5));
-    Board board;
-    return mailbox;
+    Board board = Board(mailbox, whiteCanKCastle, blackCanKCastle, whiteCanQCastle,
+            blackCanQCastle, whiteEPCaptureSq, blackEPCaptureSq, fiftyMoveCounter,
+            moveNumber, playerToMove);
+    return board;
 }
 
 int main() {
     string input;
+    vector<string> inputVector;
     string name = "UCI Chess Engine";
     string version = "0";
     string author = "Jeffrey An and Michael An";
     string pos;
     
     const string STARTPOS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    Board board = fenToBoard(STARTPOS);
     
     cout << name << " " << version << " by " << author << '\n';
+    
+    // test code
+    fenToBoard(STARTPOS);
     
     while (input != "quit") {
         getline(cin, input);
@@ -189,14 +194,67 @@ int main() {
             
             // TODO: make pos = FEN string when not startpos
             
+            board = fenToBoard(pos);
+            
             if (input.find("moves") != string::npos) {
-                // TODO: read moves
+                string moveList = input.substr(input.find("moves") + 6);
+                vector<string> moveVector = split(moveList, ' ');
+                
+                for (unsigned i = 0; i < moveVector.size(); i++) {
+                    // moveString contains the move in long algebraic notation
+                    string moveString = moveVector.at(i);
+                    char startFile = moveString.at(0);
+                    char startRank = moveString.at(1);
+                    char endFile = moveString.at(2);
+                    char endRank = moveString.at(3);
+                    
+                    int startsq = 8 * (startRank - '0' - 1) + (startFile - 'a');
+                    int endsq = 8 * (endRank - '0' - 1) + (endFile - 'a');
+                    
+                    int color = board.getPlayerToMove();
+                    int piece = board.getMailbox()[startsq] - color;
+                    
+                    bool isCapture = (board.getMailbox()[endsq] != -1);
+                    bool isCastle = ((color == WHITE && endsq == 6 && board.getWhiteCanKCastle())
+                            || (color == WHITE && endsq == 2 && board.getWhiteCanQCastle())
+                            || (color == BLACK && endsq == 62 && board.getBlackCanKCastle())
+                            || (color == BLACK && endsq == 58 && board.getBlackCanQCastle()));
+                    
+                    int promotion = -1;
+                    
+                    if (moveString.length() == 5) {
+                        string promotionString = moveString.substr(4, 1);
+                        if (promotionString == "n")
+                            promotion = 2;
+                        if (promotionString == "b")
+                            promotion = 5;
+                        if (promotionString == "r")
+                            promotion = 6;
+                        if (promotionString == "q")
+                            promotion = 9;
+                    }
+                    
+                    Move m(piece, isCapture, startsq, endsq);
+                    
+                    m.isCastle = isCastle;
+                    m.promotion = promotion;
+                    
+                    board.doMove(&m, board.getPlayerToMove());
+                }
             }
         }
         
         if (input.substr (0, 2) == "go") {
-            // start search
-            cout << "go works\n";
+            int depth = 2;
+            if (input.find("depth") != string::npos) {
+                inputVector = split(input, ' ');
+                
+                if (inputVector.size() > 2)
+                    depth = stoi(inputVector.at(2));
+            }
+            
+            Move *bestmove = getBestMove(&board, depth);
+            cout << "bestmove " << bestmove->toString() << '\n';
         }
         
         if (input == "stop") {

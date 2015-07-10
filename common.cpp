@@ -50,78 +50,22 @@ Move::Move(int _piece, bool _isCapture, int _startsq, int _endsq) {
 }
 
 string Move::toString() {
-	string pieceName = "";
-	string row = "";
-	switch(piece) {
-    	case PAWNS:
-    		break;
-    	case KNIGHTS:
-    		pieceName = "N";
-    		break;
-    	case BISHOPS:
-    		pieceName = "B";
-    		break;
-    	case ROOKS:
-    		pieceName = "R";
-    		break;
-    	case QUEENS:
-    		pieceName = "Q";
-    		break;
-    	case KINGS:
-    		pieceName = "K";
-    		break;
-	    default:
-		    cout << "Error. Invalid piece code in printMove()." << endl;
-		    break;
-	}
-	
-	if(isCapture) {
-		if(piece != PAWNS)
-			pieceName += "x";
-		else {
-			int ix = startsq % 8;
-			if(ix == 0)
-	    		pieceName = "a";
-	    	if(ix == 1)
-	    		pieceName = "b";
-	    	if(ix == 2)
-	    		pieceName = "c";
-	    	if(ix == 3)
-	    		pieceName = "d";
-	    	if(ix == 4)
-	    		pieceName = "e";
-	    	if(ix == 5)
-	    		pieceName = "f";
-	    	if(ix == 6)
-	    		pieceName = "g";
-	    	if(ix == 7)
-	    		pieceName = "h";
-	    	
-	    	pieceName += "x";
-		}
-	}
-	
-	int x = endsq % 8;
-	int y = endsq / 8;
-	if(x == 0)
-		row = "a";
-	if(x == 1)
-		row = "b";
-	if(x == 2)
-		row = "c";
-	if(x == 3)
-		row = "d";
-	if(x == 4)
-		row = "e";
-	if(x == 5)
-		row = "f";
-	if(x == 6)
-		row = "g";
-	if(x == 7)
-		row = "h";
-
-	string resultStr = pieceName;
-    resultStr += row;
-    resultStr += to_string(y + 1);
-    return resultStr;
+    char startFile = 'a' + (startsq % 8);
+    string startRank = to_string(startsq / 8 + 1);
+	char endFile = 'a' + (endsq % 8);
+	string endRank = to_string(endsq / 8 + 1);
+    string moveStr = startFile + startRank + endFile + endRank;
+    
+    if (promotion != -1) {
+        if (promotion == 2)
+            moveStr += 'n';
+        if (promotion == 5)
+            moveStr += 'b';
+        if (promotion == 6)
+            moveStr += 'r';
+        if (promotion == 9)
+            moveStr += 'q';
+    }
+    
+    return moveStr;
 }
