@@ -331,6 +331,7 @@ public:
     // void undoMove();
     bool isLegalMove(Move *m, int color);
 
+    MoveList getAllLegalMoves(int color);
     MoveList getLegalWMoves();
     MoveList getLegalBMoves();
     MoveList getLegalMoves(int color);

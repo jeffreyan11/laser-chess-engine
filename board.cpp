@@ -684,6 +684,15 @@ bool Board::isLegalMove(Move *m, int color) {
     return true;
 }
 
+MoveList Board::getAllLegalMoves(int color) {
+    MoveList nonCaptures = getLegalMoves(color);
+    MoveList moves = getLegalCaptures(color);
+    for(unsigned int i = 0; i < nonCaptures.size(); i++) {
+        moves.add(nonCaptures.get(i));
+    }
+    return moves;
+}
+
 MoveList Board::getLegalWMoves() {
     MoveList moves = getPseudoLegalWMoves();
 

@@ -5,7 +5,7 @@ int quiescence(Board b, int color, int alpha, int beta);
 
 Move *getBestMove(Board *b, int depth) {
     int color = b->getPlayerToMove();
-    MoveList legalMoves = b->getLegalMoves(color);
+    MoveList legalMoves = b->getAllLegalMoves(color);
     
     unsigned int tempMove = 0;
     int score = -99999;
