@@ -16,6 +16,9 @@ Move *getBestMove(Board *b, int depth) {
         Board copy = b->staticCopy();
         copy.doMove(legalMoves.get(i), color);
         
+        // debug code
+        // cerr << "considering move: " << legalMoves.get(i)->startsq << ", " << legalMoves.get(i)->endsq << endl;
+        
         if(copy.isWinMate()) {
             return legalMoves.get(i);
         }
@@ -160,6 +163,9 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
  * This diminishes the horizon effect and greatly improves playing strength.
  */
 int quiescence(Board b, int color, int alpha, int beta) {
+    // debug code
+    // if (b.getMoveNumber() > 25) cerr << b.getMoveNumber() << endl;
+    
     int standPat = color * b.evaluate();
     if(standPat >= beta) {
         return beta;

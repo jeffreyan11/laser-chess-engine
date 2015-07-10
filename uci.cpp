@@ -266,5 +266,12 @@ int main() {
             // must stop search
             cerr << "stop works\n";
         }
+        
+        if (input == "mailbox") {
+            for (unsigned i = 0; i < 64; i++) {
+                cerr << board.getMailbox()[i] << ' ';
+                if (i % 8 == 7) cerr << '\n';
+            }
+        }
     }
 }
