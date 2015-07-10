@@ -137,10 +137,10 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
     
     if(score == -99999) {
         if(b.isWinMate()) {
-            score = -99999 * color;
+            score = (-99999 + 50 - depth) * color;
         }
         else if(b.isBinMate()) {
-            score = 99999 * color;
+            score = (99999 - 50 + depth) * color;
         }
         else if(b.isStalemate(color)) {
             score = 0;

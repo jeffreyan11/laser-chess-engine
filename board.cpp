@@ -1386,9 +1386,9 @@ int Board::evaluate() {
     if(fiftyMoveCounter >= 100)
         return 0;
     else if(isWinMate())
-        return 99999;
+        return 99999 - 100 - moveNumber;
     else if(isBinMate())
-        return -99999;
+        return -99999 + 100 + moveNumber;
     else if(isStalemate(playerToMove))
         return 0;
 
