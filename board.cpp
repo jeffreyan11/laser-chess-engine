@@ -1341,22 +1341,26 @@ bool Board::getBinCheck() {
 }
 
 bool Board::isWinMate() {
-    MoveList temp = getLegalWMoves();
+    MoveList moves = getLegalWMoves();
+    MoveList captures = getLegalWCaptures();
     bool isInMate = false;
-    if(temp.size() == 0 && getWinCheck())
+    if(moves.size() == 0 && captures.size() == 0 && getWinCheck())
         isInMate = true;
     
-    temp.free();
+    moves.free();
+    captures.free();
     return isInMate;
 }
 
 bool Board::isBinMate() {
-    MoveList temp = getLegalBMoves();
+    MoveList moves = getLegalBMoves();
+    MoveList captures = getLegalBCaptures();
     bool isInMate = false;
-    if(temp.size() == 0 && getBinCheck())
+    if(moves.size() == 0 && captures.size() == 0 && getBinCheck())
         isInMate = true;
 
-    temp.free();
+    moves.free();
+    captures.free();
     return isInMate;
 }
 

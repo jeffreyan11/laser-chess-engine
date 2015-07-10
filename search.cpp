@@ -15,7 +15,24 @@ Move *getBestMove(Board *b, int depth) {
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Board copy = b->staticCopy();
         copy.doMove(legalMoves.get(i), color);
-
+        
+        if(copy.isWinMate()) {
+            return legalMoves.get(i);
+        }
+        else if(copy.isBinMate()) {
+            return legalMoves.get(i);
+        }
+        else if(copy.isStalemate(color)) {
+            score = 0;
+            if (score > alpha) {
+                alpha = score;
+                tempMove = i;
+            }
+            if (alpha >= beta)
+                break;
+            continue;
+        }
+        
         if (i != 0) {
             score = -PVS(copy, -color, depth-1, -alpha-1, -alpha);
             if (alpha < score && score < beta) {
@@ -117,6 +134,23 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
         if (alpha >= beta)
             break;
     }
+    
+    if(score == -99999) {
+        if(b.isWinMate()) {
+            score = -99999 * color;
+        }
+        else if(b.isBinMate()) {
+            score = 99999 * color;
+        }
+        else if(b.isStalemate(color)) {
+            score = 0;
+        }
+        
+        if (score > alpha) {
+            alpha = score;
+        }
+    }
+    
     //if(hashed != null)
     //  tTable.put(b, hashed);
     return alpha;

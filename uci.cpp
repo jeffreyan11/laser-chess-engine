@@ -182,7 +182,7 @@ int main() {
         
         if (input == "ucinewgame") {
             // reset search
-            cout << "ucinewgame works\n";
+            cerr << "ucinewgame works\n";
         }
         
         if (input.substr (0, 8) == "position") {
@@ -260,7 +260,7 @@ int main() {
         
         if (input == "stop") {
             // must stop search
-            cout << "stop works\n";
+            cerr << "stop works\n";
         }
     }
 }
