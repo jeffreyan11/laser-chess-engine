@@ -283,7 +283,7 @@ void Board::doMove(Move *m, int color) {
         fiftyMoveCounter = 0;
     } // end promotion
     else if(m->isCapture) {
-        if(mailbox[m->endsq] == -1 && m->piece == PAWNS) {
+        if(mailbox[m->endsq] == -1) {
             pieces[PAWNS+color] &= ~MOVEMASK[m->startsq];
             pieces[PAWNS+color] |= MOVEMASK[m->endsq];
             pieces[PAWNS-color] &= ~((color == WHITE) ? whiteEPCaptureSq : blackEPCaptureSq);
@@ -291,18 +291,18 @@ void Board::doMove(Move *m, int color) {
             if(color == WHITE) {
                 whitePieces &= ~MOVEMASK[m->startsq];
                 whitePieces |= MOVEMASK[m->endsq];
-                blackPieces &= ~((color == WHITE) ? whiteEPCaptureSq : blackEPCaptureSq);
+                blackPieces &= ~whiteEPCaptureSq;
                 mailbox[bitScanForward(whiteEPCaptureSq)] = -1;
             }
             else {
                 blackPieces &= ~MOVEMASK[m->startsq];
                 blackPieces |= MOVEMASK[m->endsq];
-                whitePieces &= ~((color == WHITE) ? whiteEPCaptureSq : blackEPCaptureSq);
+                whitePieces &= ~blackEPCaptureSq;
                 mailbox[bitScanForward(blackEPCaptureSq)] = -1;
             }
         
             mailbox[m->startsq] = -1;
-            mailbox[m->endsq] = m->piece + color;
+            mailbox[m->endsq] = PAWNS + color;
         }
         else {
             pieces[m->piece+color] &= ~MOVEMASK[m->startsq];
