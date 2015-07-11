@@ -724,7 +724,7 @@ MoveList Board::getPseudoLegalWMoves() {
     uint64_t kings = pieces[WHITE+KINGS];
     uint64_t legal;
 
-    while (pawns != 0) {
+    while (pawns) {
         uint64_t single = pawns & -pawns;
         pawns &= pawns-1;
         int stsq = bitScanForward(single);
@@ -732,7 +732,7 @@ MoveList Board::getPseudoLegalWMoves() {
         legal = getWPawnMoves(single);
         uint64_t promotions = legal & RANKS[7];
 
-        if (promotions != 0) {
+        if (promotions) {
             int endsq = bitScanForward(promotions);
             Move *mk = new Move(PAWNS, false, stsq, endsq);
             mk->promotion = KNIGHTS;
@@ -748,8 +748,8 @@ MoveList Board::getPseudoLegalWMoves() {
             result.add(mq);
         }
         else {
-            while (legal != 0) {
-                int endsq = bitScanForward(legal & -legal);
+            while (legal) {
+                int endsq = bitScanForward(legal);
                 legal &= legal-1;
 
                 result.add(new Move(PAWNS, false, stsq, endsq));
@@ -757,53 +757,52 @@ MoveList Board::getPseudoLegalWMoves() {
         }
     }
 
-    while (knights != 0) {
-        uint64_t single = knights & -knights;
+    while (knights) {
+        int stsq = bitScanForward(knights);
         knights &= knights-1;
-        int stsq = bitScanForward(single);
 
         legal = getKnightSquares(stsq) & ~(whitePieces | blackPieces);
-        while (legal != 0) {
-            int endsq = bitScanForward(legal & -legal);
+        while (legal) {
+            int endsq = bitScanForward(legal);
             legal &= legal-1;
 
             result.add(new Move(KNIGHTS, false, stsq, endsq));
         }
     }
 
-    while (bishops != 0) {
-        int stsq = bitScanForward(bishops & -bishops);
+    while (bishops) {
+        int stsq = bitScanForward(bishops);
         bishops &= bishops-1;
 
         legal = getBishopSquares(stsq) & ~(whitePieces | blackPieces);
-        while (legal != 0) {
-            int endsq = bitScanForward(legal & -legal);
+        while (legal) {
+            int endsq = bitScanForward(legal);
             legal &= legal-1;
 
             result.add(new Move(BISHOPS, false, stsq, endsq));
         }
     }
 
-    while (rooks != 0) {
-        int stsq = bitScanForward(rooks & -rooks);
+    while (rooks) {
+        int stsq = bitScanForward(rooks);
         rooks &= rooks-1;
 
         legal = getRookSquares(stsq) & ~(whitePieces | blackPieces);
-        while (legal != 0) {
-            int endsq = bitScanForward(legal & -legal);
+        while (legal) {
+            int endsq = bitScanForward(legal);
             legal &= legal-1;
 
             result.add(new Move(ROOKS, false, stsq, endsq));
         }
     }
 
-    while (queens != 0) {
-        int stsq = bitScanForward(queens & -queens);
+    while (queens) {
+        int stsq = bitScanForward(queens);
         queens &= queens-1;
 
         legal = getQueenSquares(stsq) & ~(whitePieces | blackPieces);
-        while (legal != 0) {
-            int endsq = bitScanForward(legal & -legal);
+        while (legal) {
+            int endsq = bitScanForward(legal);
             legal &= legal-1;
 
             result.add(new Move(QUEENS, false, stsq, endsq));
@@ -812,8 +811,8 @@ MoveList Board::getPseudoLegalWMoves() {
 
     int stsq = bitScanForward(kings);
     legal = getKingSquares(stsq) & ~(whitePieces | blackPieces);
-    while (legal != 0) {
-        int endsq = bitScanForward(legal & -legal);
+    while (legal) {
+        int endsq = bitScanForward(legal);
         legal &= legal-1;
 
         result.add(new Move(KINGS, false, stsq, endsq));
@@ -869,7 +868,7 @@ MoveList Board::getPseudoLegalBMoves() {
     uint64_t kings = pieces[BLACK+KINGS];
     uint64_t legal;
 
-    while (pawns != 0) {
+    while (pawns) {
         uint64_t single = pawns & -pawns;
         pawns &= pawns-1;
         int stsq = bitScanForward(single);
@@ -877,7 +876,7 @@ MoveList Board::getPseudoLegalBMoves() {
         legal = getBPawnMoves(single);
         uint64_t promotions = legal & RANKS[0];
 
-        if (promotions != 0) {
+        if (promotions) {
             int endsq = bitScanForward(promotions);
             Move *mk = new Move(PAWNS, false, stsq, endsq);
             mk->promotion = KNIGHTS;
@@ -893,8 +892,8 @@ MoveList Board::getPseudoLegalBMoves() {
             result.add(mq);
         }
         else {
-            while (legal != 0) {
-                int endsq = bitScanForward(legal & -legal);
+            while (legal) {
+                int endsq = bitScanForward(legal);
                 legal &= legal-1;
 
                 result.add(new Move(PAWNS, false, stsq, endsq));
@@ -902,53 +901,52 @@ MoveList Board::getPseudoLegalBMoves() {
         }
     }
 
-    while (knights != 0) {
-        uint64_t single = knights & -knights;
+    while (knights) {
+        int stsq = bitScanForward(knights);
         knights &= knights-1;
-        int stsq = bitScanForward(single);
 
         legal = getKnightSquares(stsq) & ~(whitePieces | blackPieces);
-        while (legal != 0) {
-            int endsq = bitScanForward(legal & -legal);
+        while (legal) {
+            int endsq = bitScanForward(legal);
             legal &= legal-1;
 
             result.add(new Move(KNIGHTS, false, stsq, endsq));
         }
     }
 
-    while (bishops != 0) {
-        int stsq = bitScanForward(bishops & -bishops);
+    while (bishops) {
+        int stsq = bitScanForward(bishops);
         bishops &= bishops-1;
 
         legal = getBishopSquares(stsq) & ~(whitePieces | blackPieces);
-        while (legal != 0) {
-            int endsq = bitScanForward(legal & -legal);
+        while (legal) {
+            int endsq = bitScanForward(legal);
             legal &= legal-1;
 
             result.add(new Move(BISHOPS, false, stsq, endsq));
         }
     }
 
-    while (rooks != 0) {
-        int stsq = bitScanForward(rooks & -rooks);
+    while (rooks) {
+        int stsq = bitScanForward(rooks);
         rooks &= rooks-1;
 
         legal = getRookSquares(stsq) & ~(whitePieces | blackPieces);
-        while (legal != 0) {
-            int endsq = bitScanForward(legal & -legal);
+        while (legal) {
+            int endsq = bitScanForward(legal);
             legal &= legal-1;
 
             result.add(new Move(ROOKS, false, stsq, endsq));
         }
     }
 
-    while (queens != 0) {
-        int stsq = bitScanForward(queens & -queens);
+    while (queens) {
+        int stsq = bitScanForward(queens);
         queens &= queens-1;
 
         legal = getQueenSquares(stsq) & ~(whitePieces | blackPieces);
-        while (legal != 0) {
-            int endsq = bitScanForward(legal & -legal);
+        while (legal) {
+            int endsq = bitScanForward(legal);
             legal &= legal-1;
 
             result.add(new Move(QUEENS, false, stsq, endsq));
@@ -957,8 +955,8 @@ MoveList Board::getPseudoLegalBMoves() {
 
     int stsq = bitScanForward(kings);
     legal = getKingSquares(stsq) & ~(whitePieces | blackPieces);
-    while (legal != 0) {
-        int endsq = bitScanForward(legal & -legal);
+    while (legal) {
+        int endsq = bitScanForward(legal);
         legal &= legal-1;
 
         result.add(new Move(KINGS, false, stsq, endsq));
@@ -1051,7 +1049,7 @@ MoveList Board::getPLWCaptures() {
     uint64_t queens = pieces[WHITE+QUEENS];
     uint64_t kings = pieces[WHITE+KINGS];
 
-    while (pawns != 0) {
+    while (pawns) {
         uint64_t single = pawns & -pawns;
         pawns &= pawns-1;
         int stsq = bitScanForward(single);
@@ -1059,8 +1057,8 @@ MoveList Board::getPLWCaptures() {
         uint64_t legal = getWPawnCaptures(single) & blackPieces;
         uint64_t promotions = legal & RANKS[7];
 
-        if (promotions != 0) {
-            int endsq = bitScanForward(promotions & -promotions);
+        if (promotions) {
+            int endsq = bitScanForward(promotions);
             promotions &= promotions-1;
 
             Move *mk = new Move(PAWNS, true, stsq, endsq);
@@ -1076,7 +1074,7 @@ MoveList Board::getPLWCaptures() {
             result.add(mr);
             result.add(mq);
 
-            if (promotions != 0) {
+            if (promotions) {
                 endsq = bitScanForward(promotions);
                 Move *mk2 = new Move(PAWNS, true, stsq, endsq);
                 mk2->promotion = KNIGHTS;
@@ -1093,8 +1091,8 @@ MoveList Board::getPLWCaptures() {
             }
         }
         else {
-            while (legal != 0) {
-                int endsq = bitScanForward(legal & -legal);
+            while (legal) {
+                int endsq = bitScanForward(legal);
                 legal &= legal-1;
 
                 result.add(new Move(PAWNS, true, stsq, endsq));
@@ -1102,65 +1100,67 @@ MoveList Board::getPLWCaptures() {
         }
     }
 
-    if (whiteEPCaptureSq != 0) {
+    if (whiteEPCaptureSq) {
         uint64_t taker = (whiteEPCaptureSq << 1) & NOTA & pieces[WHITE+PAWNS];
-        if (taker != 0) {
-            result.add(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(whiteEPCaptureSq << 8)));
+        if (taker) {
+            result.add(new Move(PAWNS, true, bitScanForward(taker),
+                    bitScanForward(whiteEPCaptureSq << 8)));
         }
         else {
             taker = (whiteEPCaptureSq >> 1) & NOTH & pieces[WHITE+PAWNS];
-            if (taker != 0) {
-                result.add(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(whiteEPCaptureSq << 8)));
+            if (taker) {
+                result.add(new Move(PAWNS, true, bitScanForward(taker),
+                        bitScanForward(whiteEPCaptureSq << 8)));
             }
         }
     }
 
-    while (knights != 0) {
-        int stsq = bitScanForward(knights & -knights);
+    while (knights) {
+        int stsq = bitScanForward(knights);
         knights &= knights-1;
 
         uint64_t legal = getKnightSquares(stsq) & blackPieces;
-        while (legal != 0) {
-            int endsq = bitScanForward(legal & -legal);
+        while (legal) {
+            int endsq = bitScanForward(legal);
             legal &= legal-1;
 
             result.add(new Move(KNIGHTS, true, stsq, endsq));
         }
     }
 
-    while (bishops != 0) {
-        int stsq = bitScanForward(bishops & -bishops);
+    while (bishops) {
+        int stsq = bitScanForward(bishops);
         bishops &= bishops-1;
 
         uint64_t legal = getBishopSquares(stsq) & blackPieces;
-        while (legal != 0) {
-            int endsq = bitScanForward(legal & -legal);
+        while (legal) {
+            int endsq = bitScanForward(legal);
             legal &= legal-1;
 
             result.add(new Move(BISHOPS, true, stsq, endsq));
         }
     }
 
-    while (rooks != 0) {
-        int stsq = bitScanForward(rooks & -rooks);
+    while (rooks) {
+        int stsq = bitScanForward(rooks);
         rooks &= rooks-1;
 
         uint64_t legal = getRookSquares(stsq) & blackPieces;
-        while (legal != 0) {
-            int endsq = bitScanForward(legal & -legal);
+        while (legal) {
+            int endsq = bitScanForward(legal);
             legal &= legal-1;
 
             result.add(new Move(ROOKS, true, stsq, endsq));
         }
     }
 
-    while (queens != 0) {
-        int stsq = bitScanForward(queens & -queens);
+    while (queens) {
+        int stsq = bitScanForward(queens);
         queens &= queens-1;
 
         uint64_t legal = getQueenSquares(stsq) & blackPieces;
-        while (legal != 0) {
-            int endsq = bitScanForward(legal & -legal);
+        while (legal) {
+            int endsq = bitScanForward(legal);
             legal &= legal-1;
 
             result.add(new Move(QUEENS, true, stsq, endsq));
@@ -1169,8 +1169,8 @@ MoveList Board::getPLWCaptures() {
 
     int stsq = bitScanForward(kings);
     uint64_t legal = getKingSquares(stsq) & blackPieces;
-    while (legal != 0) {
-        int endsq = bitScanForward(legal & -legal);
+    while (legal) {
+        int endsq = bitScanForward(legal);
         legal &= legal-1;
 
         result.add(new Move(KINGS, true, stsq, endsq));
@@ -1188,15 +1188,15 @@ MoveList Board::getPLBCaptures() {
     uint64_t queens = pieces[BLACK+QUEENS];
     uint64_t kings = pieces[BLACK+KINGS];
 
-    while (pawns != 0) {
+    while (pawns) {
         uint64_t single = pawns & -pawns;
         pawns &= pawns-1;
         int stsq = bitScanForward(single);
 
         uint64_t legal = getBPawnCaptures(single) & whitePieces;
         uint64_t promotions = legal & RANKS[0];
-        if (promotions != 0) {
-            int endsq = bitScanForward(promotions & -promotions);
+        if (promotions) {
+            int endsq = bitScanForward(promotions);
             promotions &= promotions-1;
 
             Move *mk = new Move(PAWNS, true, stsq, endsq);
@@ -1212,7 +1212,7 @@ MoveList Board::getPLBCaptures() {
             result.add(mr);
             result.add(mq);
 
-            if (promotions != 0) {
+            if (promotions) {
                 endsq = bitScanForward(promotions);
                 Move *mk2 = new Move(PAWNS, true, stsq, endsq);
                 mk2->promotion = KNIGHTS;
@@ -1229,8 +1229,8 @@ MoveList Board::getPLBCaptures() {
             }
         }
         else {
-            while (legal != 0) {
-                int endsq = bitScanForward(legal & -legal);
+            while (legal) {
+                int endsq = bitScanForward(legal);
                 legal &= legal-1;
 
                 result.add(new Move(PAWNS, true, stsq, endsq));
@@ -1238,65 +1238,67 @@ MoveList Board::getPLBCaptures() {
         }
     }
 
-    if (blackEPCaptureSq != 0) {
+    if (blackEPCaptureSq) {
         uint64_t taker = (blackEPCaptureSq << 1) & NOTA & pieces[BLACK+PAWNS];
-        if (taker != 0) {
-            result.add(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(blackEPCaptureSq >> 8)));
+        if (taker) {
+            result.add(new Move(PAWNS, true, bitScanForward(taker),
+                    bitScanForward(blackEPCaptureSq >> 8)));
         }
         else {
             taker = (blackEPCaptureSq >> 1) & NOTH & pieces[BLACK+PAWNS];
-            if (taker != 0) {
-                result.add(new Move(PAWNS, true, bitScanForward(taker), bitScanForward(blackEPCaptureSq >> 8)));
+            if (taker) {
+                result.add(new Move(PAWNS, true, bitScanForward(taker),
+                        bitScanForward(blackEPCaptureSq >> 8)));
             }
         }
     }
 
-    while (knights != 0) {
-        int stsq = bitScanForward(knights & -knights);
+    while (knights) {
+        int stsq = bitScanForward(knights);
         knights &= knights-1;
 
         uint64_t legal = getKnightSquares(stsq) & whitePieces;
-        while (legal != 0) {
-            int endsq = bitScanForward(legal & -legal);
+        while (legal) {
+            int endsq = bitScanForward(legal);
             legal &= legal-1;
 
             result.add(new Move(KNIGHTS, true, stsq, endsq));
         }
     }
 
-    while (bishops != 0) {
-        int stsq = bitScanForward(bishops & -bishops);
+    while (bishops) {
+        int stsq = bitScanForward(bishops);
         bishops &= bishops-1;
 
         uint64_t legal = getBishopSquares(stsq) & whitePieces;
-        while (legal != 0) {
-            int endsq = bitScanForward(legal & -legal);
+        while (legal) {
+            int endsq = bitScanForward(legal);
             legal &= legal-1;
 
             result.add(new Move(BISHOPS, true, stsq, endsq));
         }
     }
 
-    while (rooks != 0) {
-        int stsq = bitScanForward(rooks & -rooks);
+    while (rooks) {
+        int stsq = bitScanForward(rooks);
         rooks &= rooks-1;
 
         uint64_t legal = getRookSquares(stsq) & whitePieces;
-        while (legal != 0) {
-            int endsq = bitScanForward(legal & -legal);
+        while (legal) {
+            int endsq = bitScanForward(legal);
             legal &= legal-1;
 
             result.add(new Move(ROOKS, true, stsq, endsq));
         }
     }
 
-    while (queens != 0) {
-        int stsq = bitScanForward(queens & -queens);
+    while (queens) {
+        int stsq = bitScanForward(queens);
         queens &= queens-1;
 
         uint64_t legal = getQueenSquares(stsq) & whitePieces;
-        while (legal != 0) {
-            int endsq = bitScanForward(legal & -legal);
+        while (legal) {
+            int endsq = bitScanForward(legal);
             legal &= legal-1;
 
             result.add(new Move(QUEENS, true, stsq, endsq));
@@ -1305,8 +1307,8 @@ MoveList Board::getPLBCaptures() {
 
     int stsq = bitScanForward(kings);
     uint64_t legal = getKingSquares(stsq) & whitePieces;
-    while (legal != 0) {
-        int endsq = bitScanForward(legal & -legal);
+    while (legal) {
+        int endsq = bitScanForward(legal);
         legal &= legal-1;
 
         result.add(new Move(KINGS, true, stsq, endsq));
@@ -1493,6 +1495,7 @@ bool Board::pieceOn(int color, int x, int y) {
         return (blackPieces & MOVEMASK[x + 8*y]) != 0;
 }
 
+// TODO: THESE DON'T WORK WITH THE NEW MOVE GENERATORS YET
 // Faster estimates of mobility (number of legal moves)
 int Board::getWPseudoMobility() {
     int result = 0;
