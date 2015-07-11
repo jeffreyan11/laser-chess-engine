@@ -21,6 +21,14 @@ const int ROOKS = 6;
 const int QUEENS = 9;
 const int KINGS = 10;
 
+// Material constants
+const int PAWN_VALUE = 100;
+const int KNIGHT_VALUE = 310;
+const int BISHOP_VALUE = 320;
+const int ROOK_VALUE = 500;
+const int QUEEN_VALUE = 900;
+const int MATE_SCORE = 99999;
+
 // Converts square number to 64-bit integer
 const uint64_t MOVEMASK[64] = {
 0x0000000000000001, 0x0000000000000002, 0x0000000000000004, 0x0000000000000008,

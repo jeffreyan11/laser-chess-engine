@@ -8,9 +8,9 @@ Move *getBestMove(Board *b, int depth) {
     MoveList legalMoves = b->getAllLegalMoves(color);
     
     unsigned int tempMove = 0;
-    int score = -99999;
-    int alpha = -99999;
-    int beta = 99999;
+    int score = -MATE_SCORE;
+    int alpha = -MATE_SCORE;
+    int beta = MATE_SCORE;
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Board copy = b->staticCopy();
@@ -19,13 +19,13 @@ Move *getBestMove(Board *b, int depth) {
         // debug code
         // cerr << "considering move: " << legalMoves.get(i)->startsq << ", " << legalMoves.get(i)->endsq << endl;
         
-        if(copy.isWinMate()) {
+        if (copy.isWinMate()) {
             return legalMoves.get(i);
         }
-        else if(copy.isBinMate()) {
+        else if (copy.isBinMate()) {
             return legalMoves.get(i);
         }
-        else if(copy.isStalemate(color)) {
+        else if (copy.isStalemate(color)) {
             score = 0;
             if (score > alpha) {
                 alpha = score;
@@ -59,18 +59,18 @@ Move *getBestMove(Board *b, int depth) {
 
 // The standard implementation of a null-window PVS search.
 int PVS(Board b, int color, int depth, int alpha, int beta) {
-    if(depth <= 0) {
+    if (depth <= 0) {
         return quiescence(b, color, alpha, beta);
     }
     
-    int score = -99999;
+    int score = -MATE_SCORE;
     
     /*Move hashed = tTable.get(b);
-    if(hashed != null) {
+    if (hashed != null) {
         Board copy = b.getCopy();
         copy.doMove(hashed, color);
         score = -PVS(copy, -color, depth-1, -beta, -alpha);
-        if(score > alpha)
+        if (score > alpha)
             alpha = score;
         if (alpha >= beta)
             return alpha;
@@ -78,9 +78,9 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
     
     // null move pruning
     /*
-    if((color == WHITE) ? !b.getWinCheck() : !b.getBinCheck()) {
+    if ((color == WHITE) ? !b.getWinCheck() : !b.getBinCheck()) {
         int nullScore = -PVS(b, -color, depth-4, -beta, -alpha);
-        if(nullScore >= beta)
+        if (nullScore >= beta)
             return beta;
     }
     */
@@ -89,7 +89,7 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
     
     for (unsigned int i = 0; i < legalCaptures.size(); i++) {
         Board copy = b.staticCopy();
-        if(!copy.doPLMove(legalCaptures.get(i), color))
+        if (!copy.doPLMove(legalCaptures.get(i), color))
             continue;
 
         if (i != 0) {
@@ -107,7 +107,7 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
             //hashed = legalCaptures.get(i);
         }
         if (alpha >= beta) {
-            //if(hashed != null)
+            //if (hashed != null)
             //  tTable.put(b, hashed);
             return alpha;
         }
@@ -117,7 +117,7 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Board copy = b.staticCopy();
-        if(!copy.doPLMove(legalMoves.get(i), color))
+        if (!copy.doPLMove(legalMoves.get(i), color))
             continue;
 
         if (i != 0) {
@@ -138,14 +138,14 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
             break;
     }
     
-    if(score == -99999) {
-        if(b.isWinMate()) {
-            score = (-99999 + 50 - depth) * color;
+    if (score == -MATE_SCORE) {
+        if (b.isWinMate()) {
+            score = (-MATE_SCORE + 50 - depth) * color;
         }
-        else if(b.isBinMate()) {
-            score = (99999 - 50 + depth) * color;
+        else if (b.isBinMate()) {
+            score = (MATE_SCORE - 50 + depth) * color;
         }
-        else if(b.isStalemate(color)) {
+        else if (b.isStalemate(color)) {
             score = 0;
         }
         
@@ -154,7 +154,7 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
         }
     }
     
-    //if(hashed != null)
+    //if (hashed != null)
     //  tTable.put(b, hashed);
     return alpha;
 }
@@ -167,28 +167,28 @@ int quiescence(Board b, int color, int alpha, int beta) {
     // if (b.getMoveNumber() > 25) cerr << b.getMoveNumber() << endl;
     
     int standPat = color * b.evaluate();
-    if(standPat >= beta) {
+    if (standPat >= beta) {
         return beta;
     }
-    if(alpha < standPat)
+    if (alpha < standPat)
         alpha = standPat;
     
     // delta prune
-    if(standPat < alpha - 1200)
+    if (standPat < alpha - 1200)
         return alpha;
     
     MoveList legalCaptures = b.getPLCaptures(color);
     
     for (unsigned int i = 0; i < legalCaptures.size(); i++) {
         Board copy = b.staticCopy();
-        if(!copy.doPLMove(legalCaptures.get(i), color))
+        if (!copy.doPLMove(legalCaptures.get(i), color))
             continue;
         
         int score = -quiescence(copy, -color, -beta, -alpha);
         
-        if(score >= beta)
+        if (score >= beta)
             return beta;
-        if(score > alpha)
+        if (score > alpha)
             alpha = score;
     }
     
