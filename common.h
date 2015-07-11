@@ -1,5 +1,5 @@
-#ifndef __STANDARDS_H__
-#define __STANDARDS_H__
+#ifndef __COMMON_H__
+#define __COMMON_H__
 
 #include <cstdint>
 #include <iostream>
@@ -62,11 +62,6 @@ const int index64[64] = {
 34, 51, 20, 43, 31, 22, 10, 45,
 25, 39, 14, 33, 19, 30,  9, 24,
 13, 18,  8, 12,  7,  6,  5, 63 };
-
-// Arrays for kindergarten bitboards
-extern uint64_t **rankArray;
-extern uint64_t **fileArray;
-void readKindergartenArrays();
 
 int bitScanForward(uint64_t bb);
 int bitScanReverse(uint64_t bb);
