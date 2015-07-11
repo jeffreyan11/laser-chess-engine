@@ -604,20 +604,8 @@ bool Board::isLegalMove(Move *m, int color) {
     uint64_t legalC = 0;
     uint64_t moved = 0;
 
-    if (m->isCastle) { //TODO if parsing user move is changed: castle and promotion
+    if (m->isCastle) {
         return true;
-    /*if (color == WHITE && m->endsq == 6 && whiteCanKCastle) {
-
-    }
-    else if (color == WHITE && m->endsq == 2 && whiteCanQCastle) {
-
-    }
-    else if (color == BLACK && m->endsq == 62 && blackCanKCastle) {
-
-    }
-    else if (color == BLACK && m->endsq == 58 && blackCanQCastle) {
-
-    }*/
     }
 
     switch (m->piece) {
@@ -628,29 +616,25 @@ bool Board::isLegalMove(Move *m, int color) {
             (getBPawnCaptures(moved) & whitePieces);
             break;
         case KNIGHTS:
-            moved = pieces[color+KNIGHTS] & MOVEMASK[m->startsq];
             legalM = getKnightSquares(m->startsq);
             legalC = legalM;
             legalM &= ~(whitePieces & blackPieces);
             legalC &= (color == WHITE) ? blackPieces : whitePieces;
             break;
         case BISHOPS:
-            moved = pieces[color+BISHOPS] & MOVEMASK[m->startsq];
-            legalM = (color == WHITE) ? getWBishopMoves(moved) : getBBishopMoves(moved);
+            legalM = getBishopSquares(m->startsq);
             legalC = legalM;
             legalM &= ~(whitePieces & blackPieces);
             legalC &= (color == WHITE) ? blackPieces : whitePieces;
             break;
         case ROOKS:
-            moved = pieces[color+ROOKS] & MOVEMASK[m->startsq];
-            legalM = (color == WHITE) ? getWRookMoves(moved) : getBRookMoves(moved);
+            legalM = getRookSquares(m->startsq);
             legalC = legalM;
             legalM &= ~(whitePieces & blackPieces);
             legalC &= (color == WHITE) ? blackPieces : whitePieces;
             break;
         case QUEENS:
-            moved = pieces[color+QUEENS] & MOVEMASK[m->startsq];
-            legalM = (color == WHITE) ? getWQueenMoves(moved) : getBQueenMoves(moved);
+            legalM = getQueenSquares(m->startsq);
             legalC = legalM;
             legalM &= ~(whitePieces & blackPieces);
             legalC &= (color == WHITE) ? blackPieces : whitePieces;
@@ -838,9 +822,9 @@ MoveList Board::getPseudoLegalWMoves() {
     if (whiteCanKCastle) {
         if (((whitePieces|blackPieces) & (MOVEMASK[5] | MOVEMASK[6])) == 0 && !getWinCheck()) {
             uint64_t bAtt = 0;
-            bAtt |= getBPawnCaptures(pieces[BLACK+PAWNS]) | getBKnightSquares(pieces[BLACK+KNIGHTS]) |
-            getBBishopMoves(pieces[BLACK+BISHOPS]) | getBRookMoves(pieces[BLACK+ROOKS]) |
-            getBQueenMoves(pieces[BLACK+QUEENS]) | getKingAttacks(BLACK);
+            bAtt |= getBPawnCaptures(pieces[BLACK+PAWNS]) | getKnightMoves(pieces[BLACK+KNIGHTS]) |
+            getBishopMoves(pieces[BLACK+BISHOPS]) | getRookMoves(pieces[BLACK+ROOKS]) |
+            getQueenMoves(pieces[BLACK+QUEENS]) | getKingAttacks(BLACK);
             if ((bAtt & (MOVEMASK[5] | MOVEMASK[6])) == 0) {
                 Move *m = new Move(KINGS, false, 4, 6);
                 m->isCastle = true;
@@ -851,9 +835,9 @@ MoveList Board::getPseudoLegalWMoves() {
     if (whiteCanQCastle) {
         if (((whitePieces|blackPieces) & (MOVEMASK[1] | MOVEMASK[2] | MOVEMASK[3])) == 0 && !getWinCheck()) {
             uint64_t bAtt = 0;
-            bAtt |= getBPawnCaptures(pieces[BLACK+PAWNS]) | getBKnightSquares(pieces[BLACK+KNIGHTS]) |
-            getBBishopMoves(pieces[BLACK+BISHOPS]) | getBRookMoves(pieces[BLACK+ROOKS]) |
-            getBQueenMoves(pieces[BLACK+QUEENS]) | getKingAttacks(BLACK);
+            bAtt |= getBPawnCaptures(pieces[BLACK+PAWNS]) | getKnightMoves(pieces[BLACK+KNIGHTS]) |
+            getBishopMoves(pieces[BLACK+BISHOPS]) | getRookMoves(pieces[BLACK+ROOKS]) |
+            getQueenMoves(pieces[BLACK+QUEENS]) | getKingAttacks(BLACK);
             if ((bAtt & (MOVEMASK[1] | MOVEMASK[2] | MOVEMASK[3])) == 0) {
                 Move *m = new Move(KINGS, false, 4, 2);
                 m->isCastle = true;
@@ -973,9 +957,9 @@ MoveList Board::getPseudoLegalBMoves() {
     if (blackCanKCastle) {
         if (((whitePieces|blackPieces) & (MOVEMASK[61] | MOVEMASK[62])) == 0 && !getBinCheck()) {
             uint64_t wAtt = 0;
-            wAtt |= getWPawnCaptures(pieces[WHITE+PAWNS]) | getWKnightSquares(pieces[WHITE+KNIGHTS]) |
-            getWBishopMoves(pieces[WHITE+BISHOPS]) | getWRookMoves(pieces[WHITE+ROOKS]) |
-            getWQueenMoves(pieces[WHITE+QUEENS]) | getKingAttacks(WHITE);
+            wAtt |= getWPawnCaptures(pieces[WHITE+PAWNS]) | getKnightMoves(pieces[WHITE+KNIGHTS]) |
+            getBishopMoves(pieces[WHITE+BISHOPS]) | getRookMoves(pieces[WHITE+ROOKS]) |
+            getQueenMoves(pieces[WHITE+QUEENS]) | getKingAttacks(WHITE);
             if ((wAtt & (MOVEMASK[61] | MOVEMASK[62])) == 0) {
                 Move *m = new Move(KINGS, false, 60, 62);
                 m->isCastle = true;
@@ -986,9 +970,9 @@ MoveList Board::getPseudoLegalBMoves() {
     if (blackCanQCastle) {
         if (((whitePieces|blackPieces) & (MOVEMASK[57] | MOVEMASK[58] | MOVEMASK[59])) == 0 && !getBinCheck()) {
             uint64_t wAtt = 0;
-            wAtt |= getWPawnCaptures(pieces[WHITE+PAWNS]) | getWKnightSquares(pieces[WHITE+KNIGHTS]) |
-            getWBishopMoves(pieces[WHITE+BISHOPS]) | getWRookMoves(pieces[WHITE+ROOKS]) |
-            getWQueenMoves(pieces[WHITE+QUEENS]) | getKingAttacks(WHITE);
+            wAtt |= getWPawnCaptures(pieces[WHITE+PAWNS]) | getKnightMoves(pieces[WHITE+KNIGHTS]) |
+            getBishopMoves(pieces[WHITE+BISHOPS]) | getRookMoves(pieces[WHITE+ROOKS]) |
+            getQueenMoves(pieces[WHITE+QUEENS]) | getKingAttacks(WHITE);
             if ((wAtt & (MOVEMASK[57] | MOVEMASK[58] | MOVEMASK[59])) == 0) {
                 Move *m = new Move(KINGS, false, 60, 58);
                 m->isCastle = true;
@@ -1321,23 +1305,23 @@ MoveList Board::getPLCaptures(int color) {
 
 // ---------------------King: check, checkmate, stalemate----------------------
 bool Board::getWinCheck() {
-    uint64_t bAtt = 0;
-    bAtt |= getBPawnCaptures(pieces[BLACK+PAWNS]) | getBKnightSquares(pieces[BLACK+KNIGHTS]) |
-    getBBishopMoves(pieces[BLACK+BISHOPS]) | getBRookMoves(pieces[BLACK+ROOKS]) |
-    getBQueenMoves(pieces[BLACK+QUEENS]) | getKingAttacks(BLACK);
-    if ((bAtt & pieces[WHITE+KINGS]) != 0)
-        return true;
-    else return false;
+    int sq = bitScanForward(pieces[WHITE+KINGS]);
+
+    return (getWPawnCaptures(pieces[WHITE+KINGS]) & pieces[BLACK+PAWNS])
+         | (getKnightSquares(sq) & pieces[BLACK+KNIGHTS])
+         | (getBishopSquares(sq) & (pieces[BLACK+BISHOPS] | pieces[BLACK+QUEENS]))
+         | (getRookSquares(sq) & (pieces[BLACK+ROOKS] | pieces[BLACK+QUEENS]))
+         | (getKingSquares(sq) & pieces[BLACK+KINGS]);
 }
 
 bool Board::getBinCheck() {
-    uint64_t wAtt = 0;
-    wAtt |= getWPawnCaptures(pieces[WHITE+PAWNS]) | getWKnightSquares(pieces[WHITE+KNIGHTS]) |
-    getWBishopMoves(pieces[WHITE+BISHOPS]) | getWRookMoves(pieces[WHITE+ROOKS]) |
-    getWQueenMoves(pieces[WHITE+QUEENS]) | getKingAttacks(WHITE);
-    if ((wAtt & pieces[BLACK+KINGS]) != 0)
-        return true;
-    else return false;
+    int sq = bitScanForward(pieces[BLACK+KINGS]);
+
+    return (getBPawnCaptures(pieces[BLACK+KINGS]) & pieces[WHITE+PAWNS])
+         | (getKnightSquares(sq) & pieces[WHITE+KNIGHTS])
+         | (getBishopSquares(sq) & (pieces[WHITE+BISHOPS] | pieces[WHITE+QUEENS]))
+         | (getRookSquares(sq) & (pieces[WHITE+ROOKS] | pieces[WHITE+QUEENS]))
+         | (getKingSquares(sq) & pieces[WHITE+KINGS]);
 }
 
 bool Board::isWinMate() {
@@ -1462,13 +1446,13 @@ int Board::evaluate() {
     uint64_t wksq = getKingAttacks(WHITE);
     uint64_t bksq = getKingAttacks(BLACK);
     uint64_t bAtt = 0;
-    bAtt = getBPawnCaptures(pieces[BLACK+PAWNS]) | getBKnightSquares(pieces[BLACK+KNIGHTS]) |
-    getBBishopMoves(pieces[BLACK+BISHOPS]) | getBRookMoves(pieces[BLACK+ROOKS]) |
-    getBQueenMoves(pieces[BLACK+QUEENS]) | getKingAttacks(BLACK);
+    bAtt = getBPawnCaptures(pieces[BLACK+PAWNS]) | getKnightMoves(pieces[BLACK+KNIGHTS]) |
+    getBishopMoves(pieces[BLACK+BISHOPS]) | getRookMoves(pieces[BLACK+ROOKS]) |
+    getQueenMoves(pieces[BLACK+QUEENS]) | getKingAttacks(BLACK);
     uint64_t wAtt = 0;
-    wAtt = getWPawnCaptures(pieces[WHITE+PAWNS]) | getWKnightSquares(pieces[WHITE+KNIGHTS]) |
-    getWBishopMoves(pieces[WHITE+BISHOPS]) | getWRookMoves(pieces[WHITE+ROOKS]) |
-    getWQueenMoves(pieces[WHITE+QUEENS]) | getKingAttacks(WHITE);
+    wAtt = getWPawnCaptures(pieces[WHITE+PAWNS]) | getKnightMoves(pieces[WHITE+KNIGHTS]) |
+    getBishopMoves(pieces[WHITE+BISHOPS]) | getRookMoves(pieces[WHITE+ROOKS]) |
+    getQueenMoves(pieces[WHITE+QUEENS]) | getKingAttacks(WHITE);
 
     value -= 25 * count(wksq & bAtt);
     value += 25 * count(bksq & wAtt);
@@ -1514,7 +1498,7 @@ int Board::getWPseudoMobility() {
         uint64_t single = knights & -knights;
         knights &= knights-1;
 
-        uint64_t legal = getWKnightSquares(single) & (blackPieces | ~(whitePieces | blackPieces));
+        uint64_t legal = getKnightSquares(single) & (blackPieces | ~(whitePieces | blackPieces));
 
         result += count(legal);
     }
@@ -1523,7 +1507,7 @@ int Board::getWPseudoMobility() {
         uint64_t single = bishops & -bishops;
         bishops &= bishops-1;
 
-        uint64_t legal = getWBishopMoves(single) & (blackPieces | ~(whitePieces | blackPieces));
+        uint64_t legal = getBishopSquares(single) & (blackPieces | ~(whitePieces | blackPieces));
 
         result += count(legal);
     }
@@ -1532,7 +1516,7 @@ int Board::getWPseudoMobility() {
         uint64_t single = rooks & -rooks;
         rooks &= rooks-1;
 
-        uint64_t legal = getWRookMoves(single) & (blackPieces | ~(whitePieces | blackPieces));
+        uint64_t legal = getRookSquares(single) & (blackPieces | ~(whitePieces | blackPieces));
 
         result += count(legal);
     }
@@ -1541,7 +1525,7 @@ int Board::getWPseudoMobility() {
         uint64_t single = queens & -queens;
         queens &= queens-1;
 
-        uint64_t legal = getWQueenMoves(single) & (blackPieces | ~(whitePieces | blackPieces));
+        uint64_t legal = getQueenSquares(single) & (blackPieces | ~(whitePieces | blackPieces));
 
         result += count(legal);
     }
@@ -1579,7 +1563,7 @@ int Board::getBPseudoMobility() {
         uint64_t single = knights & -knights;
         knights &= knights-1;
 
-        uint64_t legal = getBKnightSquares(single) & (whitePieces | ~(whitePieces | blackPieces));
+        uint64_t legal = getKnightSquares(single) & (whitePieces | ~(whitePieces | blackPieces));
 
         result += count(legal);
     }
@@ -1588,7 +1572,7 @@ int Board::getBPseudoMobility() {
         uint64_t single = bishops & -bishops;
         bishops &= bishops-1;
 
-        uint64_t legal = getBBishopMoves(single) & (whitePieces | ~(whitePieces | blackPieces));
+        uint64_t legal = getBishopSquares(single) & (whitePieces | ~(whitePieces | blackPieces));
 
         result += count(legal);
     }
@@ -1597,7 +1581,7 @@ int Board::getBPseudoMobility() {
         uint64_t single = rooks & -rooks;
         rooks &= rooks-1;
 
-        uint64_t legal = getBRookMoves(single) & (whitePieces | ~(whitePieces | blackPieces));
+        uint64_t legal = getRookSquares(single) & (whitePieces | ~(whitePieces | blackPieces));
 
         result += count(legal);
     }
@@ -1606,7 +1590,7 @@ int Board::getBPseudoMobility() {
         uint64_t single = queens & -queens;
         queens &= queens-1;
 
-        uint64_t legal = getBQueenMoves(single) & (whitePieces | ~(whitePieces | blackPieces));
+        uint64_t legal = getQueenSquares(single) & (whitePieces | ~(whitePieces | blackPieces));
 
         result += count(legal);
     }
@@ -1622,94 +1606,6 @@ int Board::getBPseudoMobility() {
     return result;
 }
 
-// Returns a list of pieces on the board. For rendering purposes.
-/*
-public ArrayList<Piece> getPieces(PieceImage pi) {
-ArrayList<Piece> result = new ArrayList<Piece>();
-
-uint64_t pawns = pieces[WHITE+PAWNS];
-uint64_t knights = pieces[WHITE+KNIGHTS];
-uint64_t bishops = pieces[WHITE+BISHOPS];
-uint64_t rooks = pieces[WHITE+ROOKS];
-uint64_t queens = pieces[WHITE+QUEENS];
-uint64_t kings = pieces[WHITE+KINGS];
-
-while (pawns != 0) {
-uint64_t single = pawns & -pawns;
-pawns &= pawns-1;
-int index = bitScanForward(single);
-result.add(new Piece(index%8, index/8, WHITE*PAWNS, pi));
-}
-while (knights != 0) {
-uint64_t single = knights & -knights;
-knights &= knights-1;
-int index = bitScanForward(single);
-result.add(new Piece(index%8, index/8, WHITE*KNIGHTS, pi));
-}
-while (bishops != 0) {
-int index = bitScanForward(bishops);
-bishops &= bishops-1;
-result.add(new Piece(index%8, index/8, WHITE*BISHOPS, pi));
-}
-while (rooks != 0) {
-int index = bitScanForward(rooks);
-rooks &= rooks-1;
-result.add(new Piece(index%8, index/8, WHITE*ROOKS, pi));
-}
-while (queens != 0) {
-int index = bitScanForward(queens);
-queens &= queens-1;
-result.add(new Piece(index%8, index/8, WHITE*QUEENS, pi));
-}
-while (kings != 0) {
-int index = bitScanForward(kings);
-kings &= kings-1;
-result.add(new Piece(index%8, index/8, WHITE*KINGS, pi));
-}
-
-pawns = pieces[BLACK+PAWNS];
-knights = pieces[BLACK+KNIGHTS];
-bishops = pieces[BLACK+BISHOPS];
-rooks = pieces[BLACK+ROOKS];
-queens = pieces[BLACK+QUEENS];
-kings = pieces[BLACK+KINGS];
-
-while (pawns != 0) {
-uint64_t single = pawns & -pawns;
-pawns &= pawns-1;
-int index = bitScanForward(single);
-result.add(new Piece(index%8, index/8, BLACK*PAWNS, pi));
-}
-while (knights != 0) {
-uint64_t single = knights & -knights;
-knights &= knights-1;
-int index = bitScanForward(single);
-result.add(new Piece(index%8, index/8, BLACK*KNIGHTS, pi));
-}
-while (bishops != 0) {
-int index = bitScanForward(bishops);
-bishops &= bishops-1;
-result.add(new Piece(index%8, index/8, BLACK*BISHOPS, pi));
-}
-while (rooks != 0) {
-int index = bitScanForward(rooks);
-rooks &= rooks-1;
-result.add(new Piece(index%8, index/8, BLACK*ROOKS, pi));
-}
-while (queens != 0) {
-int index = bitScanForward(queens);
-queens &= queens-1;
-result.add(new Piece(index%8, index/8, BLACK*QUEENS, pi));
-}
-while (kings != 0) {
-int index = bitScanForward(kings);
-kings &= kings-1;
-result.add(new Piece(index%8, index/8, BLACK*KINGS, pi));
-}
-
-return result;
-}
-*/
 
 //----------------------------MOVE GENERATION-------------------------------
 uint64_t Board::getWPawnMoves(uint64_t pawns) {
@@ -1732,66 +1628,43 @@ uint64_t Board::getBPawnMoves(uint64_t pawns) {
     return result;
 }
 
+uint64_t Board::getWPawnCaptures(uint64_t pawns) {
+    uint64_t result = (pawns << 9) & NOTA;
+    result |= (pawns << 7) & NOTH;
+    return result;
+}
+
+uint64_t Board::getBPawnCaptures(uint64_t pawns) {
+    uint64_t result = (pawns >> 7) & NOTA;
+    result |= (pawns >> 9) & NOTH;
+    return result;
+}
+
 uint64_t Board::getKnightSquares(int single) {
     return KNIGHTMOVES[single];
 }
 
-uint64_t Board::getWKnightSquares(uint64_t knights) {
-    uint64_t wn = knights;
-    uint64_t l1 = (wn >> 1) & 0x7f7f7f7f7f7f7f7f;
-    uint64_t l2 = (wn >> 2) & 0x3f3f3f3f3f3f3f3f;
-    uint64_t r1 = (wn << 1) & 0xfefefefefefefefe;
-    uint64_t r2 = (wn << 2) & 0xfcfcfcfcfcfcfcfc;
-    uint64_t h1 = l1 | r1;
-    uint64_t h2 = l2 | r2;
-    return (h1<<16) | (h1>>16) | (h2<<8) | (h2>>8);
-}
-
-uint64_t Board::getBKnightSquares(uint64_t knights) {
-    uint64_t bn = knights;
-    uint64_t l1 = (bn >> 1) & 0x7f7f7f7f7f7f7f7f;
-    uint64_t l2 = (bn >> 2) & 0x3f3f3f3f3f3f3f3f;
-    uint64_t r1 = (bn << 1) & 0xfefefefefefefefe;
-    uint64_t r2 = (bn << 2) & 0xfcfcfcfcfcfcfcfc;
+uint64_t Board::getKnightMoves(uint64_t knights) {
+    uint64_t kn = knights;
+    uint64_t l1 = (kn >> 1) & 0x7f7f7f7f7f7f7f7f;
+    uint64_t l2 = (kn >> 2) & 0x3f3f3f3f3f3f3f3f;
+    uint64_t r1 = (kn << 1) & 0xfefefefefefefefe;
+    uint64_t r2 = (kn << 2) & 0xfcfcfcfcfcfcfcfc;
     uint64_t h1 = l1 | r1;
     uint64_t h2 = l2 | r2;
     return (h1<<16) | (h1>>16) | (h2<<8) | (h2>>8);
 }
 
 uint64_t Board::getBishopSquares(int single) {
-    uint64_t nwatt = NWRAY[single];
-    uint64_t blocker = nwatt & (whitePieces | blackPieces);
-    int nws = bitScanForward(blocker | 0x8000000000000000);
-    nwatt ^= NWRAY[nws];
+    uint64_t occ = whitePieces | blackPieces;
 
-    uint64_t neatt = NERAY[single];
-    blocker = neatt & (whitePieces | blackPieces);
-    int nes = bitScanForward(blocker | 0x8000000000000000);
-    neatt ^= NERAY[nes];
+    uint64_t diagAtt = diagAttacks(occ, single);
+    uint64_t antiDiagAtt = antiDiagAttacks(occ, single);
 
-    uint64_t swatt = SWRAY[single];
-    blocker = swatt & (whitePieces | blackPieces);
-    int sws = bitScanReverse(blocker | 1);
-    swatt ^= SWRAY[sws];
-
-    uint64_t seatt = SERAY[single];
-    blocker = seatt & (whitePieces | blackPieces);
-    int ses = bitScanReverse(blocker | 1);
-    seatt ^= SERAY[ses];
-
-    return nwatt | neatt | swatt | seatt;
+    return diagAtt | antiDiagAtt;
 }
 
-uint64_t Board::getWBishopMoves(uint64_t bishops) {
-    uint64_t open = ~(whitePieces | blackPieces);
-    uint64_t result = neAttacks(bishops, open);
-    result |= seAttacks(bishops, open);
-    result |= nwAttacks(bishops, open);
-    result |= swAttacks(bishops, open);
-    return result;
-}
-
-uint64_t Board::getBBishopMoves(uint64_t bishops) {
+uint64_t Board::getBishopMoves(uint64_t bishops) {
     uint64_t open = ~(whitePieces | blackPieces);
     uint64_t result = neAttacks(bishops, open);
     result |= seAttacks(bishops, open);
@@ -1801,39 +1674,15 @@ uint64_t Board::getBBishopMoves(uint64_t bishops) {
 }
 
 uint64_t Board::getRookSquares(int single) {
-    uint64_t satt = SOUTHRAY[single];
-    uint64_t blocker = satt & (whitePieces | blackPieces);
-    int ss = bitScanReverse(blocker | 1);
-    satt ^= SOUTHRAY[ss];
+    uint64_t occ = whitePieces | blackPieces;
 
-    uint64_t watt = WESTRAY[single];
-    blocker = watt & (whitePieces | blackPieces);
-    int ws = bitScanReverse(blocker | 1);
-    watt ^= WESTRAY[ws];
+    uint64_t rankAtt = rankAttacks(occ, single);
+    uint64_t fileAtt = fileAttacks(occ, single);
 
-    uint64_t natt = NORTHRAY[single];
-    blocker = natt & (whitePieces | blackPieces);
-    int ns = bitScanForward(blocker | 0x8000000000000000);
-    natt ^= NORTHRAY[ns];
-
-    uint64_t eatt = EASTRAY[single];
-    blocker = eatt & (whitePieces | blackPieces);
-    int es = bitScanForward(blocker | 0x8000000000000000);
-    eatt ^= EASTRAY[es];
-
-    return satt | watt | natt | eatt;
+    return rankAtt | fileAtt;
 }
 
-uint64_t Board::getWRookMoves(uint64_t rooks) {
-    uint64_t open = ~(whitePieces | blackPieces);
-    uint64_t result = southAttacks(rooks, open);
-    result |= northAttacks(rooks, open);
-    result |= eastAttacks(rooks, open);
-    result |= westAttacks(rooks, open);
-    return result;
-}
-
-uint64_t Board::getBRookMoves(uint64_t rooks) {
+uint64_t Board::getRookMoves(uint64_t rooks) {
     uint64_t open = ~(whitePieces | blackPieces);
     uint64_t result = southAttacks(rooks, open);
     result |= northAttacks(rooks, open);
@@ -1845,50 +1694,15 @@ uint64_t Board::getBRookMoves(uint64_t rooks) {
 uint64_t Board::getQueenSquares(int single) {
     uint64_t occ = whitePieces | blackPieces;
 
-    uint64_t nwatt = NWRAY[single];
-    uint64_t blocker = nwatt & occ;
-    int nws = bitScanForward(blocker | 0x8000000000000000);
-    nwatt ^= NWRAY[nws];
+    uint64_t rankAtt = rankAttacks(occ, single);
+    uint64_t fileAtt = fileAttacks(occ, single);
+    uint64_t diagAtt = diagAttacks(occ, single);
+    uint64_t antiDiagAtt = antiDiagAttacks(occ, single);
 
-    uint64_t neatt = NERAY[single];
-    blocker = neatt & occ;
-    int nes = bitScanForward(blocker | 0x8000000000000000);
-    neatt ^= NERAY[nes];
-
-    uint64_t swatt = SWRAY[single];
-    blocker = swatt & occ;
-    int sws = bitScanReverse(blocker | 1);
-    swatt ^= SWRAY[sws];
-
-    uint64_t seatt = SERAY[single];
-    blocker = seatt & occ;
-    int ses = bitScanReverse(blocker | 1);
-    seatt ^= SERAY[ses];
-
-    uint64_t satt = SOUTHRAY[single];
-    blocker = satt & occ;
-    int ss = bitScanReverse(blocker | 1);
-    satt ^= SOUTHRAY[ss];
-
-    uint64_t watt = WESTRAY[single];
-    blocker = watt & occ;
-    int ws = bitScanReverse(blocker | 1);
-    watt ^= WESTRAY[ws];
-
-    uint64_t natt = NORTHRAY[single];
-    blocker = natt & occ;
-    int ns = bitScanForward(blocker | 0x8000000000000000);
-    natt ^= NORTHRAY[ns];
-
-    uint64_t eatt = EASTRAY[single];
-    blocker = eatt & occ;
-    int es = bitScanForward(blocker | 0x8000000000000000);
-    eatt ^= EASTRAY[es];
-
-    return nwatt | neatt | swatt | seatt | satt | watt | natt | eatt;
+    return rankAtt | fileAtt | diagAtt | antiDiagAtt;
 }
 
-uint64_t Board::getWQueenMoves(uint64_t queens) {
+uint64_t Board::getQueenMoves(uint64_t queens) {
     uint64_t open = ~(whitePieces | blackPieces);
     uint64_t result = southAttacks(queens, open);
     result |= northAttacks(queens, open);
@@ -1898,31 +1712,6 @@ uint64_t Board::getWQueenMoves(uint64_t queens) {
     result |= seAttacks(queens, open);
     result |= nwAttacks(queens, open);
     result |= swAttacks(queens, open);
-    return result;
-}
-
-uint64_t Board::getBQueenMoves(uint64_t queens) {
-    uint64_t open = ~(whitePieces | blackPieces);
-    uint64_t result = southAttacks(queens, open);
-    result |= northAttacks(queens, open);
-    result |= eastAttacks(queens, open);
-    result |= westAttacks(queens, open);
-    result |= neAttacks(queens, open);
-    result |= seAttacks(queens, open);
-    result |= nwAttacks(queens, open);
-    result |= swAttacks(queens, open);
-    return result;
-}
-
-uint64_t Board::getWPawnCaptures(uint64_t pawns) {
-    uint64_t result = (pawns << 9) & NOTA;
-    result |= (pawns << 7) & NOTH;
-    return result;
-}
-
-uint64_t Board::getBPawnCaptures(uint64_t pawns) {
-    uint64_t result = (pawns >> 7) & NOTA;
-    result |= (pawns >> 9) & NOTH;
     return result;
 }
 
@@ -1936,6 +1725,29 @@ uint64_t Board::getKingAttacks(int color) {
     kings |= attacks;
     attacks |= (kings >> 8) | (kings << 8);
     return attacks;
+}
+
+// Kindergarten bitboard slider attacks
+// http://chessprogramming.wikispaces.com/Kindergarten+Bitboards
+uint64_t Board::rankAttacks(uint64_t occ, int single) {
+    occ = (RANKRAY[single] & occ) * FILES[1] >> 58;
+    return (RANKRAY[single] & rankArray[single&7][occ]);
+}
+
+uint64_t Board::fileAttacks(uint64_t occ, int single) {
+    occ = AFILE & (occ >> (single & 7));
+    occ = (0x0004081020408000 * occ) >> 58;
+    return (fileArray[single>>3][occ] << (single & 7));
+}
+
+uint64_t Board::diagAttacks(uint64_t occ, int single) {
+    occ = (DIAGRAY[single] & occ) * FILES[1] >> 58;
+    return (DIAGRAY[single] & rankArray[single&7][occ]);
+}
+
+uint64_t Board::antiDiagAttacks(uint64_t occ, int single) {
+    occ = (ANTIDIAGRAY[single] & occ) * FILES[1] >> 58;
+    return (ANTIDIAGRAY[single] & rankArray[single&7][occ]);
 }
 
 // Dumb7Fill
