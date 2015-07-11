@@ -1,4 +1,49 @@
+#include <fstream>
 #include "common.h"
+
+uint64_t **rankArray;
+uint64_t **fileArray;
+
+void readKindergartenArrays() {
+    rankArray = new uint64_t *[8];
+    fileArray = new uint64_t *[8];
+    for(int i = 0; i < 8; i++) {
+        rankArray[i] = new uint64_t[64];
+        fileArray[i] = new uint64_t[64];
+    }
+
+    std::string line;
+    std::string fileName;
+        fileName = "kindergarten/rankAttacks.txt";
+    std::ifstream ranks(fileName);
+
+    if(ranks.is_open()) {
+        for(int n = 0; n < 8; n++) {
+            getline(ranks, line);
+            for(int i = 0; i < 64; i++) {
+                std::string::size_type sz = 0;
+                rankArray[n][i] = std::stoull(line, &sz, 0);
+                line = line.substr(sz);
+            }
+        }
+        ranks.close();
+    }
+
+    fileName = "kindergarten/fileAttacks.txt";
+    std::ifstream files(fileName);
+
+    if(files.is_open()) {
+        for(int n = 0; n < 8; n++) {
+            getline(files, line);
+            for(int i = 0; i < 64; i++) {
+                std::string::size_type sz = 0;
+                fileArray[n][i] = std::stoull(line, &sz, 0);
+                line = line.substr(sz);
+            }
+        }
+        files.close();
+    }
+}
 
 // BSF and BSR algorithms from https://chessprogramming.wikispaces.com/BitScan
 int bitScanForward(uint64_t bb) {

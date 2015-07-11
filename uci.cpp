@@ -154,6 +154,8 @@ Board fenToBoard(string s) {
 }
 
 int main() {
+    readKindergartenArrays();
+
     string input;
     vector<string> inputVector;
     string name = "UCI Chess Engine";

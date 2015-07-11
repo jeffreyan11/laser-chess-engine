@@ -7,6 +7,7 @@ uint64_t perft(Board b, int color, int depth);
 int captures = 0;
 
 int main(int argc, char **argv) {
+    readKindergartenArrays();
     Board b;
     using namespace std::chrono;
     auto start_time = high_resolution_clock::now();

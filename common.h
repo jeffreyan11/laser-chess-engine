@@ -60,6 +60,11 @@ const int index64[64] = {
 25, 39, 14, 33, 19, 30,  9, 24,
 13, 18,  8, 12,  7,  6,  5, 63 };
 
+// Arrays for kindergarten bitboards
+extern uint64_t **rankArray;
+extern uint64_t **fileArray;
+void readKindergartenArrays();
+
 int bitScanForward(uint64_t bb);
 int bitScanReverse(uint64_t bb);
 int count(uint64_t bb);
