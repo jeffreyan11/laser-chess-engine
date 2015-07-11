@@ -170,6 +170,7 @@ int main() {
     
     while (input != "quit") {
         getline(cin, input);
+        inputVector = split(input, ' ');
         
         if (input == "uci") {
             cout << "id name " << name << " " << version << '\n';
@@ -195,7 +196,6 @@ int main() {
                 pos = STARTPOS;
             
             if (input.find("fen") != string::npos) {
-                inputVector = split(input, ' ');
                 pos = inputVector.at(2) + ' ' + inputVector.at(3) + ' ' + inputVector.at(4) + ' '
                         + inputVector.at(5) + ' ' + inputVector.at(6) + ' ' + inputVector.at(7);
             }
@@ -253,15 +253,40 @@ int main() {
         }
         
         if (input.substr (0, 2) == "go") {
-            int depth = 2;
-            if (input.find("depth") != string::npos) {
-                inputVector = split(input, ' ');
-                
-                if (inputVector.size() > 2)
-                    depth = stoi(inputVector.at(2));
+            int mode = DEPTH, value = 1;
+            
+            if (input.find("movetime") != string::npos && inputVector.size() > 2) {
+                mode = TIME;
+                value = stoi(inputVector.at(2));
             }
             
-            Move *bestmove = getBestMove(&board, depth);
+            if (input.find("depth") != string::npos && inputVector.size() > 2) {
+                mode = DEPTH;
+                value = stoi(inputVector.at(2));
+            }
+            
+            if (input.find("infinite") != string::npos) {
+                mode = DEPTH;
+                value = MAX_DEPTH;
+            }
+            
+            if (input.find("wtime") != string::npos) {
+                mode = TIME;
+                int color = board.getPlayerToMove();
+                
+                if (inputVector.size() == 5) {
+                    if (color == 1) value = stoi(inputVector.at(2));
+                    else value = stoi(inputVector.at(4));
+                }
+                if (inputVector.size() == 9) {
+                    if (color == 1) value = stoi(inputVector.at(2)) + 40 * stoi(inputVector.at(6));
+                    else value = stoi(inputVector.at(4)) + 40 * stoi(inputVector.at(8));
+                }
+                // Primitive time management: use at most 1/40 of remaining time on this move
+                value /= 40;
+            }
+            
+            Move *bestmove = getBestMove(&board, mode, value);
             cout << "bestmove " << bestmove->toString() << '\n';
         }
         

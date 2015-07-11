@@ -29,6 +29,9 @@ const int ROOK_VALUE = 500;
 const int QUEEN_VALUE = 900;
 const int MATE_SCORE = 99999;
 
+// Other values
+const int MAX_DEPTH = 127;
+
 // Converts square number to 64-bit integer
 const uint64_t MOVEMASK[64] = {
 0x0000000000000001, 0x0000000000000002, 0x0000000000000004, 0x0000000000000008,

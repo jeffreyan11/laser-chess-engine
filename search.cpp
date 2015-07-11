@@ -1,9 +1,39 @@
+#include <chrono>
 #include "search.h"
 
 int PVS(Board b, int color, int depth, int alpha, int beta);
 int quiescence(Board b, int color, int alpha, int beta);
 
-Move *getBestMove(Board *b, int depth) {
+// Iterative deepening search
+Move *getBestMove(Board *b, int mode, int value) {
+    using namespace std::chrono;
+    auto start_time = high_resolution_clock::now();
+    Move *currentBestMove = getBestMoveAtDepth(b, 1);
+    
+    // cerr << "value is " << value << endl;
+    // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
+    
+    double timeFactor = 0.25;
+    
+    if (mode == TIME) {
+        int i = 2;
+        while (duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() * ONE_SECOND < value * timeFactor) {
+                currentBestMove = getBestMoveAtDepth(b, i);
+                i++;
+                // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
+            }
+    }
+    
+    if (mode == DEPTH) {
+        for (int i = 2; i <= value; i++) {
+            currentBestMove = getBestMoveAtDepth(b, i);
+        }
+    }
+    
+    return currentBestMove;
+}
+
+Move *getBestMoveAtDepth(Board *b, int depth) {
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
     
@@ -107,8 +137,8 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
             //hashed = legalCaptures.get(i);
         }
         if (alpha >= beta) {
-            //if (hashed != null)
-            //  tTable.put(b, hashed);
+            // if (hashed != null)
+            // tTable.put(b, hashed);
             return alpha;
         }
     }
@@ -154,8 +184,8 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
         }
     }
     
-    //if (hashed != null)
-    //  tTable.put(b, hashed);
+    // if (hashed != null)
+    // tTable.put(b, hashed);
     return alpha;
 }
 
