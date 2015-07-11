@@ -821,11 +821,16 @@ MoveList Board::getPseudoLegalWMoves() {
 
     if (whiteCanKCastle) {
         if (((whitePieces|blackPieces) & (MOVEMASK[5] | MOVEMASK[6])) == 0 && !getWinCheck()) {
-            uint64_t bAtt = 0;
-            bAtt |= getBPawnCaptures(pieces[BLACK+PAWNS]) | getKnightMoves(pieces[BLACK+KNIGHTS]) |
-            getBishopMoves(pieces[BLACK+BISHOPS]) | getRookMoves(pieces[BLACK+ROOKS]) |
-            getQueenMoves(pieces[BLACK+QUEENS]) | getKingAttacks(BLACK);
-            if ((bAtt & (MOVEMASK[5] | MOVEMASK[6])) == 0) {
+            // Check for castling through check
+            int sq = 5;
+            uint64_t attacked =
+                (getWPawnCaptures(MOVEMASK[sq]) & pieces[BLACK+PAWNS])
+              | (getKnightSquares(sq) & pieces[BLACK+KNIGHTS])
+              | (getBishopSquares(sq) & (pieces[BLACK+BISHOPS] | pieces[BLACK+QUEENS]))
+              | (getRookSquares(sq) & (pieces[BLACK+ROOKS] | pieces[BLACK+QUEENS]))
+              | (getKingSquares(sq) & pieces[BLACK+KINGS]);
+
+            if (attacked == 0) {
                 Move *m = new Move(KINGS, false, 4, 6);
                 m->isCastle = true;
                 result.add(m);
@@ -834,11 +839,16 @@ MoveList Board::getPseudoLegalWMoves() {
     }
     if (whiteCanQCastle) {
         if (((whitePieces|blackPieces) & (MOVEMASK[1] | MOVEMASK[2] | MOVEMASK[3])) == 0 && !getWinCheck()) {
-            uint64_t bAtt = 0;
-            bAtt |= getBPawnCaptures(pieces[BLACK+PAWNS]) | getKnightMoves(pieces[BLACK+KNIGHTS]) |
-            getBishopMoves(pieces[BLACK+BISHOPS]) | getRookMoves(pieces[BLACK+ROOKS]) |
-            getQueenMoves(pieces[BLACK+QUEENS]) | getKingAttacks(BLACK);
-            if ((bAtt & (MOVEMASK[1] | MOVEMASK[2] | MOVEMASK[3])) == 0) {
+            // Check for castling through check
+            int sq = 3;
+            uint64_t attacked =
+                (getWPawnCaptures(MOVEMASK[sq]) & pieces[BLACK+PAWNS])
+              | (getKnightSquares(sq) & pieces[BLACK+KNIGHTS])
+              | (getBishopSquares(sq) & (pieces[BLACK+BISHOPS] | pieces[BLACK+QUEENS]))
+              | (getRookSquares(sq) & (pieces[BLACK+ROOKS] | pieces[BLACK+QUEENS]))
+              | (getKingSquares(sq) & pieces[BLACK+KINGS]);
+
+            if (attacked == 0) {
                 Move *m = new Move(KINGS, false, 4, 2);
                 m->isCastle = true;
                 result.add(m);
@@ -956,11 +966,15 @@ MoveList Board::getPseudoLegalBMoves() {
 
     if (blackCanKCastle) {
         if (((whitePieces|blackPieces) & (MOVEMASK[61] | MOVEMASK[62])) == 0 && !getBinCheck()) {
-            uint64_t wAtt = 0;
-            wAtt |= getWPawnCaptures(pieces[WHITE+PAWNS]) | getKnightMoves(pieces[WHITE+KNIGHTS]) |
-            getBishopMoves(pieces[WHITE+BISHOPS]) | getRookMoves(pieces[WHITE+ROOKS]) |
-            getQueenMoves(pieces[WHITE+QUEENS]) | getKingAttacks(WHITE);
-            if ((wAtt & (MOVEMASK[61] | MOVEMASK[62])) == 0) {
+            int sq = 61;
+            uint64_t attacked =
+                (getBPawnCaptures(pieces[BLACK+KINGS]) & pieces[WHITE+PAWNS])
+              | (getKnightSquares(sq) & pieces[WHITE+KNIGHTS])
+              | (getBishopSquares(sq) & (pieces[WHITE+BISHOPS] | pieces[WHITE+QUEENS]))
+              | (getRookSquares(sq) & (pieces[WHITE+ROOKS] | pieces[WHITE+QUEENS]))
+              | (getKingSquares(sq) & pieces[WHITE+KINGS]);
+
+            if (attacked == 0) {
                 Move *m = new Move(KINGS, false, 60, 62);
                 m->isCastle = true;
                 result.add(m);
@@ -969,11 +983,15 @@ MoveList Board::getPseudoLegalBMoves() {
     }
     if (blackCanQCastle) {
         if (((whitePieces|blackPieces) & (MOVEMASK[57] | MOVEMASK[58] | MOVEMASK[59])) == 0 && !getBinCheck()) {
-            uint64_t wAtt = 0;
-            wAtt |= getWPawnCaptures(pieces[WHITE+PAWNS]) | getKnightMoves(pieces[WHITE+KNIGHTS]) |
-            getBishopMoves(pieces[WHITE+BISHOPS]) | getRookMoves(pieces[WHITE+ROOKS]) |
-            getQueenMoves(pieces[WHITE+QUEENS]) | getKingAttacks(WHITE);
-            if ((wAtt & (MOVEMASK[57] | MOVEMASK[58] | MOVEMASK[59])) == 0) {
+            int sq = 59;
+            uint64_t attacked =
+                (getBPawnCaptures(pieces[BLACK+KINGS]) & pieces[WHITE+PAWNS])
+              | (getKnightSquares(sq) & pieces[WHITE+KNIGHTS])
+              | (getBishopSquares(sq) & (pieces[WHITE+BISHOPS] | pieces[WHITE+QUEENS]))
+              | (getRookSquares(sq) & (pieces[WHITE+ROOKS] | pieces[WHITE+QUEENS]))
+              | (getKingSquares(sq) & pieces[WHITE+KINGS]);
+
+            if (attacked == 0) {
                 Move *m = new Move(KINGS, false, 60, 58);
                 m->isCastle = true;
                 result.add(m);
