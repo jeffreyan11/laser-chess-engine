@@ -685,7 +685,7 @@ MoveList Board::getLegalWMoves() {
         b.doMove(moves.get(i), WHITE);
 
         if (b.getWinCheck()) {
-            moves.remove(i);
+            delete moves.remove(i);
             i--;
         }
     }
@@ -701,7 +701,7 @@ MoveList Board::getLegalBMoves() {
         b.doMove(moves.get(i), BLACK);
 
         if (b.getBinCheck()) {
-            moves.remove(i);
+            delete moves.remove(i);
             i--;
         }
     }
@@ -996,7 +996,7 @@ MoveList Board::getLegalWCaptures() {
         b.doMove(moves.get(i), WHITE);
 
         if (b.getWinCheck()) {
-            moves.remove(i);
+            delete moves.remove(i);
             i--;
         }
     }
@@ -1012,7 +1012,7 @@ MoveList Board::getLegalBCaptures() {
         b.doMove(moves.get(i), BLACK);
 
         if (b.getBinCheck()) {
-            moves.remove(i);
+            delete moves.remove(i);
             i--;
         }
     }

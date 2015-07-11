@@ -107,11 +107,13 @@ public:
 
     void set(int i, Move *m) { moves[i] = m; }
 
-    void remove(int i) {
+    Move *remove(int i) {
+        Move *deleted = moves[i];
         for(unsigned int j = i; j < length-1; j++) {
             moves[j] = moves[j+1];
         }
         length--;
+        return deleted;
     }
 
     // Reset the MoveList

@@ -142,6 +142,7 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
         if (alpha >= beta) {
             // if (hashed != null)
             // tTable.put(b, hashed);
+            legalCaptures.free();
             return alpha;
         }
     }
@@ -227,8 +228,10 @@ int quiescence(Board b, int color, int alpha, int beta) {
         
         int score = -quiescence(copy, -color, -beta, -alpha);
         
-        if (score >= beta)
-            return beta;
+        if (score >= beta) {
+            alpha = beta;
+            break;
+        }
         if (score > alpha)
             alpha = score;
     }
