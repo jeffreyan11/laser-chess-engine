@@ -89,6 +89,8 @@ Move *getBestMoveAtDepth(Board *b, int depth) {
 
 // The standard implementation of a null-window PVS search.
 int PVS(Board b, int color, int depth, int alpha, int beta) {
+    // When the standard search is done, enter quiescence search.
+    // Static board evaluation is done there.
     if (depth <= 0) {
         return quiescence(b, color, alpha, beta);
     }
@@ -115,6 +117,7 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
     }
     */
     
+    // Basic move ordering: check captures first
     MoveList legalCaptures = b.getPLCaptures(color);
     
     for (unsigned int i = 0; i < legalCaptures.size(); i++) {
@@ -168,8 +171,10 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
             break;
     }
     
+    // Special cases for a mate or stalemate
     if (score == -MATE_SCORE) {
         if (b.isWinMate()) {
+            // + 50 - depth adjusts so that quicker mates are better
             score = (-MATE_SCORE + 50 - depth) * color;
         }
         else if (b.isBinMate()) {
@@ -186,6 +191,10 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
     
     // if (hashed != null)
     // tTable.put(b, hashed);
+
+    legalCaptures.free();
+    legalMoves.free();
+
     return alpha;
 }
 
@@ -196,6 +205,8 @@ int quiescence(Board b, int color, int alpha, int beta) {
     // debug code
     // if (b.getMoveNumber() > 25) cerr << b.getMoveNumber() << endl;
     
+    // Stand pat: if our current position is already way too good or way too bad
+    // we can simply stop the search here
     int standPat = color * b.evaluate();
     if (standPat >= beta) {
         return beta;
@@ -222,5 +233,7 @@ int quiescence(Board b, int color, int alpha, int beta) {
             alpha = score;
     }
     
+    legalCaptures.free();
+
     return alpha;
 }
