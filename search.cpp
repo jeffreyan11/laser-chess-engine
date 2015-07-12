@@ -16,35 +16,31 @@ Move *getBestMove(Board *b, int mode, int value) {
     
     auto start_time = high_resolution_clock::now();
     bool isMate = false;
-    Move *currentBestMove = getBestMoveAtDepth(b, 1, isMate);
-    cerr << "info depth " << 1 << " score cp 0 time 1 nodes 1 nps 1000 pv e2e4" << endl;
-    if(isMate) return currentBestMove;
+    Move *currentBestMove;
     
     // cerr << "value is " << value << endl;
-    // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
     
     double timeFactor = 0.25;
     
     if (mode == TIME) {
-        int i = 2;
-        while ((duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() * ONE_SECOND
-            < value * timeFactor) && (i <= MAX_DEPTH)) {
-            isMate = false;
+        int i = 1;
+        do {
             currentBestMove = getBestMoveAtDepth(b, i, isMate);
             cerr << "info depth " << i << " score cp 0 time 1 nodes 1 nps 1000 pv e2e4" << endl;
-            if(isMate)
+            if (isMate)
                 return currentBestMove;
             // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
             i++;
         }
+        while ((duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() * ONE_SECOND
+            < value * timeFactor) && (i <= MAX_DEPTH));
     }
     
     if (mode == DEPTH) {
-        for (int i = 2; i <= min(value, MAX_DEPTH); i++) {
-            isMate = false;
+        for (int i = 1; i <= min(value, MAX_DEPTH); i++) {
             currentBestMove = getBestMoveAtDepth(b, i, isMate);
             cerr << "info depth " << i << " score cp 0 time 1 nodes 1 nps 1000 pv e2e4" << endl;
-            if(isMate)
+            if (isMate)
                 return currentBestMove;
             // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
         }
