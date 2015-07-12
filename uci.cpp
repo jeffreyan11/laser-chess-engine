@@ -181,16 +181,16 @@ int main() {
                     if (moveString.length() == 5) {
                         switch (moveString.at(4)) {
                             case 'n':
-                                promotion = 2;
+                                promotion = KNIGHTS;
                                 break;
                             case 'b':
-                                promotion = 5;
+                                promotion = BISHOPS;
                                 break;
                             case 'r':
-                                promotion = 6;
+                                promotion = ROOKS;
                                 break;
                             case 'q':
-                                promotion = 9;
+                                promotion = QUEENS;
                                 break;
                         }
                     }
