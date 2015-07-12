@@ -246,8 +246,14 @@ int quiescence(Board b, int color, int alpha, int beta) {
     MoveList legalCaptures = b.getPLCaptures(color);
     
     for (unsigned int i = 0; i < legalCaptures.size(); i++) {
+        Move *m = legalCaptures.get(i);
+
+        // Static exchange evaluation pruning
+        if(b.getSEE(color, m->endsq) < -200)
+            continue;
+
         Board copy = b.staticCopy();
-        if (!copy.doPLMove(legalCaptures.get(i), color))
+        if (!copy.doPLMove(m, color))
             continue;
         
         int score = -quiescence(copy, -color, -beta, -alpha);

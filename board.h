@@ -542,6 +542,11 @@ public:
     bool pieceOn(int color, int x, int y);
     int getWPseudoMobility();
     int getBPseudoMobility();
+    // Static exchange evaluation code: for checking material trades on a single square
+    uint64_t getAttackMap(int color, int sq);
+    uint64_t getLeastValuableAttacker(uint64_t attackers, int color, int &piece);
+    int getSEE(int color, int sq);
+    int valueOfPiece(int piece);
 
     // Move generation
     // ___Moves(): moves for all of that piece type on the board.

@@ -1634,6 +1634,92 @@ int Board::getBPseudoMobility() {
     return result;
 }
 
+uint64_t Board::getAttackMap(int color, int sq) {
+    uint64_t pawnCap = (color == WHITE)
+                     ? getBPawnCaptures(MOVEMASK[sq])
+                     : getWPawnCaptures(MOVEMASK[sq]);
+    return (pawnCap & pieces[color+PAWNS])
+         | (getKnightSquares(sq) & pieces[color+KNIGHTS])
+         | (getBishopSquares(sq) & (pieces[color+BISHOPS] | pieces[color+QUEENS]))
+         | (getRookSquares(sq) & (pieces[color+ROOKS] | pieces[color+QUEENS]))
+         | (getKingSquares(sq) & pieces[color+KINGS]);
+}
+
+// TODO come up with a better way to do this
+uint64_t Board::getLeastValuableAttacker(uint64_t attackers, int color, int &piece) {
+    uint64_t single = attackers & pieces[color+PAWNS];
+    if(single) {
+        piece = PAWNS;
+        return single & -single;
+    }
+    single = attackers & pieces[color+KNIGHTS];
+    if(single) {
+        piece = KNIGHTS;
+        return single & -single;
+    }
+    single = attackers & pieces[color+BISHOPS];
+    if(single) {
+        piece = BISHOPS;
+        return single & -single;
+    }
+    single = attackers & pieces[color+ROOKS];
+    if(single) {
+        piece = ROOKS;
+        return single & -single;
+    }
+    single = attackers & pieces[color+QUEENS];
+    if(single) {
+        piece = QUEENS;
+        return single & -single;
+    }
+
+    return attackers & pieces[color+KINGS];
+}
+
+// TODO consider xrays
+// Static exchange evaluation algorithm from
+// https://chessprogramming.wikispaces.com/SEE+-+The+Swap+Algorithm
+int Board::getSEE(int color, int sq) {
+    int gain[32], d = 0, piece = 0;
+    uint64_t attackers = getAttackMap(color, sq) | getAttackMap(-color, sq);
+    uint64_t single = getLeastValuableAttacker(attackers, color, piece);
+    gain[d] = valueOfPiece(piece);
+
+    do {
+        attackers ^= single; // remove used attacker
+        d++; // next depth
+        color = -color;
+        single = getLeastValuableAttacker(attackers, color, piece);
+        gain[d]  = valueOfPiece(piece) - gain[d-1];
+        if (-gain[d-1] < 0 && gain[d] < 0) // pruning for stand pat
+            break;
+    } while (single);
+
+    while (--d)
+        gain[d-1]= -((-gain[d-1] > gain[d]) ? -gain[d-1] : gain[d]);
+
+    return gain[0];
+}
+
+int Board::valueOfPiece(int piece) {
+    switch(piece) {
+        case PAWNS:
+            return PAWN_VALUE;
+        case KNIGHTS:
+            return KNIGHT_VALUE;
+        case BISHOPS:
+            return BISHOP_VALUE;
+        case ROOKS:
+            return ROOK_VALUE;
+        case QUEENS:
+            return QUEEN_VALUE;
+        case KINGS:
+            return MATE_SCORE;
+    }
+    cerr << "Error in Board::valueOfPiece()" << endl;
+    return -1;
+}
+
 
 //----------------------------MOVE GENERATION-------------------------------
 uint64_t Board::getWPawnMoves(uint64_t pawns) {
