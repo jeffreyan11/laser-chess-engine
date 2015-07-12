@@ -27,8 +27,7 @@ Board fenToBoard(string s) {
     vector<string> rows = split(components.at(0), '/');
     int mailbox[64];
     
-    int colCounter, blankSquareCounter;
-    bool isBlankSquare;
+    int colCounter;
     
     // iterate through rows, converting into mailbox format
     for (int elem = 0; elem < 8; elem++) {
@@ -37,43 +36,8 @@ Board fenToBoard(string s) {
         colCounter = 0;
         
         for (unsigned col = 0; col < rowAtElem.length(); col++) {
-            blankSquareCounter = 0;
-            isBlankSquare = false;
-            
             // determine what piece is on rowAtElem.at(col) and fill out if not blank
             switch (rowAtElem.at(col)) {
-                case '1':
-                    isBlankSquare = true;
-                    blankSquareCounter = 1;
-                    break;
-                case '2':
-                    isBlankSquare = true;
-                    blankSquareCounter = 2;
-                    break;
-                case '3':
-                    isBlankSquare = true;
-                    blankSquareCounter = 3;
-                    break;
-                case '4':
-                    isBlankSquare = true;
-                    blankSquareCounter = 4;
-                    break;
-                case '5':
-                    isBlankSquare = true;
-                    blankSquareCounter = 5;
-                    break;
-                case '6':
-                    isBlankSquare = true;
-                    blankSquareCounter = 6;
-                    break;
-                case '7':
-                    isBlankSquare = true;
-                    blankSquareCounter = 7;
-                    break;
-                case '8':
-                    isBlankSquare = true;
-                    blankSquareCounter = 8;
-                    break;
                 case 'P':
                     mailbox[8 * (7 - elem) + colCounter] = WHITE + PAWNS;
                     colCounter++;
@@ -125,8 +89,8 @@ Board fenToBoard(string s) {
             }
             
             // fill out blank squares
-            if (isBlankSquare) {
-                for (int i = 0; i < blankSquareCounter; i++) {
+            if ('1' <= rowAtElem.at(col) && rowAtElem.at(col) <= '8') {
+                for (int i = 0; i < rowAtElem.at(col) - '0'; i++) {
                     mailbox[8 * (7 - elem) + colCounter] = -1; // -1 is blank square
                     colCounter++;
                 }
@@ -281,7 +245,7 @@ int main() {
                     else value = stoi(inputVector.at(4)) + 40 * stoi(inputVector.at(8));
                 }
                 // Primitive time management: use at most 1/40 of remaining time with a 200 ms buffer zone
-                (value - 200) /= 40;
+                value = (value - 200) / 40;
             }
             
             Move *bestmove = getBestMove(&board, mode, value);
