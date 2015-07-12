@@ -3,6 +3,7 @@
 
 int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int &bestScore, bool &isMate);
+int sortSearch(Board *b, MoveList &pseudoLegalMoves, int depth);
 int PVS(Board b, int color, int depth, int alpha, int beta);
 int quiescence(Board b, int color, int alpha, int beta);
 
@@ -31,10 +32,14 @@ Move *getBestMove(Board *b, int mode, int value) {
             Move *temp = legalMoves.get(0);
             legalMoves.set(0, legalMoves.get(currentBestMove));
             legalMoves.set(currentBestMove, temp);
-            cerr << "info depth " << i << " score cp " << bestScore << " time " << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << " nodes 1 nps 1000 pv e2e4" << endl;
+
+            double timeSoFar = duration_cast<duration<double>>(
+                    high_resolution_clock::now() - start_time).count();
+            cerr << "info depth " << i << " score cp " << bestScore << " time "
+                << (int)(timeSoFar * ONE_SECOND) << " nodes 1 nps 1000 pv e2e4" << endl;
+
             if (isMate)
                 break;
-            // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
             i++;
         }
         while ((duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() * ONE_SECOND
@@ -47,10 +52,14 @@ Move *getBestMove(Board *b, int mode, int value) {
             Move *temp = legalMoves.get(0);
             legalMoves.set(0, legalMoves.get(currentBestMove));
             legalMoves.set(currentBestMove, temp);
-            cerr << "info depth " << i << " score cp " << bestScore << " time " << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << " nodes 1 nps 1000 pv e2e4" << endl;
+
+            double timeSoFar = duration_cast<duration<double>>(
+                    high_resolution_clock::now() - start_time).count();
+            cerr << "info depth " << i << " score cp " << bestScore << " time "
+                 << (int)(timeSoFar * ONE_SECOND) << " nodes 1 nps 1000 pv e2e4" << endl;
+
             if (isMate)
                 break;
-            // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
         }
     }
     
@@ -116,6 +125,51 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     return tempMove;
 }
 
+int sortSearch(Board *b, MoveList &legalMoves, int depth) {
+    int color = b->getPlayerToMove();
+    
+    unsigned int tempMove = 0;
+    int score = -MATE_SCORE;
+    int alpha = -MATE_SCORE;
+    int beta = MATE_SCORE;
+    
+    for (unsigned int i = 0; i < legalMoves.size(); i++) {
+        Board copy = b->staticCopy();
+        if(!copy.doPLMove(legalMoves.get(i), color))
+            continue;
+        
+        if (copy.isWinMate())
+            return i;
+        else if (copy.isBinMate())
+            return i;
+        else if (copy.isStalemate(color)) {
+            score = 0;
+            if (score > alpha) {
+                alpha = score;
+                tempMove = i;
+            }
+            continue;
+        }
+        
+        if (i != 0) {
+            score = -PVS(copy, -color, depth-1, -alpha-1, -alpha);
+            if (alpha < score && score < beta) {
+                score = -PVS(copy, -color, depth-1, -beta, -alpha);
+            }
+        }
+        else {
+            score = -PVS(copy, -color, depth-1, -beta, -alpha);
+        }
+        
+        if (score > alpha) {
+            alpha = score;
+            tempMove = i;
+        }
+    }
+
+    return tempMove;
+}
+
 // The standard implementation of a null-window PVS search.
 // The implementation is fail-soft (score returned can be outside [alpha, beta])
 int PVS(Board b, int color, int depth, int alpha, int beta) {
@@ -151,6 +205,13 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
     // Basic move ordering: check captures first
     MoveList legalCaptures = b.getPLCaptures(color);
     
+    if(depth >= 4) {
+        int pv = sortSearch(&b, legalCaptures, 1);
+        Move *temp = legalCaptures.get(0);
+        legalCaptures.set(0, legalCaptures.get(pv));
+        legalCaptures.set(pv, temp);
+    }
+
     for (unsigned int i = 0; i < legalCaptures.size(); i++) {
         Board copy = b.staticCopy();
         if (!copy.doPLMove(legalCaptures.get(i), color))
@@ -183,6 +244,13 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
     
     MoveList legalMoves = b.getPseudoLegalMoves(color);
     
+    if(depth >= 4) {
+        int pv = sortSearch(&b, legalMoves, 1);
+        Move *temp = legalMoves.get(0);
+        legalMoves.set(0, legalMoves.get(pv));
+        legalMoves.set(pv, temp);
+    }
+
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Board copy = b.staticCopy();
         if (!copy.doPLMove(legalMoves.get(i), color))
