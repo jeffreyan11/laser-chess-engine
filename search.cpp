@@ -24,7 +24,7 @@ Move *getBestMove(Board *b, int mode, int value) {
     if (mode == TIME) {
         int i = 2;
         while ((duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() * ONE_SECOND
-            < value * timeFactor) || (i > MAX_DEPTH)) {
+            < value * timeFactor) && (i <= MAX_DEPTH)) {
             currentBestMove = getBestMoveAtDepth(b, i);
             // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
             i++;

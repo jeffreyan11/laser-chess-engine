@@ -40,53 +40,43 @@ Board fenToBoard(string s) {
             switch (rowAtElem.at(col)) {
                 case 'P':
                     mailbox[8 * (7 - elem) + colCounter] = WHITE + PAWNS;
-                    colCounter++;
                     break;
                 case 'N':
                     mailbox[8 * (7 - elem) + colCounter] = WHITE + KNIGHTS;
-                    colCounter++;
                     break;
                 case 'B':
                     mailbox[8 * (7 - elem) + colCounter] = WHITE + BISHOPS;
-                    colCounter++;
                     break;
                 case 'R':
                     mailbox[8 * (7 - elem) + colCounter] = WHITE + ROOKS;
-                    colCounter++;
                     break;
                 case 'Q':
                     mailbox[8 * (7 - elem) + colCounter] = WHITE + QUEENS;
-                    colCounter++;
                     break;
                 case 'K':
                     mailbox[8 * (7 - elem) + colCounter] = WHITE + KINGS;
-                    colCounter++;
                     break;
                 case 'p':
                     mailbox[8 * (7 - elem) + colCounter] = BLACK + PAWNS;
-                    colCounter++;
                     break;
                 case 'n':
                     mailbox[8 * (7 - elem) + colCounter] = BLACK + KNIGHTS;
-                    colCounter++;
                     break;
                 case 'b':
                     mailbox[8 * (7 - elem) + colCounter] = BLACK + BISHOPS;
-                    colCounter++;
                     break;
                 case 'r':
                     mailbox[8 * (7 - elem) + colCounter] = BLACK + ROOKS;
-                    colCounter++;
                     break;
                 case 'q':
                     mailbox[8 * (7 - elem) + colCounter] = BLACK + QUEENS;
-                    colCounter++;
                     break;
                 case 'k':
                     mailbox[8 * (7 - elem) + colCounter] = BLACK + KINGS;
-                    colCounter++;
                     break;
             }
+            
+            if (rowAtElem.at(col) >= 'B') colCounter++;
             
             // fill out blank squares
             if ('1' <= rowAtElem.at(col) && rowAtElem.at(col) <= '8') {
