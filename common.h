@@ -70,11 +70,11 @@ int count(uint64_t bb);
 class Move {
 public:
 	int piece;
-	bool isCapture;
 	int startsq;
 	int endsq;
-	bool isCastle;
 	int promotion;
+	bool isCapture;
+	bool isCastle;
 	
     Move(int _piece, bool _isCapture, int _startsq, int _endsq);
     ~Move() {}

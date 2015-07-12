@@ -668,6 +668,7 @@ bool Board::isLegalMove(Move *m, int color) {
     return true;
 }
 
+// Get all legal moves and captures
 MoveList Board::getAllLegalMoves(int color) {
     MoveList nonCaptures = getLegalMoves(color);
     MoveList moves = getLegalCaptures(color);
@@ -714,6 +715,12 @@ MoveList Board::getLegalMoves(int color) {
 }
 
 //---------------------Pseudo-legal Moves---------------------------
+/* Pseudo-legal moves disregard whether the player's king is left in check
+ * The pseudo-legal move and capture generators all follow a similar scheme:
+ * Bitscan to obtain the square number for each piece (a1 is 0, a2 is 1, h8 is 63).
+ * Get the legal moves as a bitboard, then bitscan this to get the destination
+ * square and store as a Move object.
+ */
 MoveList Board::getPseudoLegalWMoves() {
     MoveList result;
     uint64_t pawns = pieces[WHITE+PAWNS];
@@ -1665,6 +1672,11 @@ uint64_t Board::getKnightSquares(int single) {
     return KNIGHTMOVES[single];
 }
 
+// Parallel-prefix knight move generation
+// l1, l2, r1, r2 are the 4 possible directions a knight can move for the first
+// half of its "L" shaped movement
+// Then, l1 and r1 must be moved up or down 2 squares (shift 16)
+// Similarly, l2 and r2 are moved up or down 1 square to complete the "L".
 uint64_t Board::getKnightMoves(uint64_t knights) {
     uint64_t kn = knights;
     uint64_t l1 = (kn >> 1) & 0x7f7f7f7f7f7f7f7f;
