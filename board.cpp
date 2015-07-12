@@ -1673,6 +1673,7 @@ uint64_t Board::getLeastValuableAttacker(uint64_t attackers, int color, int &pie
         return single & -single;
     }
 
+    piece = KINGS;
     return attackers & pieces[color+KINGS];
 }
 
@@ -1683,16 +1684,18 @@ int Board::getSEE(int color, int sq) {
     int gain[32], d = 0, piece = 0;
     uint64_t attackers = getAttackMap(color, sq) | getAttackMap(-color, sq);
     uint64_t single = getLeastValuableAttacker(attackers, color, piece);
-    gain[d] = valueOfPiece(piece);
+    // Get value of piece initially being captured. If the destination square is
+    // empty, then the capture is an en passant.
+    gain[d] = valueOfPiece((mailbox[sq] == -1) ? PAWNS : (mailbox[sq] + color));
 
     do {
-        attackers ^= single; // remove used attacker
         d++; // next depth
         color = -color;
-        single = getLeastValuableAttacker(attackers, color, piece);
         gain[d]  = valueOfPiece(piece) - gain[d-1];
         if (-gain[d-1] < 0 && gain[d] < 0) // pruning for stand pat
             break;
+        attackers ^= single; // remove used attacker
+        single = getLeastValuableAttacker(attackers, color, piece);
     } while (single);
 
     while (--d)
@@ -1716,7 +1719,7 @@ int Board::valueOfPiece(int piece) {
         case KINGS:
             return MATE_SCORE;
     }
-    cerr << "Error in Board::valueOfPiece()" << endl;
+    cerr << "Error in Board::valueOfPiece() " << piece << endl;
     return -1;
 }
 
