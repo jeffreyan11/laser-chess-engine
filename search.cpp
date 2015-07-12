@@ -1,7 +1,8 @@
 #include <chrono>
 #include "search.h"
 
-Move *getBestMoveAtDepth(Board *b, int depth, bool &isMate);
+int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
+    int &bestScore, bool &isMate);
 int PVS(Board b, int color, int depth, int alpha, int beta);
 int quiescence(Board b, int color, int alpha, int beta);
 
@@ -16,7 +17,8 @@ Move *getBestMove(Board *b, int mode, int value) {
     
     auto start_time = high_resolution_clock::now();
     bool isMate = false;
-    Move *currentBestMove;
+    int currentBestMove;
+    int bestScore;
     
     // cerr << "value is " << value << endl;
     
@@ -25,10 +27,13 @@ Move *getBestMove(Board *b, int mode, int value) {
     if (mode == TIME) {
         int i = 1;
         do {
-            currentBestMove = getBestMoveAtDepth(b, i, isMate);
-            cerr << "info depth " << i << " score cp 0 time 1 nodes 1 nps 1000 pv e2e4" << endl;
+            currentBestMove = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
+            Move *temp = legalMoves.get(0);
+            legalMoves.set(0, legalMoves.get(currentBestMove));
+            legalMoves.set(currentBestMove, temp);
+            cerr << "info depth " << i << " score cp " << bestScore << " time " << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << " nodes 1 nps 1000 pv e2e4" << endl;
             if (isMate)
-                return currentBestMove;
+                break;
             // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
             i++;
         }
@@ -38,21 +43,23 @@ Move *getBestMove(Board *b, int mode, int value) {
     
     if (mode == DEPTH) {
         for (int i = 1; i <= min(value, MAX_DEPTH); i++) {
-            currentBestMove = getBestMoveAtDepth(b, i, isMate);
-            cerr << "info depth " << i << " score cp 0 time 1 nodes 1 nps 1000 pv e2e4" << endl;
+            currentBestMove = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
+            Move *temp = legalMoves.get(0);
+            legalMoves.set(0, legalMoves.get(currentBestMove));
+            legalMoves.set(currentBestMove, temp);
+            cerr << "info depth " << i << " score cp " << bestScore << " time " << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << " nodes 1 nps 1000 pv e2e4" << endl;
             if (isMate)
-                return currentBestMove;
+                break;
             // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
         }
     }
     
-    return currentBestMove;
+    return legalMoves.get(0);
 }
 
-Move *getBestMoveAtDepth(Board *b, int depth, bool &isMate) {
+int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
+        int &bestScore, bool &isMate) {
     int color = b->getPlayerToMove();
-    MoveList legalMoves = b->getAllLegalMoves(color);
-    if (legalMoves.size() == 1) return legalMoves.get(0);
     
     unsigned int tempMove = 0;
     int score = -MATE_SCORE;
@@ -68,11 +75,13 @@ Move *getBestMoveAtDepth(Board *b, int depth, bool &isMate) {
         
         if (copy.isWinMate()) {
             isMate = true;
-            return legalMoves.get(i);
+            bestScore = MATE_SCORE;
+            return i;
         }
         else if (copy.isBinMate()) {
             isMate = true;
-            return legalMoves.get(i);
+            bestScore = MATE_SCORE;
+            return i;
         }
         else if (copy.isStalemate(color)) {
             score = 0;
@@ -80,8 +89,6 @@ Move *getBestMoveAtDepth(Board *b, int depth, bool &isMate) {
                 alpha = score;
                 tempMove = i;
             }
-            if (alpha >= beta)
-                break;
             continue;
         }
         
@@ -99,18 +106,18 @@ Move *getBestMoveAtDepth(Board *b, int depth, bool &isMate) {
             alpha = score;
             tempMove = i;
         }
-        if (alpha >= beta)
-            break;
     }
 
     // If a mate has been found, indicate so
     if(alpha > MATE_SCORE - 300)
         isMate = true;
-    // TODO leaks memory from movelist...
-    return legalMoves.get(tempMove);
+    bestScore = alpha;
+
+    return tempMove;
 }
 
 // The standard implementation of a null-window PVS search.
+// The implementation is fail-soft (score returned can be outside [alpha, beta])
 int PVS(Board b, int color, int depth, int alpha, int beta) {
     // When the standard search is done, enter quiescence search.
     // Static board evaluation is done there.
@@ -119,6 +126,7 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
     }
     
     int score = -MATE_SCORE;
+    int bestScore = -MATE_SCORE;
     
     /*Move hashed = tTable.get(b);
     if (hashed != null) {
@@ -158,15 +166,18 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
             score = -PVS(copy, -color, depth-1, -beta, -alpha);
         }
         
-        if (score > alpha) {
-            alpha = score;
-            //hashed = legalCaptures.get(i);
-        }
-        if (alpha >= beta) {
+        if (score >= beta) {
             // if (hashed != null)
             // tTable.put(b, hashed);
             legalCaptures.free();
-            return alpha;
+            return score;
+        }
+        if (score > bestScore) {
+            bestScore = score;
+            if (score > alpha) {
+                alpha = score;
+                //hashed = legalCaptures.get(i);
+            }
         }
     }
     
@@ -187,12 +198,15 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
             score = -PVS(copy, -color, depth-1, -beta, -alpha);
         }
         
-        if (score > alpha) {
-            alpha = score;
-            //hashed = legalMoves.get(i);
+        if (score >= beta)
+            return score;
+        if (score > bestScore) {
+            bestScore = score;
+            if (score > alpha) {
+                alpha = score;
+                //hashed = legalCaptures.get(i);
+            }
         }
-        if (alpha >= beta)
-            break;
     }
     
     // Special cases for a mate or stalemate
@@ -208,8 +222,11 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
             score = 0;
         }
         
-        if (score > alpha) {
-            alpha = score;
+        if (score > bestScore) {
+            bestScore = score;
+            if (score > alpha) {
+                alpha = score;
+            }
         }
     }
     
@@ -219,11 +236,14 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
     legalCaptures.free();
     legalMoves.free();
 
-    return alpha;
+    return bestScore;
 }
 
 /* Quiescence search, which completes all capture lines.
  * This diminishes the horizon effect and greatly improves playing strength.
+ * Delta pruning and static-exchange evaluation are used to reduce the time
+ * spent here.
+ * The search is done within a fail-hard framework (alpha <= score <= beta)
  */
 int quiescence(Board b, int color, int alpha, int beta) {
     // debug code
