@@ -5,7 +5,6 @@
 #include "common.h"
 
 Move *getBestMove(Board *b, int mode, int value);
-Move *getBestMoveAtDepth(Board *b, int depth);
 
 // Search modes:
 const int TIME = 1;

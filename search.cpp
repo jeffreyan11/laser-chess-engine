@@ -1,6 +1,7 @@
 #include <chrono>
 #include "search.h"
 
+Move *getBestMoveAtDepth(Board *b, int depth, bool &isMate);
 int PVS(Board b, int color, int depth, int alpha, int beta);
 int quiescence(Board b, int color, int alpha, int beta);
 
@@ -14,7 +15,9 @@ Move *getBestMove(Board *b, int mode, int value) {
     if (legalMoves.size() == 1) return legalMoves.get(0);
     
     auto start_time = high_resolution_clock::now();
-    Move *currentBestMove = getBestMoveAtDepth(b, 1);
+    bool isMate = false;
+    Move *currentBestMove = getBestMoveAtDepth(b, 1, isMate);
+    if(isMate) return currentBestMove;
     
     // cerr << "value is " << value << endl;
     // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
@@ -25,7 +28,10 @@ Move *getBestMove(Board *b, int mode, int value) {
         int i = 2;
         while ((duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() * ONE_SECOND
             < value * timeFactor) && (i <= MAX_DEPTH)) {
-            currentBestMove = getBestMoveAtDepth(b, i);
+            isMate = false;
+            currentBestMove = getBestMoveAtDepth(b, i, isMate);
+            if(isMate)
+                return currentBestMove;
             // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
             i++;
         }
@@ -33,7 +39,10 @@ Move *getBestMove(Board *b, int mode, int value) {
     
     if (mode == DEPTH) {
         for (int i = 2; i <= min(value, MAX_DEPTH); i++) {
-            currentBestMove = getBestMoveAtDepth(b, i);
+            isMate = false;
+            currentBestMove = getBestMoveAtDepth(b, i, isMate);
+            if(isMate)
+                return currentBestMove;
             // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
         }
     }
@@ -41,7 +50,7 @@ Move *getBestMove(Board *b, int mode, int value) {
     return currentBestMove;
 }
 
-Move *getBestMoveAtDepth(Board *b, int depth) {
+Move *getBestMoveAtDepth(Board *b, int depth, bool &isMate) {
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
     if (legalMoves.size() == 1) return legalMoves.get(0);
@@ -59,9 +68,11 @@ Move *getBestMoveAtDepth(Board *b, int depth) {
         // cerr << "considering move: " << legalMoves.get(i)->startsq << ", " << legalMoves.get(i)->endsq << endl;
         
         if (copy.isWinMate()) {
+            isMate = true;
             return legalMoves.get(i);
         }
         else if (copy.isBinMate()) {
+            isMate = true;
             return legalMoves.get(i);
         }
         else if (copy.isStalemate(color)) {
@@ -92,6 +103,10 @@ Move *getBestMoveAtDepth(Board *b, int depth) {
         if (alpha >= beta)
             break;
     }
+
+    // If a mate has been found, indicate so
+    if(alpha > MATE_SCORE - 300)
+        isMate = true;
     // TODO leaks memory from movelist...
     return legalMoves.get(tempMove);
 }
