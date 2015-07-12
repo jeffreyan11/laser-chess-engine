@@ -280,8 +280,8 @@ int main() {
                     if (color == 1) value = stoi(inputVector.at(2)) + 40 * stoi(inputVector.at(6));
                     else value = stoi(inputVector.at(4)) + 40 * stoi(inputVector.at(8));
                 }
-                // Primitive time management: use at most 1/40 of remaining time on this move
-                value /= 40;
+                // Primitive time management: use at most 1/40 of remaining time with a 200 ms buffer zone
+                (value - 200) /= 40;
             }
             
             Move *bestmove = getBestMove(&board, mode, value);

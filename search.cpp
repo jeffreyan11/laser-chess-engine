@@ -32,7 +32,7 @@ Move *getBestMove(Board *b, int mode, int value) {
     }
     
     if (mode == DEPTH) {
-        for (int i = 2; i <= max(value, MAX_DEPTH); i++) {
+        for (int i = 2; i <= min(value, MAX_DEPTH); i++) {
             currentBestMove = getBestMoveAtDepth(b, i);
             // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
         }
