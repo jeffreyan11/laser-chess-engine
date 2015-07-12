@@ -143,7 +143,7 @@ int main() {
             cerr << "ucinewgame works\n";
         }
         
-        if (input.substr (0, 8) == "position") {
+        if (input.substr(0, 8) == "position") {
             if (input.find("startpos") != string::npos)
                 pos = STARTPOS;
             
@@ -174,24 +174,25 @@ int main() {
                     
                     bool isCapture = ((board.getMailbox()[endsq] != -1)
                             || (piece == PAWNS && abs(abs(startsq - endsq) - 8) == 1));
-                    bool isCastle = ((piece == KINGS)
-                            && ((color == WHITE && endsq == 6 && board.getWhiteCanKCastle())
-                            || (color == WHITE && endsq == 2 && board.getWhiteCanQCastle())
-                            || (color == BLACK && endsq == 62 && board.getBlackCanKCastle())
-                            || (color == BLACK && endsq == 58 && board.getBlackCanQCastle())));
+                    bool isCastle = (piece == KINGS && abs(endsq - startsq) == 2);
                     
                     int promotion = -1;
                     
                     if (moveString.length() == 5) {
-                        string promotionString = moveString.substr(4, 1);
-                        if (promotionString == "n")
-                            promotion = 2;
-                        if (promotionString == "b")
-                            promotion = 5;
-                        if (promotionString == "r")
-                            promotion = 6;
-                        if (promotionString == "q")
-                            promotion = 9;
+                        switch (moveString.at(4)) {
+                            case 'n':
+                                promotion = 2;
+                                break;
+                            case 'b':
+                                promotion = 5;
+                                break;
+                            case 'r':
+                                promotion = 6;
+                                break;
+                            case 'q':
+                                promotion = 9;
+                                break;
+                        }
                     }
                     
                     Move m(piece, isCapture, startsq, endsq);
@@ -204,7 +205,7 @@ int main() {
             }
         }
         
-        if (input.substr (0, 2) == "go") {
+        if (input.substr(0, 2) == "go") {
             int mode = DEPTH, value = 1;
             
             if (input.find("movetime") != string::npos && inputVector.size() > 2) {
