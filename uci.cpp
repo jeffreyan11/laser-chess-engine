@@ -26,63 +26,60 @@ Board fenToBoard(string s) {
     vector<string> components = split(s, ' ');
     vector<string> rows = split(components.at(0), '/');
     int mailbox[64];
+    int sqCounter = 0;
     
-    int colCounter;
-    
-    // iterate through rows, converting into mailbox format
-    for (int elem = 0; elem < 8; elem++) {
+    // iterate through rows backwards (because mailbox goes a1 -> h8), converting into mailbox format
+    for (int elem = 7; elem >= 0; elem--) {
         string rowAtElem = rows.at(elem);
-        
-        colCounter = 0;
         
         for (unsigned col = 0; col < rowAtElem.length(); col++) {
             // determine what piece is on rowAtElem.at(col) and fill out if not blank
             switch (rowAtElem.at(col)) {
                 case 'P':
-                    mailbox[8 * (7 - elem) + colCounter] = WHITE + PAWNS;
+                    mailbox[sqCounter] = WHITE + PAWNS;
                     break;
                 case 'N':
-                    mailbox[8 * (7 - elem) + colCounter] = WHITE + KNIGHTS;
+                    mailbox[sqCounter] = WHITE + KNIGHTS;
                     break;
                 case 'B':
-                    mailbox[8 * (7 - elem) + colCounter] = WHITE + BISHOPS;
+                    mailbox[sqCounter] = WHITE + BISHOPS;
                     break;
                 case 'R':
-                    mailbox[8 * (7 - elem) + colCounter] = WHITE + ROOKS;
+                    mailbox[sqCounter] = WHITE + ROOKS;
                     break;
                 case 'Q':
-                    mailbox[8 * (7 - elem) + colCounter] = WHITE + QUEENS;
+                    mailbox[sqCounter] = WHITE + QUEENS;
                     break;
                 case 'K':
-                    mailbox[8 * (7 - elem) + colCounter] = WHITE + KINGS;
+                    mailbox[sqCounter] = WHITE + KINGS;
                     break;
                 case 'p':
-                    mailbox[8 * (7 - elem) + colCounter] = BLACK + PAWNS;
+                    mailbox[sqCounter] = BLACK + PAWNS;
                     break;
                 case 'n':
-                    mailbox[8 * (7 - elem) + colCounter] = BLACK + KNIGHTS;
+                    mailbox[sqCounter] = BLACK + KNIGHTS;
                     break;
                 case 'b':
-                    mailbox[8 * (7 - elem) + colCounter] = BLACK + BISHOPS;
+                    mailbox[sqCounter] = BLACK + BISHOPS;
                     break;
                 case 'r':
-                    mailbox[8 * (7 - elem) + colCounter] = BLACK + ROOKS;
+                    mailbox[sqCounter] = BLACK + ROOKS;
                     break;
                 case 'q':
-                    mailbox[8 * (7 - elem) + colCounter] = BLACK + QUEENS;
+                    mailbox[sqCounter] = BLACK + QUEENS;
                     break;
                 case 'k':
-                    mailbox[8 * (7 - elem) + colCounter] = BLACK + KINGS;
+                    mailbox[sqCounter] = BLACK + KINGS;
                     break;
             }
             
-            if (rowAtElem.at(col) >= 'B') colCounter++;
+            if (rowAtElem.at(col) >= 'B') sqCounter++;
             
             // fill out blank squares
             if ('1' <= rowAtElem.at(col) && rowAtElem.at(col) <= '8') {
                 for (int i = 0; i < rowAtElem.at(col) - '0'; i++) {
-                    mailbox[8 * (7 - elem) + colCounter] = -1; // -1 is blank square
-                    colCounter++;
+                    mailbox[sqCounter] = -1; // -1 is blank square
+                    sqCounter++;
                 }
             }
         }
@@ -101,10 +98,9 @@ Board fenToBoard(string s) {
         blackEPCaptureSq = MOVEMASK[8 * (4 - 1) + (components.at(3).at(0) - 'a')];
     int fiftyMoveCounter = stoi(components.at(4));
     int moveNumber = stoi(components.at(5));
-    Board board = Board(mailbox, whiteCanKCastle, blackCanKCastle, whiteCanQCastle,
+    return Board(mailbox, whiteCanKCastle, blackCanKCastle, whiteCanQCastle,
             blackCanQCastle, whiteEPCaptureSq, blackEPCaptureSq, fiftyMoveCounter,
             moveNumber, playerToMove);
-    return board;
 }
 
 int main() {
@@ -118,29 +114,29 @@ int main() {
     const string STARTPOS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     Board board = fenToBoard(STARTPOS);
     
-    cout << name << " " << version << " by " << author << '\n';
+    cout << name << " " << version << " by " << author << endl;
     
     while (input != "quit") {
         getline(cin, input);
         inputVector = split(input, ' ');
         
         if (input == "uci") {
-            cout << "id name " << name << " " << version << '\n';
-            cout << "id author " << author << '\n';
+            cout << "id name " << name << " " << version << endl;
+            cout << "id author " << author << endl;
             // make variables for default, min, and max values for hash in MB
-            cout << "option name Hash type spin default " << 16 << " min " << 1 << " max " << 1024 << '\n';
-            cout << "uciok\n";
+            cout << "option name Hash type spin default " << 16 << " min " << 1 << " max " << 1024 << endl;
+            cout << "uciok" << endl;
         }
         
         if (input == "isready") {
             // return "readyok" when all initialization of values is done
             // must return "readyok" even when searching
-            cout << "readyok\n";
+            cout << "readyok" << endl;
         }
         
         if (input == "ucinewgame") {
             // reset search
-            cerr << "ucinewgame works\n";
+            cerr << "ucinewgame works" << endl;
         }
         
         if (input.substr(0, 8) == "position") {
@@ -240,18 +236,18 @@ int main() {
             }
             
             Move *bestmove = getBestMove(&board, mode, value);
-            cout << "bestmove " << bestmove->toString() << '\n';
+            cout << "bestmove " << bestmove->toString() << endl;
         }
         
         if (input == "stop") {
             // must stop search
-            cerr << "stop works\n";
+            cerr << "stop works" << endl;
         }
         
         if (input == "mailbox") {
             for (unsigned i = 0; i < 64; i++) {
                 cerr << board.getMailbox()[i] << ' ';
-                if (i % 8 == 7) cerr << '\n';
+                if (i % 8 == 7) cerr << endl;
             }
         }
     }

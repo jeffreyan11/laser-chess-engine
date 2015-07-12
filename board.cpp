@@ -46,49 +46,11 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
         pieces[i] = 0;
     }
     for (int i = 0; i < 64; i++) {
-        switch (mailbox[i]) {
-            case -1: // empty
-                break;
-            case 2: // white pawn
-                pieces[2] |= MOVEMASK[i];
-                break;
-            case 0: // black pawn
-                pieces[0] |= MOVEMASK[i];
-                break;
-            case 3: // white knight
-                pieces[3] |= MOVEMASK[i];
-                break;
-            case 1: // black knight
-                pieces[1] |= MOVEMASK[i];
-                break;
-            case 6: // white bishop
-                pieces[6] |= MOVEMASK[i];
-                break;
-            case 4: // black bishop
-                pieces[4] |= MOVEMASK[i];
-                break;
-            case 7: // white rook
-                pieces[7] |= MOVEMASK[i];
-                break;
-            case 5: // black rook
-                pieces[5] |= MOVEMASK[i];
-                break;
-            case 10: // white queen
-                pieces[10] |= MOVEMASK[i];
-                break;
-            case 8: // black queen
-                pieces[8] |= MOVEMASK[i];
-                break;
-            case 11: // white king
-                pieces[11] |= MOVEMASK[i];
-                break;
-            case 9: // black king
-                pieces[9] |= MOVEMASK[i];
-                break;
-            default:
-                cerr << "Error in constructor." << endl;
-                break;
+        if (0 <= mailbox[i] && mailbox[i] <= 11) {
+            pieces[mailbox[i]] |= MOVEMASK[i];
         }
+        
+        if (mailbox[i] > 11) cerr << "Error in constructor." << endl;
     }
     whitePieces = pieces[2] | pieces[3] | pieces[6] | pieces[7] | pieces[10]
                 | pieces[11];
@@ -165,7 +127,7 @@ void Board::doMove(Move *m, int color) {
 */
 
     if (m->isCastle) {
-        if (color == WHITE && m->endsq == 6) { // w kside
+        if (m->endsq == 6) { // white kside
             pieces[11] &= ~MOVEMASK[4];
             pieces[11] |= MOVEMASK[6];
             pieces[7] &= ~MOVEMASK[7];
@@ -184,7 +146,7 @@ void Board::doMove(Move *m, int color) {
             whiteCanKCastle = false;
             whiteCanQCastle = false;
         }
-        else if (color == WHITE && m->endsq == 2) { // w qside
+        else if (m->endsq == 2) { // white qside
             pieces[11] &= ~MOVEMASK[4];
             pieces[11] |= MOVEMASK[2];
             pieces[7] &= ~MOVEMASK[0];
@@ -203,7 +165,7 @@ void Board::doMove(Move *m, int color) {
             whiteCanKCastle = false;
             whiteCanQCastle = false;
         }
-        else if (color == BLACK && m->endsq == 62) { // b kside
+        else if (m->endsq == 62) { // black kside
             pieces[9] &= ~MOVEMASK[60];
             pieces[9] |= MOVEMASK[62];
             pieces[5] &= ~MOVEMASK[63];
@@ -222,7 +184,7 @@ void Board::doMove(Move *m, int color) {
             blackCanKCastle = false;
             blackCanQCastle = false;
         }
-        else { // b qside
+        else { // black qside
             pieces[9] &= ~MOVEMASK[60];
             pieces[9] |= MOVEMASK[58];
             pieces[5] &= ~MOVEMASK[56];
