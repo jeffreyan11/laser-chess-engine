@@ -7,6 +7,12 @@ int quiescence(Board b, int color, int alpha, int beta);
 // Iterative deepening search
 Move *getBestMove(Board *b, int mode, int value) {
     using namespace std::chrono;
+    
+    // test if only 1 legal move
+    int color = b->getPlayerToMove();
+    MoveList legalMoves = b->getAllLegalMoves(color);
+    if (legalMoves.size() == 1) return legalMoves.get(0);
+    
     auto start_time = high_resolution_clock::now();
     Move *currentBestMove = getBestMoveAtDepth(b, 1);
     
@@ -17,16 +23,18 @@ Move *getBestMove(Board *b, int mode, int value) {
     
     if (mode == TIME) {
         int i = 2;
-        while (duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() * ONE_SECOND < value * timeFactor) {
-                currentBestMove = getBestMoveAtDepth(b, i);
-                i++;
-                // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
-            }
+        while ((duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() * ONE_SECOND
+            < value * timeFactor) || (i > MAX_DEPTH)) {
+            currentBestMove = getBestMoveAtDepth(b, i);
+            // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
+            i++;
+        }
     }
     
     if (mode == DEPTH) {
-        for (int i = 2; i <= value; i++) {
+        for (int i = 2; i <= max(value, MAX_DEPTH); i++) {
             currentBestMove = getBestMoveAtDepth(b, i);
+            // cerr << duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() << endl;
         }
     }
     
@@ -36,6 +44,7 @@ Move *getBestMove(Board *b, int mode, int value) {
 Move *getBestMoveAtDepth(Board *b, int depth) {
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
+    if (legalMoves.size() == 1) return legalMoves.get(0);
     
     unsigned int tempMove = 0;
     int score = -MATE_SCORE;
