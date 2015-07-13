@@ -189,13 +189,14 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     Move *toHash = NULL;
     
     // null move pruning
-    /*
-    if ((color == WHITE) ? !b.getWinCheck() : !b.getBinCheck()) {
+    // only if doing a null move does not leave player in check
+    if (b.doPLMove(NULL, color)) {
         int nullScore = -PVS(b, -color, depth-4, -beta, -alpha);
         if (nullScore >= beta)
             return beta;
     }
-    */
+    // Undo the null move
+    b.doMove(NULL, -color);
     
     // Basic move ordering: check captures first
     MoveList legalCaptures = b.getPLCaptures(color);

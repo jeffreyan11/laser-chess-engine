@@ -130,6 +130,12 @@ void Board::doMove(Move *m, int color) {
     history.push(record);
 */
 
+    // Handle null moves for null move pruning
+    if (m == NULL) {
+        playerToMove = -color;
+        return;
+    }
+
     // Record current board position for two-fold repetition
     twoFoldTable[0] = twoFoldTable[1];
     twoFoldTable[1] = twoFoldTable[2];
