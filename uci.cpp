@@ -135,8 +135,8 @@ int main() {
         }
         
         if (input == "ucinewgame") {
-            // reset search
-            cerr << "ucinewgame works" << endl;
+            board = fenToBoard(STARTPOS);
+            clearTranspositionTable();
         }
         
         if (input.substr(0, 8) == "position") {

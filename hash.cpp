@@ -123,3 +123,21 @@ void Hash::test() {
     cerr << "zeros: " << zeros << endl;
     cerr << "threes: " << threes << endl;
 }
+
+void Hash::clear() {
+    for(uint64_t i = 0; i < size; i++) {
+        HashLL* temp = table[i];
+        while(temp != NULL) {
+            HashLL *temp2 = temp->next;
+            delete temp;
+            temp = temp2;
+        }
+    }
+    delete[] table;
+    
+    table = new HashLL *[size];
+    for (uint64_t i = 0; i < size; i++) {
+        table[i] = 0;
+    }
+    keys = 0;
+}

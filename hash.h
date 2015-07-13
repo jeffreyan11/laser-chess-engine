@@ -69,6 +69,7 @@ public:
     void add(Board &b, int depth, Move *m);
     Move *get(Board &b);
     void clean(int moveNumber);
+    void clear();
 };
 
 #endif

@@ -412,5 +412,5 @@ int quiescence(Board &b, int color, int alpha, int beta) {
 }
 
 void clearTranspositionTable() {
-    transpositionTable = Hash(16);
+    transpositionTable.clear();
 }
