@@ -592,6 +592,8 @@ public:
     int getFiftyMoveCounter();
     int getMoveNumber();
     int getPlayerToMove();
+    uint64_t getWhitePieces();
+    uint64_t getBlackPieces();
     int *getMailbox();
 };
 

@@ -22,12 +22,14 @@ const int QUEENS = 9;
 const int KINGS = 10;
 
 // Material constants
-const int PAWN_VALUE = 100;
-const int KNIGHT_VALUE = 310;
-const int BISHOP_VALUE = 320;
-const int ROOK_VALUE = 500;
-const int QUEEN_VALUE = 900;
+const int PAWN_VALUE = 100, PAWN_VALUE_EG = 125;
+const int KNIGHT_VALUE = 340;
+const int BISHOP_VALUE = 350;
+const int ROOK_VALUE = 520;
+const int QUEEN_VALUE = 1000;
 const int MATE_SCORE = 99999;
+
+const int START_VALUE = 8 * PAWN_VALUE + 2 * KNIGHT_VALUE + 2 * BISHOP_VALUE + 2 * ROOK_VALUE + QUEEN_VALUE;
 
 // Other values
 const int MAX_DEPTH = 127;

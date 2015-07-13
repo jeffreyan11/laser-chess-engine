@@ -23,7 +23,7 @@ Move *getBestMove(Board *b, int mode, int value) {
     
     // cerr << "value is " << value << endl;
     
-    double timeFactor = 0.25;
+    double timeFactor = 0.4; // timeFactor = log b / (b - 1) where b is branch factor
     
     if (mode == TIME) {
         int i = 1;

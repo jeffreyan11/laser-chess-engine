@@ -1368,17 +1368,22 @@ int Board::evaluate() {
     int value = 0;
 
     // material
-    value += PAWN_VALUE * count(pieces[WHITE+PAWNS])
+    int whiteMaterial = PAWN_VALUE * count(pieces[WHITE+PAWNS])
             + KNIGHT_VALUE * count(pieces[WHITE+KNIGHTS])
             + BISHOP_VALUE * count(pieces[WHITE+BISHOPS])
             + ROOK_VALUE * count(pieces[WHITE+ROOKS])
             + QUEEN_VALUE * count(pieces[WHITE+QUEENS]);
-    value -= PAWN_VALUE * count(pieces[BLACK+PAWNS])
+    int blackMaterial = PAWN_VALUE * count(pieces[BLACK+PAWNS])
             + KNIGHT_VALUE * count(pieces[BLACK+KNIGHTS])
             + BISHOP_VALUE * count(pieces[BLACK+BISHOPS])
             + ROOK_VALUE * count(pieces[BLACK+ROOKS])
             + QUEEN_VALUE * count(pieces[BLACK+QUEENS]);
-
+    value = value + whiteMaterial - blackMaterial;
+    
+    // compute endgame factor which is between 0 and 1000, inclusive
+    int endgameFactor = (whiteMaterial + blackMaterial - START_VALUE / 2) * 1000 / START_VALUE;
+    endgameFactor = max(0, min(1000, endgameFactor));
+    
     // piece square tables
     for (int i = 0; i < 64; i++) {
         switch (mailbox[i]) {
@@ -1964,6 +1969,14 @@ int Board::getMoveNumber() {
 
 int Board::getPlayerToMove() {
     return playerToMove;
+}
+
+uint64_t Board::getWhitePieces() {
+    return whitePieces;
+}
+
+uint64_t Board::getBlackPieces() {
+    return blackPieces;
 }
 
 int *Board::getMailbox() {
