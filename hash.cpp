@@ -40,7 +40,7 @@ void Hash::add(Board &b, int depth, Move *m) {
     while(node->next != NULL) {
         if(node->cargo.whitePieces == b.getWhitePieces()
         && node->cargo.blackPieces == b.getBlackPieces()
-        && node->cargo.ptm == b.getPlayerToMove())
+        && node->cargo.ptm == (uint16_t) (b.getPlayerToMove()))
             return;
         node = node->next;
     }
@@ -62,7 +62,7 @@ Move *Hash::get(Board &b) {
     do {
         if(node->cargo.whitePieces == b.getWhitePieces()
         && node->cargo.blackPieces == b.getBlackPieces()
-        && node->cargo.ptm == b.getPlayerToMove())
+        && node->cargo.ptm == (uint16_t) (b.getPlayerToMove()))
             return node->cargo.m;
         node = node->next;
     }
@@ -88,6 +88,7 @@ void Hash::clean(int moveNumber) {
     }
 }
 
+// TODO Make this use Zobrist hashing...
 /**
  * @brief Hashes a board position using the FNV hashing algorithm.
 */
