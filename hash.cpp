@@ -1,0 +1,117 @@
+#include "hash.h"
+
+Hash::Hash(uint64_t MB) {
+    uint64_t arrSize = MB << 20;
+    arrSize /= 10 * sizeof(HashLL);
+    table = new HashLL* [arrSize];
+    size = arrSize;
+    for(uint64_t i = 0; i < size; i++) {
+        table[i] = NULL;
+    }
+    keys = 0;
+}
+
+Hash::~Hash() {
+    for(uint64_t i = 0; i < size; i++) {
+        HashLL* temp = table[i];
+        while(temp != NULL) {
+            HashLL *temp2 = temp->next;
+            delete temp;
+            temp = temp2;
+        }
+    }
+    delete[] table;
+}
+
+/**
+ * @brief Adds key (b,ptm) and item move into the hashtable.
+ * Assumes that this key has been checked with get and is not in the table.
+*/
+void Hash::add(Board &b, int depth, Move *m) {
+    keys++;
+    uint64_t h = hash(b);
+    uint64_t index = h % size;
+    HashLL *node = table[index];
+    if(node == NULL) {
+        table[index] = new HashLL(b, depth, m);
+        return;
+    }
+
+    // std::cerr << "hash collision" << std::endl;
+
+    while(node->next != NULL) {
+        node = node->next;
+    }
+    node->next = new HashLL(b, depth, m);
+}
+
+/**
+ * @brief Get the move, if any, associated with a board b and player to move.
+*/
+Move *Hash::get(Board &b) {
+    uint64_t h = hash(b);
+    uint64_t index = h % size;
+    HashLL *node = table[index];
+
+    if(node == NULL)
+        return NULL;
+
+    do {
+        if(node->cargo.whitePieces == b.getWhitePieces()
+        && node->cargo.blackPieces == b.getBlackPieces()
+        && node->cargo.ptm == b.getPlayerToMove())
+            return node->cargo.m;
+        node = node->next;
+    }
+    while(node != NULL);
+
+    return NULL;
+}
+
+void Hash::clean() {
+    for(uint64_t i = 0; i < size; i++) {
+        HashLL *node = table[i];
+        while(node != NULL) {
+            node->cargo.age++;
+            // TODO choose aging policy
+            if(node->cargo.age > 5) {
+                keys--;
+                table[i] = node->next;
+                delete node;
+                node = table[i];
+            }
+        }
+    }
+}
+
+/**
+ * @brief Hashes a board position using the FNV hashing algorithm.
+*/
+uint64_t Hash::hash(Board &b) {
+    uint64_t h = 14695981039346656037ULL;
+    h ^= b.getWhitePieces();
+    h *= 1099511628211;
+    h ^= b.getBlackPieces();
+    h *= 1099511628211;
+    return h;
+}
+
+void Hash::test() {
+    int zeros = 0;
+    int threes = 0;
+
+    for(uint64_t i = 0; i < size; i++) {
+        int linked = 0;
+        HashLL* node = table[i];
+        if(node == NULL)
+            zeros++;
+        else {
+            linked++;
+            while(node->next != NULL) node = node->next;
+            if(linked >= 3) threes++;
+        }
+    }
+
+    cerr << "zeros: " << zeros << endl;
+    cerr << "threes: " << threes << endl;
+}
