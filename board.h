@@ -401,18 +401,18 @@ const uint64_t fileArray[8][64] = {
 
 //------------------------------Piece tables--------------------------------
 const int pawnValues[64] = {
- 0,  0,  0,  0,  0,  0,  0,  0,
-30, 50, 50, 50, 50, 50, 50, 30,
-10, 10, 20, 40, 40, 20, 10, 10,
- 5,  5, 15, 30, 30, 10,  5,  5,
- 0, -5, 10, 20, 20,  0, -5,  0,
- 5, -5,  5, 10, 10,-10, -5,  5,
--5,  0,  0,  0,  0,  0,  0, -5,
- 0,  0,  0,  0,  0,  0,  0,  0
+  0,  0,  0,  0,  0,  0,  0,  0,
+ 15, 25, 35, 40, 40, 35, 25, 15,
+  5, 10, 15, 25, 25, 15, 10,  5,
+  0,  5, 15, 20, 20, 10,  5,  0,
+ -5, -5, 10, 15, 15,  0, -5, -5,
+ -5, -5,  5, 10, 10,-10, -5, -5,
+-10,  0,  0,  0,  0,  0,  0,-10,
+  0,  0,  0,  0,  0,  0,  0,  0
 };
 
 const int knightValues[64] = {
--30,-20,-10,-10,-10,-10,-20,-30,
+-30,-15,-10,-10,-10,-10,-15,-30,
 -20,-10,  0,  0,  0,  0,-10,-20,
 -10,  0,  5,  5,  5,  5,  0,-10,
 -10,  5,  5,  5,  5,  5,  5,-10,
@@ -441,7 +441,7 @@ const int rookValues[64] = {
 -10,  0,  0,  0,  0,  0,  0,-10,
 -10,  0,  0,  0,  0,  0,  0,-10,
 -10,  0,  0,  0,  0,  0,  0,-10,
--10, -5, -5,  0,  0, -5, -5,-10
+-10, -5,  0,  0,  0,  0, -5,-10
 };
 
 const int queenValues[64] = {
@@ -461,10 +461,22 @@ const int kingValues[64] = {
  -60, -60, -60, -60, -60, -60, -60, -60,
  -40, -40, -40, -40, -40, -40, -40, -40,
  -20, -20, -20, -20, -20, -20, -20, -20,
-   0,  10,   0, -10, -10,   0,  10,   0,
-  15,  20,   0,  -5,  -5,   0,  20,  15,
-  25,  40,  20,   0,   5,  10,  50,  25 
+   0,   5,  -5, -10, -10,  -5,   5,   0,
+  10,  15,   0,  -5,  -5,   0,  15,  10,
+  20,  35,  15,   0,   5,  10,  40,  20 
 };
+
+// Mobility tables
+
+const int knightMobility[9] = {
+-15,-10, -5,  0,  4,  7,  9, 12, 15};
+const int bishopMobility[14] = {
+-20,-15,-10, -5,  0,  4,  7,  9, 11, 13, 15, 17, 19, 20};
+const int rookMobility[15] = {
+-20,-15,-10, -5, -2,  0,  2,  4,  6,  8, 10, 11, 12, 13, 14};
+const int queenMobility[28] = {
+-20,-13, -8, -6, -5, -4, -3, -2, -1,  0,  1,  1,  2,  2,
+  3,  3,  4,  4,  5,  5,  6,  6,  7,  7,  8,  8,  9,  9};
 
 // The initial board setup in mailbox form.
 const int initMailbox[64] = {
@@ -551,8 +563,7 @@ public:
     // Evaluation
     int evaluate();
     bool pieceOn(int color, int x, int y);
-    int getWPseudoMobility();
-    int getBPseudoMobility();
+    int getPseudoMobility(int color);
     // Static exchange evaluation code: for checking material trades on a single square
     uint64_t getAttackMap(int color, int sq);
     uint64_t getLeastValuableAttacker(uint64_t attackers, int color, int &piece);

@@ -1463,9 +1463,8 @@ int Board::evaluate() {
     value += 30 * count(wpawnShield & pieces[WHITE+PAWNS] & 0xe7e7e7e7e7e7e7e7);
     value -= 30 * count(bpawnShield & pieces[BLACK+PAWNS] & 0xe7e7e7e7e7e7e7e7);
     
-    // mobility
-    //value += 10 * getWPseudoMobility();
-    //value -= 10 * getBPseudoMobility();
+    value += getPseudoMobility(WHITE);
+    value -= getPseudoMobility(BLACK);
     return value;
 }
 
@@ -1476,134 +1475,50 @@ bool Board::pieceOn(int color, int x, int y) {
         return (blackPieces & MOVEMASK[x + 8*y]) != 0;
 }
 
-// TODO: THESE DON'T WORK WITH THE NEW MOVE GENERATORS YET
-// Faster estimates of mobility (number of legal moves)
-int Board::getWPseudoMobility() {
+// Faster estimates of piece mobility (number of legal moves)
+int Board::getPseudoMobility(int color) {
     int result = 0;
-    uint64_t pawns = pieces[WHITE+PAWNS];
-    uint64_t knights = pieces[WHITE+KNIGHTS];
-    uint64_t bishops = pieces[WHITE+BISHOPS];
-    uint64_t rooks = pieces[WHITE+ROOKS];
-    uint64_t queens = pieces[WHITE+QUEENS];
-
-    while (pawns != 0) {
-        uint64_t single = pawns & -pawns;
-        pawns &= pawns-1;
-
-        uint64_t legal = getWPawnCaptures(single) & blackPieces;
-        legal |= getWPawnMoves(single);
-
-        result += count(legal);
-    }
+    uint64_t knights = pieces[color+KNIGHTS];
+    uint64_t bishops = pieces[color+BISHOPS];
+    uint64_t rooks = pieces[color+ROOKS];
+    uint64_t queens = pieces[color+QUEENS];
+    uint64_t pieces = (color == WHITE) ? whitePieces : blackPieces;
 
     while (knights != 0) {
-        uint64_t single = knights & -knights;
+        int single = bitScanForward(knights);
         knights &= knights-1;
 
-        uint64_t legal = getKnightSquares(single) & (blackPieces | ~(whitePieces | blackPieces));
+        uint64_t legal = getKnightSquares(single) & ~pieces;
 
-        result += count(legal);
+        result += knightMobility[count(legal)];
     }
 
     while (bishops != 0) {
-        uint64_t single = bishops & -bishops;
+        int single = bitScanForward(bishops);
         bishops &= bishops-1;
 
-        uint64_t legal = getBishopSquares(single) & (blackPieces | ~(whitePieces | blackPieces));
+        uint64_t legal = getBishopSquares(single) & ~pieces;
 
-        result += count(legal);
+        result += bishopMobility[count(legal)];
     }
 
     while (rooks != 0) {
-        uint64_t single = rooks & -rooks;
+        int single = bitScanForward(rooks);
         rooks &= rooks-1;
 
-        uint64_t legal = getRookSquares(single) & (blackPieces | ~(whitePieces | blackPieces));
+        uint64_t legal = getRookSquares(single) & ~pieces;
 
-        result += count(legal);
+        result += rookMobility[count(legal)];
     }
 
     while (queens != 0) {
-        uint64_t single = queens & -queens;
+        int single = bitScanForward(queens);
         queens &= queens-1;
 
-        uint64_t legal = getQueenSquares(single) & (blackPieces | ~(whitePieces | blackPieces));
+        uint64_t legal = getQueenSquares(single) & ~pieces;
 
-        result += count(legal);
+        result += queenMobility[count(legal)];
     }
-
-    uint64_t legal = getKingAttacks(WHITE) & (blackPieces | ~(whitePieces | blackPieces));
-    result += count(legal);
-
-    if (whiteCanKCastle)
-        result++;
-    if (whiteCanQCastle)
-        result++;
-
-    return result;
-}
-
-int Board::getBPseudoMobility() {
-    int result = 0;
-    uint64_t pawns = pieces[BLACK+PAWNS];
-    uint64_t knights = pieces[BLACK+KNIGHTS];
-    uint64_t bishops = pieces[BLACK+BISHOPS];
-    uint64_t rooks = pieces[BLACK+ROOKS];
-    uint64_t queens = pieces[BLACK+QUEENS];
-
-    while (pawns != 0) {
-        uint64_t single = pawns & -pawns;
-        pawns &= pawns-1;
-
-        uint64_t legal = getBPawnCaptures(single) & whitePieces;
-        legal |= getBPawnMoves(single);
-
-        result += count(legal);
-    }
-
-    while (knights != 0) {
-        uint64_t single = knights & -knights;
-        knights &= knights-1;
-
-        uint64_t legal = getKnightSquares(single) & (whitePieces | ~(whitePieces | blackPieces));
-
-        result += count(legal);
-    }
-
-    while (bishops != 0) {
-        uint64_t single = bishops & -bishops;
-        bishops &= bishops-1;
-
-        uint64_t legal = getBishopSquares(single) & (whitePieces | ~(whitePieces | blackPieces));
-
-        result += count(legal);
-    }
-
-    while (rooks != 0) {
-        uint64_t single = rooks & -rooks;
-        rooks &= rooks-1;
-
-        uint64_t legal = getRookSquares(single) & (whitePieces | ~(whitePieces | blackPieces));
-
-        result += count(legal);
-    }
-
-    while (queens != 0) {
-        uint64_t single = queens & -queens;
-        queens &= queens-1;
-
-        uint64_t legal = getQueenSquares(single) & (whitePieces | ~(whitePieces | blackPieces));
-
-        result += count(legal);
-    }
-
-    uint64_t legal = getKingAttacks(BLACK) & (whitePieces | ~(whitePieces | blackPieces));
-    result += count(legal);
-
-    if (blackCanKCastle)
-        result++;
-    if (blackCanQCastle)
-        result++;
 
     return result;
 }
