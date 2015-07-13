@@ -190,7 +190,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     
     // null move pruning
     // only if doing a null move does not leave player in check
-    if (b.doPLMove(NULL, color)) {
+    if (depth >= 2 && b.doPLMove(NULL, color)) {
         int nullScore = -PVS(b, -color, depth-4, -beta, -alpha);
         if (nullScore >= beta)
             return beta;
@@ -409,4 +409,8 @@ int quiescence(Board &b, int color, int alpha, int beta) {
     legalCaptures.free();
 
     return alpha;
+}
+
+void clearTranspositionTable() {
+    transpositionTable = Hash(16);
 }

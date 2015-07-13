@@ -6,6 +6,7 @@
 #include "hash.h"
 
 Move *getBestMove(Board *b, int mode, int value);
+void clearTranspositionTable();
 
 // Search modes:
 const int TIME = 1;
