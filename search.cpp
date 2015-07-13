@@ -6,8 +6,8 @@ Hash transpositionTable(16);
 int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int &bestScore, bool &isMate);
 int sortSearch(Board *b, MoveList &pseudoLegalMoves, int depth);
-int PVS(Board b, int color, int depth, int alpha, int beta);
-int quiescence(Board b, int color, int alpha, int beta);
+int PVS(Board &b, int color, int depth, int alpha, int beta);
+int quiescence(Board &b, int color, int alpha, int beta);
 
 // Iterative deepening search
 Move *getBestMove(Board *b, int mode, int value) {
@@ -175,7 +175,7 @@ int sortSearch(Board *b, MoveList &legalMoves, int depth) {
 
 // The standard implementation of a null-window PVS search.
 // The implementation is fail-soft (score returned can be outside [alpha, beta])
-int PVS(Board b, int color, int depth, int alpha, int beta) {
+int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // When the standard search is done, enter quiescence search.
     // Static board evaluation is done there.
     if (depth <= 0) {
@@ -363,7 +363,7 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
  * spent here.
  * The search is done within a fail-hard framework (alpha <= score <= beta)
  */
-int quiescence(Board b, int color, int alpha, int beta) {
+int quiescence(Board &b, int color, int alpha, int beta) {
     // debug code
     // if (b.getMoveNumber() > 25) cerr << b.getMoveNumber() << endl;
     

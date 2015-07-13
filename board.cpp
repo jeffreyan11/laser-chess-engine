@@ -1457,10 +1457,11 @@ int Board::evaluate() {
     value -= 25 * count(wksq & bAtt);
     value += 25 * count(bksq & wAtt);
     
-    uint64_t wpawnShield = (wksq & pieces[WHITE+KINGS]) << 8;
-    uint64_t bpawnShield = (bksq & pieces[BLACK+KINGS]) >> 8;
-    value += 30 * count(wpawnShield & pieces[WHITE+PAWNS]);
-    value -= 30 * count(bpawnShield & pieces[BLACK+PAWNS]);
+    uint64_t wpawnShield = (wksq | pieces[WHITE+KINGS]) << 8;
+    uint64_t bpawnShield = (bksq | pieces[BLACK+KINGS]) >> 8;
+    // Have only pawns on ABC, FGH files count towards the pawn shield
+    value += 30 * count(wpawnShield & pieces[WHITE+PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    value -= 30 * count(bpawnShield & pieces[BLACK+PAWNS] & 0xe7e7e7e7e7e7e7e7);
     
     // mobility
     //value += 10 * getWPseudoMobility();
