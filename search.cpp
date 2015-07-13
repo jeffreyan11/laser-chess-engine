@@ -59,13 +59,15 @@ Move *getBestMove(Board *b, int mode, int value) {
                     high_resolution_clock::now() - start_time).count();
             cerr << "info depth " << i << " score cp " << bestScore << " time "
                  << (int)(timeSoFar * ONE_SECOND) << " nodes 1 nps 1000 pv e2e4" << endl;
+            // transpositionTable.test();
 
             if (isMate)
                 break;
         }
     }
     
-    transpositionTable.clean();
+    transpositionTable.clean(b->getMoveNumber());
+    cerr << "keys: " << transpositionTable.keys << endl;
     return legalMoves.get(0);
 }
 

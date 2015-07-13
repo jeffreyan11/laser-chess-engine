@@ -28,18 +28,23 @@ Hash::~Hash() {
  * Assumes that this key has been checked with get and is not in the table.
 */
 void Hash::add(Board &b, int depth, Move *m) {
-    keys++;
     uint64_t h = hash(b);
     uint64_t index = h % size;
     HashLL *node = table[index];
     if(node == NULL) {
+        keys++;
         table[index] = new HashLL(b, depth, m);
         return;
     }
 
     while(node->next != NULL) {
+        if(node->cargo.whitePieces == b.getWhitePieces()
+        && node->cargo.blackPieces == b.getBlackPieces()
+        && node->cargo.ptm == b.getPlayerToMove())
+            return;
         node = node->next;
     }
+    keys++;
     node->next = new HashLL(b, depth, m);
 }
 
@@ -66,18 +71,19 @@ Move *Hash::get(Board &b) {
     return NULL;
 }
 
-void Hash::clean() {
+void Hash::clean(int moveNumber) {
     for(uint64_t i = 0; i < size; i++) {
         HashLL *node = table[i];
         while(node != NULL) {
-            node->cargo.age++;
             // TODO choose aging policy
-            if(node->cargo.age > 3) {
+            if(moveNumber > node->cargo.age) {
                 keys--;
                 table[i] = node->next;
                 delete node;
                 node = table[i];
             }
+            else
+                node = node->next;
         }
     }
 }
@@ -105,7 +111,10 @@ void Hash::test() {
             zeros++;
         else {
             linked++;
-            while(node->next != NULL) node = node->next;
+            while(node->next != NULL) {
+                node = node->next;
+                linked++;
+            }
             if(linked >= 3) threes++;
         }
     }

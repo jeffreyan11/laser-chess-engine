@@ -41,6 +41,7 @@ public:
         copy->promotion = m->promotion;
         copy->isCastle = m->isCastle;
         cargo.m = copy;
+        cargo.age = b.getMoveNumber();
     }
 
     ~HashLL() {}
@@ -63,7 +64,7 @@ public:
 
     void add(Board &b, int depth, Move *m);
     Move *get(Board &b);
-    void clean();
+    void clean(int moveNumber);
 };
 
 #endif
