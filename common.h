@@ -29,6 +29,8 @@ const int ROOK_VALUE = 520;
 const int QUEEN_VALUE = 1000;
 const int MATE_SCORE = 99999;
 
+const int BISHOP_PAIR_VALUE = 40;
+
 const int START_VALUE = 8 * PAWN_VALUE + 2 * KNIGHT_VALUE + 2 * BISHOP_VALUE + 2 * ROOK_VALUE + QUEEN_VALUE;
 const int EG_FACTOR_RES = 1000;
 

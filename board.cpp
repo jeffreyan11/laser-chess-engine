@@ -1411,6 +1411,12 @@ int Board::evaluate() {
     value += whiteMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[WHITE+PAWNS]) * egFactor / EG_FACTOR_RES;
     value -= blackMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[BLACK+PAWNS]) * egFactor / EG_FACTOR_RES;
     
+    // bishop pair bonus
+    if ((pieces[WHITE+BISHOPS] & LIGHT) && (pieces[WHITE+BISHOPS] & DARK))
+        value += BISHOP_PAIR_VALUE;
+    if ((pieces[BLACK+BISHOPS] & LIGHT) && (pieces[BLACK+BISHOPS] & DARK))
+        value -= BISHOP_PAIR_VALUE;
+    
     // piece square tables
     for (int i = 0; i < 64; i++) {
         switch (mailbox[i]) {
