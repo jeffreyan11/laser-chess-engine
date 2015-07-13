@@ -3,6 +3,7 @@
 
 #include "board.h"
 #include "common.h"
+#include "hash.h"
 
 Move *getBestMove(Board *b, int mode, int value);
 

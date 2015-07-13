@@ -2,7 +2,7 @@
 
 Hash::Hash(uint64_t MB) {
     uint64_t arrSize = MB << 20;
-    arrSize /= 10 * sizeof(HashLL);
+    arrSize /= 4 * sizeof(HashLL);
     table = new HashLL* [arrSize];
     size = arrSize;
     for(uint64_t i = 0; i < size; i++) {
@@ -36,8 +36,6 @@ void Hash::add(Board &b, int depth, Move *m) {
         table[index] = new HashLL(b, depth, m);
         return;
     }
-
-    // std::cerr << "hash collision" << std::endl;
 
     while(node->next != NULL) {
         node = node->next;
@@ -74,7 +72,7 @@ void Hash::clean() {
         while(node != NULL) {
             node->cargo.age++;
             // TODO choose aging policy
-            if(node->cargo.age > 5) {
+            if(node->cargo.age > 3) {
                 keys--;
                 table[i] = node->next;
                 delete node;
