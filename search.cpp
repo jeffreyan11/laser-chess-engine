@@ -207,9 +207,10 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
             if(test->piece == hashed->piece && test->startsq == hashed->startsq
             && test->endsq == hashed->endsq && test->isCapture == hashed->isCapture) {
                 // Search this move first
-                legalCaptures.remove(i);
                 Board copy = b.staticCopy();
-                copy.doMove(hashed, color);
+                if (!copy.doPLMove(hashed, color))
+                    break;
+                legalCaptures.remove(i);
                 score = -PVS(copy, -color, depth-1, -beta, -alpha);
                 if (score >= beta)
                     return score;
@@ -270,9 +271,10 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
             Move *test = legalMoves.get(i);
             if(test->piece == hashed->piece && test->startsq == hashed->startsq
             && test->endsq == hashed->endsq && test->isCapture == hashed->isCapture) {
-                legalMoves.remove(i);
                 Board copy = b.staticCopy();
-                copy.doMove(hashed, color);
+                if (!copy.doPLMove(hashed, color))
+                    break;
+                legalMoves.remove(i);
                 score = -PVS(copy, -color, depth-1, -beta, -alpha);
                 if (score >= beta)
                     return score;
@@ -319,7 +321,7 @@ int PVS(Board b, int color, int depth, int alpha, int beta) {
             bestScore = score;
             if (score > alpha) {
                 alpha = score;
-                toHash = legalCaptures.get(i);
+                toHash = legalMoves.get(i);
             }
         }
     }
