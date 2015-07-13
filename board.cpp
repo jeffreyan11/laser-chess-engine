@@ -89,6 +89,8 @@ Board Board::staticCopy() {
     result.fiftyMoveCounter = fiftyMoveCounter;
     result.moveNumber = moveNumber;
     result.playerToMove = playerToMove;
+    for (int i = 0; i < 4; i++)
+        result.twoFoldTable[i] = twoFoldTable[i];
     return result;
 }
 
@@ -111,6 +113,8 @@ Board *Board::dynamicCopy() {
     result->fiftyMoveCounter = fiftyMoveCounter;
     result->moveNumber = moveNumber;
     result->playerToMove = playerToMove;
+    for (int i = 0; i < 4; i++)
+        result->twoFoldTable[i] = twoFoldTable[i];
     return result;
 }
 
@@ -125,6 +129,14 @@ void Board::doMove(Move *m, int color) {
     record->blackCanQCastle = blackCanQCastle;
     history.push(record);
 */
+
+    // Record current board position for two-fold repetition
+    twoFoldTable[0] = twoFoldTable[1];
+    twoFoldTable[1] = twoFoldTable[2];
+    twoFoldTable[2] = twoFoldTable[3];
+    twoFoldTable[3].playerToMove = playerToMove;
+    for (int i = 0; i < 12; i++)
+        twoFoldTable[3].pieces[i] = pieces[i];
 
     if (m->isCastle) {
         if (m->endsq == 6) { // white kside
@@ -1337,7 +1349,19 @@ bool Board::isBinMate() {
     return isInMate;
 }
 
+// TODO Includes 3-fold repetition draw for now.
 bool Board::isStalemate(int sideToMove) {
+    bool isTwoFold = true;
+    if (twoFoldTable[0].playerToMove != playerToMove)
+        isTwoFold = false;
+    for (int i = 0; i < 12; i++) {
+        if (twoFoldTable[0].pieces[i] != pieces[i]) {
+            isTwoFold = false;
+            break;
+        }
+    }
+    if (isTwoFold) return true;
+
     MoveList temp = (sideToMove == WHITE) ? getLegalWMoves() : getLegalBMoves();
     bool isInStalemate = false;
 
@@ -1346,10 +1370,11 @@ bool Board::isStalemate(int sideToMove) {
         isInStalemate = true;
     
     temp.free();
+
     return isInStalemate;
 }
 
-// TODO evaluation function
+// TODO Tune evaluation function
 /*
  * Evaluates the current board position in hundredths of pawns. White is
  * positive and black is negative in traditional negamax format.
