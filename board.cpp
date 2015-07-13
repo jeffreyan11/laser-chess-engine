@@ -1378,11 +1378,13 @@ int Board::evaluate() {
             + BISHOP_VALUE * count(pieces[BLACK+BISHOPS])
             + ROOK_VALUE * count(pieces[BLACK+ROOKS])
             + QUEEN_VALUE * count(pieces[BLACK+QUEENS]);
-    value = value + whiteMaterial - blackMaterial;
     
-    // compute endgame factor which is between 0 and 1000, inclusive
-    int endgameFactor = (whiteMaterial + blackMaterial - START_VALUE / 2) * 1000 / START_VALUE;
-    endgameFactor = max(0, min(1000, endgameFactor));
+    // compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
+    int egFactor = (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
+    egFactor = max(0, min(EG_FACTOR_RES, egFactor));
+    
+    value += whiteMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[WHITE+PAWNS]) * egFactor / EG_FACTOR_RES;
+    value -= blackMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[BLACK+PAWNS]) * egFactor / EG_FACTOR_RES;
     
     // piece square tables
     for (int i = 0; i < 64; i++) {
@@ -1420,8 +1422,10 @@ int Board::evaluate() {
                 value -= queenValues[i];
                 break;
             case 11: // white king
+                value += kingValues[(7 - i/8)*8 + i%8] * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
                 break;
             case 9: // black king
+                value -= kingValues[i] * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
                 break;
             default:
                 cout << "Error in piece table switch statement." << endl;
@@ -1430,13 +1434,15 @@ int Board::evaluate() {
     }
 
     // king safety
+    /*
     int wfile = bitScanForward(pieces[WHITE+KINGS]) % 8;
     int bfile = bitScanForward(pieces[BLACK+KINGS]) % 8;
-    if (wfile == 4 || wfile == 5)
-        value -= 20;
-    if (bfile == 4 || bfile == 5)
-        value += 20;
-
+    if (wfile == 3 || wfile == 4)
+        value -= 50 * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
+    if (bfile == 3 || bfile == 4)
+        value += 50 * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
+    */
+    
     uint64_t wksq = getKingAttacks(WHITE);
     uint64_t bksq = getKingAttacks(BLACK);
     uint64_t bAtt = 0;
@@ -1447,15 +1453,15 @@ int Board::evaluate() {
     wAtt = getWPawnCaptures(pieces[WHITE+PAWNS]) | getKnightMoves(pieces[WHITE+KNIGHTS]) |
     getBishopMoves(pieces[WHITE+BISHOPS]) | getRookMoves(pieces[WHITE+ROOKS]) |
     getQueenMoves(pieces[WHITE+QUEENS]) | getKingAttacks(WHITE);
-
+    
     value -= 25 * count(wksq & bAtt);
     value += 25 * count(bksq & wAtt);
-
+    
     uint64_t wpawnShield = (wksq & pieces[WHITE+KINGS]) << 8;
     uint64_t bpawnShield = (bksq & pieces[BLACK+KINGS]) >> 8;
     value += 30 * count(wpawnShield & pieces[WHITE+PAWNS]);
     value -= 30 * count(bpawnShield & pieces[BLACK+PAWNS]);
-
+    
     // mobility
     //value += 10 * getWPseudoMobility();
     //value -= 10 * getBPseudoMobility();
