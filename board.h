@@ -490,17 +490,6 @@ const int initMailbox[64] = {
     5, 1, 4, 8, 9, 4, 1, 5
 };
 
-struct TwoFoldInfo {
-    uint64_t pieces[12];
-    int playerToMove;
-
-    TwoFoldInfo () {
-        for (int i = 0; i < 12; i++)
-            pieces[i] = 0;
-        playerToMove = 0;
-    }
-};
-
 /**
  * @brief A chess board and its associated functionality, including get legal
  *        moves and evaluation.
@@ -531,7 +520,10 @@ private:
     int playerToMove;
 
     // Keep track of the last 4 half-plys for two-fold repetition
-    TwoFoldInfo twoFoldTable[4];
+    // Lowest bits are most recent
+    uint32_t twoFoldStartSqs;
+    uint32_t twoFoldEndSqs;
+    uint32_t twoFoldPTM;
 
     // Stack<BMove> history = new Stack<BMove>();
 

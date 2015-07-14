@@ -89,8 +89,9 @@ Board Board::staticCopy() {
     result.fiftyMoveCounter = fiftyMoveCounter;
     result.moveNumber = moveNumber;
     result.playerToMove = playerToMove;
-    for (int i = 0; i < 4; i++)
-        result.twoFoldTable[i] = twoFoldTable[i];
+    result.twoFoldStartSqs = twoFoldStartSqs;
+    result.twoFoldEndSqs = twoFoldEndSqs;
+    result.twoFoldPTM = twoFoldPTM;
     return result;
 }
 
@@ -113,8 +114,9 @@ Board *Board::dynamicCopy() {
     result->fiftyMoveCounter = fiftyMoveCounter;
     result->moveNumber = moveNumber;
     result->playerToMove = playerToMove;
-    for (int i = 0; i < 4; i++)
-        result->twoFoldTable[i] = twoFoldTable[i];
+    result->twoFoldStartSqs = twoFoldStartSqs;
+    result->twoFoldEndSqs = twoFoldEndSqs;
+    result->twoFoldPTM = twoFoldPTM;
     return result;
 }
 
@@ -137,12 +139,19 @@ void Board::doMove(Move *m, int color) {
     }
 
     // Record current board position for two-fold repetition
-    twoFoldTable[0] = twoFoldTable[1];
-    twoFoldTable[1] = twoFoldTable[2];
-    twoFoldTable[2] = twoFoldTable[3];
-    twoFoldTable[3].playerToMove = playerToMove;
-    for (int i = 0; i < 12; i++)
-        twoFoldTable[3].pieces[i] = pieces[i];
+    if (m->isCapture || m->piece == PAWNS || m->isCastle) {
+        twoFoldStartSqs = 0x80008000;
+        twoFoldEndSqs = 0x80008000;
+        twoFoldPTM = 0;
+    }
+    else {
+        twoFoldStartSqs <<= 8;
+        twoFoldEndSqs <<= 8;
+        twoFoldPTM <<= 8;
+        twoFoldStartSqs |= (uint8_t) (m->startsq);
+        twoFoldEndSqs |= (uint8_t) (m->endsq);
+        twoFoldPTM |= (uint8_t) playerToMove;
+    }
 
     if (m->isCastle) {
         if (m->endsq == 6) { // white kside
@@ -1357,16 +1366,21 @@ bool Board::isBinMate() {
 
 // TODO Includes 3-fold repetition draw for now.
 bool Board::isStalemate(int sideToMove) {
-    bool isTwoFold = true;
-    if (twoFoldTable[0].playerToMove != playerToMove)
-        isTwoFold = false;
-    for (int i = 0; i < 12; i++) {
-        if (twoFoldTable[0].pieces[i] != pieces[i]) {
+    if(!(twoFoldStartSqs & (1 << 31))) {
+        bool isTwoFold = true;
+        if (((twoFoldPTM >> 8) & 0xFF) != (uint8_t) playerToMove
+         || ((twoFoldPTM >> 24) & 0xFF) != (uint8_t) playerToMove)
             isTwoFold = false;
-            break;
+
+        if ( (((twoFoldStartSqs >> 24) & 0xFF) != ((twoFoldEndSqs >> 8) & 0xFF))
+          || (((twoFoldStartSqs >> 8) & 0xFF) != ((twoFoldEndSqs >> 24) & 0xFF))
+          || (((twoFoldStartSqs >> 16) & 0xFF) != (twoFoldEndSqs & 0xFF))
+          || ((twoFoldStartSqs & 0xFF) != ((twoFoldEndSqs >> 16) & 0xFF))) {
+            isTwoFold = false;
         }
+
+        if (isTwoFold) return true;
     }
-    if (isTwoFold) return true;
 
     MoveList temp = (sideToMove == WHITE) ? getLegalWMoves() : getLegalBMoves();
     bool isInStalemate = false;
