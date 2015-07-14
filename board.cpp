@@ -1809,16 +1809,57 @@ int *Board::getMailbox() {
     return result;
 }
 
-/*
-public String toString() {
-String result = "";
-for (int i = 0; i < 64; i++) {
-if (mailbox[i] != -1)
-result += (100*i + mailbox[i]) + ",";
+string Board::toString() {
+    string result = "";
+    for (int i = 56; i >= 0; i++) {
+        switch (mailbox[i]) {
+            case -1: // empty
+                result += "-";
+                break;
+            case 2: // white pawn
+                result += "P";
+                break;
+            case 0: // black pawn
+                result += "p";
+                break;
+            case 3: // white knight
+                result += "N";
+                break;
+            case 1: // black knight
+                result += "n";
+                break;
+            case 6: // white bishop
+                result += "B";
+                break;
+            case 4: // black bishop
+                result += "b";
+                break;
+            case 7: // white rook
+                result += "R";
+                break;
+            case 5: // black rook
+                result += "r";
+                break;
+            case 10: // white queen
+                result += "Q";
+                break;
+            case 8: // black queen
+                result += "q";
+                break;
+            case 11: // white king
+                result += "K";
+                break;
+            case 9: // black king
+                result += "k";
+                break;
+        }
+        if (i % 8 == 7) {
+            result += "\n";
+            i -= 16;
+        }
+    }
+    return result;
 }
-return result;
-}
-*/
 
 // TODO not updated or tested
 /*

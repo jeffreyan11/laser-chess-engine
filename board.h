@@ -619,6 +619,8 @@ public:
     uint64_t getWhitePieces();
     uint64_t getBlackPieces();
     int *getMailbox();
+
+    string toString();
 };
 
 #endif
