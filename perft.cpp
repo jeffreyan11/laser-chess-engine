@@ -2,7 +2,7 @@
 #include "board.h"
 #include "common.h"
 
-uint64_t perft(Board b, int color, int depth);
+uint64_t perft(Board &b, int color, int depth);
 
 int captures = 0;
 
@@ -27,8 +27,9 @@ int main(int argc, char **argv) {
  * Performs a PERFT.
  * 7/8/15: PERFT 5, 1.46 s (i5-2450m)
  * 7/11/15: PERFT 5, 1.22 s (i5-2450m)
+ * 7/13/15: PERFT 5, 1.27/1.08 s (i5-2450m) before/after pass Board by reference
  */
-uint64_t perft(Board b, int color, int depth) {
+uint64_t perft(Board &b, int color, int depth) {
 	if(depth == 0)
 		return 1;
 	
