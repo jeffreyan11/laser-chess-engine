@@ -10,7 +10,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta);
 int quiescence(Board &b, int color, int alpha, int beta);
 
 // Iterative deepening search
-Move *getBestMove(Board *b, int mode, int value) {
+Move getBestMove(Board *b, int mode, int value) {
     using namespace std::chrono;
     
     // test if only 1 legal move
@@ -31,7 +31,7 @@ Move *getBestMove(Board *b, int mode, int value) {
         int i = 1;
         do {
             currentBestMove = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
-            Move *temp = legalMoves.get(0);
+            Move temp = legalMoves.get(0);
             legalMoves.set(0, legalMoves.get(currentBestMove));
             legalMoves.set(currentBestMove, temp);
 
@@ -51,7 +51,7 @@ Move *getBestMove(Board *b, int mode, int value) {
     if (mode == DEPTH) {
         for (int i = 1; i <= min(value, MAX_DEPTH); i++) {
             currentBestMove = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
-            Move *temp = legalMoves.get(0);
+            Move temp = legalMoves.get(0);
             legalMoves.set(0, legalMoves.get(currentBestMove));
             legalMoves.set(currentBestMove, temp);
 
@@ -186,7 +186,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     
     int score = -MATE_SCORE;
     int bestScore = -MATE_SCORE;
-    Move *toHash = NULL;
+    Move toHash = NULL_MOVE;
     
     // null move pruning
     // only if doing a null move does not leave player in check
@@ -196,16 +196,16 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             return beta;
     }
     // Undo the null move
-    b.doMove(NULL, -color);
+    b.doMove(NULL_MOVE, -color);
     
     // Basic move ordering: check captures first
     MoveList legalCaptures = b.getPLCaptures(color);
 
     // See if a hash move exists
-    Move *hashed = transpositionTable.get(b);
-    if (hashed != NULL) {
+    Move hashed = transpositionTable.get(b);
+    if (hashed != NULL_MOVE) {
         for (unsigned int i = 0; i < legalCaptures.size(); i++) {
-            Move *test = legalCaptures.get(i);
+            Move test = legalCaptures.get(i);
             // Check legality
             if(test->piece == hashed->piece && test->startsq == hashed->startsq
             && test->endsq == hashed->endsq && test->isCapture == hashed->isCapture) {
@@ -223,8 +223,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                         alpha = score;
                     }
                 }
-                // Set NULL to indicate we have used the hash move now
-                hashed = NULL;
+                // Set NULL_MOVE to indicate we have used the hash move now
+                hashed = NULL_MOVE;
                 break;
             }
         }
@@ -233,7 +233,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // Internal sort search
     if(depth >= 4) {
         int pv = sortSearch(&b, legalCaptures, 1);
-        Move *temp = legalCaptures.get(0);
+        Move temp = legalCaptures.get(0);
         legalCaptures.set(0, legalCaptures.get(pv));
         legalCaptures.set(pv, temp);
     }
@@ -255,7 +255,6 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         
         if (score >= beta) {
             transpositionTable.add(b, depth, legalCaptures.get(i));
-            legalCaptures.free();
             return score;
         }
         if (score > bestScore) {
@@ -269,9 +268,9 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     
     MoveList legalMoves = b.getPseudoLegalMoves(color);
 
-    if (hashed != NULL) {
+    if (hashed != NULL_MOVE) {
         for (unsigned int i = 0; i < legalMoves.size(); i++) {
-            Move *test = legalMoves.get(i);
+            Move test = legalMoves.get(i);
             if(test->piece == hashed->piece && test->startsq == hashed->startsq
             && test->endsq == hashed->endsq && test->isCapture == hashed->isCapture) {
                 Board copy = b.staticCopy();
@@ -287,7 +286,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                         alpha = score;
                     }
                 }
-                hashed = NULL;
+                hashed = NULL_MOVE;
                 break;
             }
         }
@@ -295,7 +294,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
     if(depth >= 4) {
         int pv = sortSearch(&b, legalMoves, 1);
-        Move *temp = legalMoves.get(0);
+        Move temp = legalMoves.get(0);
         legalMoves.set(0, legalMoves.get(pv));
         legalMoves.set(pv, temp);
     }
@@ -317,7 +316,6 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         
         if (score >= beta) {
             transpositionTable.add(b, depth, legalMoves.get(i));
-            legalMoves.free();
             return score;
         }
         if (score > bestScore) {
@@ -353,10 +351,6 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // Exact scores indicate a principal variation and should be hashed
     if (alpha < score && score < beta)
         transpositionTable.add(b, depth, toHash);
-
-    legalCaptures.free();
-    legalMoves.free();
-
     return bestScore;
 }
 
@@ -386,7 +380,7 @@ int quiescence(Board &b, int color, int alpha, int beta) {
     MoveList legalCaptures = b.getPLCaptures(color);
     
     for (unsigned int i = 0; i < legalCaptures.size(); i++) {
-        Move *m = legalCaptures.get(i);
+        Move m = legalCaptures.get(i);
 
         // Static exchange evaluation pruning
         if(b.getSEE(color, m->endsq) < -200)
@@ -406,8 +400,6 @@ int quiescence(Board &b, int color, int alpha, int beta) {
             alpha = score;
     }
     
-    legalCaptures.free();
-
     return alpha;
 }
 

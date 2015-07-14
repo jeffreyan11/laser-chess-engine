@@ -5,7 +5,7 @@
 #include "common.h"
 #include "hash.h"
 
-Move *getBestMove(Board *b, int mode, int value);
+Move getBestMove(Board *b, int mode, int value);
 void clearTranspositionTable();
 
 // Search modes:

@@ -51,13 +51,13 @@ void Hash::add(Board &b, int depth, Move *m) {
 /**
  * @brief Get the move, if any, associated with a board b and player to move.
 */
-Move *Hash::get(Board &b) {
+Move Hash::get(Board &b) {
     uint64_t h = hash(b);
     uint64_t index = h % size;
     HashLL *node = table[index];
 
     if(node == NULL)
-        return NULL;
+        return NULL_MOVE;
 
     do {
         if(node->cargo.whitePieces == b.getWhitePieces()
@@ -68,7 +68,7 @@ Move *Hash::get(Board &b) {
     }
     while(node != NULL);
 
-    return NULL;
+    return NULL_MOVE;
 }
 
 void Hash::clean(int moveNumber) {

@@ -162,17 +162,17 @@ int main() {
                     char endFile = moveString.at(2);
                     char endRank = moveString.at(3);
                     
-                    int startsq = 8 * (startRank - '0' - 1) + (startFile - 'a');
-                    int endsq = 8 * (endRank - '0' - 1) + (endFile - 'a');
+                    int startSq = 8 * (startRank - '0' - 1) + (startFile - 'a');
+                    int endSq = 8 * (endRank - '0' - 1) + (endFile - 'a');
                     
                     int color = board.getPlayerToMove();
-                    int piece = board.getMailbox()[startsq] - color;
+                    int piece = board.getMailbox()[startSq] - color;
                     
-                    bool isCapture = ((board.getMailbox()[endsq] != -1)
-                            || (piece == PAWNS && abs(abs(startsq - endsq) - 8) == 1));
-                    bool isCastle = (piece == KINGS && abs(endsq - startsq) == 2);
+                    bool isCapture = ((board.getMailbox()[endSq] != -1)
+                            || (piece == PAWNS && abs(abs(startSq - endSq) - 8) == 1));
+                    bool isCastle = (piece == KINGS && abs(endSq - startSq) == 2);
                     
-                    int promotion = -1;
+                    int promotion = 0;
                     
                     if (moveString.length() == 5) {
                         switch (moveString.at(4)) {
@@ -191,12 +191,12 @@ int main() {
                         }
                     }
                     
-                    Move m(piece, isCapture, startsq, endsq);
+                    Move m = encodeMove(startSq, endSq, piece, isCapture);
                     
-                    m.isCastle = isCastle;
-                    m.promotion = promotion;
+                    m = setCastle(m, isCastle);
+                    m = setPromotion(m, isPromotion);
                     
-                    board.doMove(&m, board.getPlayerToMove());
+                    board.doMove(m, board.getPlayerToMove());
                 }
             }
         }

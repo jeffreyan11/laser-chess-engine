@@ -50,8 +50,6 @@ uint64_t perft(Board &b, int color, int depth) {
 		
 		//b.undoMove();
 	}
-
-    pl.free();
 	
 	for(unsigned int i = 0; i < pc.size(); i++) {
 		Board copy = b.staticCopy();
@@ -62,8 +60,6 @@ uint64_t perft(Board &b, int color, int depth) {
 		
 		nodes += perft(copy, -color, depth-1);
 	}
-
-    pc.free();
 	
 	return nodes;
 }
