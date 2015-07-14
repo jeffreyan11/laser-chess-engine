@@ -40,23 +40,15 @@ int count(uint64_t bb) {
     #endif
 }
 
-Move::Move(int _piece, bool _isCapture, int _startsq, int _endsq) {
-	piece = _piece;
-	isCapture = _isCapture;
-	startsq = _startsq;
-	endsq = _endsq;
-	isCastle = false;
-	promotion = -1;
-}
-
-string Move::toString() {
-    char startFile = 'a' + (startsq % 8);
-    string startRank = to_string(startsq / 8 + 1);
-	char endFile = 'a' + (endsq % 8);
-	string endRank = to_string(endsq / 8 + 1);
+string moveToString(Move m) {
+    char startFile = 'a' + (getStartSq(m) & 7);
+    string startRank = to_string((getStartSq(m) >> 3) + 1);
+	char endFile = 'a' + (getEndSq(m) & 7);
+	string endRank = to_string((getEndSq(m) >> 3) + 1);
     string moveStr = startFile + startRank + endFile + endRank;
     
-    if (promotion != -1) {
+    int promotion = getPromotion(m);
+    if (promotion) {
         if (promotion == 2)
             moveStr += 'n';
         if (promotion == 5)

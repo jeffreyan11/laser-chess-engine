@@ -72,28 +72,73 @@ int bitScanForward(uint64_t bb);
 int bitScanReverse(uint64_t bb);
 int count(uint64_t bb);
 
-class Move {
-public:
-	int piece;
-	int startsq;
-	int endsq;
-	int promotion;
-	bool isCapture;
-	bool isCastle;
-	
-    Move(int _piece, bool _isCapture, int _startsq, int _endsq);
-    ~Move() {}
-	
-    string toString();
-};
+/*
+ * Moves are represented as an unsigned 32-bit integer.
+ * Bits 0-5: start square
+ * Bits 6-11: end square
+ * Bits 12-15: piece
+ * Bits 16-19: promotion, 0 is no promotion
+ * Bit 20: isCapture
+ * Bit 21: isCastle
+ * Bits 22-31: junk or 0s
+ */
+typedef uint32_t Move;
+
+const Move NULL_MOVE = 0;
+
+inline Move encodeMove(int startSq, int endSq, int piece, bool isCapture) {
+    Move result = 0;
+    result |= isCapture;
+    result <<= 5;
+    result |= piece;
+    result <<= 4;
+    result |= endSq;
+    result <<= 6;
+    result |= startSq;
+    return result;
+}
+
+inline Move setPromotion(Move m, int promotion) {
+    return m | (promotion << 16);
+}
+
+inline Move setCastle(Move m, bool isCastle) {
+    return m | (isCastle << 21);
+}
+
+inline int getStartSq(Move m) {
+    return (int) (m & 0x3F);
+}
+
+inline int getEndSq(Move m) {
+    return (int) ((m >> 6) & 0x3F);
+}
+
+inline int getPiece(Move m) {
+    return (int) ((m >> 12) & 0xF);
+}
+
+inline int getPromotion(Move m) {
+    return (int) ((m >> 16) & 0xF);
+}
+
+inline bool isCapture(Move m) {
+    return (m >> 20) & 1;
+}
+
+inline bool isCastle(Move m) {
+    return (m >> 21) & 1;
+}
+
+string moveToString(Move m);
 
 class MoveList {
 public:
-    Move **moves;
+    Move *moves;
     unsigned int length;
 
     MoveList() {
-        moves = new Move *[128];
+        moves = new Move[128];
         length = 0;
     }
     ~MoveList() { delete[] moves; }
@@ -101,19 +146,19 @@ public:
     unsigned int size() { return length; }
 
     // Adds to the end of the list.
-    void add(Move *m) {
+    void add(Move m) {
         moves[length] = m;
         length++;
     }
 
-    Move *get(int i) { return moves[i]; }
+    Move get(int i) { return moves[i]; }
 
-    Move *last() { return moves[length-1]; }
+    Move last() { return moves[length-1]; }
 
-    void set(int i, Move *m) { moves[i] = m; }
+    void set(int i, Move m) { moves[i] = m; }
 
-    Move *remove(int i) {
-        Move *deleted = moves[i];
+    Move remove(int i) {
+        Move deleted = moves[i];
         for(unsigned int j = i; j < length-1; j++) {
             moves[j] = moves[j+1];
         }
@@ -123,19 +168,9 @@ public:
 
     // Reset the MoveList
     void clear() {
-        for(unsigned int i = 0; i < length; i++) {
-            delete moves[i];
-        }
         delete[] moves;
-        moves = new Move *[128];
+        moves = new Move[128];
         length = 0;
-    }
-
-    // Call this after every MoveList is done being used.
-    void free() {
-        for(unsigned int i = 0; i < length; i++) {
-            delete moves[i];
-        }
     }
 };
 
