@@ -140,7 +140,7 @@ int sortSearch(Board *b, MoveList &legalMoves, int depth) {
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Board copy = b->staticCopy();
-        if(!copy.doPLMove(legalMoves.get(i), color))
+        if(!copy.doPseudoLegalMove(legalMoves.get(i), color))
             continue;
         
         if (copy.isWinMate())
@@ -190,7 +190,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     
     // null move pruning
     // only if doing a null move does not leave player in check
-    if (depth >= 2 && b.doPLMove(NULL_MOVE, color)) {
+    if (depth >= 2 && b.doPseudoLegalMove(NULL_MOVE, color)) {
         int nullScore = -PVS(b, -color, depth-4, -beta, -alpha);
         if (nullScore >= beta)
             return beta;
@@ -199,7 +199,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     b.doMove(NULL_MOVE, -color);
     
     // Basic move ordering: check captures first
-    MoveList legalCaptures = b.getPLCaptures(color);
+    MoveList legalCaptures = b.getPseudoLegalCaptures(color);
 
     // See if a hash move exists
     Move hashed = transpositionTable.get(b);
@@ -210,7 +210,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             if(test == hashed) {
                 // Search this move first
                 Board copy = b.staticCopy();
-                if (!copy.doPLMove(hashed, color))
+                if (!copy.doPseudoLegalMove(hashed, color))
                     break;
                 legalCaptures.remove(i);
                 score = -PVS(copy, -color, depth-1, -beta, -alpha);
@@ -239,7 +239,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
     for (unsigned int i = 0; i < legalCaptures.size(); i++) {
         Board copy = b.staticCopy();
-        if (!copy.doPLMove(legalCaptures.get(i), color))
+        if (!copy.doPseudoLegalMove(legalCaptures.get(i), color))
             continue;
 
         if (i != 0) {
@@ -272,7 +272,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             Move test = legalMoves.get(i);
             if(test == hashed) {
                 Board copy = b.staticCopy();
-                if (!copy.doPLMove(hashed, color))
+                if (!copy.doPseudoLegalMove(hashed, color))
                     break;
                 legalMoves.remove(i);
                 score = -PVS(copy, -color, depth-1, -beta, -alpha);
@@ -299,7 +299,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Board copy = b.staticCopy();
-        if (!copy.doPLMove(legalMoves.get(i), color))
+        if (!copy.doPseudoLegalMove(legalMoves.get(i), color))
             continue;
 
         if (i != 0) {
@@ -375,7 +375,7 @@ int quiescence(Board &b, int color, int alpha, int beta) {
     if (standPat < alpha - 1200)
         return alpha;
     
-    MoveList legalCaptures = b.getPLCaptures(color);
+    MoveList legalCaptures = b.getPseudoLegalCaptures(color);
     
     for (unsigned int i = 0; i < legalCaptures.size(); i++) {
         Move m = legalCaptures.get(i);
@@ -385,7 +385,7 @@ int quiescence(Board &b, int color, int alpha, int beta) {
             continue;
 
         Board copy = b.staticCopy();
-        if (!copy.doPLMove(m, color))
+        if (!copy.doPseudoLegalMove(m, color))
             continue;
         
         int score = -quiescence(copy, -color, -beta, -alpha);

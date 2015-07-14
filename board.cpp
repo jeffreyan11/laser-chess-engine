@@ -132,6 +132,10 @@ void Board::doMove(Move m, int color) {
     history.push(record);
 */
 
+    int pieceID = getPiece(m);
+    int startSq = getStartSq(m);
+    int endSq = getEndSq(m);
+
     // Handle null moves for null move pruning
     if (m == NULL_MOVE) {
         playerToMove = -color;
@@ -139,7 +143,7 @@ void Board::doMove(Move m, int color) {
     }
 
     // Record current board position for two-fold repetition
-    if (isCapture(m) || getPiece(m) == PAWNS || isCastle(m)) {
+    if (isCapture(m) || pieceID == PAWNS || isCastle(m)) {
         twoFoldStartSqs = 0x80008000;
         twoFoldEndSqs = 0x80008000;
         twoFoldPTM = 0;
@@ -148,13 +152,13 @@ void Board::doMove(Move m, int color) {
         twoFoldStartSqs <<= 8;
         twoFoldEndSqs <<= 8;
         twoFoldPTM <<= 8;
-        twoFoldStartSqs |= (uint8_t) getStartSq(m);
-        twoFoldEndSqs |= (uint8_t) getEndSq(m);
+        twoFoldStartSqs |= (uint8_t) startSq;
+        twoFoldEndSqs |= (uint8_t) endSq;
         twoFoldPTM |= (uint8_t) playerToMove;
     }
 
     if (isCastle(m)) {
-        if (getEndSq(m) == 6) { // white kside
+        if (endSq == 6) { // white kside
             pieces[11] &= ~MOVEMASK[4];
             pieces[11] |= MOVEMASK[6];
             pieces[7] &= ~MOVEMASK[7];
@@ -173,7 +177,7 @@ void Board::doMove(Move m, int color) {
             whiteCanKCastle = false;
             whiteCanQCastle = false;
         }
-        else if (getEndSq(m) == 2) { // white qside
+        else if (endSq == 2) { // white qside
             pieces[11] &= ~MOVEMASK[4];
             pieces[11] |= MOVEMASK[2];
             pieces[7] &= ~MOVEMASK[0];
@@ -192,7 +196,7 @@ void Board::doMove(Move m, int color) {
             whiteCanKCastle = false;
             whiteCanQCastle = false;
         }
-        else if (getEndSq(m) == 62) { // black kside
+        else if (endSq == 62) { // black kside
             pieces[9] &= ~MOVEMASK[60];
             pieces[9] |= MOVEMASK[62];
             pieces[5] &= ~MOVEMASK[63];
@@ -236,110 +240,110 @@ void Board::doMove(Move m, int color) {
     } // end castling
     else if (getPromotion(m)) {
         if (isCapture(m)) {
-            pieces[PAWNS+color] &= ~MOVEMASK[getStartSq(m)];
-            pieces[getPromotion(m)+color] |= MOVEMASK[getEndSq(m)];
-            pieces[mailbox[getEndSq(m)]] &= ~MOVEMASK[getEndSq(m)];
+            pieces[PAWNS+color] &= ~MOVEMASK[startSq];
+            pieces[getPromotion(m)+color] |= MOVEMASK[endSq];
+            pieces[mailbox[endSq]] &= ~MOVEMASK[endSq];
 
             if (color == WHITE) {
-                whitePieces &= ~MOVEMASK[getStartSq(m)];
-                whitePieces |= MOVEMASK[getEndSq(m)];
-                blackPieces &= ~MOVEMASK[getEndSq(m)];
+                whitePieces &= ~MOVEMASK[startSq];
+                whitePieces |= MOVEMASK[endSq];
+                blackPieces &= ~MOVEMASK[endSq];
             }
             else {
-                blackPieces &= ~MOVEMASK[getStartSq(m)];
-                blackPieces |= MOVEMASK[getEndSq(m)];
-                whitePieces &= ~MOVEMASK[getEndSq(m)];
+                blackPieces &= ~MOVEMASK[startSq];
+                blackPieces |= MOVEMASK[endSq];
+                whitePieces &= ~MOVEMASK[endSq];
             }
         }
         else {
-            pieces[PAWNS+color] &= ~MOVEMASK[getStartSq(m)];
-            pieces[getPromotion(m)+color] |= MOVEMASK[getEndSq(m)];
+            pieces[PAWNS+color] &= ~MOVEMASK[startSq];
+            pieces[getPromotion(m)+color] |= MOVEMASK[endSq];
 
             if (color == WHITE) {
-                whitePieces &= ~MOVEMASK[getStartSq(m)];
-                whitePieces |= MOVEMASK[getEndSq(m)];
+                whitePieces &= ~MOVEMASK[startSq];
+                whitePieces |= MOVEMASK[endSq];
             }
             else {
-                blackPieces &= ~MOVEMASK[getStartSq(m)];
-                blackPieces |= MOVEMASK[getEndSq(m)];
+                blackPieces &= ~MOVEMASK[startSq];
+                blackPieces |= MOVEMASK[endSq];
             }
         }
 
-        mailbox[getStartSq(m)] = -1;
-        mailbox[getEndSq(m)] = getPromotion(m) + color;
+        mailbox[startSq] = -1;
+        mailbox[endSq] = getPromotion(m) + color;
         whiteEPCaptureSq = 0;
         blackEPCaptureSq = 0;
         fiftyMoveCounter = 0;
     } // end promotion
     else if (isCapture(m)) {
-        if (mailbox[getEndSq(m)] == -1) {
-            pieces[PAWNS+color] &= ~MOVEMASK[getStartSq(m)];
-            pieces[PAWNS+color] |= MOVEMASK[getEndSq(m)];
+        if (mailbox[endSq] == -1) {
+            pieces[PAWNS+color] &= ~MOVEMASK[startSq];
+            pieces[PAWNS+color] |= MOVEMASK[endSq];
             pieces[PAWNS-color] &= ~((color == WHITE) ? whiteEPCaptureSq : blackEPCaptureSq);
 
             if (color == WHITE) {
-                whitePieces &= ~MOVEMASK[getStartSq(m)];
-                whitePieces |= MOVEMASK[getEndSq(m)];
+                whitePieces &= ~MOVEMASK[startSq];
+                whitePieces |= MOVEMASK[endSq];
                 blackPieces &= ~whiteEPCaptureSq;
                 mailbox[bitScanForward(whiteEPCaptureSq)] = -1;
             }
             else {
-                blackPieces &= ~MOVEMASK[getStartSq(m)];
-                blackPieces |= MOVEMASK[getEndSq(m)];
+                blackPieces &= ~MOVEMASK[startSq];
+                blackPieces |= MOVEMASK[endSq];
                 whitePieces &= ~blackEPCaptureSq;
                 mailbox[bitScanForward(blackEPCaptureSq)] = -1;
             }
         
-            mailbox[getStartSq(m)] = -1;
-            mailbox[getEndSq(m)] = PAWNS + color;
+            mailbox[startSq] = -1;
+            mailbox[endSq] = PAWNS + color;
         }
         else {
-            pieces[getPiece(m)+color] &= ~MOVEMASK[getStartSq(m)];
-            pieces[getPiece(m)+color] |= MOVEMASK[getEndSq(m)];
-            pieces[mailbox[getEndSq(m)]] &= ~MOVEMASK[getEndSq(m)];
+            pieces[pieceID+color] &= ~MOVEMASK[startSq];
+            pieces[pieceID+color] |= MOVEMASK[endSq];
+            pieces[mailbox[endSq]] &= ~MOVEMASK[endSq];
 
             if (color == WHITE) {
-                whitePieces &= ~MOVEMASK[getStartSq(m)];
-                whitePieces |= MOVEMASK[getEndSq(m)];
-                blackPieces &= ~MOVEMASK[getEndSq(m)];
+                whitePieces &= ~MOVEMASK[startSq];
+                whitePieces |= MOVEMASK[endSq];
+                blackPieces &= ~MOVEMASK[endSq];
             }
             else {
-                blackPieces &= ~MOVEMASK[getStartSq(m)];
-                blackPieces |= MOVEMASK[getEndSq(m)];
-                whitePieces &= ~MOVEMASK[getEndSq(m)];
+                blackPieces &= ~MOVEMASK[startSq];
+                blackPieces |= MOVEMASK[endSq];
+                whitePieces &= ~MOVEMASK[endSq];
             }
 
-            mailbox[getStartSq(m)] = -1;
-            mailbox[getEndSq(m)] = getPiece(m) + color;
+            mailbox[startSq] = -1;
+            mailbox[endSq] = pieceID + color;
         }
         whiteEPCaptureSq = 0;
         blackEPCaptureSq = 0;
         fiftyMoveCounter = 0;
     } // end capture
     else {
-        pieces[getPiece(m)+color] &= ~MOVEMASK[getStartSq(m)];
-        pieces[getPiece(m)+color] |= MOVEMASK[getEndSq(m)];
+        pieces[pieceID+color] &= ~MOVEMASK[startSq];
+        pieces[pieceID+color] |= MOVEMASK[endSq];
 
         if (color == WHITE) {
-            whitePieces &= ~MOVEMASK[getStartSq(m)];
-            whitePieces |= MOVEMASK[getEndSq(m)];
+            whitePieces &= ~MOVEMASK[startSq];
+            whitePieces |= MOVEMASK[endSq];
         }
         else {
-            blackPieces &= ~MOVEMASK[getStartSq(m)];
-            blackPieces |= MOVEMASK[getEndSq(m)];
+            blackPieces &= ~MOVEMASK[startSq];
+            blackPieces |= MOVEMASK[endSq];
         }
 
-        mailbox[getStartSq(m)] = -1;
-        mailbox[getEndSq(m)] = getPiece(m) + color;
+        mailbox[startSq] = -1;
+        mailbox[endSq] = pieceID + color;
 
         // check for en passant
-        if (getPiece(m) == PAWNS) {
-            if (color == WHITE && getStartSq(m)/8 == 1 && getEndSq(m)/8 == 3) {
-                blackEPCaptureSq = MOVEMASK[getEndSq(m)];
+        if (pieceID == PAWNS) {
+            if (color == WHITE && startSq/8 == 1 && endSq/8 == 3) {
+                blackEPCaptureSq = MOVEMASK[endSq];
                 whiteEPCaptureSq = 0;
             }
-            else if (getStartSq(m)/8 == 6 && getEndSq(m)/8 == 4) {
-                whiteEPCaptureSq = MOVEMASK[getEndSq(m)];
+            else if (startSq/8 == 6 && endSq/8 == 4) {
+                whiteEPCaptureSq = MOVEMASK[endSq];
                 blackEPCaptureSq = 0;
             }
             else {
@@ -356,7 +360,7 @@ void Board::doMove(Move m, int color) {
     } // end normal move
 
     // change castling flags
-    if (getPiece(m) == KINGS) {
+    if (pieceID == KINGS) {
         if (color == WHITE) {
             whiteCanKCastle = false;
             whiteCanQCastle = false;
@@ -388,10 +392,10 @@ void Board::doMove(Move m, int color) {
     playerToMove = -color;
 }
 
-bool Board::doPLMove(Move m, int color) {
+bool Board::doPseudoLegalMove(Move m, int color) {
     doMove(m, color);
 
-    if ((color == WHITE) ? getWinCheck() : getBinCheck())
+    if (getInCheck(color))
         return false;
     else return true;
 }
@@ -650,7 +654,7 @@ bool Board::isLegalMove(Move m, int color) {
 
     Board b = staticCopy();
     b.doMove(m, color);
-    if ((color == WHITE) ? b.getWinCheck() : b.getBinCheck()) {
+    if (b.getInCheck(color)) {
         return false;
     }
 
@@ -667,40 +671,20 @@ MoveList Board::getAllLegalMoves(int color) {
     return moves;
 }
 
-MoveList Board::getLegalWMoves() {
-    MoveList moves = getPseudoLegalMoves(WHITE);
-
-    for (unsigned int i = 0; i < moves.size(); i++) {
-        Board b = staticCopy();
-        b.doMove(moves.get(i), WHITE);
-
-        if (b.getWinCheck()) {
-            moves.remove(i);
-            i--;
-        }
-    }
-
-    return moves;
-}
-
-MoveList Board::getLegalBMoves() {
-    MoveList moves = getPseudoLegalMoves(BLACK);
-
-    for (unsigned int i = 0; i < moves.size(); i++) {
-        Board b = staticCopy();
-        b.doMove(moves.get(i), BLACK);
-
-        if (b.getBinCheck()) {
-            moves.remove(i);
-            i--;
-        }
-    }
-
-    return moves;
-}
-
 MoveList Board::getLegalMoves(int color) {
-    return (color == WHITE) ? getLegalWMoves() : getLegalBMoves();
+    MoveList moves = getPseudoLegalMoves(color);
+
+    for (unsigned int i = 0; i < moves.size(); i++) {
+        Board b = staticCopy();
+        b.doMove(moves.get(i), color);
+
+        if (b.getInCheck(color)) {
+            moves.remove(i);
+            i--;
+        }
+    }
+
+    return moves;
 }
 
 //---------------------Pseudo-legal Moves---------------------------
@@ -852,7 +836,7 @@ MoveList Board::getPseudoLegalMoves(int color) {
 
     if (color == WHITE) {
         if (whiteCanKCastle) {
-            if (((whitePieces|blackPieces) & (MOVEMASK[5] | MOVEMASK[6])) == 0 && !getWinCheck()) {
+            if (((whitePieces|blackPieces) & (MOVEMASK[5] | MOVEMASK[6])) == 0 && !getInCheck(WHITE)) {
                 // Check for castling through check
                 int sq = 5;
                 uint64_t attacked =
@@ -870,7 +854,7 @@ MoveList Board::getPseudoLegalMoves(int color) {
             }
         }
         if (whiteCanQCastle) {
-            if (((whitePieces|blackPieces) & (MOVEMASK[1] | MOVEMASK[2] | MOVEMASK[3])) == 0 && !getWinCheck()) {
+            if (((whitePieces|blackPieces) & (MOVEMASK[1] | MOVEMASK[2] | MOVEMASK[3])) == 0 && !getInCheck(WHITE)) {
                 // Check for castling through check
                 int sq = 3;
                 uint64_t attacked =
@@ -890,7 +874,7 @@ MoveList Board::getPseudoLegalMoves(int color) {
     }
     else {
         if (blackCanKCastle) {
-            if (((whitePieces|blackPieces) & (MOVEMASK[61] | MOVEMASK[62])) == 0 && !getBinCheck()) {
+            if (((whitePieces|blackPieces) & (MOVEMASK[61] | MOVEMASK[62])) == 0 && !getInCheck(BLACK)) {
                 int sq = 61;
                 uint64_t attacked =
                     (getBPawnCaptures(pieces[BLACK+KINGS]) & pieces[WHITE+PAWNS])
@@ -907,7 +891,7 @@ MoveList Board::getPseudoLegalMoves(int color) {
             }
         }
         if (blackCanQCastle) {
-            if (((whitePieces|blackPieces) & (MOVEMASK[57] | MOVEMASK[58] | MOVEMASK[59])) == 0 && !getBinCheck()) {
+            if (((whitePieces|blackPieces) & (MOVEMASK[57] | MOVEMASK[58] | MOVEMASK[59])) == 0 && !getInCheck(BLACK)) {
                 int sq = 59;
                 uint64_t attacked =
                     (getBPawnCaptures(pieces[BLACK+KINGS]) & pieces[WHITE+PAWNS])
@@ -928,43 +912,23 @@ MoveList Board::getPseudoLegalMoves(int color) {
     return result;
 }
 
-MoveList Board::getLegalWCaptures() {
-    MoveList moves = getPLCaptures(WHITE);
-
-    for (unsigned int i = 0; i < moves.size(); i++) {
-        Board b = staticCopy();
-        b.doMove(moves.get(i), WHITE);
-
-        if (b.getWinCheck()) {
-            moves.remove(i);
-            i--;
-        }
-    }
-
-    return moves;
-}
-
-MoveList Board::getLegalBCaptures() {
-    MoveList moves = getPLCaptures(BLACK);
-
-    for (unsigned int i = 0; i < moves.size(); i++) {
-        Board b = staticCopy();
-        b.doMove(moves.get(i), BLACK);
-
-        if (b.getBinCheck()) {
-            moves.remove(i);
-            i--;
-        }
-    }
-
-    return moves;
-}
-
 MoveList Board::getLegalCaptures(int color) {
-    return (color == WHITE) ? getLegalWCaptures() : getLegalBCaptures();
+    MoveList moves = getPseudoLegalCaptures(color);
+
+    for (unsigned int i = 0; i < moves.size(); i++) {
+        Board b = staticCopy();
+        b.doMove(moves.get(i), color);
+
+        if (b.getInCheck(color)) {
+            moves.remove(i);
+            i--;
+        }
+    }
+
+    return moves;
 }
 
-MoveList Board::getPLCaptures(int color) {
+MoveList Board::getPseudoLegalCaptures(int color) {
     MoveList result;
     uint64_t pawns = pieces[color+PAWNS];
     uint64_t knights = pieces[color+KNIGHTS];
@@ -1175,41 +1139,34 @@ MoveList Board::getPLCaptures(int color) {
 
 
 // ---------------------King: check, checkmate, stalemate----------------------
-bool Board::getWinCheck() {
-    int sq = bitScanForward(pieces[WHITE+KINGS]);
+bool Board::getInCheck(int color) {
+    int sq = bitScanForward(pieces[color+KINGS]);
+    uint64_t pawns = (color == WHITE) ? getWPawnCaptures(pieces[WHITE+KINGS])
+                                      : getBPawnCaptures(pieces[BLACK+KINGS]);
+    int other = -color;
 
-    return (getWPawnCaptures(pieces[WHITE+KINGS]) & pieces[BLACK+PAWNS])
-         | (getKnightSquares(sq) & pieces[BLACK+KNIGHTS])
-         | (getBishopSquares(sq) & (pieces[BLACK+BISHOPS] | pieces[BLACK+QUEENS]))
-         | (getRookSquares(sq) & (pieces[BLACK+ROOKS] | pieces[BLACK+QUEENS]))
-         | (getKingSquares(sq) & pieces[BLACK+KINGS]);
-}
-
-bool Board::getBinCheck() {
-    int sq = bitScanForward(pieces[BLACK+KINGS]);
-
-    return (getBPawnCaptures(pieces[BLACK+KINGS]) & pieces[WHITE+PAWNS])
-         | (getKnightSquares(sq) & pieces[WHITE+KNIGHTS])
-         | (getBishopSquares(sq) & (pieces[WHITE+BISHOPS] | pieces[WHITE+QUEENS]))
-         | (getRookSquares(sq) & (pieces[WHITE+ROOKS] | pieces[WHITE+QUEENS]))
-         | (getKingSquares(sq) & pieces[WHITE+KINGS]);
+    return (pawns & pieces[other+PAWNS])
+         | (getKnightSquares(sq) & pieces[other+KNIGHTS])
+         | (getBishopSquares(sq) & (pieces[other+BISHOPS] | pieces[other+QUEENS]))
+         | (getRookSquares(sq) & (pieces[other+ROOKS] | pieces[other+QUEENS]))
+         | (getKingSquares(sq) & pieces[other+KINGS]);
 }
 
 bool Board::isWinMate() {
-    MoveList moves = getLegalWMoves();
-    MoveList captures = getLegalWCaptures();
+    MoveList moves = getLegalMoves(WHITE);
+    MoveList captures = getLegalCaptures(WHITE);
     bool isInMate = false;
-    if (moves.size() == 0 && captures.size() == 0 && getWinCheck())
+    if (moves.size() == 0 && captures.size() == 0 && getInCheck(WHITE))
         isInMate = true;
     
     return isInMate;
 }
 
 bool Board::isBinMate() {
-    MoveList moves = getLegalBMoves();
-    MoveList captures = getLegalBCaptures();
+    MoveList moves = getLegalMoves(BLACK);
+    MoveList captures = getLegalCaptures(BLACK);
     bool isInMate = false;
-    if (moves.size() == 0 && captures.size() == 0 && getBinCheck())
+    if (moves.size() == 0 && captures.size() == 0 && getInCheck(BLACK))
         isInMate = true;
 
     return isInMate;
@@ -1233,11 +1190,10 @@ bool Board::isStalemate(int sideToMove) {
         if (isTwoFold) return true;
     }
 
-    MoveList temp = (sideToMove == WHITE) ? getLegalWMoves() : getLegalBMoves();
+    MoveList temp = getLegalMoves(sideToMove);
     bool isInStalemate = false;
 
-    if (temp.size() == 0 &&
-            !((sideToMove == WHITE) ? getBinCheck() : getWinCheck()))
+    if (temp.size() == 0 && !getInCheck(sideToMove))
         isInStalemate = true;
 
     return isInStalemate;

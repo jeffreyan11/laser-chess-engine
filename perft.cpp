@@ -41,15 +41,15 @@ uint64_t perft(Board &b, int color, int depth) {
 		return 1;
 	
 	MoveList pl = b.getPseudoLegalMoves(color);
-	MoveList pc = b.getPLCaptures(color);
+	MoveList pc = b.getPseudoLegalCaptures(color);
 	uint64_t nodes = 0;
 	
 	for(unsigned int i = 0; i < pl.size(); i++) {
 		Board copy = b.staticCopy();
-		if(!copy.doPLMove(pl.get(i), color))
+		if(!copy.doPseudoLegalMove(pl.get(i), color))
 			continue;
 
-		/*if(!b->doPLMove(pl.get(i), color)) {
+		/*if(!b->doPseudoLegalMove(pl.get(i), color)) {
 			b->undoMove();
 			continue;
 		}*/
@@ -61,7 +61,7 @@ uint64_t perft(Board &b, int color, int depth) {
 	
 	for(unsigned int i = 0; i < pc.size(); i++) {
 		Board copy = b.staticCopy();
-		if(!copy.doPLMove(pc.get(i), color))
+		if(!copy.doPseudoLegalMove(pc.get(i), color))
 			continue;
 		
 		captures++;

@@ -542,22 +542,17 @@ public:
     Board *dynamicCopy();
 
     void doMove(Move m, int color);
-    bool doPLMove(Move m, int color);
+    bool doPseudoLegalMove(Move m, int color);
     // void undoMove();
     bool isLegalMove(Move m, int color);
 
     MoveList getAllLegalMoves(int color);
-    MoveList getLegalWMoves();
-    MoveList getLegalBMoves();
     MoveList getLegalMoves(int color);
     MoveList getPseudoLegalMoves(int color);
-    MoveList getLegalWCaptures();
-    MoveList getLegalBCaptures();
     MoveList getLegalCaptures(int color);
-    MoveList getPLCaptures(int color);
+    MoveList getPseudoLegalCaptures(int color);
 
-    bool getWinCheck();
-    bool getBinCheck();
+    bool getInCheck(int color);
     bool isWinMate();
     bool isBinMate();
     bool isStalemate(int sideToMove);
