@@ -89,9 +89,9 @@ const Move NULL_MOVE = 0;
 inline Move encodeMove(int startSq, int endSq, int piece, bool isCapture) {
     Move result = 0;
     result |= isCapture;
-    result <<= 5;
+    result <<= 9;
     result |= piece;
-    result <<= 4;
+    result <<= 6;
     result |= endSq;
     result <<= 6;
     result |= startSq;

@@ -23,9 +23,7 @@ struct BoardData {
         age = 0;
     }
 
-    ~BoardData() {
-        delete m;
-    }
+    ~BoardData() {}
 };
 
 class HashLL {

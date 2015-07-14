@@ -190,7 +190,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     
     // null move pruning
     // only if doing a null move does not leave player in check
-    if (depth >= 2 && b.doPLMove(NULL, color)) {
+    if (depth >= 2 && b.doPLMove(NULL_MOVE, color)) {
         int nullScore = -PVS(b, -color, depth-4, -beta, -alpha);
         if (nullScore >= beta)
             return beta;
@@ -207,8 +207,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         for (unsigned int i = 0; i < legalCaptures.size(); i++) {
             Move test = legalCaptures.get(i);
             // Check legality
-            if(test->piece == hashed->piece && test->startsq == hashed->startsq
-            && test->endsq == hashed->endsq && test->isCapture == hashed->isCapture) {
+            if(test == hashed) {
                 // Search this move first
                 Board copy = b.staticCopy();
                 if (!copy.doPLMove(hashed, color))
@@ -271,8 +270,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     if (hashed != NULL_MOVE) {
         for (unsigned int i = 0; i < legalMoves.size(); i++) {
             Move test = legalMoves.get(i);
-            if(test->piece == hashed->piece && test->startsq == hashed->startsq
-            && test->endsq == hashed->endsq && test->isCapture == hashed->isCapture) {
+            if(test == hashed) {
                 Board copy = b.staticCopy();
                 if (!copy.doPLMove(hashed, color))
                     break;
@@ -383,7 +381,7 @@ int quiescence(Board &b, int color, int alpha, int beta) {
         Move m = legalCaptures.get(i);
 
         // Static exchange evaluation pruning
-        if(b.getSEE(color, m->endsq) < -200)
+        if(b.getSEE(color, getEndSq(m)) < -200)
             continue;
 
         Board copy = b.staticCopy();

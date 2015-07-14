@@ -27,7 +27,7 @@ Hash::~Hash() {
  * @brief Adds key (b,ptm) and item move into the hashtable.
  * Assumes that this key has been checked with get and is not in the table.
 */
-void Hash::add(Board &b, int depth, Move *m) {
+void Hash::add(Board &b, int depth, Move m) {
     uint64_t h = hash(b);
     uint64_t index = h % size;
     HashLL *node = table[index];

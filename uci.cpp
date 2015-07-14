@@ -194,7 +194,7 @@ int main() {
                     Move m = encodeMove(startSq, endSq, piece, isCapture);
                     
                     m = setCastle(m, isCastle);
-                    m = setPromotion(m, isPromotion);
+                    m = setPromotion(m, promotion);
                     
                     board.doMove(m, board.getPlayerToMove());
                 }
@@ -235,8 +235,8 @@ int main() {
                 value = (value - 200) / 40;
             }
             
-            Move *bestmove = getBestMove(&board, mode, value);
-            cout << "bestmove " << bestmove->toString() << endl;
+            Move bestMove = getBestMove(&board, mode, value);
+            cout << "bestmove " << moveToString(bestMove) << endl;
         }
         
         if (input == "stop") {
