@@ -466,6 +466,17 @@ const int kingValues[64] = {
   20,  35,  15,   0,   5,  10,  40,  20 
 };
 
+const int egKingValues[64] = {
+ -50, -30, -20, -20, -20, -20, -30, -50,
+ -30, -20, -15, -10, -10, -15, -20, -30,
+ -25, -15, -10,  10,  10, -10, -15, -25,
+ -15, -10,   5,  20,  20,   5, -10, -15,
+ -15, -10,   5,  20,  20,   5, -10, -15,
+ -25, -20, -15,  10,  10, -15, -20, -25,
+ -40, -30, -20,  -5,  -5, -20, -30, -40,
+ -50, -30, -20, -20, -20, -20, -30, -50 
+};
+
 // Mobility tables
 
 const int knightMobility[9] = {
@@ -561,6 +572,7 @@ public:
     int evaluate();
     bool pieceOn(int color, int x, int y);
     int getPseudoMobility(int color);
+    int getEGFactor();
     // Static exchange evaluation code: for checking material trades on a single square
     uint64_t getAttackMap(int color, int sq);
     uint64_t getLeastValuableAttacker(uint64_t attackers, int color, int &piece);

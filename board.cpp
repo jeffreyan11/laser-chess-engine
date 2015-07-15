@@ -1230,7 +1230,7 @@ int Board::evaluate() {
             + QUEEN_VALUE * count(pieces[BLACK+QUEENS]);
     
     // compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
-    int egFactor = (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
+    int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
     egFactor = max(0, min(EG_FACTOR_RES, egFactor));
     
     value += whiteMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[WHITE+PAWNS]) * egFactor / EG_FACTOR_RES;
@@ -1279,9 +1279,11 @@ int Board::evaluate() {
                 break;
             case 11: // white king
                 value += kingValues[(7 - i/8)*8 + i%8] * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
+                value += egKingValues[(7 - i/8)*8 + i%8] * egFactor / EG_FACTOR_RES;
                 break;
             case 9: // black king
                 value -= kingValues[i] * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
+                value -= egKingValues[i] * egFactor / EG_FACTOR_RES;
                 break;
             default:
                 cout << "Error in piece table switch statement." << endl;
@@ -1321,6 +1323,24 @@ int Board::evaluate() {
     
     value += getPseudoMobility(WHITE);
     value -= getPseudoMobility(BLACK);
+
+    // Pawn structure
+    // Passed pawns
+    uint64_t notwp = pieces[WHITE+PAWNS];
+    uint64_t notbp = pieces[BLACK+PAWNS];
+    notwp |= ((notwp >> 1) & NOTH) | ((notwp << 1) & NOTA);
+    notbp |= ((notbp >> 1) & NOTH) | ((notbp << 1) & NOTA);
+    notwp = ~notwp;
+    notbp = ~notbp;
+    uint64_t tempwp = pieces[WHITE+PAWNS];
+    uint64_t tempbp = pieces[BLACK+PAWNS];
+    for(int i = 0; i < 7; i++) {
+        tempwp |= (tempwp << 8) & notbp;
+        tempbp |= (tempbp >> 8) & notwp;
+    }
+    value += (20 + 20 * egFactor / EG_FACTOR_RES) * count(tempwp & RANKS[7]);
+    value -= (20 + 20 * egFactor / EG_FACTOR_RES) * count(tempbp & RANKS[0]);
+
     return value;
 }
 
@@ -1377,6 +1397,21 @@ int Board::getPseudoMobility(int color) {
     }
 
     return result;
+}
+
+int Board::getEGFactor() {
+    int whiteMaterial = PAWN_VALUE * count(pieces[WHITE+PAWNS])
+            + KNIGHT_VALUE * count(pieces[WHITE+KNIGHTS])
+            + BISHOP_VALUE * count(pieces[WHITE+BISHOPS])
+            + ROOK_VALUE * count(pieces[WHITE+ROOKS])
+            + QUEEN_VALUE * count(pieces[WHITE+QUEENS]);
+    int blackMaterial = PAWN_VALUE * count(pieces[BLACK+PAWNS])
+            + KNIGHT_VALUE * count(pieces[BLACK+KNIGHTS])
+            + BISHOP_VALUE * count(pieces[BLACK+BISHOPS])
+            + ROOK_VALUE * count(pieces[BLACK+ROOKS])
+            + QUEEN_VALUE * count(pieces[BLACK+QUEENS]);
+    int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
+    return max(0, min(EG_FACTOR_RES, egFactor));
 }
 
 uint64_t Board::getAttackMap(int color, int sq) {
