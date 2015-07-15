@@ -97,7 +97,7 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
             bestScore = MATE_SCORE;
             return i;
         }
-        else if (copy.isStalemate(color)) {
+        else if (copy.isStalemate(-color)) {
             score = 0;
             if (score > alpha) {
                 alpha = score;
@@ -147,7 +147,7 @@ int sortSearch(Board *b, MoveList &legalMoves, int depth) {
             return i;
         else if (copy.isBinMate())
             return i;
-        else if (copy.isStalemate(color)) {
+        else if (copy.isStalemate(-color)) {
             score = 0;
             if (score > alpha) {
                 alpha = score;

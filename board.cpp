@@ -1185,8 +1185,8 @@ bool Board::isStalemate(int sideToMove) {
         if (isTwoFold) return true;
     }
 
-    MoveList moves = getLegalMoves(BLACK);
-    MoveList captures = getLegalCaptures(BLACK);
+    MoveList moves = getLegalMoves(sideToMove);
+    MoveList captures = getLegalCaptures(sideToMove);
     bool isInStalemate = false;
 
     if (moves.size() == 0 && captures.size() == 0 && !getInCheck(sideToMove))
