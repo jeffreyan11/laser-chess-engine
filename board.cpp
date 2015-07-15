@@ -1244,10 +1244,12 @@ int Board::evaluate() {
             case -1: // empty
                 break;
             case 2: // white pawn
-                value += pawnValues[(7 - i/8)*8 + i%8];
+                value += pawnValues[(7 - i/8)*8 + i%8] * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
+                value += egPawnValues[(7 - i/8*8 + i%8)] * egFactor / EG_FACTOR_RES;
                 break;
             case 0: // black pawn
-                value -= pawnValues[i];
+                value -= pawnValues[i] * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
+                value -= egPawnValues[i] * egFactor / EG_FACTOR_RES;
                 break;
             case 3: // white knight
                 value += knightValues[(7 - i/8)*8 + i%8];
@@ -1286,16 +1288,6 @@ int Board::evaluate() {
                 break;
         }
     }
-
-    // king safety
-    /*
-    int wfile = bitScanForward(pieces[WHITE+KINGS]) % 8;
-    int bfile = bitScanForward(pieces[BLACK+KINGS]) % 8;
-    if (wfile == 3 || wfile == 4)
-        value -= 50 * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
-    if (bfile == 3 || bfile == 4)
-        value += 50 * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
-    */
     
     uint64_t wksq = getKingAttacks(WHITE);
     uint64_t bksq = getKingAttacks(BLACK);
@@ -1314,8 +1306,8 @@ int Board::evaluate() {
     uint64_t wpawnShield = (wksq | pieces[WHITE+KINGS]) << 8;
     uint64_t bpawnShield = (bksq | pieces[BLACK+KINGS]) >> 8;
     // Have only pawns on ABC, FGH files count towards the pawn shield
-    value += 30 * count(wpawnShield & pieces[WHITE+PAWNS] & 0xe7e7e7e7e7e7e7e7);
-    value -= 30 * count(bpawnShield & pieces[BLACK+PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    value += (30 * egFactor / EG_FACTOR_RES) * count(wpawnShield & pieces[WHITE+PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    value -= (30 * egFactor / EG_FACTOR_RES) * count(bpawnShield & pieces[BLACK+PAWNS] & 0xe7e7e7e7e7e7e7e7);
     
     value += getPseudoMobility(WHITE);
     value -= getPseudoMobility(BLACK);
@@ -1338,8 +1330,8 @@ int Board::evaluate() {
         tempbp |= (tempbp >> 8) & notwp;
     }
     // Pawns that made it without being blocked are passed
-    value += (10 + 30 * egFactor / EG_FACTOR_RES) * count(tempwp & RANKS[7]);
-    value -= (10 + 30 * egFactor / EG_FACTOR_RES) * count(tempbp & RANKS[0]);
+    value += (10 + 50 * egFactor / EG_FACTOR_RES) * count(tempwp & RANKS[7]);
+    value -= (10 + 50 * egFactor / EG_FACTOR_RES) * count(tempbp & RANKS[0]);
 
     int wPawnCtByFile[8];
     int bPawnCtByFile[8];
@@ -1350,13 +1342,13 @@ int Board::evaluate() {
 
     // Doubled pawns
     // 0 pawns on file: 0 cp
-    // 1 pawn on file: 0 cp
-    // 2 pawns on file: -40 cp
-    // 3 pawns on file: -80 cp
-    // 4 pawns on file: -240 cp (hopefully this never happens...)
+    // 1 pawn on file: 0 cp (each pawn worth 100 cp)
+    // 2 pawns on file: -24 cp (each pawn worth 88 cp)
+    // 3 pawns on file: -48 cp (each pawn worth 84 cp)
+    // 4 pawns on file: -144 cp (each pawn worth 64 cp)
     for (int i = 0; i < 8; i++) {
-        value -= 40 * (wPawnCtByFile[i] - 1) * (wPawnCtByFile[i] / 2);
-        value += 40 * (bPawnCtByFile[i] - 1) * (bPawnCtByFile[i] / 2);
+        value -= 24 * (wPawnCtByFile[i] - 1) * (wPawnCtByFile[i] / 2);
+        value += 24 * (bPawnCtByFile[i] - 1) * (bPawnCtByFile[i] / 2);
     }
 
     // Isolated pawns
@@ -1370,8 +1362,8 @@ int Board::evaluate() {
     // If there are pawns on either adjacent file, we remove this pawn
     wp &= ~((wp >> 1) | (wp << 1));
     bp &= ~((bp >> 1) | (bp << 1));
-    value -= 25 * count(wp);
-    value += 25 * count(bp);
+    value -= 20 * count(wp);
+    value += 20 * count(bp);
 
     return value;
 }
