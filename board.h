@@ -534,7 +534,6 @@ private:
     // Lowest bits are most recent
     uint32_t twoFoldStartSqs;
     uint32_t twoFoldEndSqs;
-    uint32_t twoFoldPTM;
 
     // Stack<BMove> history = new Stack<BMove>();
 
@@ -555,7 +554,7 @@ public:
     void doMove(Move m, int color);
     bool doPseudoLegalMove(Move m, int color);
     // void undoMove();
-    bool isLegalMove(Move m, int color);
+    // bool isLegalMove(Move m, int color);
 
     MoveList getAllLegalMoves(int color);
     MoveList getLegalMoves(int color);

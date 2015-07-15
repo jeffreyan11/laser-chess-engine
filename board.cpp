@@ -91,7 +91,6 @@ Board Board::staticCopy() {
     result.playerToMove = playerToMove;
     result.twoFoldStartSqs = twoFoldStartSqs;
     result.twoFoldEndSqs = twoFoldEndSqs;
-    result.twoFoldPTM = twoFoldPTM;
     return result;
 }
 
@@ -116,7 +115,6 @@ Board *Board::dynamicCopy() {
     result->playerToMove = playerToMove;
     result->twoFoldStartSqs = twoFoldStartSqs;
     result->twoFoldEndSqs = twoFoldEndSqs;
-    result->twoFoldPTM = twoFoldPTM;
     return result;
 }
 
@@ -144,17 +142,14 @@ void Board::doMove(Move m, int color) {
 
     // Record current board position for two-fold repetition
     if (isCapture(m) || pieceID == PAWNS || isCastle(m)) {
-        twoFoldStartSqs = 0x80008000;
-        twoFoldEndSqs = 0x80008000;
-        twoFoldPTM = 0;
+        twoFoldStartSqs = 0x80808080;
+        twoFoldEndSqs = 0x80808080;
     }
     else {
         twoFoldStartSqs <<= 8;
         twoFoldEndSqs <<= 8;
-        twoFoldPTM <<= 8;
         twoFoldStartSqs |= (uint8_t) startSq;
         twoFoldEndSqs |= (uint8_t) endSq;
-        twoFoldPTM |= (uint8_t) playerToMove;
     }
 
     if (isCastle(m)) {
@@ -591,7 +586,7 @@ void Board::undoMove() {
     blackCanQCastle = last.blackCanQCastle;
 }
 */
-
+/*
 bool Board::isLegalMove(Move m, int color) {
     uint64_t legalM = 0;
     uint64_t legalC = 0;
@@ -660,6 +655,7 @@ bool Board::isLegalMove(Move m, int color) {
 
     return true;
 }
+*/
 
 // Get all legal moves and captures
 MoveList Board::getAllLegalMoves(int color) {
@@ -1174,11 +1170,10 @@ bool Board::isBinMate() {
 
 // TODO Includes 3-fold repetition draw for now.
 bool Board::isStalemate(int sideToMove) {
+    if (fiftyMoveCounter >= 100) return true;
+
     if(!(twoFoldStartSqs & (1 << 31))) {
         bool isTwoFold = true;
-        if (((twoFoldPTM >> 8) & 0xFF) != (uint8_t) playerToMove
-         || ((twoFoldPTM >> 24) & 0xFF) != (uint8_t) playerToMove)
-            isTwoFold = false;
 
         if ( (((twoFoldStartSqs >> 24) & 0xFF) != ((twoFoldEndSqs >> 8) & 0xFF))
           || (((twoFoldStartSqs >> 8) & 0xFF) != ((twoFoldEndSqs >> 24) & 0xFF))
@@ -1190,10 +1185,11 @@ bool Board::isStalemate(int sideToMove) {
         if (isTwoFold) return true;
     }
 
-    MoveList temp = getLegalMoves(sideToMove);
+    MoveList moves = getLegalMoves(BLACK);
+    MoveList captures = getLegalCaptures(BLACK);
     bool isInStalemate = false;
 
-    if (temp.size() == 0 && !getInCheck(sideToMove))
+    if (moves.size() == 0 && captures.size() == 0 && !getInCheck(sideToMove))
         isInStalemate = true;
 
     return isInStalemate;

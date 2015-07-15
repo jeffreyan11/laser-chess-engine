@@ -361,7 +361,11 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 int quiescence(Board &b, int color, int alpha, int beta) {
     // debug code
     // if (b.getMoveNumber() > 25) cerr << b.getMoveNumber() << endl;
-    
+
+    /*if (b.isStalemate(color)) {
+        return 0;
+    }*/
+
     // Stand pat: if our current position is already way too good or way too bad
     // we can simply stop the search here
     int standPat = color * b.evaluate();
@@ -397,6 +401,29 @@ int quiescence(Board &b, int color, int alpha, int beta) {
         if (score > alpha)
             alpha = score;
     }
+
+    // Checks
+    /*
+    MoveList legalMoves = b.getPseudoLegalMoves(color);
+    for (unsigned int i = 0; i < legalMoves.size(); i++) {
+        Move m = legalMoves.get(i);
+
+        Board copy = b.staticCopy();
+        if (!copy.doPseudoLegalMove(m, color))
+            continue;
+        if (!copy.getInCheck(-color))
+            continue;
+        
+        int score = -PVS(copy, -color, 1, -beta, -alpha);
+        
+        if (score >= beta) {
+            alpha = beta;
+            break;
+        }
+        if (score > alpha)
+            alpha = score;
+    }
+    */
     
     return alpha;
 }
