@@ -568,11 +568,11 @@ public:
     // bool isLegalMove(Move m, int color);
 
     MoveList getAllLegalMoves(int color);
-    MoveList getLegalMoves(int color);
-    MoveList getPseudoLegalMoves(int color);
+    MoveList getAllPseudoLegalMoves(int color);
     MoveList getLegalCaptures(int color);
     MoveList getPseudoLegalCaptures(int color);
 
+    uint64_t getAttackMap(int color, int sq);
     bool getInCheck(int color);
     bool isWinMate();
     bool isBinMate();
@@ -584,7 +584,6 @@ public:
     int getPseudoMobility(int color);
     int getEGFactor();
     // Static exchange evaluation code: for checking material trades on a single square
-    uint64_t getAttackMap(int color, int sq);
     uint64_t getLeastValuableAttacker(uint64_t attackers, int color, int &piece);
     int getSEE(int color, int sq);
     int valueOfPiece(int piece);

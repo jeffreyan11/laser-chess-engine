@@ -37,36 +37,28 @@ int main(int argc, char **argv) {
  * 7/14/15: PERFT 5, 0.86 s (i5-2450m)
  */
 uint64_t perft(Board &b, int color, int depth) {
-	if(depth == 0)
+	if (depth == 0)
 		return 1;
 	
-	MoveList pl = b.getPseudoLegalMoves(color);
-	MoveList pc = b.getPseudoLegalCaptures(color);
+	MoveList pl = b.getAllPseudoLegalMoves(color);
 	uint64_t nodes = 0;
 	
-	for(unsigned int i = 0; i < pl.size(); i++) {
+	for (unsigned int i = 0; i < pl.size(); i++) {
 		Board copy = b.staticCopy();
-		if(!copy.doPseudoLegalMove(pl.get(i), color))
+		if (!copy.doPseudoLegalMove(pl.get(i), color))
 			continue;
 
 		/*if(!b->doPseudoLegalMove(pl.get(i), color)) {
 			b->undoMove();
 			continue;
 		}*/
+
+        if (isCapture(pl.get(i)))
+            captures++;
 		
 		nodes += perft(copy, -color, depth-1);
 		
 		//b.undoMove();
-	}
-	
-	for(unsigned int i = 0; i < pc.size(); i++) {
-		Board copy = b.staticCopy();
-		if(!copy.doPseudoLegalMove(pc.get(i), color))
-			continue;
-		
-		captures++;
-		
-		nodes += perft(copy, -color, depth-1);
 	}
 	
 	return nodes;

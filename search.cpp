@@ -199,73 +199,10 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // Undo the null move
     b.doMove(NULL_MOVE, -color);
     
-    // Basic move ordering: check captures first
-    MoveList legalCaptures = b.getPseudoLegalCaptures(color);
+    MoveList legalMoves = b.getAllPseudoLegalMoves(color);
 
     // See if a hash move exists
     Move hashed = transpositionTable.get(b);
-    if (hashed != NULL_MOVE) {
-        for (unsigned int i = 0; i < legalCaptures.size(); i++) {
-            // Check legality
-            if(legalCaptures.get(i) == hashed) {
-                // Search this move first
-                Board copy = b.staticCopy();
-                if (!copy.doPseudoLegalMove(hashed, color))
-                    continue;
-                legalCaptures.remove(i);
-                score = -PVS(copy, -color, depth-1, -beta, -alpha);
-                if (score >= beta)
-                    return score;
-                if (score > bestScore) {
-                    bestScore = score;
-                    if (score > alpha) {
-                        alpha = score;
-                    }
-                }
-                // Set NULL_MOVE to indicate we have used the hash move now
-                hashed = NULL_MOVE;
-                break;
-            }
-        }
-    }
-
-    // Internal sort search
-    if(depth >= 4) {
-        int pv = sortSearch(&b, legalCaptures, 1);
-        Move temp = legalCaptures.get(0);
-        legalCaptures.set(0, legalCaptures.get(pv));
-        legalCaptures.set(pv, temp);
-    }
-
-    for (unsigned int i = 0; i < legalCaptures.size(); i++) {
-        Board copy = b.staticCopy();
-        if (!copy.doPseudoLegalMove(legalCaptures.get(i), color))
-            continue;
-
-        if (i != 0) {
-            score = -PVS(copy, -color, depth-1, -alpha-1, -alpha);
-            if (alpha < score && score < beta) {
-                score = -PVS(copy, -color, depth-1, -beta, -alpha);
-            }
-        }
-        else {
-            score = -PVS(copy, -color, depth-1, -beta, -alpha);
-        }
-        
-        if (score >= beta) {
-            transpositionTable.add(b, depth, legalCaptures.get(i));
-            return score;
-        }
-        if (score > bestScore) {
-            bestScore = score;
-            if (score > alpha) {
-                alpha = score;
-                toHash = legalCaptures.get(i);
-            }
-        }
-    }
-    
-    MoveList legalMoves = b.getPseudoLegalMoves(color);
 
     if (hashed != NULL_MOVE) {
         for (unsigned int i = 0; i < legalMoves.size(); i++) {
@@ -381,7 +318,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheck
     if (standPat < alpha - 1200)
         return alpha;
     
-    if (!isCheckLine) {
+//    if (!isCheckLine) {
         MoveList legalCaptures = b.getPseudoLegalCaptures(color);
         
         for (unsigned int i = 0; i < legalCaptures.size(); i++) {
@@ -404,11 +341,12 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheck
             if (score > alpha)
                 alpha = score;
         }
-    }
+//    }
 
+/* TODO needs a getChecks function
     // Checks
-    if(plies <= 4) {
-        MoveList legalMoves = b.getPseudoLegalMoves(color);
+    else if(plies <= 4) {
+        MoveList legalMoves = b.getAllPseudoLegalMoves(color);
 
         for (unsigned int i = 0; i < legalMoves.size(); i++) {
             Move m = legalMoves.get(i);
@@ -429,6 +367,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheck
                 alpha = score;
         }
     }
+*/
     
     return alpha;
 }
@@ -438,26 +377,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheck
  * not just captures, necessitating this function.
  */
 int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
-    MoveList legalCaptures = b.getPseudoLegalCaptures(color);
-    
-    for (unsigned int i = 0; i < legalCaptures.size(); i++) {
-        Move m = legalCaptures.get(i);
-
-        Board copy = b.staticCopy();
-        if (!copy.doPseudoLegalMove(m, color))
-            continue;
-        
-        int score = -quiescence(copy, -color, plies+1, -beta, -alpha, true);
-        
-        if (score >= beta) {
-            alpha = beta;
-            break;
-        }
-        if (score > alpha)
-            alpha = score;
-    }
-
-    MoveList legalMoves = b.getPseudoLegalMoves(color);
+    MoveList legalMoves = b.getAllPseudoLegalMoves(color);
 
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
