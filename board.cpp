@@ -1328,18 +1328,54 @@ int Board::evaluate() {
     // Passed pawns
     uint64_t notwp = pieces[WHITE+PAWNS];
     uint64_t notbp = pieces[BLACK+PAWNS];
+    // These act as blockers for the flood fill: if opposing pawns are on the
+    // same or an adjacent rank, your pawn is not passed.
     notwp |= ((notwp >> 1) & NOTH) | ((notwp << 1) & NOTA);
     notbp |= ((notbp >> 1) & NOTH) | ((notbp << 1) & NOTA);
     notwp = ~notwp;
     notbp = ~notbp;
     uint64_t tempwp = pieces[WHITE+PAWNS];
     uint64_t tempbp = pieces[BLACK+PAWNS];
-    for(int i = 0; i < 7; i++) {
+    // Flood fill to simulate pushing the pawn to the 8th (or 1st) rank
+    for(int i = 0; i < 6; i++) {
         tempwp |= (tempwp << 8) & notbp;
         tempbp |= (tempbp >> 8) & notwp;
     }
-    value += (20 + 20 * egFactor / EG_FACTOR_RES) * count(tempwp & RANKS[7]);
-    value -= (20 + 20 * egFactor / EG_FACTOR_RES) * count(tempbp & RANKS[0]);
+    // Pawns that made it without being blocked are passed
+    value += (10 + 30 * egFactor / EG_FACTOR_RES) * count(tempwp & RANKS[7]);
+    value -= (10 + 30 * egFactor / EG_FACTOR_RES) * count(tempbp & RANKS[0]);
+
+    int wPawnCtByFile[8];
+    int bPawnCtByFile[8];
+    for (int i = 0; i < 8; i++) {
+        wPawnCtByFile[i] = count(pieces[WHITE+PAWNS] & FILES[i]);
+        bPawnCtByFile[i] = count(pieces[BLACK+PAWNS] & FILES[i]);
+    }
+
+    // Doubled pawns
+    // 0 pawns on file: 0 cp
+    // 1 pawn on file: 0 cp
+    // 2 pawns on file: -40 cp
+    // 3 pawns on file: -80 cp
+    // 4 pawns on file: -240 cp (hopefully this never happens...)
+    for (int i = 0; i < 8; i++) {
+        value -= 40 * (wPawnCtByFile[i] - 1) * (wPawnCtByFile[i] / 2);
+        value += 40 * (bPawnCtByFile[i] - 1) * (bPawnCtByFile[i] / 2);
+    }
+
+    // Isolated pawns
+    uint64_t wp = 0, bp = 0;
+    for (int i = 0; i < 8; i++) {
+        wp |= (bool) (wPawnCtByFile[i]);
+        bp |= (bool) (bPawnCtByFile[i]);
+        wp <<= 1;
+        bp <<= 1;
+    }
+    // If there are pawns on either adjacent file, we remove this pawn
+    wp &= ~((wp >> 1) | (wp << 1));
+    bp &= ~((bp >> 1) | (bp << 1));
+    value -= 25 * count(wp);
+    value += 25 * count(bp);
 
     return value;
 }
