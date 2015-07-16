@@ -1301,19 +1301,18 @@ int Board::evaluate() {
         }
     }
     
+    // Consider attacks on squares near king
     uint64_t wksq = getKingAttacks(WHITE);
     uint64_t bksq = getKingAttacks(BLACK);
-    uint64_t bAtt = 0;
-    bAtt = getBPawnCaptures(pieces[BLACK+PAWNS]) | getKnightMoves(pieces[BLACK+KNIGHTS]) |
+    uint64_t bAtt = getBPawnCaptures(pieces[BLACK+PAWNS]) | getKnightMoves(pieces[BLACK+KNIGHTS]) |
     getBishopMoves(pieces[BLACK+BISHOPS]) | getRookMoves(pieces[BLACK+ROOKS]) |
-    getQueenMoves(pieces[BLACK+QUEENS]) | getKingAttacks(BLACK);
-    uint64_t wAtt = 0;
-    wAtt = getWPawnCaptures(pieces[WHITE+PAWNS]) | getKnightMoves(pieces[WHITE+KNIGHTS]) |
+    getQueenMoves(pieces[BLACK+QUEENS]);
+    uint64_t wAtt = getWPawnCaptures(pieces[WHITE+PAWNS]) | getKnightMoves(pieces[WHITE+KNIGHTS]) |
     getBishopMoves(pieces[WHITE+BISHOPS]) | getRookMoves(pieces[WHITE+ROOKS]) |
-    getQueenMoves(pieces[WHITE+QUEENS]) | getKingAttacks(WHITE);
+    getQueenMoves(pieces[WHITE+QUEENS]);
     
-    value -= 25 * count(wksq & bAtt);
-    value += 25 * count(bksq & wAtt);
+    value -= 25 * count(wksq & bAtt) * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
+    value += 25 * count(bksq & wAtt) * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
     
     uint64_t wpawnShield = (wksq | pieces[WHITE+KINGS]) << 8;
     uint64_t bpawnShield = (bksq | pieces[BLACK+KINGS]) >> 8;
