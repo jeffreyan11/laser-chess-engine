@@ -1,4 +1,5 @@
 #include "board.h"
+#include "btables.h"
 
 Board::Board() {
     pieces[2] = 0x000000000000FF00; // white pawns
@@ -693,6 +694,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
 
     uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
 
+    /*
     while (pawns) {
         uint64_t single = pawns & -pawns;
         pawns &= pawns-1;
@@ -724,6 +726,44 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
                 quiets.add(encodeMove(stsq, endsq, PAWNS, false));
             }
         }
+    }
+    */
+    int sqDiff = -8 * color;
+
+    uint64_t pLegal = (color == WHITE) ? getWPawnSingleMoves(pawns)
+                                      : getBPawnSingleMoves(pawns);
+    uint64_t promotions = pLegal & finalRank;
+    pLegal ^= promotions;
+
+    while (promotions) {
+        int endsq = bitScanForward(promotions);
+        promotions &= promotions - 1;
+        int startSq = endsq + sqDiff;
+        Move mk = encodeMove(startSq, endsq, PAWNS, false);
+        mk = setPromotion(mk, KNIGHTS);
+        Move mb = encodeMove(startSq, endsq, PAWNS, false);
+        mb = setPromotion(mb, BISHOPS);
+        Move mr = encodeMove(startSq, endsq, PAWNS, false);
+        mr = setPromotion(mr, ROOKS);
+        Move mq = encodeMove(startSq, endsq, PAWNS, false);
+        mq = setPromotion(mq, QUEENS);
+        quiets.add(mk);
+        quiets.add(mb);
+        quiets.add(mr);
+        quiets.add(mq);
+    }
+    while (pLegal) {
+        int endsq = bitScanForward(pLegal);
+        pLegal &= pLegal - 1;
+        quiets.add(encodeMove(endsq+sqDiff, endsq, PAWNS, false));
+    }
+
+    pLegal = (color == WHITE) ? getWPawnDoubleMoves(pawns)
+                             : getBPawnDoubleMoves(pawns);
+    while (pLegal) {
+        int endsq = bitScanForward(pLegal);
+        pLegal &= pLegal - 1;
+        quiets.add(encodeMove(endsq+2*sqDiff, endsq, PAWNS, false));
     }
 
     while (knights) {
@@ -1529,24 +1569,28 @@ int Board::valueOfPiece(int piece) {
 
 
 //----------------------------MOVE GENERATION-------------------------------
-uint64_t Board::getWPawnMoves(uint64_t pawns) {
-    uint64_t result = pawns;
+uint64_t Board::getWPawnSingleMoves(uint64_t pawns) {
     uint64_t open = ~(whitePieces | blackPieces);
-
-    result = (result << 8) & open;
-    result |= (result << 8) & open & RANKS[3];
-
-    return result;
+    return (pawns << 8) & open;
 }
 
-uint64_t Board::getBPawnMoves(uint64_t pawns) {
-    uint64_t result = pawns;
+uint64_t Board::getBPawnSingleMoves(uint64_t pawns) {
     uint64_t open = ~(whitePieces | blackPieces);
+    return (pawns >> 8) & open;
+}
 
-    result = (result >> 8) & open;
-    result |= (result >> 8) & open & RANKS[4];
+uint64_t Board::getWPawnDoubleMoves(uint64_t pawns) {
+    uint64_t open = ~(whitePieces | blackPieces);
+    uint64_t temp = (pawns << 8) & open;
+    pawns = (temp << 8) & open & RANKS[3];
+    return pawns;
+}
 
-    return result;
+uint64_t Board::getBPawnDoubleMoves(uint64_t pawns) {
+    uint64_t open = ~(whitePieces | blackPieces);
+    uint64_t temp = (pawns >> 8) & open;
+    pawns = (temp >> 8) & open & RANKS[4];
+    return pawns;
 }
 
 uint64_t Board::getWPawnCaptures(uint64_t pawns) {
@@ -1888,18 +1932,6 @@ public boolean equals(Object o) {
     && blackEPCaptureSq == other.blackEPCaptureSq)
         return true;
     else return false;
-}
-*/
-
-// Not tested
-/*
-public int hashCode() {
-    int result = 221; //2166136261
-    for (int i = 0; i < 64; i++) {
-        result ^= mailbox[i];
-        result *= 16777619;
-    }
-    return (result & 0x7FFFFFFF);
 }
 */
 

@@ -27,31 +27,31 @@ Hash::~Hash() {
  * @brief Adds key (b,ptm) and item move into the hashtable.
  * Assumes that this key has been checked with get and is not in the table.
 */
-void Hash::add(Board &b, int depth, Move m) {
+void Hash::add(Board &b, int depth, Move m, int score) {
     uint64_t h = hash(b);
     uint64_t index = h % size;
     HashLL *node = table[index];
     if(node == NULL) {
         keys++;
-        table[index] = new HashLL(b, depth, m);
+        table[index] = new HashLL(b, depth, m, score);
         return;
     }
 
     while(node->next != NULL) {
         if(node->cargo.whitePieces == b.getWhitePieces()
         && node->cargo.blackPieces == b.getBlackPieces()
-        && node->cargo.ptm == (uint16_t) (b.getPlayerToMove()))
+        && node->cargo.ptm == (uint8_t) (b.getPlayerToMove()))
             return;
         node = node->next;
     }
     keys++;
-    node->next = new HashLL(b, depth, m);
+    node->next = new HashLL(b, depth, m, score);
 }
 
 /**
  * @brief Get the move, if any, associated with a board b and player to move.
 */
-Move Hash::get(Board &b) {
+Move Hash::get(Board &b, int &depth, int &score) {
     uint64_t h = hash(b);
     uint64_t index = h % size;
     HashLL *node = table[index];
@@ -62,8 +62,11 @@ Move Hash::get(Board &b) {
     do {
         if(node->cargo.whitePieces == b.getWhitePieces()
         && node->cargo.blackPieces == b.getBlackPieces()
-        && node->cargo.ptm == (uint16_t) (b.getPlayerToMove()))
+        && node->cargo.ptm == (uint8_t) (b.getPlayerToMove())) {
+            depth = (int) node->cargo.depth;
+            score = node->cargo.score;
             return node->cargo.m;
+        }
         node = node->next;
     }
     while(node != NULL);

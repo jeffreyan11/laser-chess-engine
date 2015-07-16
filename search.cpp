@@ -2,13 +2,18 @@
 #include "search.h"
 
 Hash transpositionTable(16);
+uint64_t nodes;
 
 int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int &bestScore, bool &isMate);
-int sortSearch(Board *b, MoveList &pseudoLegalMoves, int depth);
+void sortSearch(Board *b, MoveList &pseudoLegalMoves, ScoreList &scores, int depth);
 int PVS(Board &b, int color, int depth, int alpha, int beta);
 int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheckLine);
 int checkQuiescence(Board &b, int color, int plies, int alpha, int beta);
+void sort(MoveList &moves, ScoreList &scores, int left, int right);
+void swap(MoveList &moves, ScoreList &scores, int i, int j);
+int partition(MoveList &moves, ScoreList &scores, int left, int right,
+    int pindex);
 
 // Iterative deepening search
 Move getBestMove(Board *b, int mode, int value) {
@@ -23,14 +28,13 @@ Move getBestMove(Board *b, int mode, int value) {
     bool isMate = false;
     int currentBestMove;
     int bestScore;
-    
-    // cerr << "value is " << value << endl;
-    
+
     double timeFactor = 0.4; // timeFactor = log b / (b - 1) where b is branch factor
     
     if (mode == TIME) {
         int i = 1;
         do {
+            nodes = 0;
             currentBestMove = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
             Move temp = legalMoves.get(0);
             legalMoves.set(0, legalMoves.get(currentBestMove));
@@ -38,8 +42,10 @@ Move getBestMove(Board *b, int mode, int value) {
 
             double timeSoFar = duration_cast<duration<double>>(
                     high_resolution_clock::now() - start_time).count();
+            uint64_t nps = (uint64_t) ((double) nodes / timeSoFar);
             cerr << "info depth " << i << " score cp " << bestScore << " time "
-                << (int)(timeSoFar * ONE_SECOND) << " nodes 1 nps 1000 pv e2e4" << endl;
+                << (int)(timeSoFar * ONE_SECOND) << " nodes " << nodes
+                << " nps " << nps << " pv e2e4" << endl;
 
             if (isMate)
                 break;
@@ -51,6 +57,7 @@ Move getBestMove(Board *b, int mode, int value) {
     
     if (mode == DEPTH) {
         for (int i = 1; i <= min(value, MAX_DEPTH); i++) {
+            nodes = 0;
             currentBestMove = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
             Move temp = legalMoves.get(0);
             legalMoves.set(0, legalMoves.get(currentBestMove));
@@ -58,8 +65,10 @@ Move getBestMove(Board *b, int mode, int value) {
 
             double timeSoFar = duration_cast<duration<double>>(
                     high_resolution_clock::now() - start_time).count();
+            uint64_t nps = (uint64_t) ((double) nodes / timeSoFar);
             cerr << "info depth " << i << " score cp " << bestScore << " time "
-                 << (int)(timeSoFar * ONE_SECOND) << " nodes 1 nps 1000 pv e2e4" << endl;
+                 << (int)(timeSoFar * ONE_SECOND) << " nodes " << nodes
+                 << " nps " << nps << " pv e2e4" << endl;
             // transpositionTable.test();
 
             if (isMate)
@@ -84,9 +93,6 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Board copy = b->staticCopy();
         copy.doMove(legalMoves.get(i), color);
-        
-        // debug code
-        // cerr << "considering move: " << legalMoves.get(i)->startsq << ", " << legalMoves.get(i)->endsq << endl;
         
         if (copy.isWinMate()) {
             isMate = true;
@@ -131,49 +137,28 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     return tempMove;
 }
 
-int sortSearch(Board *b, MoveList &legalMoves, int depth) {
+void sortSearch(Board *b, MoveList &legalMoves, ScoreList &scores, int depth) {
     int color = b->getPlayerToMove();
-    
-    unsigned int tempMove = 0;
-    int score = -MATE_SCORE;
-    int alpha = -MATE_SCORE;
-    int beta = MATE_SCORE;
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Board copy = b->staticCopy();
-        if(!copy.doPseudoLegalMove(legalMoves.get(i), color))
+        if(!copy.doPseudoLegalMove(legalMoves.get(i), color)) {
+            legalMoves.remove(i);
+            i--;
             continue;
+        }
         
-        if (copy.isWinMate())
-            return i;
-        else if (copy.isBinMate())
-            return i;
+        if (copy.isWinMate() || copy.isBinMate()) {
+            scores.add(MATE_SCORE);
+            continue;
+        }
         else if (copy.isStalemate(-color)) {
-            score = 0;
-            if (score > alpha) {
-                alpha = score;
-                tempMove = i;
-            }
+            scores.add(0);
             continue;
         }
         
-        if (i != 0) {
-            score = -PVS(copy, -color, depth-1, -alpha-1, -alpha);
-            if (alpha < score && score < beta) {
-                score = -PVS(copy, -color, depth-1, -beta, -alpha);
-            }
-        }
-        else {
-            score = -PVS(copy, -color, depth-1, -beta, -alpha);
-        }
-        
-        if (score > alpha) {
-            alpha = score;
-            tempMove = i;
-        }
+        scores.add(-PVS(copy, -color, depth-1, -MATE_SCORE, MATE_SCORE));
     }
-
-    return tempMove;
 }
 
 // The standard implementation of a null-window PVS search.
@@ -202,7 +187,9 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     MoveList legalMoves = b.getAllPseudoLegalMoves(color);
 
     // See if a hash move exists
-    Move hashed = transpositionTable.get(b);
+    int hashDepth = 0;
+    int hashScore = 0;
+    Move hashed = transpositionTable.get(b, hashDepth, hashScore);
 
     if (hashed != NULL_MOVE) {
         for (unsigned int i = 0; i < legalMoves.size(); i++) {
@@ -211,7 +198,16 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                 if (!copy.doPseudoLegalMove(hashed, color))
                     continue;
                 legalMoves.remove(i);
+
+                if (hashDepth >= depth) {
+                    if (hashScore >= beta) {
+                        nodes++;
+                        return hashScore;
+                    }
+                }
+
                 score = -PVS(copy, -color, depth-1, -beta, -alpha);
+
                 if (score >= beta)
                     return score;
                 if (score > bestScore) {
@@ -227,36 +223,48 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     }
 
     if(depth >= 4) {
-        int pv = sortSearch(&b, legalMoves, 1);
-        Move temp = legalMoves.get(0);
-        legalMoves.set(0, legalMoves.get(pv));
-        legalMoves.set(pv, temp);
+        ScoreList scores;
+        sortSearch(&b, legalMoves, scores, 1);
+        sort(legalMoves, scores, 0, legalMoves.size() - 1);
     }
 
+    int reduction = 0;
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
+        Move m = legalMoves.get(i);
+        reduction = 0;
         Board copy = b.staticCopy();
-        if (!copy.doPseudoLegalMove(legalMoves.get(i), color))
-            continue;
+        if (depth < 4) {
+            if (!copy.doPseudoLegalMove(m, color))
+                continue;
+        }
+        else {
+            copy.doMove(m, color);
+        }
+
+        if(depth > 1 && b.getSEE(color, getEndSq(m)) < -200)
+            reduction = 2;
+        else if(i > 2 && bestScore < alpha)
+            reduction = 1;
 
         if (i != 0) {
-            score = -PVS(copy, -color, depth-1, -alpha-1, -alpha);
+            score = -PVS(copy, -color, depth-1-reduction, -alpha-1, -alpha);
             if (alpha < score && score < beta) {
-                score = -PVS(copy, -color, depth-1, -beta, -alpha);
+                score = -PVS(copy, -color, depth-1-reduction, -beta, -alpha);
             }
         }
         else {
-            score = -PVS(copy, -color, depth-1, -beta, -alpha);
+            score = -PVS(copy, -color, depth-1-reduction, -beta, -alpha);
         }
         
         if (score >= beta) {
-            transpositionTable.add(b, depth, legalMoves.get(i));
+            transpositionTable.add(b, depth, m, score);
             return score;
         }
         if (score > bestScore) {
             bestScore = score;
             if (score > alpha) {
                 alpha = score;
-                toHash = legalMoves.get(i);
+                toHash = m;
             }
         }
     }
@@ -283,8 +291,10 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     }
     
     // Exact scores indicate a principal variation and should be hashed
-    if (alpha < score && score < beta)
-        transpositionTable.add(b, depth, toHash);
+    if (toHash != NULL_MOVE) {
+        transpositionTable.add(b, depth, toHash, bestScore);
+    }
+
     return bestScore;
 }
 
@@ -296,27 +306,30 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
  * The search is done within a fail-hard framework (alpha <= score <= beta)
  */
 int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheckLine) {
-    // debug code
-    // if (b.getMoveNumber() > 25) cerr << b.getMoveNumber() << endl;
-
     if (b.isStalemate(color)) {
+        nodes++;
         return 0;
     }
-    if (b.getInCheck(color))
+    if (b.getInCheck(color)) {
+        nodes++;
         return checkQuiescence(b, color, plies, alpha, beta);
+    }
 
     // Stand pat: if our current position is already way too good or way too bad
     // we can simply stop the search here
     int standPat = color * b.evaluate();
     if (standPat >= beta) {
+        nodes++;
         return beta;
     }
     if (alpha < standPat)
         alpha = standPat;
     
     // delta prune
-    if (standPat < alpha - 1200)
+    if (standPat < alpha - 1200) {
+        nodes++;
         return alpha;
+    }
     
 //    if (!isCheckLine) {
         MoveList legalCaptures = b.getPseudoLegalCaptures(color);
@@ -368,7 +381,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheck
         }
     }
 */
-    
+    nodes++;
     return alpha;
 }
 
@@ -401,4 +414,43 @@ int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
 
 void clearTranspositionTable() {
     transpositionTable.clear();
+}
+
+// Basic quicksort implementation. The lists are both sorted by scores, with
+// moves simply changing to mirror the changes to scores.
+void sort(MoveList &moves, ScoreList &scores, int left, int right) {
+    int pivot = (left + right) / 2;
+
+    if (left < right) {
+        pivot = partition(moves, scores, left, right, pivot);
+        sort(moves, scores, left, pivot-1);
+        sort(moves, scores, pivot+1, right);
+    }
+}
+
+void swap(MoveList &moves, ScoreList &scores, int i, int j) {
+    int temp = moves.get(j);
+    moves.set(j, moves.get(i));
+    moves.set(i, temp);
+
+    scores.swap(i, j);
+}
+
+int partition(MoveList &moves, ScoreList &scores, int left, int right,
+    int pindex) {
+
+    int index = left;
+    int pivot = scores.get(pindex);
+
+    swap(moves, scores, pindex, right);
+
+    for (int i = left; i < right; i++) {
+        if (scores.get(i) > pivot) {
+            swap(moves, scores, i, index);
+            index++;
+        }
+    }
+    swap(moves, scores, index, right);
+
+    return index;
 }

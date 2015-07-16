@@ -174,4 +174,39 @@ public:
     }
 };
 
+class ScoreList {
+public:
+    int *scores;
+    unsigned int length;
+
+    ScoreList() {
+        scores = new int[128];
+        length = 0;
+    }
+    ~ScoreList() { delete[] scores; }
+
+    unsigned int size() { return length; }
+
+    // Adds to the end of the list.
+    void add(int s) {
+        scores[length] = s;
+        length++;
+    }
+
+    int get(int i) { return scores[i]; }
+
+    void swap(int i, int j) {
+        int temp = scores[i];
+        scores[i] = scores[j];
+        scores[j] = temp;
+    }
+
+    // Reset the MoveList
+    void clear() {
+        delete[] scores;
+        scores = new int[128];
+        length = 0;
+    }
+};
+
 #endif

@@ -8,19 +8,19 @@ struct BoardData {
     uint64_t whitePieces;
     uint64_t blackPieces;
     Move m;
-    uint16_t ptm;
-    uint16_t fiftyMoveCounter;
-    uint16_t depth;
+    int score;
     uint16_t age;
+    uint8_t ptm;
+    uint8_t depth;
 
     BoardData() {
         whitePieces = 0;
         blackPieces = 0;
         m = NULL_MOVE;
-        ptm = 0;
-        fiftyMoveCounter = 0;
-        depth = 0;
+        score = -MATE_SCORE;
         age = 0;
+        ptm = 0;
+        depth = 0;
     }
 
     ~BoardData() {}
@@ -32,15 +32,15 @@ public:
     HashLL *next;
     BoardData cargo;
 
-    HashLL(Board &b, int depth, Move m) {
+    HashLL(Board &b, int depth, Move m, int score) {
         next = NULL;
         cargo.whitePieces = b.getWhitePieces();
         cargo.blackPieces = b.getBlackPieces();
         cargo.m = m;
-        cargo.ptm = (uint16_t) (b.getPlayerToMove());
-        cargo.fiftyMoveCounter = (uint16_t) (b.getFiftyMoveCounter());
-        cargo.depth = (uint16_t) (depth);
+        cargo.score = score;
         cargo.age = (uint16_t) (b.getMoveNumber());
+        cargo.ptm = (uint8_t) (b.getPlayerToMove());
+        cargo.depth = (uint8_t) (depth);
     }
 
     ~HashLL() {}
@@ -61,8 +61,8 @@ public:
     Hash(uint64_t MB);
     ~Hash();
 
-    void add(Board &b, int depth, Move m);
-    Move get(Board &b);
+    void add(Board &b, int depth, Move m, int score);
+    Move get(Board &b, int &depth, int &score);
     void clean(int moveNumber);
     void clear();
 };
