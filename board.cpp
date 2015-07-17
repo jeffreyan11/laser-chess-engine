@@ -2,12 +2,12 @@
 #include "board.h"
 #include "btables.h"
 
-uint64_t zobristTable[781];
+uint64_t zobristTable[793];
 uint64_t startPosZobristKey = 0;
 
 void initZobristTable() {
     mt19937_64 rng (61280152908);
-    for (int i = 0; i < 781; i++)
+    for (int i = 0; i < 793; i++)
         zobristTable[i] = rng();
 
     Board b;
@@ -34,18 +34,16 @@ Board::Board() {
     whitePieces = 0x000000000000FFFF;
     blackPieces = 0xFFFF000000000000;
 
-    whiteCanKCastle = true;
-    blackCanKCastle = true;
-    whiteCanQCastle = true;
-    blackCanQCastle = true;
     whiteEPCaptureSq = 0;
     blackEPCaptureSq = 0;
 
-    fiftyMoveCounter = 0;
-    moveNumber = 1;
     playerToMove = WHITE;
 
     zobristKey = startPosZobristKey;
+
+    moveNumber = 1;
+    castlingRights = 0xF;
+    fiftyMoveCounter = 0;
 }
 
 // Create a board object from a mailbox of the current board state.
@@ -69,10 +67,11 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
     blackPieces = pieces[1][0] | pieces[1][1] | pieces[1][2] | pieces[1][3]
                 | pieces[1][4] | pieces[1][5];
     
-    whiteCanKCastle = _whiteCanKCastle;
-    whiteCanQCastle = _whiteCanQCastle;
-    blackCanKCastle = _blackCanKCastle;
-    blackCanQCastle = _blackCanQCastle;
+    castlingRights = 0;
+    castlingRights = _whiteCanKCastle;
+    castlingRights |= _whiteCanQCastle << 1;
+    castlingRights |= _blackCanKCastle << 2;
+    castlingRights |= _blackCanQCastle << 3;
     whiteEPCaptureSq = _whiteEPCaptureSq;
     blackEPCaptureSq = _blackEPCaptureSq;
     fiftyMoveCounter = _fiftyMoveCounter;
@@ -94,18 +93,15 @@ Board Board::staticCopy() {
     }
     result.whitePieces = whitePieces;
     result.blackPieces = blackPieces;
-    result.whiteCanKCastle = whiteCanKCastle;
-    result.whiteCanQCastle = whiteCanQCastle;
-    result.blackCanKCastle = blackCanKCastle;
-    result.blackCanQCastle = blackCanQCastle;
     result.whiteEPCaptureSq = whiteEPCaptureSq;
     result.blackEPCaptureSq = blackEPCaptureSq;
-    result.fiftyMoveCounter = fiftyMoveCounter;
-    result.moveNumber = moveNumber;
     result.playerToMove = playerToMove;
     result.twoFoldStartSqs = twoFoldStartSqs;
     result.twoFoldEndSqs = twoFoldEndSqs;
     result.zobristKey = zobristKey;
+    result.moveNumber = moveNumber;
+    result.castlingRights = castlingRights;
+    result.fiftyMoveCounter = fiftyMoveCounter;
     return result;
 }
 
@@ -119,18 +115,15 @@ Board *Board::dynamicCopy() {
     }
     result->whitePieces = whitePieces;
     result->blackPieces = blackPieces;
-    result->whiteCanKCastle = whiteCanKCastle;
-    result->whiteCanQCastle = whiteCanQCastle;
-    result->blackCanKCastle = blackCanKCastle;
-    result->blackCanQCastle = blackCanQCastle;
     result->whiteEPCaptureSq = whiteEPCaptureSq;
     result->blackEPCaptureSq = blackEPCaptureSq;
-    result->fiftyMoveCounter = fiftyMoveCounter;
-    result->moveNumber = moveNumber;
     result->playerToMove = playerToMove;
     result->twoFoldStartSqs = twoFoldStartSqs;
     result->twoFoldEndSqs = twoFoldEndSqs;
     result->zobristKey = zobristKey;
+    result->moveNumber = moveNumber;
+    result->castlingRights = castlingRights;
+    result->fiftyMoveCounter = fiftyMoveCounter;
     return result;
 }
 
@@ -148,17 +141,10 @@ void Board::doMove(Move m, int color) {
     }
 
     // Update flag based elements of Zobrist key
-    if (whiteCanKCastle)
-        zobristKey ^= zobristTable[769];
-    if (whiteCanQCastle)
-        zobristKey ^= zobristTable[770];
-    if (blackCanKCastle)
-        zobristKey ^= zobristTable[771];
-    if (blackCanQCastle)
-        zobristKey ^= zobristTable[772];
+    zobristKey ^= zobristTable[769 + castlingRights];
     if (whiteEPCaptureSq | blackEPCaptureSq) {
         int epSq = bitScanForward(whiteEPCaptureSq | blackEPCaptureSq);
-        zobristKey ^= zobristTable[773 + (epSq&7)];
+        zobristKey ^= zobristTable[785 + (epSq&7)];
     }
 
     // Record current board position for two-fold repetition
@@ -369,42 +355,33 @@ void Board::doMove(Move m, int color) {
     // change castling flags
     if (pieceID == KINGS) {
         if (color == WHITE) {
-            whiteCanKCastle = false;
-            whiteCanQCastle = false;
+            castlingRights &= BLACKCASTLE;
         }
         else {
-            blackCanKCastle = false;
-            blackCanQCastle = false;
+            castlingRights &= WHITECASTLE;
         }
     }
     else {
-        if (whiteCanKCastle || whiteCanQCastle) {
+        if (castlingRights & WHITECASTLE) {
             int whiteR = (int)(RANKS[0] & pieces[WHITE][ROOKS]);
             if ((whiteR & 0x80) == 0)
-                whiteCanKCastle = false;
+                castlingRights &= BLACKCASTLE | WHITEQSIDE;
             if ((whiteR & 1) == 0)
-                whiteCanQCastle = false;
+                castlingRights &= BLACKCASTLE | WHITEKSIDE;
         }
-        if (blackCanKCastle || blackCanQCastle) {
+        if (castlingRights & BLACKCASTLE) {
             int blackR = (int)((RANKS[7] & pieces[BLACK][ROOKS]) >> 56);
             if ((blackR & 0x80) == 0)
-                blackCanKCastle = false;
+                castlingRights &= WHITECASTLE | BLACKQSIDE;
             if ((blackR & 1) == 0)
-                blackCanQCastle = false;
+                castlingRights &= WHITECASTLE | BLACKKSIDE;
         }
     } // end castling flags
 
-    if (whiteCanKCastle)
-        zobristKey ^= zobristTable[769];
-    if (whiteCanQCastle)
-        zobristKey ^= zobristTable[770];
-    if (blackCanKCastle)
-        zobristKey ^= zobristTable[771];
-    if (blackCanQCastle)
-        zobristKey ^= zobristTable[772];
+    zobristKey ^= zobristTable[769 + castlingRights];
     if (whiteEPCaptureSq | blackEPCaptureSq) {
         int epSq = bitScanForward(whiteEPCaptureSq | blackEPCaptureSq);
-        zobristKey ^= zobristTable[773 + (epSq&7)];
+        zobristKey ^= zobristTable[785 + (epSq&7)];
     }
 
     if (color == BLACK)
@@ -690,7 +667,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
     }
 
     if (color == WHITE) {
-        if (whiteCanKCastle
+        if ((castlingRights & WHITEKSIDE)
          && ((whitePieces | blackPieces) & (MOVEMASK[5] | MOVEMASK[6])) == 0
          && !getInCheck(WHITE)) {
             // Check for castling through check
@@ -700,7 +677,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
                 quiets.add(m);
             }
         }
-        else if (whiteCanQCastle
+        else if ((castlingRights & WHITEQSIDE)
               && ((whitePieces | blackPieces) & (MOVEMASK[1] | MOVEMASK[2] | MOVEMASK[3])) == 0
               && !getInCheck(WHITE)) {
             // Check for castling through check
@@ -712,7 +689,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         }
     }
     else {
-        if (blackCanKCastle
+        if ((castlingRights & BLACKKSIDE)
          && ((whitePieces | blackPieces) & (MOVEMASK[61] | MOVEMASK[62])) == 0
          && !getInCheck(BLACK)) {
             if (getAttackMap(WHITE, 61) == 0) {
@@ -721,7 +698,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
                 quiets.add(m);
             }
         }
-        if (blackCanQCastle
+        if ((castlingRights & BLACKQSIDE)
          && ((whitePieces | blackPieces) & (MOVEMASK[57] | MOVEMASK[58] | MOVEMASK[59])) == 0
          && !getInCheck(BLACK)) {
             if (getAttackMap(WHITE, 59) == 0) {
@@ -1583,19 +1560,19 @@ uint64_t Board::nwAttacks(uint64_t bishops, uint64_t empty) {
 
 // Getter methods
 bool Board::getWhiteCanKCastle() {
-    return whiteCanKCastle;
+    return castlingRights & WHITEKSIDE;
 }
 
 bool Board::getBlackCanKCastle() {
-    return blackCanKCastle;
+    return castlingRights & BLACKKSIDE;
 }
 
 bool Board::getWhiteCanQCastle() {
-    return whiteCanQCastle;
+    return castlingRights & WHITEQSIDE;
 }
 
 bool Board::getBlackCanQCastle() {
-    return blackCanQCastle;
+    return castlingRights & BLACKQSIDE;
 }
 
 uint64_t Board::getWhiteEPCaptureSq() {
@@ -1606,11 +1583,11 @@ uint64_t Board::getBlackEPCaptureSq() {
     return blackEPCaptureSq;
 }
 
-int Board::getFiftyMoveCounter() {
+uint8_t Board::getFiftyMoveCounter() {
     return fiftyMoveCounter;
 }
 
-int Board::getMoveNumber() {
+uint16_t Board::getMoveNumber() {
     return moveNumber;
 }
 
@@ -1715,16 +1692,9 @@ void Board::initZobristKey(int *mailbox) {
     }
     if (playerToMove == BLACK)
         zobristKey ^= zobristTable[768];
-    if (whiteCanKCastle)
-        zobristKey ^= zobristTable[769];
-    if (whiteCanQCastle)
-        zobristKey ^= zobristTable[770];
-    if (blackCanKCastle)
-        zobristKey ^= zobristTable[771];
-    if (blackCanQCastle)
-        zobristKey ^= zobristTable[772];
+    zobristKey ^= zobristTable[769 + castlingRights];
     if (whiteEPCaptureSq | blackEPCaptureSq) {
         int epSq = bitScanForward(whiteEPCaptureSq | blackEPCaptureSq);
-        zobristKey ^= zobristTable[773 + (epSq&7)];
+        zobristKey ^= zobristTable[785 + (epSq&7)];
     }
 }

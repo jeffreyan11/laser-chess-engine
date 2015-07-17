@@ -22,6 +22,13 @@ const uint64_t DARK = 0xAA55AA55AA55AA55;
 const uint64_t NOTA = 0xFEFEFEFEFEFEFEFE;
 const uint64_t NOTH = 0x7F7F7F7F7F7F7F7F;
 
+const uint8_t WHITEKSIDE = 0x1;
+const uint8_t WHITEQSIDE = 0x2;
+const uint8_t BLACKKSIDE = 0x4;
+const uint8_t BLACKQSIDE = 0x8;
+const uint8_t WHITECASTLE = 0x3;
+const uint8_t BLACKCASTLE = 0xC;
+
 //------------------------------Piece tables--------------------------------
 const int pawnValues[64] = {
   0,  0,  0,  0,  0,  0,  0,  0,
@@ -182,8 +189,8 @@ public:
     bool getBlackCanQCastle();
     uint64_t getWhiteEPCaptureSq();
     uint64_t getBlackEPCaptureSq();
-    int getFiftyMoveCounter();
-    int getMoveNumber();
+    uint8_t getFiftyMoveCounter();
+    uint16_t getMoveNumber();
     int getPlayerToMove();
     uint64_t getWhitePieces();
     uint64_t getBlackPieces();
@@ -200,28 +207,28 @@ private:
     // Bitboards for all white or all black pieces
     uint64_t whitePieces;
     uint64_t blackPieces;
-    // Booleans indicating whether castling is possible
-    bool whiteCanKCastle;
-    bool whiteCanQCastle;
-    bool blackCanKCastle;
-    bool blackCanQCastle;
     // 0 if cannot en passant, if en passant is possible, the bitboard has a bit
     // set at the square of the pawn being captured
     uint64_t whiteEPCaptureSq;
     uint64_t blackEPCaptureSq;
-    // Counts half moves for the 50-move rule
-    int fiftyMoveCounter;
-    // Move number
-    int moveNumber;
     // Whose move is it?
     int playerToMove;
-
     // Keep track of the last 4 half-plys for two-fold repetition
     // Lowest bits are most recent
     uint32_t twoFoldStartSqs;
     uint32_t twoFoldEndSqs;
-
+    // Zobrist key for hash table use
     uint64_t zobristKey;
+    // Move number
+    uint16_t moveNumber;
+    // Booleans indicating whether castling is possible
+    // Bit 0: white kingside
+    // Bit 1: white queenside
+    // Bit 2: black kingside
+    // Bit 3: black queenside
+    uint8_t castlingRights;
+    // Counts half moves for the 50-move rule
+    uint8_t fiftyMoveCounter;
 
     int getCapturedPiece(int colorCaptured, int endSq);
 
