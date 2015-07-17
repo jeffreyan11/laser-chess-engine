@@ -6,7 +6,7 @@ uint64_t zobristTable[781];
 uint64_t startPosZobristKey = 0;
 
 void initZobristTable() {
-    mt19937_64 rng (7814071896ULL);
+    mt19937_64 rng (61280152908);
     for (int i = 0; i < 781; i++)
         zobristTable[i] = rng();
 
@@ -138,11 +138,27 @@ void Board::doMove(Move m, int color) {
     int pieceID = getPiece(m);
     int startSq = getStartSq(m);
     int endSq = getEndSq(m);
+    bool epPossible = false;
 
     // Handle null moves for null move pruning
     if (m == NULL_MOVE) {
         playerToMove = color ^ 1;
+        zobristKey ^= zobristTable[768];
         return;
+    }
+
+    // Update flag based elements of Zobrist key
+    if (whiteCanKCastle)
+        zobristKey ^= zobristTable[769];
+    if (whiteCanQCastle)
+        zobristKey ^= zobristTable[770];
+    if (blackCanKCastle)
+        zobristKey ^= zobristTable[771];
+    if (blackCanQCastle)
+        zobristKey ^= zobristTable[772];
+    if (whiteEPCaptureSq | blackEPCaptureSq) {
+        int epSq = bitScanForward(whiteEPCaptureSq | blackEPCaptureSq);
+        zobristKey ^= zobristTable[773 + (epSq&7)];
     }
 
     // Record current board position for two-fold repetition
@@ -169,8 +185,10 @@ void Board::doMove(Move m, int color) {
             whitePieces &= ~MOVEMASK[7];
             whitePieces |= MOVEMASK[5];
 
-            whiteCanKCastle = false;
-            whiteCanQCastle = false;
+            zobristKey ^= zobristTable[64*KINGS+4];
+            zobristKey ^= zobristTable[64*KINGS+6];
+            zobristKey ^= zobristTable[64*ROOKS+7];
+            zobristKey ^= zobristTable[64*ROOKS+5];
         }
         else if (endSq == 2) { // white qside
             pieces[WHITE][KINGS] &= ~MOVEMASK[4];
@@ -183,8 +201,10 @@ void Board::doMove(Move m, int color) {
             whitePieces &= ~MOVEMASK[0];
             whitePieces |= MOVEMASK[3];
 
-            whiteCanKCastle = false;
-            whiteCanQCastle = false;
+            zobristKey ^= zobristTable[64*KINGS+4];
+            zobristKey ^= zobristTable[64*KINGS+2];
+            zobristKey ^= zobristTable[64*ROOKS+0];
+            zobristKey ^= zobristTable[64*ROOKS+3];
         }
         else if (endSq == 62) { // black kside
             pieces[BLACK][KINGS] &= ~MOVEMASK[60];
@@ -197,8 +217,10 @@ void Board::doMove(Move m, int color) {
             blackPieces &= ~MOVEMASK[63];
             blackPieces |= MOVEMASK[61];
 
-            blackCanKCastle = false;
-            blackCanQCastle = false;
+            zobristKey ^= zobristTable[384+64*KINGS+60];
+            zobristKey ^= zobristTable[384+64*KINGS+62];
+            zobristKey ^= zobristTable[384+64*ROOKS+63];
+            zobristKey ^= zobristTable[384+64*ROOKS+61];
         }
         else { // black qside
             pieces[BLACK][KINGS] &= ~MOVEMASK[60];
@@ -211,11 +233,11 @@ void Board::doMove(Move m, int color) {
             blackPieces &= ~MOVEMASK[56];
             blackPieces |= MOVEMASK[59];
 
-            blackCanKCastle = false;
-            blackCanQCastle = false;
+            zobristKey ^= zobristTable[384+64*KINGS+60];
+            zobristKey ^= zobristTable[384+64*KINGS+58];
+            zobristKey ^= zobristTable[384+64*ROOKS+56];
+            zobristKey ^= zobristTable[384+64*ROOKS+59];
         }
-        whiteEPCaptureSq = 0;
-        blackEPCaptureSq = 0;
         fiftyMoveCounter++;
     } // end castling
     else if (getPromotion(m)) {
@@ -235,6 +257,10 @@ void Board::doMove(Move m, int color) {
                 blackPieces |= MOVEMASK[endSq];
                 whitePieces &= ~MOVEMASK[endSq];
             }
+
+            zobristKey ^= zobristTable[384*color + startSq];
+            zobristKey ^= zobristTable[384*color + 64*getPromotion(m) + endSq];
+            zobristKey ^= zobristTable[384*(color^1) + 64*captureType + endSq];
         }
         else {
             pieces[color][PAWNS] &= ~MOVEMASK[startSq];
@@ -248,10 +274,10 @@ void Board::doMove(Move m, int color) {
                 blackPieces &= ~MOVEMASK[startSq];
                 blackPieces |= MOVEMASK[endSq];
             }
-        }
 
-        whiteEPCaptureSq = 0;
-        blackEPCaptureSq = 0;
+            zobristKey ^= zobristTable[384*color + startSq];
+            zobristKey ^= zobristTable[384*color + 64*getPromotion(m) + endSq];
+        }
         fiftyMoveCounter = 0;
     } // end promotion
     else if (isCapture(m)) {
@@ -271,6 +297,11 @@ void Board::doMove(Move m, int color) {
                 blackPieces |= MOVEMASK[endSq];
                 whitePieces &= ~blackEPCaptureSq;
             }
+
+            int capSq = bitScanForward((color == WHITE) ? whiteEPCaptureSq : blackEPCaptureSq);
+            zobristKey ^= zobristTable[384*color + startSq];
+            zobristKey ^= zobristTable[384*color + endSq];
+            zobristKey ^= zobristTable[384*(color^1) + capSq];
         }
         else {
             pieces[color][pieceID] &= ~MOVEMASK[startSq];
@@ -287,9 +318,11 @@ void Board::doMove(Move m, int color) {
                 blackPieces |= MOVEMASK[endSq];
                 whitePieces &= ~MOVEMASK[endSq];
             }
+
+            zobristKey ^= zobristTable[384*color + 64*pieceID + startSq];
+            zobristKey ^= zobristTable[384*color + 64*pieceID + endSq];
+            zobristKey ^= zobristTable[384*(color^1) + 64*captureType + endSq];
         }
-        whiteEPCaptureSq = 0;
-        blackEPCaptureSq = 0;
         fiftyMoveCounter = 0;
     } // end capture
     else {
@@ -305,28 +338,33 @@ void Board::doMove(Move m, int color) {
             blackPieces |= MOVEMASK[endSq];
         }
 
+        zobristKey ^= zobristTable[384*color + 64*pieceID + startSq];
+        zobristKey ^= zobristTable[384*color + 64*pieceID + endSq];
+
         // check for en passant
         if (pieceID == PAWNS) {
             if (color == WHITE && startSq/8 == 1 && endSq/8 == 3) {
+                epPossible = true;
                 blackEPCaptureSq = MOVEMASK[endSq];
                 whiteEPCaptureSq = 0;
             }
             else if (startSq/8 == 6 && endSq/8 == 4) {
+                epPossible = true;
                 whiteEPCaptureSq = MOVEMASK[endSq];
-                blackEPCaptureSq = 0;
-            }
-            else {
-                whiteEPCaptureSq = 0;
                 blackEPCaptureSq = 0;
             }
             fiftyMoveCounter = 0;
         }
         else {
-            whiteEPCaptureSq = 0;
-            blackEPCaptureSq = 0;
             fiftyMoveCounter++;
         }
     } // end normal move
+
+    // change ep flags
+    if (!epPossible) {
+        whiteEPCaptureSq = 0;
+        blackEPCaptureSq = 0;
+    }
 
     // change castling flags
     if (pieceID == KINGS) {
@@ -356,9 +394,23 @@ void Board::doMove(Move m, int color) {
         }
     } // end castling flags
 
+    if (whiteCanKCastle)
+        zobristKey ^= zobristTable[769];
+    if (whiteCanQCastle)
+        zobristKey ^= zobristTable[770];
+    if (blackCanKCastle)
+        zobristKey ^= zobristTable[771];
+    if (blackCanQCastle)
+        zobristKey ^= zobristTable[772];
+    if (whiteEPCaptureSq | blackEPCaptureSq) {
+        int epSq = bitScanForward(whiteEPCaptureSq | blackEPCaptureSq);
+        zobristKey ^= zobristTable[773 + (epSq&7)];
+    }
+
     if (color == BLACK)
         moveNumber++;
     playerToMove = color^1;
+    zobristKey ^= zobristTable[768];
 }
 
 bool Board::doPseudoLegalMove(Move m, int color) {

@@ -246,10 +246,12 @@ int main() {
         }
         
         if (input == "mailbox") {
+            int *mailbox = board.getMailbox();
             for (unsigned i = 0; i < 64; i++) {
-                cerr << board.getMailbox()[i] << ' ';
+                cerr << mailbox[i] << ' ';
                 if (i % 8 == 7) cerr << endl;
             }
+            delete[] mailbox;
         }
     }
 }

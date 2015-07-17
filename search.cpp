@@ -176,13 +176,17 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     
     // null move pruning
     // only if doing a null move does not leave player in check
-    if (depth >= 2 && b.doPseudoLegalMove(NULL_MOVE, color)) {
-        int nullScore = -PVS(b, color^1, depth-4, -beta, -alpha);
-        if (nullScore >= beta)
-            return beta;
+    if (depth >= 2) {
+        if (b.doPseudoLegalMove(NULL_MOVE, color)) {
+            int nullScore = -PVS(b, color^1, depth-4, -beta, -alpha);
+            if (nullScore >= beta) {
+                b.doMove(NULL_MOVE, color^1);
+                return beta;
+            }
+        }
+        // Undo the null move
+        b.doMove(NULL_MOVE, color^1);
     }
-    // Undo the null move
-    b.doMove(NULL_MOVE, color^1);
     
     MoveList legalMoves = b.getAllPseudoLegalMoves(color);
 
@@ -223,6 +227,9 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             }
         }
     }
+
+    // if (hashed != NULL_MOVE)
+    //     cerr << "Type-1 TT error" << endl;
 
     if(depth >= 4) {
         ScoreList scores;
@@ -276,10 +283,10 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     if (score == -MATE_SCORE) {
         if (b.isWinMate()) {
             // + 50 - depth adjusts so that quicker mates are better
-            score = (-MATE_SCORE + 50 - depth) * color;
+            score = (color == WHITE) ? (-MATE_SCORE + 50 - depth) : (MATE_SCORE - 50 + depth);
         }
         else if (b.isBinMate()) {
-            score = (MATE_SCORE - 50 + depth) * color;
+            score = (color == WHITE) ? (MATE_SCORE - 50 + depth) : (-MATE_SCORE + 50 - depth);
         }
         else if (b.isStalemate(color)) {
             score = 0;

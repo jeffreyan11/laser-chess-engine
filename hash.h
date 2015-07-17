@@ -5,21 +5,17 @@
 #include "common.h"
 
 struct BoardData {
-    uint64_t whitePieces;
-    uint64_t blackPieces;
+    uint64_t zobristKey;
     Move m;
     int score;
     uint16_t age;
-    uint8_t ptm;
     uint8_t depth;
 
     BoardData() {
-        whitePieces = 0;
-        blackPieces = 0;
+        zobristKey = 0;
         m = NULL_MOVE;
         score = -MATE_SCORE;
         age = 0;
-        ptm = 0;
         depth = 0;
     }
 
@@ -34,12 +30,10 @@ public:
 
     HashLL(Board &b, int depth, Move m, int score) {
         next = NULL;
-        cargo.whitePieces = b.getWhitePieces();
-        cargo.blackPieces = b.getBlackPieces();
+        cargo.zobristKey = b.getZobristKey();
         cargo.m = m;
         cargo.score = score;
         cargo.age = (uint16_t) (b.getMoveNumber());
-        cargo.ptm = (uint8_t) (b.getPlayerToMove());
         cargo.depth = (uint8_t) (depth);
     }
 

@@ -24,11 +24,11 @@ Hash::~Hash() {
 }
 
 /**
- * @brief Adds key (b,ptm) and item move into the hashtable.
+ * @brief Adds key and move into the hashtable.
  * Assumes that this key has been checked with get and is not in the table.
 */
 void Hash::add(Board &b, int depth, Move m, int score) {
-    uint64_t h = hash(b);
+    uint64_t h = b.getZobristKey();
     uint64_t index = h % size;
     HashLL *node = table[index];
     if(node == NULL) {
@@ -38,9 +38,7 @@ void Hash::add(Board &b, int depth, Move m, int score) {
     }
 
     while(node->next != NULL) {
-        if(node->cargo.whitePieces == b.getWhitePieces()
-        && node->cargo.blackPieces == b.getBlackPieces()
-        && node->cargo.ptm == (uint8_t) (b.getPlayerToMove()))
+        if(node->cargo.zobristKey == b.getZobristKey())
             return;
         node = node->next;
     }
@@ -49,10 +47,11 @@ void Hash::add(Board &b, int depth, Move m, int score) {
 }
 
 /**
- * @brief Get the move, if any, associated with a board b and player to move.
+ * @brief Get the move, if any, associated with a board b.
+ * Also returns the depth and score.
 */
 Move Hash::get(Board &b, int &depth, int &score) {
-    uint64_t h = hash(b);
+    uint64_t h = b.getZobristKey();
     uint64_t index = h % size;
     HashLL *node = table[index];
 
@@ -60,9 +59,7 @@ Move Hash::get(Board &b, int &depth, int &score) {
         return NULL_MOVE;
 
     do {
-        if(node->cargo.whitePieces == b.getWhitePieces()
-        && node->cargo.blackPieces == b.getBlackPieces()
-        && node->cargo.ptm == (uint8_t) (b.getPlayerToMove())) {
+        if(node->cargo.zobristKey == b.getZobristKey()) {
             depth = (int) node->cargo.depth;
             score = node->cargo.score;
             return node->cargo.m;
@@ -89,19 +86,6 @@ void Hash::clean(int moveNumber) {
                 node = node->next;
         }
     }
-}
-
-// TODO Make this use Zobrist hashing...
-/**
- * @brief Hashes a board position using the FNV hashing algorithm.
-*/
-uint64_t Hash::hash(Board &b) {
-    uint64_t h = 14695981039346656037ULL;
-    h ^= b.getWhitePieces();
-    h *= 1099511628211;
-    h ^= b.getBlackPieces();
-    h *= 1099511628211;
-    return h;
 }
 
 void Hash::test() {
