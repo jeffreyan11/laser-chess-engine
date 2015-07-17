@@ -93,6 +93,7 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Board copy = b->staticCopy();
         copy.doMove(legalMoves.get(i), color);
+        nodes++;
         
         if (copy.isWinMate()) {
             isMate = true;
@@ -200,13 +201,15 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                 legalMoves.remove(i);
 
                 if (hashDepth >= depth) {
-                    if (hashScore >= beta) {
-                        nodes++;
+                    if (hashScore >= beta)
                         return hashScore;
-                    }
                 }
 
-                score = -PVS(copy, -color, depth-1, -beta, -alpha);
+                nodes++;
+                int reduction = 0;
+                if (hashScore < alpha)
+                    reduction = 2;
+                score = -PVS(copy, -color, depth-1-reduction, -beta, -alpha);
 
                 if (score >= beta)
                     return score;
@@ -241,6 +244,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             copy.doMove(m, color);
         }
 
+        nodes++;
         if(depth > 1 && b.getSEE(color, getEndSq(m)) < -200)
             reduction = 2;
         else if(i > 2 && bestScore < alpha)
@@ -306,30 +310,22 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
  * The search is done within a fail-hard framework (alpha <= score <= beta)
  */
 int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheckLine) {
-    if (b.isStalemate(color)) {
-        nodes++;
+    if (b.isStalemate(color))
         return 0;
-    }
-    if (b.getInCheck(color)) {
-        nodes++;
+    if (b.getInCheck(color))
         return checkQuiescence(b, color, plies, alpha, beta);
-    }
 
     // Stand pat: if our current position is already way too good or way too bad
     // we can simply stop the search here
     int standPat = color * b.evaluate();
-    if (standPat >= beta) {
-        nodes++;
+    if (standPat >= beta)
         return beta;
-    }
     if (alpha < standPat)
         alpha = standPat;
     
     // delta prune
-    if (standPat < alpha - 1200) {
-        nodes++;
+    if (standPat < alpha - 1200)
         return alpha;
-    }
     
 //    if (!isCheckLine) {
         MoveList legalCaptures = b.getPseudoLegalCaptures(color);
@@ -345,6 +341,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheck
             if (!copy.doPseudoLegalMove(m, color))
                 continue;
             
+            nodes++;
             int score = -quiescence(copy, -color, plies+1, -beta, -alpha, false);
             
             if (score >= beta) {
@@ -381,7 +378,6 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheck
         }
     }
 */
-    nodes++;
     return alpha;
 }
 
@@ -399,6 +395,7 @@ int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
         if (!copy.doPseudoLegalMove(m, color))
             continue;
         
+        nodes++;
         int score = -quiescence(copy, -color, plies+1, -beta, -alpha, true);
         
         if (score >= beta) {

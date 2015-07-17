@@ -140,6 +140,55 @@ const int initMailbox[64] = {
  */
 class Board {
 
+public:
+    Board();
+    Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
+            bool _whiteCanQCastle, bool _blackCanQCastle,
+            uint64_t _whiteEPCaptureSq, uint64_t _blackEPCaptureSq,
+            int _fiftyMoveCounter, int _moveNumber, int _playerToMove);
+    ~Board();
+    Board staticCopy();
+    Board *dynamicCopy();
+
+    void doMove(Move m, int color);
+    bool doPseudoLegalMove(Move m, int color);
+
+    MoveList getAllLegalMoves(int color);
+    MoveList getAllPseudoLegalMoves(int color);
+    MoveList getLegalCaptures(int color);
+    MoveList getPseudoLegalCaptures(int color);
+
+    uint64_t getAttackMap(int color, int sq);
+    bool getInCheck(int color);
+    bool isWinMate();
+    bool isBinMate();
+    bool isStalemate(int sideToMove);
+
+    // Evaluation
+    int evaluate();
+    int getPseudoMobility(int color);
+    int getEGFactor();
+    // Static exchange evaluation code: for checking material trades on a single square
+    uint64_t getLeastValuableAttacker(uint64_t attackers, int color, int &piece);
+    int getSEE(int color, int sq);
+    int valueOfPiece(int piece);
+
+    // Getter methods
+    bool getWhiteCanKCastle();
+    bool getBlackCanKCastle();
+    bool getWhiteCanQCastle();
+    bool getBlackCanQCastle();
+    uint64_t getWhiteEPCaptureSq();
+    uint64_t getBlackEPCaptureSq();
+    int getFiftyMoveCounter();
+    int getMoveNumber();
+    int getPlayerToMove();
+    uint64_t getWhitePieces();
+    uint64_t getBlackPieces();
+    int *getMailbox();
+
+    string toString();
+
 private:
     // 12 bitboards, one for each of the 12 piece types, indexed by the
     // constants given in common.h
@@ -168,47 +217,11 @@ private:
     uint32_t twoFoldStartSqs;
     uint32_t twoFoldEndSqs;
 
-    // Stack<BMove> history = new Stack<BMove>();
-
-public:
     // Redundant mailbox representation to make evaluation easier
     // mailbox[0] is a1, mailbox[63] is h8
     int mailbox[64];
 
-    Board();
-    Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
-            bool _whiteCanQCastle, bool _blackCanQCastle,
-            uint64_t _whiteEPCaptureSq, uint64_t _blackEPCaptureSq,
-            int _fiftyMoveCounter, int _moveNumber, int _playerToMove);
-    ~Board();
-    Board staticCopy();
-    Board *dynamicCopy();
-
-    void doMove(Move m, int color);
-    bool doPseudoLegalMove(Move m, int color);
-    // void undoMove();
-    // bool isLegalMove(Move m, int color);
-
-    MoveList getAllLegalMoves(int color);
-    MoveList getAllPseudoLegalMoves(int color);
-    MoveList getLegalCaptures(int color);
-    MoveList getPseudoLegalCaptures(int color);
-
-    uint64_t getAttackMap(int color, int sq);
-    bool getInCheck(int color);
-    bool isWinMate();
-    bool isBinMate();
-    bool isStalemate(int sideToMove);
-
-    // Evaluation
-    int evaluate();
-    bool pieceOn(int color, int x, int y);
-    int getPseudoMobility(int color);
-    int getEGFactor();
-    // Static exchange evaluation code: for checking material trades on a single square
-    uint64_t getLeastValuableAttacker(uint64_t attackers, int color, int &piece);
-    int getSEE(int color, int sq);
-    int valueOfPiece(int piece);
+    // Stack<BMove> history = new Stack<BMove>();
 
     // Move generation
     // ___Moves(): moves for all of that piece type on the board.
@@ -217,8 +230,10 @@ public:
     uint64_t getBPawnSingleMoves(uint64_t pawns);
     uint64_t getWPawnDoubleMoves(uint64_t pawns);
     uint64_t getBPawnDoubleMoves(uint64_t pawns);
-    uint64_t getWPawnCaptures(uint64_t pawns);
-    uint64_t getBPawnCaptures(uint64_t pawns);
+    uint64_t getWPawnLeftCaptures(uint64_t pawns);
+    uint64_t getBPawnLeftCaptures(uint64_t pawns);
+    uint64_t getWPawnRightCaptures(uint64_t pawns);
+    uint64_t getBPawnRightCaptures(uint64_t pawns);
     uint64_t getKnightSquares(int single);
     uint64_t getKnightMoves(uint64_t knights);
     uint64_t getBishopSquares(int single);
@@ -245,22 +260,6 @@ public:
     uint64_t westAttacks(uint64_t rooks, uint64_t empty);
     uint64_t swAttacks(uint64_t bishops, uint64_t empty);
     uint64_t nwAttacks(uint64_t bishops, uint64_t empty);
-
-    // Getter methods
-    bool getWhiteCanKCastle();
-    bool getBlackCanKCastle();
-    bool getWhiteCanQCastle();
-    bool getBlackCanQCastle();
-    uint64_t getWhiteEPCaptureSq();
-    uint64_t getBlackEPCaptureSq();
-    int getFiftyMoveCounter();
-    int getMoveNumber();
-    int getPlayerToMove();
-    uint64_t getWhitePieces();
-    uint64_t getBlackPieces();
-    int *getMailbox();
-
-    string toString();
 };
 
 #endif

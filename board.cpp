@@ -396,268 +396,6 @@ bool Board::doPseudoLegalMove(Move m, int color) {
     else return true;
 }
 
-/* TODO:
- * If using this function, fifty move rule, move number, and player to move need
- * to be included.
-void Board::undoMove() {
-    // BMove last = history.pop();
-
-    if (last.isCastle) {
-        if (last.color == WHITE && last.endsq == 6) { // w kside
-            pieces[11] &= ~MOVEMASK[6];
-            pieces[11] |= MOVEMASK[4];
-            pieces[7] &= ~MOVEMASK[5];
-            pieces[7] |= MOVEMASK[7];
-
-            whitePieces &= ~MOVEMASK[6];
-            whitePieces |= MOVEMASK[4];
-            whitePieces &= ~MOVEMASK[5];
-            whitePieces |= MOVEMASK[7];
-
-            mailbox[6] = -1;
-            mailbox[4] = WHITE+KINGS;
-            mailbox[5] = -1;
-            mailbox[7] = WHITE+ROOKS;
-
-            whiteCanKCastle = last.whiteCanKCastle;
-            whiteCanQCastle = last.whiteCanQCastle;
-        }
-        else if (last.color == WHITE && last.endsq == 2) { // w qside
-            pieces[11] &= ~MOVEMASK[2];
-            pieces[11] |= MOVEMASK[4];
-            pieces[7] &= ~MOVEMASK[3];
-            pieces[7] |= MOVEMASK[0];
-
-            whitePieces &= ~MOVEMASK[2];
-            whitePieces |= MOVEMASK[4];
-            whitePieces &= ~MOVEMASK[3];
-            whitePieces |= MOVEMASK[0];
-
-            mailbox[2] = -1;
-            mailbox[4] = WHITE+KINGS;
-            mailbox[3] = -1;
-            mailbox[0] = WHITE+ROOKS;
-
-            whiteCanKCastle = last.whiteCanKCastle;
-            whiteCanQCastle = last.whiteCanQCastle;
-        }
-        else if (last.color == BLACK && last.endsq == 62) { // b kside
-            pieces[9] &= ~MOVEMASK[62];
-            pieces[9] |= MOVEMASK[60];
-            pieces[5] &= ~MOVEMASK[61];
-            pieces[5] |= MOVEMASK[63];
-
-            blackPieces &= ~MOVEMASK[62];
-            blackPieces |= MOVEMASK[60];
-            blackPieces &= ~MOVEMASK[61];
-            blackPieces |= MOVEMASK[63];
-
-            mailbox[62] = -1;
-            mailbox[60] = BLACK+KINGS;
-            mailbox[61] = -1;
-            mailbox[63] = BLACK+ROOKS;
-
-            blackCanKCastle = last.blackCanKCastle;
-            blackCanQCastle = last.blackCanQCastle;
-        }
-        else { // b qside
-            pieces[9] &= ~MOVEMASK[58];
-            pieces[9] |= MOVEMASK[60];
-            pieces[5] &= ~MOVEMASK[59];
-            pieces[5] |= MOVEMASK[56];
-
-            blackPieces &= ~MOVEMASK[58];
-            blackPieces |= MOVEMASK[60];
-            blackPieces &= ~MOVEMASK[59];
-            blackPieces |= MOVEMASK[56];
-
-            mailbox[58] = -1;
-            mailbox[60] = BLACK+KINGS;
-            mailbox[59] = -1;
-            mailbox[56] = BLACK+ROOKS;
-
-            blackCanKCastle = last.blackCanKCastle;
-            blackCanQCastle = last.blackCanQCastle;
-        }
-        whiteEPCaptureSq = last.wEP;
-        blackEPCaptureSq = last.bEP;
-        return;
-    } // end castling
-    else if (last.isPromotion) {
-        if (last.capture != -1) {
-            pieces[mailbox[last.endsq]] &= ~MOVEMASK[last.endsq];
-            pieces[last.capture] |= MOVEMASK[last.endsq];
-            pieces[PAWNS+last.color] |= MOVEMASK[last.stsq];
-
-            if (last.color == WHITE) {
-                whitePieces &= ~MOVEMASK[last.endsq];
-                whitePieces |= MOVEMASK[last.stsq];
-                blackPieces |= MOVEMASK[last.endsq];
-            }
-            else {
-                blackPieces &= ~MOVEMASK[last.endsq];
-                blackPieces |= MOVEMASK[last.stsq];
-                whitePieces |= MOVEMASK[last.endsq];
-            }
-        }
-        else {
-            pieces[mailbox[last.endsq]] &= ~MOVEMASK[last.endsq];
-            pieces[PAWNS+last.color] |= MOVEMASK[last.stsq];
-
-            if (last.color == WHITE) {
-            whitePieces &= ~MOVEMASK[last.endsq];
-            whitePieces |= MOVEMASK[last.stsq];
-            }
-            else {
-            blackPieces &= ~MOVEMASK[last.endsq];
-            blackPieces |= MOVEMASK[last.stsq];
-            }
-        }
-
-        mailbox[last.stsq] = PAWNS+last.color;
-        mailbox[last.endsq] = last.capture;
-    } // end promotion
-    else if (last.capture == -1 && mailbox[last.endsq]-last.color == PAWNS && (last.endsq-last.stsq) % 8 != 0) {
-        pieces[PAWNS+last.color] &= ~MOVEMASK[last.endsq];
-        pieces[PAWNS+last.color] |= MOVEMASK[last.stsq];
-        pieces[PAWNS-last.color] |= ((last.color == WHITE) ? last.wEP : last.bEP);
-
-        if (last.color == WHITE) {
-            whitePieces &= ~MOVEMASK[last.endsq];
-            whitePieces |= MOVEMASK[last.stsq];
-            blackPieces |= whiteEPCaptureSq;
-            mailbox[bitScanForward(whiteEPCaptureSq)] = 0;
-        }
-        else {
-            blackPieces &= ~MOVEMASK[last.endsq];
-            blackPieces |= MOVEMASK[last.stsq];
-            whitePieces |= blackEPCaptureSq;
-            mailbox[bitScanForward(blackEPCaptureSq)] = 2;
-        }
-
-        mailbox[last.endsq] = -1;
-        mailbox[last.stsq] = PAWNS + last.color;
-    }
-    else if (last.capture != -1) {
-        int pieceMoved = mailbox[last.endsq];
-        pieces[pieceMoved] &= ~MOVEMASK[last.endsq];
-        pieces[pieceMoved] |= MOVEMASK[last.stsq];
-        pieces[last.capture] |= MOVEMASK[last.endsq];
-
-        if (last.color == WHITE) {
-            whitePieces &= ~MOVEMASK[last.endsq];
-            whitePieces |= MOVEMASK[last.stsq];
-            blackPieces |= MOVEMASK[last.endsq];
-        }
-        else {
-            blackPieces &= ~MOVEMASK[last.endsq];
-            blackPieces |= MOVEMASK[last.stsq];
-            whitePieces |= MOVEMASK[last.endsq];
-        }
-
-        mailbox[last.stsq] = pieceMoved;
-        mailbox[last.endsq] = last.capture;
-    }
-    else {
-        int pieceMoved = mailbox[last.endsq];
-        pieces[pieceMoved] &= ~MOVEMASK[last.endsq];
-        pieces[pieceMoved] |= MOVEMASK[last.stsq];
-
-        if (last.color == WHITE) {
-            whitePieces &= ~MOVEMASK[last.endsq];
-            whitePieces |= MOVEMASK[last.stsq];
-        }
-        else {
-            blackPieces &= ~MOVEMASK[last.endsq];
-            blackPieces |= MOVEMASK[last.stsq];
-        }
-
-        mailbox[last.endsq] = -1;
-        mailbox[last.stsq] = pieceMoved;
-    }
-
-    // reset en passant
-    whiteEPCaptureSq = last.wEP;
-    blackEPCaptureSq = last.bEP;
-
-    // change castling flags
-    whiteCanKCastle = last.whiteCanKCastle;
-    whiteCanQCastle = last.whiteCanQCastle;
-    blackCanKCastle = last.blackCanKCastle;
-    blackCanQCastle = last.blackCanQCastle;
-}
-*/
-/*
-bool Board::isLegalMove(Move m, int color) {
-    uint64_t legalM = 0;
-    uint64_t legalC = 0;
-    uint64_t moved = 0;
-
-    if (isCastle(m)) {
-        return true;
-    }
-
-    switch (getPiece(m)) {
-        case PAWNS:
-            moved = pieces[color+PAWNS] & MOVEMASK[getStartSq(m)];
-            legalM = (color == WHITE) ? getWPawnMoves(moved) : getBPawnMoves(moved);
-            legalC = (color == WHITE) ? (getWPawnCaptures(moved) & blackPieces) :
-            (getBPawnCaptures(moved) & whitePieces);
-            break;
-        case KNIGHTS:
-            legalM = getKnightSquares(getStartSq(m));
-            legalC = legalM;
-            legalM &= ~(whitePieces & blackPieces);
-            legalC &= (color == WHITE) ? blackPieces : whitePieces;
-            break;
-        case BISHOPS:
-            legalM = getBishopSquares(getStartSq(m));
-            legalC = legalM;
-            legalM &= ~(whitePieces & blackPieces);
-            legalC &= (color == WHITE) ? blackPieces : whitePieces;
-            break;
-        case ROOKS:
-            legalM = getRookSquares(getStartSq(m));
-            legalC = legalM;
-            legalM &= ~(whitePieces & blackPieces);
-            legalC &= (color == WHITE) ? blackPieces : whitePieces;
-            break;
-        case QUEENS:
-            legalM = getQueenSquares(getStartSq(m));
-            legalC = legalM;
-            legalM &= ~(whitePieces & blackPieces);
-            legalC &= (color == WHITE) ? blackPieces : whitePieces;
-            break;
-        case KINGS:
-            legalM = getKingAttacks(color);
-            legalC = legalM;
-            legalM &= ~(whitePieces & blackPieces);
-            legalC &= (color == WHITE) ? blackPieces : whitePieces;
-            break;
-        default:
-            cout << "Error: Invalid piece type." << endl;
-            return false;
-    }
-
-    if (isCapture(m)) {
-        if ((MOVEMASK[getEndSq(m)] & legalC) == 0)
-            return false;
-    }
-    else {
-        if ((MOVEMASK[getEndSq(m)] & legalM) == 0)
-            return false;
-    }
-
-    Board b = staticCopy();
-    b.doMove(m, color);
-    if (b.getInCheck(color)) {
-        return false;
-    }
-
-    return true;
-}
-*/
-
 // Get all legal moves and captures
 MoveList Board::getAllLegalMoves(int color) {
     MoveList moves = getAllPseudoLegalMoves(color);
@@ -684,50 +422,13 @@ MoveList Board::getAllLegalMoves(int color) {
  */
 MoveList Board::getAllPseudoLegalMoves(int color) {
     MoveList quiets, captures;
-    uint64_t pawns = pieces[color+PAWNS];
-    uint64_t knights = pieces[color+KNIGHTS];
-    uint64_t bishops = pieces[color+BISHOPS];
-    uint64_t rooks = pieces[color+ROOKS];
-    uint64_t queens = pieces[color+QUEENS];
-    uint64_t kings = pieces[color+KINGS];
+
     uint64_t otherPieces = (color == WHITE) ? blackPieces : whitePieces;
 
+    // We can do pawns in parallel, since the start square of a pawn move is
+    // determined by its end square.
+    uint64_t pawns = pieces[color+PAWNS];
     uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
-
-    /*
-    while (pawns) {
-        uint64_t single = pawns & -pawns;
-        pawns &= pawns-1;
-        int stsq = bitScanForward(single);
-
-        uint64_t legal = (color == WHITE) ? getWPawnMoves(single)
-                                          : getBPawnMoves(single);
-        uint64_t promotions = legal & finalRank;
-
-        if (promotions) {
-            int endsq = bitScanForward(promotions);
-            Move mk = encodeMove(stsq, endsq, PAWNS, false);
-            mk = setPromotion(mk, KNIGHTS);
-            Move mb = encodeMove(stsq, endsq, PAWNS, false);
-            mb = setPromotion(mb, BISHOPS);
-            Move mr = encodeMove(stsq, endsq, PAWNS, false);
-            mr = setPromotion(mr, ROOKS);
-            Move mq = encodeMove(stsq, endsq, PAWNS, false);
-            mq = setPromotion(mq, QUEENS);
-            quiets.add(mk);
-            quiets.add(mb);
-            quiets.add(mr);
-            quiets.add(mq);
-        }
-        else {
-            while (legal) {
-                int endsq = bitScanForward(legal);
-                legal &= legal-1;
-                quiets.add(encodeMove(stsq, endsq, PAWNS, false));
-            }
-        }
-    }
-    */
     int sqDiff = -8 * color;
 
     uint64_t pLegal = (color == WHITE) ? getWPawnSingleMoves(pawns)
@@ -766,6 +467,102 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         quiets.add(encodeMove(endsq+2*sqDiff, endsq, PAWNS, false));
     }
 
+    // For pawn captures, we can use a similar approach, but we must consider
+    // left-hand and right-hand captures separately so we can tell which
+    // pawn is doing the capturing.
+    int leftDiff = (color == WHITE) ? -7 : 9;
+    int rightDiff = (color == WHITE) ? -9 : 7;
+
+    uint64_t legal = (color == WHITE) ? getWPawnLeftCaptures(pawns)
+                                      : getBPawnLeftCaptures(pawns);
+    legal &= otherPieces;
+    promotions = legal & finalRank;
+
+    while (promotions) {
+        int endsq = bitScanForward(promotions);
+        promotions &= promotions-1;
+
+        Move mk = encodeMove(endsq+leftDiff, endsq, PAWNS, true);
+        mk = setPromotion(mk, KNIGHTS);
+        Move mb = encodeMove(endsq+leftDiff, endsq, PAWNS, true);
+        mb = setPromotion(mb, BISHOPS);
+        Move mr = encodeMove(endsq+leftDiff, endsq, PAWNS, true);
+        mr = setPromotion(mr, ROOKS);
+        Move mq = encodeMove(endsq+leftDiff, endsq, PAWNS, true);
+        mq = setPromotion(mq, QUEENS);
+        captures.add(mk);
+        captures.add(mb);
+        captures.add(mr);
+        captures.add(mq);
+    }
+    while (legal) {
+        int endsq = bitScanForward(legal);
+        legal &= legal-1;
+        captures.add(encodeMove(endsq+leftDiff, endsq, PAWNS, true));
+    }
+
+    legal = (color == WHITE) ? getWPawnRightCaptures(pawns)
+                                      : getBPawnRightCaptures(pawns);
+    legal &= otherPieces;
+    promotions = legal & finalRank;
+
+    while (promotions) {
+        int endsq = bitScanForward(promotions);
+        promotions &= promotions-1;
+
+        Move mk = encodeMove(endsq+rightDiff, endsq, PAWNS, true);
+        mk = setPromotion(mk, KNIGHTS);
+        Move mb = encodeMove(endsq+rightDiff, endsq, PAWNS, true);
+        mb = setPromotion(mb, BISHOPS);
+        Move mr = encodeMove(endsq+rightDiff, endsq, PAWNS, true);
+        mr = setPromotion(mr, ROOKS);
+        Move mq = encodeMove(endsq+rightDiff, endsq, PAWNS, true);
+        mq = setPromotion(mq, QUEENS);
+        captures.add(mk);
+        captures.add(mb);
+        captures.add(mr);
+        captures.add(mq);
+    }
+    while (legal) {
+        int endsq = bitScanForward(legal);
+        legal &= legal-1;
+        captures.add(encodeMove(endsq+rightDiff, endsq, PAWNS, true));
+    }
+
+    if (color == WHITE) {
+        if (whiteEPCaptureSq) {
+            uint64_t taker = (whiteEPCaptureSq << 1) & NOTA & pieces[WHITE+PAWNS];
+            if (taker) {
+                captures.add(encodeMove(bitScanForward(taker),
+                        bitScanForward(whiteEPCaptureSq << 8), PAWNS, true));
+            }
+            else {
+                taker = (whiteEPCaptureSq >> 1) & NOTH & pieces[WHITE+PAWNS];
+                if (taker) {
+                    captures.add(encodeMove(bitScanForward(taker),
+                            bitScanForward(whiteEPCaptureSq << 8), PAWNS, true));
+                }
+            }
+        }
+    }
+    else {
+        if (blackEPCaptureSq) {
+            uint64_t taker = (blackEPCaptureSq << 1) & NOTA & pieces[BLACK+PAWNS];
+            if (taker) {
+                captures.add(encodeMove(bitScanForward(taker),
+                        bitScanForward(blackEPCaptureSq >> 8), PAWNS, true));
+            }
+            else {
+                taker = (blackEPCaptureSq >> 1) & NOTH & pieces[BLACK+PAWNS];
+                if (taker) {
+                    captures.add(encodeMove(bitScanForward(taker),
+                            bitScanForward(blackEPCaptureSq >> 8), PAWNS, true));
+                }
+            }
+        }
+    }
+
+    uint64_t knights = pieces[color+KNIGHTS];
     while (knights) {
         int stsq = bitScanForward(knights);
         knights &= knights-1;
@@ -786,6 +583,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         }
     }
 
+    uint64_t bishops = pieces[color+BISHOPS];
     while (bishops) {
         int stsq = bitScanForward(bishops);
         bishops &= bishops-1;
@@ -806,6 +604,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         }
     }
 
+    uint64_t rooks = pieces[color+ROOKS];
     while (rooks) {
         int stsq = bitScanForward(rooks);
         rooks &= rooks-1;
@@ -826,6 +625,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         }
     }
 
+    uint64_t queens = pieces[color+QUEENS];
     while (queens) {
         int stsq = bitScanForward(queens);
         queens &= queens-1;
@@ -846,6 +646,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         }
     }
 
+    uint64_t kings = pieces[color+KINGS];
     int stsqK = bitScanForward(kings);
     uint64_t legalK = getKingSquares(stsqK) & ~(whitePieces | blackPieces);
     while (legalK) {
@@ -910,95 +711,6 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         }
     }
 
-
-
-    pawns = pieces[color+PAWNS];
-    while (pawns) {
-        uint64_t single = pawns & -pawns;
-        pawns &= pawns-1;
-        int stsq = bitScanForward(single);
-
-        uint64_t legal = (color == WHITE) ? getWPawnCaptures(single)
-                                          : getBPawnCaptures(single);
-        legal &= otherPieces;
-        uint64_t promotions = legal & finalRank;
-
-        if (promotions) {
-            int endsq = bitScanForward(promotions);
-            promotions &= promotions-1;
-
-            Move mk = encodeMove(stsq, endsq, PAWNS, true);
-            mk = setPromotion(mk, KNIGHTS);
-            Move mb = encodeMove(stsq, endsq, PAWNS, true);
-            mb = setPromotion(mb, BISHOPS);
-            Move mr = encodeMove(stsq, endsq, PAWNS, true);
-            mr = setPromotion(mr, ROOKS);
-            Move mq = encodeMove(stsq, endsq, PAWNS, true);
-            mq = setPromotion(mq, QUEENS);
-            captures.add(mk);
-            captures.add(mb);
-            captures.add(mr);
-            captures.add(mq);
-
-            if (promotions) {
-                endsq = bitScanForward(promotions);
-                Move mk2 = encodeMove(stsq, endsq, PAWNS, true);
-                mk2 = setPromotion(mk2, KNIGHTS);
-                Move mb2 = encodeMove(stsq, endsq, PAWNS, true);
-                mb2 = setPromotion(mb2, BISHOPS);
-                Move mr2 = encodeMove(stsq, endsq, PAWNS, true);
-                mr2 = setPromotion(mr2, ROOKS);
-                Move mq2 = encodeMove(stsq, endsq, PAWNS, true);
-                mq2 = setPromotion(mq2, QUEENS);
-                captures.add(mk2);
-                captures.add(mb2);
-                captures.add(mr2);
-                captures.add(mq2);
-            }
-        }
-        else {
-            while (legal) {
-                int endsq = bitScanForward(legal);
-                legal &= legal-1;
-
-                captures.add(encodeMove(stsq, endsq, PAWNS, true));
-            }
-        }
-    }
-
-    if (color == WHITE) {
-        if (whiteEPCaptureSq) {
-            uint64_t taker = (whiteEPCaptureSq << 1) & NOTA & pieces[WHITE+PAWNS];
-            if (taker) {
-                captures.add(encodeMove(bitScanForward(taker),
-                        bitScanForward(whiteEPCaptureSq << 8), PAWNS, true));
-            }
-            else {
-                taker = (whiteEPCaptureSq >> 1) & NOTH & pieces[WHITE+PAWNS];
-                if (taker) {
-                    captures.add(encodeMove(bitScanForward(taker),
-                            bitScanForward(whiteEPCaptureSq << 8), PAWNS, true));
-                }
-            }
-        }
-    }
-    else {
-        if (blackEPCaptureSq) {
-            uint64_t taker = (blackEPCaptureSq << 1) & NOTA & pieces[BLACK+PAWNS];
-            if (taker) {
-                captures.add(encodeMove(bitScanForward(taker),
-                        bitScanForward(blackEPCaptureSq >> 8), PAWNS, true));
-            }
-            else {
-                taker = (blackEPCaptureSq >> 1) & NOTH & pieces[BLACK+PAWNS];
-                if (taker) {
-                    captures.add(encodeMove(bitScanForward(taker),
-                            bitScanForward(blackEPCaptureSq >> 8), PAWNS, true));
-                }
-            }
-        }
-    }
-
     for (unsigned int i = 0; i < quiets.size(); i++) {
         captures.add(quiets.get(i));
     }
@@ -1032,57 +744,63 @@ MoveList Board::getPseudoLegalCaptures(int color) {
     uint64_t otherPieces = (color == WHITE) ? blackPieces : whitePieces;
 
     uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
-    while (pawns) {
-        uint64_t single = pawns & -pawns;
-        pawns &= pawns-1;
-        int stsq = bitScanForward(single);
+    int leftDiff = (color == WHITE) ? -7 : 9;
+    int rightDiff = (color == WHITE) ? -9 : 7;
 
-        uint64_t legal = (color == WHITE) ? getWPawnCaptures(single)
-                                          : getBPawnCaptures(single);
-        legal &= otherPieces;
-        uint64_t promotions = legal & finalRank;
+    uint64_t legal = (color == WHITE) ? getWPawnLeftCaptures(pawns)
+                                      : getBPawnLeftCaptures(pawns);
+    legal &= otherPieces;
+    uint64_t promotions = legal & finalRank;
 
-        if (promotions) {
-            int endsq = bitScanForward(promotions);
-            promotions &= promotions-1;
+    while (promotions) {
+        int endsq = bitScanForward(promotions);
+        promotions &= promotions-1;
 
-            Move mk = encodeMove(stsq, endsq, PAWNS, true);
-            mk = setPromotion(mk, KNIGHTS);
-            Move mb = encodeMove(stsq, endsq, PAWNS, true);
-            mb = setPromotion(mb, BISHOPS);
-            Move mr = encodeMove(stsq, endsq, PAWNS, true);
-            mr = setPromotion(mr, ROOKS);
-            Move mq = encodeMove(stsq, endsq, PAWNS, true);
-            mq = setPromotion(mq, QUEENS);
-            result.add(mk);
-            result.add(mb);
-            result.add(mr);
-            result.add(mq);
+        Move mk = encodeMove(endsq+leftDiff, endsq, PAWNS, true);
+        mk = setPromotion(mk, KNIGHTS);
+        Move mb = encodeMove(endsq+leftDiff, endsq, PAWNS, true);
+        mb = setPromotion(mb, BISHOPS);
+        Move mr = encodeMove(endsq+leftDiff, endsq, PAWNS, true);
+        mr = setPromotion(mr, ROOKS);
+        Move mq = encodeMove(endsq+leftDiff, endsq, PAWNS, true);
+        mq = setPromotion(mq, QUEENS);
+        result.add(mk);
+        result.add(mb);
+        result.add(mr);
+        result.add(mq);
+    }
+    while (legal) {
+        int endsq = bitScanForward(legal);
+        legal &= legal-1;
+        result.add(encodeMove(endsq+leftDiff, endsq, PAWNS, true));
+    }
 
-            if (promotions) {
-                endsq = bitScanForward(promotions);
-                Move mk2 = encodeMove(stsq, endsq, PAWNS, true);
-                mk2 = setPromotion(mk2, KNIGHTS);
-                Move mb2 = encodeMove(stsq, endsq, PAWNS, true);
-                mb2 = setPromotion(mb2, BISHOPS);
-                Move mr2 = encodeMove(stsq, endsq, PAWNS, true);
-                mr2 = setPromotion(mr2, ROOKS);
-                Move mq2 = encodeMove(stsq, endsq, PAWNS, true);
-                mq2 = setPromotion(mq2, QUEENS);
-                result.add(mk2);
-                result.add(mb2);
-                result.add(mr2);
-                result.add(mq2);
-            }
-        }
-        else {
-            while (legal) {
-                int endsq = bitScanForward(legal);
-                legal &= legal-1;
+    legal = (color == WHITE) ? getWPawnRightCaptures(pawns)
+                                      : getBPawnRightCaptures(pawns);
+    legal &= otherPieces;
+    promotions = legal & finalRank;
 
-                result.add(encodeMove(stsq, endsq, PAWNS, true));
-            }
-        }
+    while (promotions) {
+        int endsq = bitScanForward(promotions);
+        promotions &= promotions-1;
+
+        Move mk = encodeMove(endsq+rightDiff, endsq, PAWNS, true);
+        mk = setPromotion(mk, KNIGHTS);
+        Move mb = encodeMove(endsq+rightDiff, endsq, PAWNS, true);
+        mb = setPromotion(mb, BISHOPS);
+        Move mr = encodeMove(endsq+rightDiff, endsq, PAWNS, true);
+        mr = setPromotion(mr, ROOKS);
+        Move mq = encodeMove(endsq+rightDiff, endsq, PAWNS, true);
+        mq = setPromotion(mq, QUEENS);
+        result.add(mk);
+        result.add(mb);
+        result.add(mr);
+        result.add(mq);
+    }
+    while (legal) {
+        int endsq = bitScanForward(legal);
+        legal &= legal-1;
+        result.add(encodeMove(endsq+rightDiff, endsq, PAWNS, true));
     }
 
     if (color == WHITE) {
@@ -1171,10 +889,10 @@ MoveList Board::getPseudoLegalCaptures(int color) {
     }
 
     int stsq = bitScanForward(kings);
-    uint64_t legal = getKingSquares(stsq) & otherPieces;
-    while (legal) {
-        int endsq = bitScanForward(legal);
-        legal &= legal-1;
+    uint64_t legalK = getKingSquares(stsq) & otherPieces;
+    while (legalK) {
+        int endsq = bitScanForward(legalK);
+        legalK &= legalK-1;
 
         result.add(encodeMove(stsq, endsq, KINGS, true));
     }
@@ -1186,8 +904,8 @@ MoveList Board::getPseudoLegalCaptures(int color) {
 // square. Useful for checks, captures
 uint64_t Board::getAttackMap(int color, int sq) {
     uint64_t pawnCap = (color == WHITE)
-                     ? getBPawnCaptures(MOVEMASK[sq])
-                     : getWPawnCaptures(MOVEMASK[sq]);
+                     ? getBPawnLeftCaptures(MOVEMASK[sq]) | getBPawnRightCaptures(MOVEMASK[sq])
+                     : getWPawnLeftCaptures(MOVEMASK[sq]) | getWPawnRightCaptures(MOVEMASK[sq]);
     return (pawnCap & pieces[color+PAWNS])
          | (getKnightSquares(sq) & pieces[color+KNIGHTS])
          | (getBishopSquares(sq) & (pieces[color+BISHOPS] | pieces[color+QUEENS]))
@@ -1344,12 +1062,18 @@ int Board::evaluate() {
     // Consider attacks on squares near king
     uint64_t wksq = getKingAttacks(WHITE);
     uint64_t bksq = getKingAttacks(BLACK);
-    uint64_t bAtt = getBPawnCaptures(pieces[BLACK+PAWNS]) | getKnightMoves(pieces[BLACK+KNIGHTS]) |
-    getBishopMoves(pieces[BLACK+BISHOPS]) | getRookMoves(pieces[BLACK+ROOKS]) |
-    getQueenMoves(pieces[BLACK+QUEENS]);
-    uint64_t wAtt = getWPawnCaptures(pieces[WHITE+PAWNS]) | getKnightMoves(pieces[WHITE+KNIGHTS]) |
-    getBishopMoves(pieces[WHITE+BISHOPS]) | getRookMoves(pieces[WHITE+ROOKS]) |
-    getQueenMoves(pieces[WHITE+QUEENS]);
+    uint64_t bAtt = getBPawnLeftCaptures(pieces[BLACK+PAWNS])
+                  | getBPawnRightCaptures(pieces[BLACK+PAWNS])
+                  | getKnightMoves(pieces[BLACK+KNIGHTS])
+                  | getBishopMoves(pieces[BLACK+BISHOPS])
+                  | getRookMoves(pieces[BLACK+ROOKS])
+                  | getQueenMoves(pieces[BLACK+QUEENS]);
+    uint64_t wAtt = getWPawnLeftCaptures(pieces[WHITE+PAWNS])
+                  | getWPawnRightCaptures(pieces[WHITE+PAWNS])
+                  | getKnightMoves(pieces[WHITE+KNIGHTS])
+                  | getBishopMoves(pieces[WHITE+BISHOPS])
+                  | getRookMoves(pieces[WHITE+ROOKS])
+                  | getQueenMoves(pieces[WHITE+QUEENS]);
     
     value -= 25 * count(wksq & bAtt) * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
     value += 25 * count(bksq & wAtt) * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
@@ -1417,13 +1141,6 @@ int Board::evaluate() {
     value += 20 * count(bp);
 
     return value;
-}
-
-bool Board::pieceOn(int color, int x, int y) {
-    if (color == WHITE)
-        return (whitePieces & MOVEMASK[x + 8*y]) != 0;
-    else
-        return (blackPieces & MOVEMASK[x + 8*y]) != 0;
 }
 
 // Faster estimates of piece mobility (number of legal moves)
@@ -1593,16 +1310,20 @@ uint64_t Board::getBPawnDoubleMoves(uint64_t pawns) {
     return pawns;
 }
 
-uint64_t Board::getWPawnCaptures(uint64_t pawns) {
-    uint64_t result = (pawns << 9) & NOTA;
-    result |= (pawns << 7) & NOTH;
-    return result;
+uint64_t Board::getWPawnLeftCaptures(uint64_t pawns) {
+    return (pawns << 7) & NOTH;
 }
 
-uint64_t Board::getBPawnCaptures(uint64_t pawns) {
-    uint64_t result = (pawns >> 7) & NOTA;
-    result |= (pawns >> 9) & NOTH;
-    return result;
+uint64_t Board::getBPawnLeftCaptures(uint64_t pawns) {
+    return (pawns >> 9) & NOTH;
+}
+
+uint64_t Board::getWPawnRightCaptures(uint64_t pawns) {
+    return (pawns << 9) & NOTA;
+}
+
+uint64_t Board::getBPawnRightCaptures(uint64_t pawns) {
+    return (pawns >> 7) & NOTA;
 }
 
 uint64_t Board::getKnightSquares(int single) {
@@ -1919,41 +1640,3 @@ string Board::toString() {
     }
     return result;
 }
-
-// TODO not updated or tested
-/*
-public boolean equals(Object o) {
-    if (!(o instanceof Board))
-        return false;
-    Board other = (Board)o;
-    if (mailbox.equals(other.mailbox) && whiteCanKCastle == other.whiteCanKCastle
-    && whiteCanQCastle == other.whiteCanQCastle && blackCanKCastle == other.blackCanKCastle
-    && blackCanQCastle == other.blackCanQCastle && whiteEPCaptureSq == other.whiteEPCaptureSq
-    && blackEPCaptureSq == other.blackEPCaptureSq)
-        return true;
-    else return false;
-}
-*/
-
-/* TODO java code not yet converted
-private class BMove {
-    public int color, stsq, endsq, capture;
-    public boolean whiteCanKCastle = false;
-    public boolean blackCanKCastle = false;
-    public boolean whiteCanQCastle = false;
-    public boolean blackCanQCastle = false;
-    public uint64_t wEP, bEP;
-    public boolean isCastle;
-    public boolean isPromotion = false;
-
-    public BMove(int _color, int _stsq, int _endsq, int _capture, uint64_t _wEP, uint64_t _bEP, boolean _isCastle) {
-        color = _color;
-        stsq = _stsq;
-        endsq = _endsq;
-        capture = _capture;
-        wEP = _wEP;
-        bEP = _bEP;
-        isCastle = _isCastle;
-    }
-}
-*/
