@@ -1,5 +1,14 @@
+#include <random>
 #include "board.h"
 #include "btables.h"
+
+uint64_t zobristTable[781];
+
+void initZobristTable() {
+    mt19937_64 rng (7814071896ULL);
+    for (int i = 0; i < 781; i++)
+        zobristTable[i] = rng();
+}
 
 // Create a board object initialized to the start position.
 Board::Board() {
@@ -28,6 +37,10 @@ Board::Board() {
     fiftyMoveCounter = 0;
     moveNumber = 1;
     playerToMove = WHITE;
+
+    int *mailbox = getMailbox();
+    initZobristKey(mailbox);
+    delete[] mailbox;
 }
 
 // Create a board object from a mailbox of the current board state.
@@ -60,6 +73,8 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
     fiftyMoveCounter = _fiftyMoveCounter;
     moveNumber = _moveNumber;
     playerToMove = _playerToMove;
+
+    initZobristKey(mailboxBoard);
 }
 
 Board::~Board() {}
@@ -85,6 +100,7 @@ Board Board::staticCopy() {
     result.playerToMove = playerToMove;
     result.twoFoldStartSqs = twoFoldStartSqs;
     result.twoFoldEndSqs = twoFoldEndSqs;
+    result.zobristKey = zobristKey;
     return result;
 }
 
@@ -109,6 +125,7 @@ Board *Board::dynamicCopy() {
     result->playerToMove = playerToMove;
     result->twoFoldStartSqs = twoFoldStartSqs;
     result->twoFoldEndSqs = twoFoldEndSqs;
+    result->zobristKey = zobristKey;
     return result;
 }
 
@@ -1626,4 +1643,13 @@ string Board::toString() {
     }
     delete[] mailbox;
     return result;
+}
+
+void Board::initZobristKey(int *mailbox) {
+    zobristKey = 0;
+    for (int i = 0; i < 64; i++) {
+        if (mailbox[i] != -1) {
+
+        }
+    }
 }

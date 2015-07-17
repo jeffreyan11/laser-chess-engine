@@ -9,6 +9,8 @@ uint64_t perft(Board &b, int color, int depth);
 int captures = 0;
 
 int main(int argc, char **argv) {
+	initZobristTable();
+
     int depth = 5;
     if (argc == 2)
         depth = atoi(argv[1]);

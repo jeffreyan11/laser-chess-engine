@@ -134,6 +134,8 @@ const int initMailbox[64] = {
     9, 7, 8, 10, 11, 8, 7, 9
 };
 
+void initZobristTable();
+
 /**
  * @brief A chess board and its associated functionality, including get legal
  *        moves and evaluation.
@@ -217,6 +219,8 @@ private:
     uint32_t twoFoldStartSqs;
     uint32_t twoFoldEndSqs;
 
+    uint64_t zobristKey;
+
     int getCapturedPiece(int colorCaptured, int endSq);
 
     // Move generation
@@ -256,6 +260,8 @@ private:
     uint64_t westAttacks(uint64_t rooks, uint64_t empty);
     uint64_t swAttacks(uint64_t bishops, uint64_t empty);
     uint64_t nwAttacks(uint64_t bishops, uint64_t empty);
+
+    void initZobristKey(int *mailbox);
 };
 
 #endif

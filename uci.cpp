@@ -104,6 +104,8 @@ Board fenToBoard(string s) {
 }
 
 int main() {
+    initZobristTable();
+
     string input;
     vector<string> inputVector;
     string name = "UCI Chess Engine";
@@ -165,8 +167,7 @@ int main() {
                     int startSq = 8 * (startRank - '0' - 1) + (startFile - 'a');
                     int endSq = 8 * (endRank - '0' - 1) + (endFile - 'a');
                     
-                    int color = board.getPlayerToMove();
-                    int piece = board.getMailbox()[startSq] - color;
+                    int piece = board.getMailbox()[startSq] % 6;
                     
                     bool isCapture = ((board.getMailbox()[endSq] != -1)
                             || (piece == PAWNS && abs(abs(startSq - endSq) - 8) == 1));
@@ -224,11 +225,11 @@ int main() {
                 int color = board.getPlayerToMove();
                 
                 if (inputVector.size() == 5) {
-                    if (color == 1) value = stoi(inputVector.at(2));
+                    if (color == WHITE) value = stoi(inputVector.at(2));
                     else value = stoi(inputVector.at(4));
                 }
                 if (inputVector.size() == 9) {
-                    if (color == 1) value = stoi(inputVector.at(2)) + 40 * stoi(inputVector.at(6));
+                    if (color == WHITE) value = stoi(inputVector.at(2)) + 40 * stoi(inputVector.at(6));
                     else value = stoi(inputVector.at(4)) + 40 * stoi(inputVector.at(8));
                 }
                 // Primitive time management: use on average 1/40 of remaining time with a 200 ms buffer zone
