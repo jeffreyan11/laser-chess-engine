@@ -1,6 +1,7 @@
 #include "board.h"
 #include "btables.h"
 
+// Create a board object initialized to the start position.
 Board::Board() {
     pieces[2] = 0x000000000000FF00; // white pawns
     pieces[0] = 0x00FF000000000000; // black pawns
@@ -24,34 +25,26 @@ Board::Board() {
     whiteEPCaptureSq = 0;
     blackEPCaptureSq = 0;
 
-    for (int i = 0; i < 64; i++) {
-        mailbox[i] = initMailbox[i];
-    }
-
     fiftyMoveCounter = 0;
     moveNumber = 1;
     playerToMove = WHITE;
 }
 
+// Create a board object from a mailbox of the current board state.
 Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
         bool _whiteCanQCastle, bool _blackCanQCastle, uint64_t _whiteEPCaptureSq,
         uint64_t _blackEPCaptureSq, int _fiftyMoveCounter, int _moveNumber,
         int _playerToMove) {
-    // Copy mailbox
-    for (int i = 0; i < 64; i++) {
-        mailbox[i] = mailboxBoard[i];
-    }
-
     // Initialize bitboards
     for (int i = 0; i < 12; i++) {
         pieces[i] = 0;
     }
     for (int i = 0; i < 64; i++) {
-        if (0 <= mailbox[i] && mailbox[i] <= 11) {
-            pieces[mailbox[i]] |= MOVEMASK[i];
+        if (0 <= mailboxBoard[i] && mailboxBoard[i] <= 11) {
+            pieces[mailboxBoard[i]] |= MOVEMASK[i];
         }
-        
-        if (mailbox[i] > 11) cerr << "Error in constructor." << endl;
+        else if (mailboxBoard[i] > 11)
+            cerr << "Error in constructor." << endl;
     }
     whitePieces = pieces[2] | pieces[3] | pieces[6] | pieces[7] | pieces[10]
                 | pieces[11];
@@ -84,9 +77,6 @@ Board Board::staticCopy() {
     result.blackCanQCastle = blackCanQCastle;
     result.whiteEPCaptureSq = whiteEPCaptureSq;
     result.blackEPCaptureSq = blackEPCaptureSq;
-    for (int i = 0; i < 64; i++) {
-        result.mailbox[i] = mailbox[i];
-    }
     result.fiftyMoveCounter = fiftyMoveCounter;
     result.moveNumber = moveNumber;
     result.playerToMove = playerToMove;
@@ -108,9 +98,6 @@ Board *Board::dynamicCopy() {
     result->blackCanQCastle = blackCanQCastle;
     result->whiteEPCaptureSq = whiteEPCaptureSq;
     result->blackEPCaptureSq = blackEPCaptureSq;
-    for (int i = 0; i < 64; i++) {
-        result->mailbox[i] = mailbox[i];
-    }
     result->fiftyMoveCounter = fiftyMoveCounter;
     result->moveNumber = moveNumber;
     result->playerToMove = playerToMove;
@@ -120,17 +107,6 @@ Board *Board::dynamicCopy() {
 }
 
 void Board::doMove(Move m, int color) {
-/* TODO undo move stuff
-    BMove record = new BMove(color, m->startsq, m->endsq, mailbox[m->endsq], whiteEPCaptureSq, blackEPCaptureSq, m->isCastle);
-    if (m->promotion != -1)
-        record->isPromotion = true;
-    record->whiteCanKCastle = whiteCanKCastle;
-    record->whiteCanQCastle = whiteCanQCastle;
-    record->blackCanKCastle = blackCanKCastle;
-    record->blackCanQCastle = blackCanQCastle;
-    history.push(record);
-*/
-
     int pieceID = getPiece(m);
     int startSq = getStartSq(m);
     int endSq = getEndSq(m);
@@ -165,11 +141,6 @@ void Board::doMove(Move m, int color) {
             whitePieces &= ~MOVEMASK[7];
             whitePieces |= MOVEMASK[5];
 
-            mailbox[4] = -1;
-            mailbox[6] = WHITE+KINGS;
-            mailbox[7] = -1;
-            mailbox[5] = WHITE+ROOKS;
-
             whiteCanKCastle = false;
             whiteCanQCastle = false;
         }
@@ -183,11 +154,6 @@ void Board::doMove(Move m, int color) {
             whitePieces |= MOVEMASK[2];
             whitePieces &= ~MOVEMASK[0];
             whitePieces |= MOVEMASK[3];
-
-            mailbox[4] = -1;
-            mailbox[2] = WHITE+KINGS;
-            mailbox[0] = -1;
-            mailbox[3] = WHITE+ROOKS;
 
             whiteCanKCastle = false;
             whiteCanQCastle = false;
@@ -203,11 +169,6 @@ void Board::doMove(Move m, int color) {
             blackPieces &= ~MOVEMASK[63];
             blackPieces |= MOVEMASK[61];
 
-            mailbox[60] = -1;
-            mailbox[62] = BLACK+KINGS;
-            mailbox[63] = -1;
-            mailbox[61] = BLACK+ROOKS;
-
             blackCanKCastle = false;
             blackCanQCastle = false;
         }
@@ -222,11 +183,6 @@ void Board::doMove(Move m, int color) {
             blackPieces &= ~MOVEMASK[56];
             blackPieces |= MOVEMASK[59];
 
-            mailbox[60] = -1;
-            mailbox[58] = BLACK+KINGS;
-            mailbox[56] = -1;
-            mailbox[59] = BLACK+ROOKS;
-
             blackCanKCastle = false;
             blackCanQCastle = false;
         }
@@ -236,9 +192,10 @@ void Board::doMove(Move m, int color) {
     } // end castling
     else if (getPromotion(m)) {
         if (isCapture(m)) {
+            int captureType = getCapturedPiece(-color, endSq);
             pieces[PAWNS+color] &= ~MOVEMASK[startSq];
             pieces[getPromotion(m)+color] |= MOVEMASK[endSq];
-            pieces[mailbox[endSq]] &= ~MOVEMASK[endSq];
+            pieces[-color+captureType] &= ~MOVEMASK[endSq];
 
             if (color == WHITE) {
                 whitePieces &= ~MOVEMASK[startSq];
@@ -265,14 +222,13 @@ void Board::doMove(Move m, int color) {
             }
         }
 
-        mailbox[startSq] = -1;
-        mailbox[endSq] = getPromotion(m) + color;
         whiteEPCaptureSq = 0;
         blackEPCaptureSq = 0;
         fiftyMoveCounter = 0;
     } // end promotion
     else if (isCapture(m)) {
-        if (mailbox[endSq] == -1) {
+        int captureType = getCapturedPiece(-color, endSq);
+        if (captureType == -1) {
             pieces[PAWNS+color] &= ~MOVEMASK[startSq];
             pieces[PAWNS+color] |= MOVEMASK[endSq];
             pieces[PAWNS-color] &= ~((color == WHITE) ? whiteEPCaptureSq : blackEPCaptureSq);
@@ -281,22 +237,17 @@ void Board::doMove(Move m, int color) {
                 whitePieces &= ~MOVEMASK[startSq];
                 whitePieces |= MOVEMASK[endSq];
                 blackPieces &= ~whiteEPCaptureSq;
-                mailbox[bitScanForward(whiteEPCaptureSq)] = -1;
             }
             else {
                 blackPieces &= ~MOVEMASK[startSq];
                 blackPieces |= MOVEMASK[endSq];
                 whitePieces &= ~blackEPCaptureSq;
-                mailbox[bitScanForward(blackEPCaptureSq)] = -1;
             }
-        
-            mailbox[startSq] = -1;
-            mailbox[endSq] = PAWNS + color;
         }
         else {
             pieces[pieceID+color] &= ~MOVEMASK[startSq];
             pieces[pieceID+color] |= MOVEMASK[endSq];
-            pieces[mailbox[endSq]] &= ~MOVEMASK[endSq];
+            pieces[captureType-color] &= ~MOVEMASK[endSq];
 
             if (color == WHITE) {
                 whitePieces &= ~MOVEMASK[startSq];
@@ -308,9 +259,6 @@ void Board::doMove(Move m, int color) {
                 blackPieces |= MOVEMASK[endSq];
                 whitePieces &= ~MOVEMASK[endSq];
             }
-
-            mailbox[startSq] = -1;
-            mailbox[endSq] = pieceID + color;
         }
         whiteEPCaptureSq = 0;
         blackEPCaptureSq = 0;
@@ -328,9 +276,6 @@ void Board::doMove(Move m, int color) {
             blackPieces &= ~MOVEMASK[startSq];
             blackPieces |= MOVEMASK[endSq];
         }
-
-        mailbox[startSq] = -1;
-        mailbox[endSq] = pieceID + color;
 
         // check for en passant
         if (pieceID == PAWNS) {
@@ -913,6 +858,26 @@ uint64_t Board::getAttackMap(int color, int sq) {
          | (getKingSquares(sq) & pieces[color+KINGS]);
 }
 
+// Given the end square of a capture, find the opposing piece that is captured.
+int Board::getCapturedPiece(int colorCaptured, int endSq) {
+    uint64_t endSingle = MOVEMASK[endSq];
+    if (pieces[colorCaptured+PAWNS] & endSingle)
+        return PAWNS;
+    else if (pieces[colorCaptured+KNIGHTS] & endSingle)
+        return KNIGHTS;
+    else if (pieces[colorCaptured+BISHOPS] & endSingle)
+        return BISHOPS;
+    else if (pieces[colorCaptured+ROOKS] & endSingle)
+        return ROOKS;
+    else if (pieces[colorCaptured+QUEENS] & endSingle)
+        return QUEENS;
+    else {
+        // The default is when the capture destination is an empty square.
+        // This indicates an en passant (and hopefully not an error).
+        return -1;
+    }
+}
+
 
 // ---------------------King: check, checkmate, stalemate----------------------
 bool Board::getInCheck(int color) {
@@ -1008,7 +973,9 @@ int Board::evaluate() {
     if ((pieces[BLACK+BISHOPS] & LIGHT) && (pieces[BLACK+BISHOPS] & DARK))
         value -= BISHOP_PAIR_VALUE;
     
+    // TODO make this faster
     // piece square tables
+    int *mailbox = getMailbox();
     for (int i = 0; i < 64; i++) {
         switch (mailbox[i]) {
             case -1: // empty
@@ -1058,6 +1025,7 @@ int Board::evaluate() {
                 break;
         }
     }
+    delete[] mailbox;
     
     // Consider attacks on squares near king
     uint64_t wksq = getKingAttacks(WHITE);
@@ -1247,7 +1215,7 @@ int Board::getSEE(int color, int sq) {
     uint64_t single = getLeastValuableAttacker(attackers, color, piece);
     // Get value of piece initially being captured. If the destination square is
     // empty, then the capture is an en passant.
-    gain[d] = valueOfPiece((mailbox[sq] == -1) ? PAWNS : (mailbox[sq] + color));
+    gain[d] = valueOfPiece(getCapturedPiece(-color, sq));
 
     do {
         d++; // next depth
@@ -1267,6 +1235,7 @@ int Board::getSEE(int color, int sq) {
 
 int Board::valueOfPiece(int piece) {
     switch(piece) {
+        case -1: // en passant
         case PAWNS:
             return PAWN_VALUE;
         case KNIGHTS:
@@ -1584,12 +1553,20 @@ uint64_t Board::getBlackPieces() {
 int *Board::getMailbox() {
     int *result = new int[64];
     for (int i = 0; i < 64; i++) {
-        result[i] = mailbox[i];
+        result[i] = -1;
+    }
+    for (int i = 0; i < 12; i++) {
+        uint64_t bitboard = pieces[i];
+        while (bitboard) {
+            result[bitScanForward(bitboard)] = i;
+            bitboard &= bitboard - 1;
+        }
     }
     return result;
 }
 
 string Board::toString() {
+    int *mailbox = getMailbox();
     string result = "";
     for (int i = 56; i >= 0; i++) {
         switch (mailbox[i]) {
@@ -1638,5 +1615,6 @@ string Board::toString() {
             i -= 16;
         }
     }
+    delete[] mailbox;
     return result;
 }

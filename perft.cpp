@@ -35,6 +35,7 @@ int main(int argc, char **argv) {
  * 7/11/15: PERFT 5, 1.22 s (i5-2450m)
  * 7/13/15: PERFT 5, 1.27/1.08 s (i5-2450m) before/after pass Board by reference
  * 7/14/15: PERFT 5, 0.86 s (i5-2450m)
+ * 7/17/15: PERFT 5, 0.32 s (i5-2450m)
  */
 uint64_t perft(Board &b, int color, int depth) {
 	if (depth == 0)

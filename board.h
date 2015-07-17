@@ -217,11 +217,7 @@ private:
     uint32_t twoFoldStartSqs;
     uint32_t twoFoldEndSqs;
 
-    // Redundant mailbox representation to make evaluation easier
-    // mailbox[0] is a1, mailbox[63] is h8
-    int mailbox[64];
-
-    // Stack<BMove> history = new Stack<BMove>();
+    int getCapturedPiece(int colorCaptured, int endSq);
 
     // Move generation
     // ___Moves(): moves for all of that piece type on the board.
