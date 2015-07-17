@@ -9,17 +9,14 @@ using namespace std;
 
 #define USE_INLINE_AS true
 
-// These values uniquely determine indices for every piece type from 0 to 11
-// For example, white pawns get the index 1 + 1 = 2, and black rooks get the
-// index -1 + 6 = 5
-const int WHITE = 1;
-const int BLACK = -1;
-const int PAWNS = 1;
-const int KNIGHTS = 2;
-const int BISHOPS = 5;
-const int ROOKS = 6;
-const int QUEENS = 9;
-const int KINGS = 10;
+const int WHITE = 0;
+const int BLACK = 1;
+const int PAWNS = 0;
+const int KNIGHTS = 1;
+const int BISHOPS = 2;
+const int ROOKS = 3;
+const int QUEENS = 4;
+const int KINGS = 5;
 
 // Material constants
 const int PAWN_VALUE = 100, PAWN_VALUE_EG = 125;

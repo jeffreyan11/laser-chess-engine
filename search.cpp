@@ -18,7 +18,8 @@ int partition(MoveList &moves, ScoreList &scores, int left, int right,
 // Iterative deepening search
 Move getBestMove(Board *b, int mode, int value) {
     using namespace std::chrono;
-    
+    nodes = 0;
+
     // test if only 1 legal move
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
@@ -103,7 +104,7 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
             bestScore = MATE_SCORE;
             return i;
         }
-        else if (copy.isStalemate(-color)) {
+        else if (copy.isStalemate(color^1)) {
             score = 0;
             if (score > alpha) {
                 alpha = score;
@@ -113,13 +114,13 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
         }
         
         if (i != 0) {
-            score = -PVS(copy, -color, depth-1, -alpha-1, -alpha);
+            score = -PVS(copy, color^1, depth-1, -alpha-1, -alpha);
             if (alpha < score && score < beta) {
-                score = -PVS(copy, -color, depth-1, -beta, -alpha);
+                score = -PVS(copy, color^1, depth-1, -beta, -alpha);
             }
         }
         else {
-            score = -PVS(copy, -color, depth-1, -beta, -alpha);
+            score = -PVS(copy, color^1, depth-1, -beta, -alpha);
         }
         
         if (score > alpha) {
@@ -151,12 +152,12 @@ void sortSearch(Board *b, MoveList &legalMoves, ScoreList &scores, int depth) {
             scores.add(MATE_SCORE);
             continue;
         }
-        else if (copy.isStalemate(-color)) {
+        else if (copy.isStalemate(color^1)) {
             scores.add(0);
             continue;
         }
         
-        scores.add(-PVS(copy, -color, depth-1, -MATE_SCORE, MATE_SCORE));
+        scores.add(-PVS(copy, color^1, depth-1, -MATE_SCORE, MATE_SCORE));
     }
 }
 
@@ -176,12 +177,12 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // null move pruning
     // only if doing a null move does not leave player in check
     if (depth >= 2 && b.doPseudoLegalMove(NULL_MOVE, color)) {
-        int nullScore = -PVS(b, -color, depth-4, -beta, -alpha);
+        int nullScore = -PVS(b, color^1, depth-4, -beta, -alpha);
         if (nullScore >= beta)
             return beta;
     }
     // Undo the null move
-    b.doMove(NULL_MOVE, -color);
+    b.doMove(NULL_MOVE, color^1);
     
     MoveList legalMoves = b.getAllPseudoLegalMoves(color);
 
@@ -205,9 +206,9 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
                 nodes++;
                 int reduction = 0;
-                if (hashScore < alpha)
-                    reduction = 2;
-                score = -PVS(copy, -color, depth-1-reduction, -beta, -alpha);
+                //if (hashDepth >= depth && hashScore < alpha)
+                //    reduction = 2;
+                score = -PVS(copy, color^1, depth-1-reduction, -beta, -alpha);
 
                 if (score >= beta)
                     return score;
@@ -249,13 +250,13 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             reduction = 1;
 
         if (i != 0) {
-            score = -PVS(copy, -color, depth-1-reduction, -alpha-1, -alpha);
+            score = -PVS(copy, color^1, depth-1-reduction, -alpha-1, -alpha);
             if (alpha < score && score < beta) {
-                score = -PVS(copy, -color, depth-1-reduction, -beta, -alpha);
+                score = -PVS(copy, color^1, depth-1-reduction, -beta, -alpha);
             }
         }
         else {
-            score = -PVS(copy, -color, depth-1-reduction, -beta, -alpha);
+            score = -PVS(copy, color^1, depth-1-reduction, -beta, -alpha);
         }
         
         if (score >= beta) {
@@ -315,7 +316,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheck
 
     // Stand pat: if our current position is already way too good or way too bad
     // we can simply stop the search here
-    int standPat = color * b.evaluate();
+    int standPat = (color == WHITE) ? b.evaluate() : -b.evaluate();
     if (standPat >= beta)
         return beta;
     if (alpha < standPat)
@@ -340,7 +341,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheck
                 continue;
             
             nodes++;
-            int score = -quiescence(copy, -color, plies+1, -beta, -alpha, false);
+            int score = -quiescence(copy, color^1, plies+1, -beta, -alpha, false);
             
             if (score >= beta) {
                 alpha = beta;
@@ -362,10 +363,10 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheck
             Board copy = b.staticCopy();
             if (!copy.doPseudoLegalMove(m, color))
                 continue;
-            if (!copy.getInCheck(-color))
+            if (!copy.getInCheck(color^1))
                 continue;
             
-            int score = -checkQuiescence(copy, -color, plies+1, -beta, -alpha);
+            int score = -checkQuiescence(copy, color^1, plies+1, -beta, -alpha);
             
             if (score >= beta) {
                 alpha = beta;
@@ -394,7 +395,7 @@ int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
             continue;
         
         nodes++;
-        int score = -quiescence(copy, -color, plies+1, -beta, -alpha, true);
+        int score = -quiescence(copy, color^1, plies+1, -beta, -alpha, true);
         
         if (score >= beta) {
             alpha = beta;

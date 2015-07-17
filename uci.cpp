@@ -36,40 +36,40 @@ Board fenToBoard(string s) {
             // determine what piece is on rowAtElem.at(col) and fill out if not blank
             switch (rowAtElem.at(col)) {
                 case 'P':
-                    mailbox[sqCounter] = WHITE + PAWNS;
+                    mailbox[sqCounter] = PAWNS;
                     break;
                 case 'N':
-                    mailbox[sqCounter] = WHITE + KNIGHTS;
+                    mailbox[sqCounter] = KNIGHTS;
                     break;
                 case 'B':
-                    mailbox[sqCounter] = WHITE + BISHOPS;
+                    mailbox[sqCounter] = BISHOPS;
                     break;
                 case 'R':
-                    mailbox[sqCounter] = WHITE + ROOKS;
+                    mailbox[sqCounter] = ROOKS;
                     break;
                 case 'Q':
-                    mailbox[sqCounter] = WHITE + QUEENS;
+                    mailbox[sqCounter] = QUEENS;
                     break;
                 case 'K':
-                    mailbox[sqCounter] = WHITE + KINGS;
+                    mailbox[sqCounter] = KINGS;
                     break;
                 case 'p':
-                    mailbox[sqCounter] = BLACK + PAWNS;
+                    mailbox[sqCounter] = 6 + PAWNS;
                     break;
                 case 'n':
-                    mailbox[sqCounter] = BLACK + KNIGHTS;
+                    mailbox[sqCounter] = 6 + KNIGHTS;
                     break;
                 case 'b':
-                    mailbox[sqCounter] = BLACK + BISHOPS;
+                    mailbox[sqCounter] = 6 + BISHOPS;
                     break;
                 case 'r':
-                    mailbox[sqCounter] = BLACK + ROOKS;
+                    mailbox[sqCounter] = 6 + ROOKS;
                     break;
                 case 'q':
-                    mailbox[sqCounter] = BLACK + QUEENS;
+                    mailbox[sqCounter] = 6 + QUEENS;
                     break;
                 case 'k':
-                    mailbox[sqCounter] = BLACK + KINGS;
+                    mailbox[sqCounter] = 6 + KINGS;
                     break;
             }
             

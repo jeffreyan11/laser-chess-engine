@@ -124,14 +124,14 @@ const int queenMobility[28] = {
 
 // The initial board setup in mailbox form.
 const int initMailbox[64] = {
-    7, 3, 6, 10, 11, 6, 3, 7,
-    2, 2, 2, 2, 2, 2, 2, 2,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1,
+    3, 1, 2, 4, 5, 2, 1, 3,
     0, 0, 0, 0, 0, 0, 0, 0,
-    5, 1, 4, 8, 9, 4, 1, 5
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    -1, -1, -1, -1, -1, -1, -1, -1,
+    6, 6, 6, 6, 6, 6, 6, 6,
+    9, 7, 8, 10, 11, 8, 7, 9
 };
 
 /**
@@ -192,7 +192,7 @@ public:
 private:
     // 12 bitboards, one for each of the 12 piece types, indexed by the
     // constants given in common.h
-    uint64_t pieces[12];
+    uint64_t pieces[2][6];
     // Bitboards for all white or all black pieces
     uint64_t whitePieces;
     uint64_t blackPieces;

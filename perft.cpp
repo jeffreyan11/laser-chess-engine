@@ -57,7 +57,7 @@ uint64_t perft(Board &b, int color, int depth) {
         if (isCapture(pl.get(i)))
             captures++;
 		
-		nodes += perft(copy, -color, depth-1);
+		nodes += perft(copy, color^1, depth-1);
 		
 		//b.undoMove();
 	}

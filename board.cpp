@@ -3,18 +3,18 @@
 
 // Create a board object initialized to the start position.
 Board::Board() {
-    pieces[2] = 0x000000000000FF00; // white pawns
-    pieces[0] = 0x00FF000000000000; // black pawns
-    pieces[3] = 0x0000000000000042; // white knights
-    pieces[1] = 0x4200000000000000; // black knights
-    pieces[6] = 0x0000000000000024; // white bishops
-    pieces[4] = 0x2400000000000000; // black bishops
-    pieces[7] = 0x0000000000000081; // white rooks
-    pieces[5] = 0x8100000000000000; // black rooks
-    pieces[10] = 0x0000000000000008; // white queens
-    pieces[8] = 0x0800000000000000; // black queens
-    pieces[11] = 0x0000000000000010; // white kings
-    pieces[9] = 0x1000000000000000; // black kings
+    pieces[WHITE][PAWNS] = 0x000000000000FF00; // white pawns
+    pieces[WHITE][KNIGHTS] = 0x0000000000000042; // white knights
+    pieces[WHITE][BISHOPS] = 0x0000000000000024; // white bishops
+    pieces[WHITE][ROOKS] = 0x0000000000000081; // white rooks
+    pieces[WHITE][QUEENS] = 0x0000000000000008; // white queens
+    pieces[WHITE][KINGS] = 0x0000000000000010; // white kings
+    pieces[BLACK][PAWNS] = 0x00FF000000000000; // black pawns
+    pieces[BLACK][KNIGHTS] = 0x4200000000000000; // black knights
+    pieces[BLACK][BISHOPS] = 0x2400000000000000; // black bishops
+    pieces[BLACK][ROOKS] = 0x8100000000000000; // black rooks
+    pieces[BLACK][QUEENS] = 0x0800000000000000; // black queens
+    pieces[BLACK][KINGS] = 0x1000000000000000; // black kings
     whitePieces = 0x000000000000FFFF;
     blackPieces = 0xFFFF000000000000;
 
@@ -37,19 +37,19 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
         int _playerToMove) {
     // Initialize bitboards
     for (int i = 0; i < 12; i++) {
-        pieces[i] = 0;
+        pieces[i/6][i%6] = 0;
     }
     for (int i = 0; i < 64; i++) {
         if (0 <= mailboxBoard[i] && mailboxBoard[i] <= 11) {
-            pieces[mailboxBoard[i]] |= MOVEMASK[i];
+            pieces[mailboxBoard[i]/6][mailboxBoard[i]%6] |= MOVEMASK[i];
         }
         else if (mailboxBoard[i] > 11)
             cerr << "Error in constructor." << endl;
     }
-    whitePieces = pieces[2] | pieces[3] | pieces[6] | pieces[7] | pieces[10]
-                | pieces[11];
-    blackPieces = pieces[0] | pieces[1] | pieces[4] | pieces[5] | pieces[8]
-                | pieces[9];
+    whitePieces = pieces[0][0] | pieces[0][1] | pieces[0][2] | pieces[0][3]
+                | pieces[0][4] | pieces[0][5];
+    blackPieces = pieces[1][0] | pieces[1][1] | pieces[1][2] | pieces[1][3]
+                | pieces[1][4] | pieces[1][5];
     
     whiteCanKCastle = _whiteCanKCastle;
     whiteCanQCastle = _whiteCanQCastle;
@@ -66,8 +66,11 @@ Board::~Board() {}
 
 Board Board::staticCopy() {
     Board result;
-    for (int i = 0; i < 12; i++) {
-        result.pieces[i] = pieces[i];
+    for (int i = 0; i < 6; i++) {
+        result.pieces[0][i] = pieces[0][i];
+    }
+    for (int i = 0; i < 6; i++) {
+        result.pieces[1][i] = pieces[1][i];
     }
     result.whitePieces = whitePieces;
     result.blackPieces = blackPieces;
@@ -87,8 +90,11 @@ Board Board::staticCopy() {
 
 Board *Board::dynamicCopy() {
     Board *result = new Board();
-    for (int i = 0; i < 12; i++) {
-        result->pieces[i] = pieces[i];
+    for (int i = 0; i < 6; i++) {
+        result->pieces[0][i] = pieces[0][i];
+    }
+    for (int i = 0; i < 6; i++) {
+        result->pieces[1][i] = pieces[1][i];
     }
     result->whitePieces = whitePieces;
     result->blackPieces = blackPieces;
@@ -113,7 +119,7 @@ void Board::doMove(Move m, int color) {
 
     // Handle null moves for null move pruning
     if (m == NULL_MOVE) {
-        playerToMove = -color;
+        playerToMove = color ^ 1;
         return;
     }
 
@@ -131,10 +137,10 @@ void Board::doMove(Move m, int color) {
 
     if (isCastle(m)) {
         if (endSq == 6) { // white kside
-            pieces[11] &= ~MOVEMASK[4];
-            pieces[11] |= MOVEMASK[6];
-            pieces[7] &= ~MOVEMASK[7];
-            pieces[7] |= MOVEMASK[5];
+            pieces[WHITE][KINGS] &= ~MOVEMASK[4];
+            pieces[WHITE][KINGS] |= MOVEMASK[6];
+            pieces[WHITE][ROOKS] &= ~MOVEMASK[7];
+            pieces[WHITE][ROOKS] |= MOVEMASK[5];
 
             whitePieces &= ~MOVEMASK[4];
             whitePieces |= MOVEMASK[6];
@@ -145,10 +151,10 @@ void Board::doMove(Move m, int color) {
             whiteCanQCastle = false;
         }
         else if (endSq == 2) { // white qside
-            pieces[11] &= ~MOVEMASK[4];
-            pieces[11] |= MOVEMASK[2];
-            pieces[7] &= ~MOVEMASK[0];
-            pieces[7] |= MOVEMASK[3];
+            pieces[WHITE][KINGS] &= ~MOVEMASK[4];
+            pieces[WHITE][KINGS] |= MOVEMASK[2];
+            pieces[WHITE][ROOKS] &= ~MOVEMASK[0];
+            pieces[WHITE][ROOKS] |= MOVEMASK[3];
 
             whitePieces &= ~MOVEMASK[4];
             whitePieces |= MOVEMASK[2];
@@ -159,10 +165,10 @@ void Board::doMove(Move m, int color) {
             whiteCanQCastle = false;
         }
         else if (endSq == 62) { // black kside
-            pieces[9] &= ~MOVEMASK[60];
-            pieces[9] |= MOVEMASK[62];
-            pieces[5] &= ~MOVEMASK[63];
-            pieces[5] |= MOVEMASK[61];
+            pieces[BLACK][KINGS] &= ~MOVEMASK[60];
+            pieces[BLACK][KINGS] |= MOVEMASK[62];
+            pieces[BLACK][ROOKS] &= ~MOVEMASK[63];
+            pieces[BLACK][ROOKS] |= MOVEMASK[61];
 
             blackPieces &= ~MOVEMASK[60];
             blackPieces |= MOVEMASK[62];
@@ -173,10 +179,10 @@ void Board::doMove(Move m, int color) {
             blackCanQCastle = false;
         }
         else { // black qside
-            pieces[9] &= ~MOVEMASK[60];
-            pieces[9] |= MOVEMASK[58];
-            pieces[5] &= ~MOVEMASK[56];
-            pieces[5] |= MOVEMASK[59];
+            pieces[BLACK][KINGS] &= ~MOVEMASK[60];
+            pieces[BLACK][KINGS] |= MOVEMASK[58];
+            pieces[BLACK][ROOKS] &= ~MOVEMASK[56];
+            pieces[BLACK][ROOKS] |= MOVEMASK[59];
 
             blackPieces &= ~MOVEMASK[60];
             blackPieces |= MOVEMASK[58];
@@ -192,10 +198,10 @@ void Board::doMove(Move m, int color) {
     } // end castling
     else if (getPromotion(m)) {
         if (isCapture(m)) {
-            int captureType = getCapturedPiece(-color, endSq);
-            pieces[PAWNS+color] &= ~MOVEMASK[startSq];
-            pieces[getPromotion(m)+color] |= MOVEMASK[endSq];
-            pieces[-color+captureType] &= ~MOVEMASK[endSq];
+            int captureType = getCapturedPiece(color^1, endSq);
+            pieces[color][PAWNS] &= ~MOVEMASK[startSq];
+            pieces[color][getPromotion(m)] |= MOVEMASK[endSq];
+            pieces[color^1][captureType] &= ~MOVEMASK[endSq];
 
             if (color == WHITE) {
                 whitePieces &= ~MOVEMASK[startSq];
@@ -209,8 +215,8 @@ void Board::doMove(Move m, int color) {
             }
         }
         else {
-            pieces[PAWNS+color] &= ~MOVEMASK[startSq];
-            pieces[getPromotion(m)+color] |= MOVEMASK[endSq];
+            pieces[color][PAWNS] &= ~MOVEMASK[startSq];
+            pieces[color][getPromotion(m)] |= MOVEMASK[endSq];
 
             if (color == WHITE) {
                 whitePieces &= ~MOVEMASK[startSq];
@@ -227,11 +233,11 @@ void Board::doMove(Move m, int color) {
         fiftyMoveCounter = 0;
     } // end promotion
     else if (isCapture(m)) {
-        int captureType = getCapturedPiece(-color, endSq);
+        int captureType = getCapturedPiece(color^1, endSq);
         if (captureType == -1) {
-            pieces[PAWNS+color] &= ~MOVEMASK[startSq];
-            pieces[PAWNS+color] |= MOVEMASK[endSq];
-            pieces[PAWNS-color] &= ~((color == WHITE) ? whiteEPCaptureSq : blackEPCaptureSq);
+            pieces[color][PAWNS] &= ~MOVEMASK[startSq];
+            pieces[color][PAWNS] |= MOVEMASK[endSq];
+            pieces[color^1][PAWNS] &= ~((color == WHITE) ? whiteEPCaptureSq : blackEPCaptureSq);
 
             if (color == WHITE) {
                 whitePieces &= ~MOVEMASK[startSq];
@@ -245,9 +251,9 @@ void Board::doMove(Move m, int color) {
             }
         }
         else {
-            pieces[pieceID+color] &= ~MOVEMASK[startSq];
-            pieces[pieceID+color] |= MOVEMASK[endSq];
-            pieces[captureType-color] &= ~MOVEMASK[endSq];
+            pieces[color][pieceID] &= ~MOVEMASK[startSq];
+            pieces[color][pieceID] |= MOVEMASK[endSq];
+            pieces[color^1][captureType] &= ~MOVEMASK[endSq];
 
             if (color == WHITE) {
                 whitePieces &= ~MOVEMASK[startSq];
@@ -265,8 +271,8 @@ void Board::doMove(Move m, int color) {
         fiftyMoveCounter = 0;
     } // end capture
     else {
-        pieces[pieceID+color] &= ~MOVEMASK[startSq];
-        pieces[pieceID+color] |= MOVEMASK[endSq];
+        pieces[color][pieceID] &= ~MOVEMASK[startSq];
+        pieces[color][pieceID] |= MOVEMASK[endSq];
 
         if (color == WHITE) {
             whitePieces &= ~MOVEMASK[startSq];
@@ -313,14 +319,14 @@ void Board::doMove(Move m, int color) {
     }
     else {
         if (whiteCanKCastle || whiteCanQCastle) {
-            int whiteR = (int)(RANKS[0] & pieces[WHITE+ROOKS]);
+            int whiteR = (int)(RANKS[0] & pieces[WHITE][ROOKS]);
             if ((whiteR & 0x80) == 0)
                 whiteCanKCastle = false;
             if ((whiteR & 1) == 0)
                 whiteCanQCastle = false;
         }
         if (blackCanKCastle || blackCanQCastle) {
-            int blackR = (int)((RANKS[7] & pieces[BLACK+ROOKS]) >> 56);
+            int blackR = (int)((RANKS[7] & pieces[BLACK][ROOKS]) >> 56);
             if ((blackR & 0x80) == 0)
                 blackCanKCastle = false;
             if ((blackR & 1) == 0)
@@ -330,7 +336,7 @@ void Board::doMove(Move m, int color) {
 
     if (color == BLACK)
         moveNumber++;
-    playerToMove = -color;
+    playerToMove = color^1;
 }
 
 bool Board::doPseudoLegalMove(Move m, int color) {
@@ -372,9 +378,9 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
 
     // We can do pawns in parallel, since the start square of a pawn move is
     // determined by its end square.
-    uint64_t pawns = pieces[color+PAWNS];
+    uint64_t pawns = pieces[color][PAWNS];
     uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
-    int sqDiff = -8 * color;
+    int sqDiff = (color == WHITE) ? -8 : 8;
 
     uint64_t pLegal = (color == WHITE) ? getWPawnSingleMoves(pawns)
                                       : getBPawnSingleMoves(pawns);
@@ -476,13 +482,13 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
 
     if (color == WHITE) {
         if (whiteEPCaptureSq) {
-            uint64_t taker = (whiteEPCaptureSq << 1) & NOTA & pieces[WHITE+PAWNS];
+            uint64_t taker = (whiteEPCaptureSq << 1) & NOTA & pieces[WHITE][PAWNS];
             if (taker) {
                 captures.add(encodeMove(bitScanForward(taker),
                         bitScanForward(whiteEPCaptureSq << 8), PAWNS, true));
             }
             else {
-                taker = (whiteEPCaptureSq >> 1) & NOTH & pieces[WHITE+PAWNS];
+                taker = (whiteEPCaptureSq >> 1) & NOTH & pieces[WHITE][PAWNS];
                 if (taker) {
                     captures.add(encodeMove(bitScanForward(taker),
                             bitScanForward(whiteEPCaptureSq << 8), PAWNS, true));
@@ -492,13 +498,13 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
     }
     else {
         if (blackEPCaptureSq) {
-            uint64_t taker = (blackEPCaptureSq << 1) & NOTA & pieces[BLACK+PAWNS];
+            uint64_t taker = (blackEPCaptureSq << 1) & NOTA & pieces[BLACK][PAWNS];
             if (taker) {
                 captures.add(encodeMove(bitScanForward(taker),
                         bitScanForward(blackEPCaptureSq >> 8), PAWNS, true));
             }
             else {
-                taker = (blackEPCaptureSq >> 1) & NOTH & pieces[BLACK+PAWNS];
+                taker = (blackEPCaptureSq >> 1) & NOTH & pieces[BLACK][PAWNS];
                 if (taker) {
                     captures.add(encodeMove(bitScanForward(taker),
                             bitScanForward(blackEPCaptureSq >> 8), PAWNS, true));
@@ -507,7 +513,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         }
     }
 
-    uint64_t knights = pieces[color+KNIGHTS];
+    uint64_t knights = pieces[color][KNIGHTS];
     while (knights) {
         int stsq = bitScanForward(knights);
         knights &= knights-1;
@@ -528,7 +534,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         }
     }
 
-    uint64_t bishops = pieces[color+BISHOPS];
+    uint64_t bishops = pieces[color][BISHOPS];
     while (bishops) {
         int stsq = bitScanForward(bishops);
         bishops &= bishops-1;
@@ -549,7 +555,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         }
     }
 
-    uint64_t rooks = pieces[color+ROOKS];
+    uint64_t rooks = pieces[color][ROOKS];
     while (rooks) {
         int stsq = bitScanForward(rooks);
         rooks &= rooks-1;
@@ -570,7 +576,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         }
     }
 
-    uint64_t queens = pieces[color+QUEENS];
+    uint64_t queens = pieces[color][QUEENS];
     while (queens) {
         int stsq = bitScanForward(queens);
         queens &= queens-1;
@@ -591,7 +597,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         }
     }
 
-    uint64_t kings = pieces[color+KINGS];
+    uint64_t kings = pieces[color][KINGS];
     int stsqK = bitScanForward(kings);
     uint64_t legalK = getKingSquares(stsqK) & ~(whitePieces | blackPieces);
     while (legalK) {
@@ -676,12 +682,12 @@ MoveList Board::getLegalCaptures(int color) {
 
 MoveList Board::getPseudoLegalCaptures(int color) {
     MoveList result;
-    uint64_t pawns = pieces[color+PAWNS];
-    uint64_t knights = pieces[color+KNIGHTS];
-    uint64_t bishops = pieces[color+BISHOPS];
-    uint64_t rooks = pieces[color+ROOKS];
-    uint64_t queens = pieces[color+QUEENS];
-    uint64_t kings = pieces[color+KINGS];
+    uint64_t pawns = pieces[color][PAWNS];
+    uint64_t knights = pieces[color][KNIGHTS];
+    uint64_t bishops = pieces[color][BISHOPS];
+    uint64_t rooks = pieces[color][ROOKS];
+    uint64_t queens = pieces[color][QUEENS];
+    uint64_t kings = pieces[color][KINGS];
     uint64_t otherPieces = (color == WHITE) ? blackPieces : whitePieces;
 
     uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
@@ -746,13 +752,13 @@ MoveList Board::getPseudoLegalCaptures(int color) {
 
     if (color == WHITE) {
         if (whiteEPCaptureSq) {
-            uint64_t taker = (whiteEPCaptureSq << 1) & NOTA & pieces[WHITE+PAWNS];
+            uint64_t taker = (whiteEPCaptureSq << 1) & NOTA & pieces[WHITE][PAWNS];
             if (taker) {
                 result.add(encodeMove(bitScanForward(taker),
                         bitScanForward(whiteEPCaptureSq << 8), PAWNS, true));
             }
             else {
-                taker = (whiteEPCaptureSq >> 1) & NOTH & pieces[WHITE+PAWNS];
+                taker = (whiteEPCaptureSq >> 1) & NOTH & pieces[WHITE][PAWNS];
                 if (taker) {
                     result.add(encodeMove(bitScanForward(taker),
                             bitScanForward(whiteEPCaptureSq << 8), PAWNS, true));
@@ -762,13 +768,13 @@ MoveList Board::getPseudoLegalCaptures(int color) {
     }
     else {
         if (blackEPCaptureSq) {
-            uint64_t taker = (blackEPCaptureSq << 1) & NOTA & pieces[BLACK+PAWNS];
+            uint64_t taker = (blackEPCaptureSq << 1) & NOTA & pieces[BLACK][PAWNS];
             if (taker) {
                 result.add(encodeMove(bitScanForward(taker),
                         bitScanForward(blackEPCaptureSq >> 8), PAWNS, true));
             }
             else {
-                taker = (blackEPCaptureSq >> 1) & NOTH & pieces[BLACK+PAWNS];
+                taker = (blackEPCaptureSq >> 1) & NOTH & pieces[BLACK][PAWNS];
                 if (taker) {
                     result.add(encodeMove(bitScanForward(taker),
                             bitScanForward(blackEPCaptureSq >> 8), PAWNS, true));
@@ -847,25 +853,25 @@ uint64_t Board::getAttackMap(int color, int sq) {
     uint64_t pawnCap = (color == WHITE)
                      ? getBPawnLeftCaptures(MOVEMASK[sq]) | getBPawnRightCaptures(MOVEMASK[sq])
                      : getWPawnLeftCaptures(MOVEMASK[sq]) | getWPawnRightCaptures(MOVEMASK[sq]);
-    return (pawnCap & pieces[color+PAWNS])
-         | (getKnightSquares(sq) & pieces[color+KNIGHTS])
-         | (getBishopSquares(sq) & (pieces[color+BISHOPS] | pieces[color+QUEENS]))
-         | (getRookSquares(sq) & (pieces[color+ROOKS] | pieces[color+QUEENS]))
-         | (getKingSquares(sq) & pieces[color+KINGS]);
+    return (pawnCap & pieces[color][PAWNS])
+         | (getKnightSquares(sq) & pieces[color][KNIGHTS])
+         | (getBishopSquares(sq) & (pieces[color][BISHOPS] | pieces[color][QUEENS]))
+         | (getRookSquares(sq) & (pieces[color][ROOKS] | pieces[color][QUEENS]))
+         | (getKingSquares(sq) & pieces[color][KINGS]);
 }
 
 // Given the end square of a capture, find the opposing piece that is captured.
 int Board::getCapturedPiece(int colorCaptured, int endSq) {
     uint64_t endSingle = MOVEMASK[endSq];
-    if (pieces[colorCaptured+PAWNS] & endSingle)
+    if (pieces[colorCaptured][PAWNS] & endSingle)
         return PAWNS;
-    else if (pieces[colorCaptured+KNIGHTS] & endSingle)
+    else if (pieces[colorCaptured][KNIGHTS] & endSingle)
         return KNIGHTS;
-    else if (pieces[colorCaptured+BISHOPS] & endSingle)
+    else if (pieces[colorCaptured][BISHOPS] & endSingle)
         return BISHOPS;
-    else if (pieces[colorCaptured+ROOKS] & endSingle)
+    else if (pieces[colorCaptured][ROOKS] & endSingle)
         return ROOKS;
-    else if (pieces[colorCaptured+QUEENS] & endSingle)
+    else if (pieces[colorCaptured][QUEENS] & endSingle)
         return QUEENS;
     else {
         // The default is when the capture destination is an empty square.
@@ -877,9 +883,9 @@ int Board::getCapturedPiece(int colorCaptured, int endSq) {
 
 // ---------------------King: check, checkmate, stalemate----------------------
 bool Board::getInCheck(int color) {
-    int sq = bitScanForward(pieces[color+KINGS]);
+    int sq = bitScanForward(pieces[color][KINGS]);
 
-    return getAttackMap(-color, sq);
+    return getAttackMap(color^1, sq);
 }
 
 bool Board::isWinMate() {
@@ -945,28 +951,28 @@ int Board::evaluate() {
     int value = 0;
 
     // material
-    int whiteMaterial = PAWN_VALUE * count(pieces[WHITE+PAWNS])
-            + KNIGHT_VALUE * count(pieces[WHITE+KNIGHTS])
-            + BISHOP_VALUE * count(pieces[WHITE+BISHOPS])
-            + ROOK_VALUE * count(pieces[WHITE+ROOKS])
-            + QUEEN_VALUE * count(pieces[WHITE+QUEENS]);
-    int blackMaterial = PAWN_VALUE * count(pieces[BLACK+PAWNS])
-            + KNIGHT_VALUE * count(pieces[BLACK+KNIGHTS])
-            + BISHOP_VALUE * count(pieces[BLACK+BISHOPS])
-            + ROOK_VALUE * count(pieces[BLACK+ROOKS])
-            + QUEEN_VALUE * count(pieces[BLACK+QUEENS]);
+    int whiteMaterial = PAWN_VALUE * count(pieces[WHITE][PAWNS])
+            + KNIGHT_VALUE * count(pieces[WHITE][KNIGHTS])
+            + BISHOP_VALUE * count(pieces[WHITE][BISHOPS])
+            + ROOK_VALUE * count(pieces[WHITE][ROOKS])
+            + QUEEN_VALUE * count(pieces[WHITE][QUEENS]);
+    int blackMaterial = PAWN_VALUE * count(pieces[BLACK][PAWNS])
+            + KNIGHT_VALUE * count(pieces[BLACK][KNIGHTS])
+            + BISHOP_VALUE * count(pieces[BLACK][BISHOPS])
+            + ROOK_VALUE * count(pieces[BLACK][ROOKS])
+            + QUEEN_VALUE * count(pieces[BLACK][QUEENS]);
     
     // compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
     int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
     egFactor = max(0, min(EG_FACTOR_RES, egFactor));
     
-    value += whiteMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[WHITE+PAWNS]) * egFactor / EG_FACTOR_RES;
-    value -= blackMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[BLACK+PAWNS]) * egFactor / EG_FACTOR_RES;
+    value += whiteMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[WHITE][PAWNS]) * egFactor / EG_FACTOR_RES;
+    value -= blackMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[BLACK][PAWNS]) * egFactor / EG_FACTOR_RES;
     
     // bishop pair bonus
-    if ((pieces[WHITE+BISHOPS] & LIGHT) && (pieces[WHITE+BISHOPS] & DARK))
+    if ((pieces[WHITE][BISHOPS] & LIGHT) && (pieces[WHITE][BISHOPS] & DARK))
         value += BISHOP_PAIR_VALUE;
-    if ((pieces[BLACK+BISHOPS] & LIGHT) && (pieces[BLACK+BISHOPS] & DARK))
+    if ((pieces[BLACK][BISHOPS] & LIGHT) && (pieces[BLACK][BISHOPS] & DARK))
         value -= BISHOP_PAIR_VALUE;
     
     // TODO make this faster
@@ -976,43 +982,43 @@ int Board::evaluate() {
         switch (mailbox[i]) {
             case -1: // empty
                 break;
-            case 2: // white pawn
+            case PAWNS: // white pawn
                 value += pawnValues[(7 - i/8)*8 + i%8] * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
                 value += egPawnValues[(7 - i/8*8 + i%8)] * egFactor / EG_FACTOR_RES;
                 break;
-            case 0: // black pawn
+            case 6+PAWNS: // black pawn
                 value -= pawnValues[i] * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
                 value -= egPawnValues[i] * egFactor / EG_FACTOR_RES;
                 break;
-            case 3: // white knight
+            case KNIGHTS: // white knight
                 value += knightValues[(7 - i/8)*8 + i%8];
                 break;
-            case 1: // black knight
+            case 6+KNIGHTS: // black knight
                 value -= knightValues[i];
                 break;
-            case 6: // white bishop
+            case BISHOPS: // white bishop
                 value += bishopValues[(7 - i/8)*8 + i%8];
                 break;
-            case 4: // black bishop
+            case 6+BISHOPS: // black bishop
                 value -= bishopValues[i];
                 break;
-            case 7: // white rook
+            case ROOKS: // white rook
                 value += rookValues[(7 - i/8)*8 + i%8];
                 break;
-            case 5: // black rook
+            case 6+ROOKS: // black rook
                 value -= rookValues[i];
                 break;
-            case 10: // white queen
+            case QUEENS: // white queen
                 value += queenValues[(7 - i/8)*8 + i%8];
                 break;
-            case 8: // black queen
+            case 6+QUEENS: // black queen
                 value -= queenValues[i];
                 break;
-            case 11: // white king
+            case KINGS: // white king
                 value += kingValues[(7 - i/8)*8 + i%8] * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
                 value += egKingValues[(7 - i/8)*8 + i%8] * egFactor / EG_FACTOR_RES;
                 break;
-            case 9: // black king
+            case 6+KINGS: // black king
                 value -= kingValues[i] * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
                 value -= egKingValues[i] * egFactor / EG_FACTOR_RES;
                 break;
@@ -1026,43 +1032,43 @@ int Board::evaluate() {
     // Consider attacks on squares near king
     uint64_t wksq = getKingAttacks(WHITE);
     uint64_t bksq = getKingAttacks(BLACK);
-    uint64_t bAtt = getBPawnLeftCaptures(pieces[BLACK+PAWNS])
-                  | getBPawnRightCaptures(pieces[BLACK+PAWNS])
-                  | getKnightMoves(pieces[BLACK+KNIGHTS])
-                  | getBishopMoves(pieces[BLACK+BISHOPS])
-                  | getRookMoves(pieces[BLACK+ROOKS])
-                  | getQueenMoves(pieces[BLACK+QUEENS]);
-    uint64_t wAtt = getWPawnLeftCaptures(pieces[WHITE+PAWNS])
-                  | getWPawnRightCaptures(pieces[WHITE+PAWNS])
-                  | getKnightMoves(pieces[WHITE+KNIGHTS])
-                  | getBishopMoves(pieces[WHITE+BISHOPS])
-                  | getRookMoves(pieces[WHITE+ROOKS])
-                  | getQueenMoves(pieces[WHITE+QUEENS]);
+    uint64_t bAtt = getBPawnLeftCaptures(pieces[BLACK][PAWNS])
+                  | getBPawnRightCaptures(pieces[BLACK][PAWNS])
+                  | getKnightMoves(pieces[BLACK][KNIGHTS])
+                  | getBishopMoves(pieces[BLACK][BISHOPS])
+                  | getRookMoves(pieces[BLACK][ROOKS])
+                  | getQueenMoves(pieces[BLACK][QUEENS]);
+    uint64_t wAtt = getWPawnLeftCaptures(pieces[WHITE][PAWNS])
+                  | getWPawnRightCaptures(pieces[WHITE][PAWNS])
+                  | getKnightMoves(pieces[WHITE][KNIGHTS])
+                  | getBishopMoves(pieces[WHITE][BISHOPS])
+                  | getRookMoves(pieces[WHITE][ROOKS])
+                  | getQueenMoves(pieces[WHITE][QUEENS]);
     
     value -= 25 * count(wksq & bAtt) * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
     value += 25 * count(bksq & wAtt) * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
     
-    uint64_t wpawnShield = (wksq | pieces[WHITE+KINGS]) << 8;
-    uint64_t bpawnShield = (bksq | pieces[BLACK+KINGS]) >> 8;
+    uint64_t wpawnShield = (wksq | pieces[WHITE][KINGS]) << 8;
+    uint64_t bpawnShield = (bksq | pieces[BLACK][KINGS]) >> 8;
     // Have only pawns on ABC, FGH files count towards the pawn shield
-    value += (30 * egFactor / EG_FACTOR_RES) * count(wpawnShield & pieces[WHITE+PAWNS] & 0xe7e7e7e7e7e7e7e7);
-    value -= (30 * egFactor / EG_FACTOR_RES) * count(bpawnShield & pieces[BLACK+PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    value += (30 * egFactor / EG_FACTOR_RES) * count(wpawnShield & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    value -= (30 * egFactor / EG_FACTOR_RES) * count(bpawnShield & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
     
     value += getPseudoMobility(WHITE);
     value -= getPseudoMobility(BLACK);
 
     // Pawn structure
     // Passed pawns
-    uint64_t notwp = pieces[WHITE+PAWNS];
-    uint64_t notbp = pieces[BLACK+PAWNS];
+    uint64_t notwp = pieces[WHITE][PAWNS];
+    uint64_t notbp = pieces[BLACK][PAWNS];
     // These act as blockers for the flood fill: if opposing pawns are on the
     // same or an adjacent rank, your pawn is not passed.
     notwp |= ((notwp >> 1) & NOTH) | ((notwp << 1) & NOTA);
     notbp |= ((notbp >> 1) & NOTH) | ((notbp << 1) & NOTA);
     notwp = ~notwp;
     notbp = ~notbp;
-    uint64_t tempwp = pieces[WHITE+PAWNS];
-    uint64_t tempbp = pieces[BLACK+PAWNS];
+    uint64_t tempwp = pieces[WHITE][PAWNS];
+    uint64_t tempbp = pieces[BLACK][PAWNS];
     // Flood fill to simulate pushing the pawn to the 8th (or 1st) rank
     for(int i = 0; i < 6; i++) {
         tempwp |= (tempwp << 8) & notbp;
@@ -1075,8 +1081,8 @@ int Board::evaluate() {
     int wPawnCtByFile[8];
     int bPawnCtByFile[8];
     for (int i = 0; i < 8; i++) {
-        wPawnCtByFile[i] = count(pieces[WHITE+PAWNS] & FILES[i]);
-        bPawnCtByFile[i] = count(pieces[BLACK+PAWNS] & FILES[i]);
+        wPawnCtByFile[i] = count(pieces[WHITE][PAWNS] & FILES[i]);
+        bPawnCtByFile[i] = count(pieces[BLACK][PAWNS] & FILES[i]);
     }
 
     // Doubled pawns
@@ -1110,10 +1116,10 @@ int Board::evaluate() {
 // Faster estimates of piece mobility (number of legal moves)
 int Board::getPseudoMobility(int color) {
     int result = 0;
-    uint64_t knights = pieces[color+KNIGHTS];
-    uint64_t bishops = pieces[color+BISHOPS];
-    uint64_t rooks = pieces[color+ROOKS];
-    uint64_t queens = pieces[color+QUEENS];
+    uint64_t knights = pieces[color][KNIGHTS];
+    uint64_t bishops = pieces[color][BISHOPS];
+    uint64_t rooks = pieces[color][ROOKS];
+    uint64_t queens = pieces[color][QUEENS];
     uint64_t pieces = (color == WHITE) ? whitePieces : blackPieces;
 
     while (knights != 0) {
@@ -1156,50 +1162,50 @@ int Board::getPseudoMobility(int color) {
 }
 
 int Board::getEGFactor() {
-    int whiteMaterial = PAWN_VALUE * count(pieces[WHITE+PAWNS])
-            + KNIGHT_VALUE * count(pieces[WHITE+KNIGHTS])
-            + BISHOP_VALUE * count(pieces[WHITE+BISHOPS])
-            + ROOK_VALUE * count(pieces[WHITE+ROOKS])
-            + QUEEN_VALUE * count(pieces[WHITE+QUEENS]);
-    int blackMaterial = PAWN_VALUE * count(pieces[BLACK+PAWNS])
-            + KNIGHT_VALUE * count(pieces[BLACK+KNIGHTS])
-            + BISHOP_VALUE * count(pieces[BLACK+BISHOPS])
-            + ROOK_VALUE * count(pieces[BLACK+ROOKS])
-            + QUEEN_VALUE * count(pieces[BLACK+QUEENS]);
+    int whiteMaterial = PAWN_VALUE * count(pieces[WHITE][PAWNS])
+            + KNIGHT_VALUE * count(pieces[WHITE][KNIGHTS])
+            + BISHOP_VALUE * count(pieces[WHITE][BISHOPS])
+            + ROOK_VALUE * count(pieces[WHITE][ROOKS])
+            + QUEEN_VALUE * count(pieces[WHITE][QUEENS]);
+    int blackMaterial = PAWN_VALUE * count(pieces[BLACK][PAWNS])
+            + KNIGHT_VALUE * count(pieces[BLACK][KNIGHTS])
+            + BISHOP_VALUE * count(pieces[BLACK][BISHOPS])
+            + ROOK_VALUE * count(pieces[BLACK][ROOKS])
+            + QUEEN_VALUE * count(pieces[BLACK][QUEENS]);
     int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
     return max(0, min(EG_FACTOR_RES, egFactor));
 }
 
 // TODO come up with a better way to do this
 uint64_t Board::getLeastValuableAttacker(uint64_t attackers, int color, int &piece) {
-    uint64_t single = attackers & pieces[color+PAWNS];
+    uint64_t single = attackers & pieces[color][PAWNS];
     if(single) {
         piece = PAWNS;
         return single & -single;
     }
-    single = attackers & pieces[color+KNIGHTS];
+    single = attackers & pieces[color][KNIGHTS];
     if(single) {
         piece = KNIGHTS;
         return single & -single;
     }
-    single = attackers & pieces[color+BISHOPS];
+    single = attackers & pieces[color][BISHOPS];
     if(single) {
         piece = BISHOPS;
         return single & -single;
     }
-    single = attackers & pieces[color+ROOKS];
+    single = attackers & pieces[color][ROOKS];
     if(single) {
         piece = ROOKS;
         return single & -single;
     }
-    single = attackers & pieces[color+QUEENS];
+    single = attackers & pieces[color][QUEENS];
     if(single) {
         piece = QUEENS;
         return single & -single;
     }
 
     piece = KINGS;
-    return attackers & pieces[color+KINGS];
+    return attackers & pieces[color][KINGS];
 }
 
 // TODO consider xrays
@@ -1207,15 +1213,15 @@ uint64_t Board::getLeastValuableAttacker(uint64_t attackers, int color, int &pie
 // https://chessprogramming.wikispaces.com/SEE+-+The+Swap+Algorithm
 int Board::getSEE(int color, int sq) {
     int gain[32], d = 0, piece = 0;
-    uint64_t attackers = getAttackMap(color, sq) | getAttackMap(-color, sq);
+    uint64_t attackers = getAttackMap(WHITE, sq) | getAttackMap(BLACK, sq);
     uint64_t single = getLeastValuableAttacker(attackers, color, piece);
     // Get value of piece initially being captured. If the destination square is
     // empty, then the capture is an en passant.
-    gain[d] = valueOfPiece(getCapturedPiece(-color, sq));
+    gain[d] = valueOfPiece(getCapturedPiece(color^1, sq));
 
     do {
         d++; // next depth
-        color = -color;
+        color ^= 1;
         gain[d]  = valueOfPiece(piece) - gain[d-1];
         if (-gain[d-1] < 0 && gain[d] < 0) // pruning for stand pat
             break;
@@ -1376,7 +1382,7 @@ uint64_t Board::getKingSquares(int single) {
 }
 
 uint64_t Board::getKingAttacks(int color) {
-    uint64_t kings = pieces[color+KINGS];
+    uint64_t kings = pieces[color][KINGS];
     uint64_t attacks = ((kings << 1) & NOTA) | ((kings >> 1) & NOTH);
     kings |= attacks;
     attacks |= (kings >> 8) | (kings << 8);
@@ -1551,10 +1557,17 @@ int *Board::getMailbox() {
     for (int i = 0; i < 64; i++) {
         result[i] = -1;
     }
-    for (int i = 0; i < 12; i++) {
-        uint64_t bitboard = pieces[i];
+    for (int i = 0; i < 6; i++) {
+        uint64_t bitboard = pieces[0][i];
         while (bitboard) {
             result[bitScanForward(bitboard)] = i;
+            bitboard &= bitboard - 1;
+        }
+    }
+    for (int i = 0; i < 6; i++) {
+        uint64_t bitboard = pieces[1][i];
+        while (bitboard) {
+            result[bitScanForward(bitboard)] = 6 + i;
             bitboard &= bitboard - 1;
         }
     }
