@@ -614,8 +614,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
          && ((whitePieces | blackPieces) & (MOVEMASK[5] | MOVEMASK[6])) == 0
          && !getInCheck(WHITE)) {
             // Check for castling through check
-            uint64_t attacked = getAttackMap(BLACK, 5);
-            if (attacked == 0) {
+            if (getAttackMap(BLACK, 5) == 0) {
                 Move m = encodeMove(4, 6, KINGS, false);
                 m = setCastle(m, true);
                 quiets.add(m);
@@ -625,8 +624,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
               && ((whitePieces | blackPieces) & (MOVEMASK[1] | MOVEMASK[2] | MOVEMASK[3])) == 0
               && !getInCheck(WHITE)) {
             // Check for castling through check
-            uint64_t attacked = getAttackMap(BLACK, 3);
-            if (attacked == 0) {
+            if (getAttackMap(BLACK, 3) == 0) {
                 Move m = encodeMove(4, 2, KINGS, false);
                 m = setCastle(m, true);
                 quiets.add(m);
@@ -637,8 +635,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         if (blackCanKCastle
          && ((whitePieces | blackPieces) & (MOVEMASK[61] | MOVEMASK[62])) == 0
          && !getInCheck(BLACK)) {
-            uint64_t attacked = getAttackMap(WHITE, 61);
-            if (attacked == 0) {
+            if (getAttackMap(WHITE, 61) == 0) {
                 Move m = encodeMove(60, 62, KINGS, false);
                 m = setCastle(m, true);
                 quiets.add(m);
@@ -647,8 +644,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         if (blackCanQCastle
          && ((whitePieces | blackPieces) & (MOVEMASK[57] | MOVEMASK[58] | MOVEMASK[59])) == 0
          && !getInCheck(BLACK)) {
-            uint64_t attacked = getAttackMap(WHITE, 59);
-            if (attacked == 0) {
+            if (getAttackMap(WHITE, 59) == 0) {
                 Move m = encodeMove(60, 58, KINGS, false);
                 m = setCastle(m, true);
                 quiets.add(m);

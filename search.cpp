@@ -34,7 +34,6 @@ Move getBestMove(Board *b, int mode, int value) {
     if (mode == TIME) {
         int i = 1;
         do {
-            nodes = 0;
             currentBestMove = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
             Move temp = legalMoves.get(0);
             legalMoves.set(0, legalMoves.get(currentBestMove));
@@ -43,7 +42,7 @@ Move getBestMove(Board *b, int mode, int value) {
             double timeSoFar = duration_cast<duration<double>>(
                     high_resolution_clock::now() - start_time).count();
             uint64_t nps = (uint64_t) ((double) nodes / timeSoFar);
-            cerr << "info depth " << i << " score cp " << bestScore << " time "
+            cout << "info depth " << i << " score cp " << bestScore << " time "
                 << (int)(timeSoFar * ONE_SECOND) << " nodes " << nodes
                 << " nps " << nps << " pv e2e4" << endl;
 
@@ -57,7 +56,6 @@ Move getBestMove(Board *b, int mode, int value) {
     
     if (mode == DEPTH) {
         for (int i = 1; i <= min(value, MAX_DEPTH); i++) {
-            nodes = 0;
             currentBestMove = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
             Move temp = legalMoves.get(0);
             legalMoves.set(0, legalMoves.get(currentBestMove));
@@ -66,7 +64,7 @@ Move getBestMove(Board *b, int mode, int value) {
             double timeSoFar = duration_cast<duration<double>>(
                     high_resolution_clock::now() - start_time).count();
             uint64_t nps = (uint64_t) ((double) nodes / timeSoFar);
-            cerr << "info depth " << i << " score cp " << bestScore << " time "
+            cout << "info depth " << i << " score cp " << bestScore << " time "
                  << (int)(timeSoFar * ONE_SECOND) << " nodes " << nodes
                  << " nps " << nps << " pv e2e4" << endl;
             // transpositionTable.test();
