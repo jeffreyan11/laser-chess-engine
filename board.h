@@ -188,8 +188,10 @@ public:
     uint64_t getWhitePieces();
     uint64_t getBlackPieces();
     int *getMailbox();
+    uint64_t getZobristKey();
 
     string toString();
+    void initZobristKey(int *mailbox);
 
 private:
     // 12 bitboards, one for each of the 12 piece types, indexed by the
@@ -260,8 +262,6 @@ private:
     uint64_t westAttacks(uint64_t rooks, uint64_t empty);
     uint64_t swAttacks(uint64_t bishops, uint64_t empty);
     uint64_t nwAttacks(uint64_t bishops, uint64_t empty);
-
-    void initZobristKey(int *mailbox);
 };
 
 #endif

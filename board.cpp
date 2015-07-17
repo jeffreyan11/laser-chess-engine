@@ -3,11 +3,18 @@
 #include "btables.h"
 
 uint64_t zobristTable[781];
+uint64_t startPosZobristKey = 0;
 
 void initZobristTable() {
     mt19937_64 rng (7814071896ULL);
     for (int i = 0; i < 781; i++)
         zobristTable[i] = rng();
+
+    Board b;
+    int *mailbox = b.getMailbox();
+    b.initZobristKey(mailbox);
+    startPosZobristKey = b.getZobristKey();
+    delete[] mailbox;
 }
 
 // Create a board object initialized to the start position.
@@ -38,9 +45,7 @@ Board::Board() {
     moveNumber = 1;
     playerToMove = WHITE;
 
-    int *mailbox = getMailbox();
-    initZobristKey(mailbox);
-    delete[] mailbox;
+    zobristKey = startPosZobristKey;
 }
 
 // Create a board object from a mailbox of the current board state.
@@ -1591,6 +1596,10 @@ int *Board::getMailbox() {
     return result;
 }
 
+uint64_t Board::getZobristKey() {
+    return zobristKey;
+}
+
 string Board::toString() {
     int *mailbox = getMailbox();
     string result = "";
@@ -1662,4 +1671,8 @@ void Board::initZobristKey(int *mailbox) {
         zobristKey ^= zobristTable[771];
     if (blackCanQCastle)
         zobristKey ^= zobristTable[772];
+    if (whiteEPCaptureSq | blackEPCaptureSq) {
+        int epSq = bitScanForward(whiteEPCaptureSq | blackEPCaptureSq);
+        zobristKey ^= zobristTable[773 + (epSq&7)];
+    }
 }
