@@ -200,8 +200,8 @@ private:
     uint64_t blackPieces;
     // Booleans indicating whether castling is possible
     bool whiteCanKCastle;
-    bool blackCanKCastle;
     bool whiteCanQCastle;
+    bool blackCanKCastle;
     bool blackCanQCastle;
     // 0 if cannot en passant, if en passant is possible, the bitboard has a bit
     // set at the square of the pawn being captured

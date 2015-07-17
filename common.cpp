@@ -49,13 +49,13 @@ string moveToString(Move m) {
     
     int promotion = getPromotion(m);
     if (promotion) {
-        if (promotion == 2)
+        if (promotion == KNIGHTS)
             moveStr += 'n';
-        if (promotion == 5)
+        if (promotion == BISHOPS)
             moveStr += 'b';
-        if (promotion == 6)
+        if (promotion == ROOKS)
             moveStr += 'r';
-        if (promotion == 9)
+        if (promotion == QUEENS)
             moveStr += 'q';
     }
     

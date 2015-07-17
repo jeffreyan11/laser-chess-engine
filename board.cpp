@@ -1649,7 +1649,17 @@ void Board::initZobristKey(int *mailbox) {
     zobristKey = 0;
     for (int i = 0; i < 64; i++) {
         if (mailbox[i] != -1) {
-
+            zobristKey ^= zobristTable[mailbox[i] * 64 + i];
         }
     }
+    if (playerToMove == BLACK)
+        zobristKey ^= zobristTable[768];
+    if (whiteCanKCastle)
+        zobristKey ^= zobristTable[769];
+    if (whiteCanQCastle)
+        zobristKey ^= zobristTable[770];
+    if (blackCanKCastle)
+        zobristKey ^= zobristTable[771];
+    if (blackCanQCastle)
+        zobristKey ^= zobristTable[772];
 }
