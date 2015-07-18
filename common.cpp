@@ -2,7 +2,7 @@
 
 // BSF and BSR algorithms from https://chessprogramming.wikispaces.com/BitScan
 int bitScanForward(uint64_t bb) {
-    #if USE_INLINE_AS
+    #if USE_INLINE_ASM
         asm ("bsf %1, %0" : "=r" (bb) : "r" (bb));
         return (int) bb;
     #else
@@ -13,7 +13,7 @@ int bitScanForward(uint64_t bb) {
 }
 
 int bitScanReverse(uint64_t bb) {
-    #if USE_INLINE_AS
+    #if USE_INLINE_ASM
         asm ("bsr %1, %0" : "=r" (bb) : "r" (bb));
         return (int) bb;
     #else
@@ -29,7 +29,7 @@ int bitScanReverse(uint64_t bb) {
 }
 
 int count(uint64_t bb) {
-    #if USE_INLINE_AS
+    #if USE_INLINE_ASM
         asm ("popcnt %1, %0" : "=r" (bb) : "r" (bb));
         return (int) bb;
     #else

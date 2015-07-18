@@ -162,7 +162,7 @@ void sortSearch(Board *b, MoveList &legalMoves, ScoreList &scores, int depth) {
 }
 
 // The standard implementation of a null-window PVS search.
-// The implementation is fail-soft (score returned can be outside [alpha, beta])
+// The implementation is fail-hard (score returned must be within [alpha, beta])
 int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // When the standard search is done, enter quiescence search.
     // Static board evaluation is done there.
@@ -171,8 +171,43 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     }
     
     int score = -MATE_SCORE;
-    int bestScore = -MATE_SCORE;
+    int prevAlpha = alpha;
+
     Move toHash = NULL_MOVE;
+    // See if a hash move exists
+    int hashDepth = 0;
+    int hashScore = 0;
+    uint8_t nodeType = 0;
+    Move hashed = transpositionTable.get(b, hashDepth, hashScore, nodeType);
+
+    if (hashed != NULL_MOVE) {
+        Board copy = b.staticCopy();
+        if (copy.doHashMove(hashed, color)) {
+            if (hashDepth >= depth) {
+                if (nodeType == CUT_NODE && hashScore >= beta)
+                    return beta;
+                else if (nodeType == PV_NODE)
+                    return hashScore;
+                else if (nodeType == ALL_NODE && hashScore <= alpha)
+                    return alpha;
+            }
+
+            nodes++;
+            score = -PVS(copy, color^1, depth-1, -beta, -alpha);
+
+            if (score >= beta)
+                return beta;
+            if (score > alpha)
+                alpha = score;
+        }
+        else {
+            cerr << "Type-1 TT error" << endl;
+            hashed = NULL_MOVE;
+        }
+    }
+
+    // if (hashed != NULL_MOVE)
+    //     cerr << "Type-1 TT error" << endl;
     
     // null move pruning
     // only if doing a null move does not leave player in check
@@ -187,49 +222,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         // Undo the null move
         b.doMove(NULL_MOVE, color^1);
     }
-    
+
     MoveList legalMoves = b.getAllPseudoLegalMoves(color);
-
-    // See if a hash move exists
-    int hashDepth = 0;
-    int hashScore = 0;
-    Move hashed = transpositionTable.get(b, hashDepth, hashScore);
-
-    if (hashed != NULL_MOVE) {
-        for (unsigned int i = 0; i < legalMoves.size(); i++) {
-            if(legalMoves.get(i) == hashed) {
-                Board copy = b.staticCopy();
-                if (!copy.doPseudoLegalMove(hashed, color))
-                    continue;
-                legalMoves.remove(i);
-
-                if (hashDepth >= depth) {
-                    if (hashScore >= beta)
-                        return hashScore;
-                }
-
-                nodes++;
-                int reduction = 0;
-                //if (hashDepth >= depth && hashScore < alpha)
-                //    reduction = 2;
-                score = -PVS(copy, color^1, depth-1-reduction, -beta, -alpha);
-
-                if (score >= beta)
-                    return score;
-                if (score > bestScore) {
-                    bestScore = score;
-                    if (score > alpha) {
-                        alpha = score;
-                    }
-                }
-                hashed = NULL_MOVE;
-                break;
-            }
-        }
-    }
-
-    // if (hashed != NULL_MOVE)
-    //     cerr << "Type-1 TT error" << endl;
 
     if(depth >= 4) {
         ScoreList scores;
@@ -240,6 +234,9 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     int reduction = 0;
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
+        if (m == hashed)
+            continue;
+
         reduction = 0;
         Board copy = b.staticCopy();
         if (depth < 4) {
@@ -253,8 +250,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         nodes++;
         if(depth > 1 && b.getSEE(color, getEndSq(m)) < -200)
             reduction = 2;
-        else if(i > 2 && bestScore < alpha)
-            reduction = 1;
+        //else if(i > 2 && alpha <= prevAlpha)
+        //    reduction = 1;
 
         if (i != 0) {
             score = -PVS(copy, color^1, depth-1-reduction, -alpha-1, -alpha);
@@ -267,15 +264,13 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         }
         
         if (score >= beta) {
-            transpositionTable.add(b, depth, m, score);
-            return score;
+            if (depth >= 2)
+                transpositionTable.add(b, depth, m, score, CUT_NODE);
+            return beta;
         }
-        if (score > bestScore) {
-            bestScore = score;
-            if (score > alpha) {
-                alpha = score;
-                toHash = m;
-            }
+        if (score > alpha) {
+            alpha = score;
+            toHash = m;
         }
     }
     
@@ -292,20 +287,21 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             score = 0;
         }
         
-        if (score > bestScore) {
-            bestScore = score;
-            if (score > alpha) {
-                alpha = score;
-            }
-        }
+        if (score >= beta)
+            return beta;
+        if (score > alpha)
+            alpha = score;
     }
     
     // Exact scores indicate a principal variation and should be hashed
-    if (toHash != NULL_MOVE) {
-        transpositionTable.add(b, depth, toHash, bestScore);
+    if (prevAlpha < alpha && alpha < beta) {
+        transpositionTable.add(b, depth, toHash, alpha, PV_NODE);
     }
+    //else if (depth >= 3 && alpha <= prevAlpha) {
+    //    transpositionTable.add(b, depth, toHash, alpha, ALL_NODE);
+    //}
 
-    return bestScore;
+    return alpha;
 }
 
 /* Quiescence search, which completes all capture and check lines (thus reaching

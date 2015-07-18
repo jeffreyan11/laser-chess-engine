@@ -7,7 +7,7 @@
 
 using namespace std;
 
-#define USE_INLINE_AS true
+#define USE_INLINE_ASM true
 
 const int WHITE = 0;
 const int BLACK = 1;
@@ -165,8 +165,6 @@ public:
 
     // Reset the MoveList
     void clear() {
-        delete[] moves;
-        moves = new Move[128];
         length = 0;
     }
 };
@@ -200,8 +198,6 @@ public:
 
     // Reset the MoveList
     void clear() {
-        delete[] scores;
-        scores = new int[128];
         length = 0;
     }
 };

@@ -398,6 +398,24 @@ bool Board::doPseudoLegalMove(Move m, int color) {
     else return true;
 }
 
+// Do a hash move, which requires a few more checks in case of a Type-1 error.
+bool Board::doHashMove(Move m, int color) {
+    int pieceID = getPiece(m);
+    // Check that the correct piece is on the start square
+    if (!(pieces[color][pieceID] & MOVEMASK[getStartSq(m)]))
+        return false;
+    // Check that the end square has correct occupancy
+    uint64_t otherPieces = (color == WHITE) ? blackPieces : whitePieces;
+    uint64_t endSingle = MOVEMASK[getEndSq(m)];
+    bool captureRoutes = (isCapture(m) && (otherPieces & endSingle))
+                      || (isCapture(m) && pieceID == PAWNS && (~otherPieces & endSingle));
+    uint64_t empty = ~(whitePieces | blackPieces);
+    if (!(captureRoutes || (!isCapture(m) && (empty & endSingle))))
+        return false;
+
+    return doPseudoLegalMove(m, color);
+}
+
 // Get all legal moves and captures
 MoveList Board::getAllLegalMoves(int color) {
     MoveList moves = getAllPseudoLegalMoves(color);

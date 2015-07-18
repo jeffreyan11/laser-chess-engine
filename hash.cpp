@@ -27,13 +27,13 @@ Hash::~Hash() {
  * @brief Adds key and move into the hashtable.
  * Assumes that this key has been checked with get and is not in the table.
 */
-void Hash::add(Board &b, int depth, Move m, int score) {
+void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType) {
     uint64_t h = b.getZobristKey();
     uint64_t index = h % size;
     HashLL *node = table[index];
     if(node == NULL) {
         keys++;
-        table[index] = new HashLL(b, depth, m, score);
+        table[index] = new HashLL(b, depth, m, score, nodeType);
         return;
     }
 
@@ -43,14 +43,14 @@ void Hash::add(Board &b, int depth, Move m, int score) {
         node = node->next;
     }
     keys++;
-    node->next = new HashLL(b, depth, m, score);
+    node->next = new HashLL(b, depth, m, score, nodeType);
 }
 
 /**
  * @brief Get the move, if any, associated with a board b.
  * Also returns the depth and score.
 */
-Move Hash::get(Board &b, int &depth, int &score) {
+Move Hash::get(Board &b, int &depth, int &score, uint8_t &nodeType) {
     uint64_t h = b.getZobristKey();
     uint64_t index = h % size;
     HashLL *node = table[index];
@@ -62,6 +62,7 @@ Move Hash::get(Board &b, int &depth, int &score) {
         if(node->cargo.zobristKey == b.getZobristKey()) {
             depth = (int) node->cargo.depth;
             score = node->cargo.score;
+            nodeType = node->cargo.nodeType;
             return node->cargo.m;
         }
         node = node->next;

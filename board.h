@@ -161,6 +161,7 @@ public:
 
     void doMove(Move m, int color);
     bool doPseudoLegalMove(Move m, int color);
+    bool doHashMove(Move m, int color);
 
     MoveList getAllLegalMoves(int color);
     MoveList getAllPseudoLegalMoves(int color);
