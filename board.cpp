@@ -62,10 +62,12 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
         else if (mailboxBoard[i] > 11)
             cerr << "Error in constructor." << endl;
     }
-    whitePieces = pieces[0][0] | pieces[0][1] | pieces[0][2] | pieces[0][3]
-                | pieces[0][4] | pieces[0][5];
-    blackPieces = pieces[1][0] | pieces[1][1] | pieces[1][2] | pieces[1][3]
-                | pieces[1][4] | pieces[1][5];
+    whitePieces = 0;
+    for (int i = 0; i < 6; i++)
+        whitePieces |= pieces[0][i];
+    blackPieces = 0;
+    for (int i = 0; i < 6; i++)
+        blackPieces |= pieces[1][i];
     
     castlingRights = 0;
     castlingRights = _whiteCanKCastle;
@@ -932,21 +934,13 @@ uint64_t Board::getAttackMap(int color, int sq) {
 // Given the end square of a capture, find the opposing piece that is captured.
 int Board::getCapturedPiece(int colorCaptured, int endSq) {
     uint64_t endSingle = MOVEMASK[endSq];
-    if (pieces[colorCaptured][PAWNS] & endSingle)
-        return PAWNS;
-    else if (pieces[colorCaptured][KNIGHTS] & endSingle)
-        return KNIGHTS;
-    else if (pieces[colorCaptured][BISHOPS] & endSingle)
-        return BISHOPS;
-    else if (pieces[colorCaptured][ROOKS] & endSingle)
-        return ROOKS;
-    else if (pieces[colorCaptured][QUEENS] & endSingle)
-        return QUEENS;
-    else {
-        // The default is when the capture destination is an empty square.
-        // This indicates an en passant (and hopefully not an error).
-        return -1;
+    for (int pieceID = 0; pieceID < 5; pieceID++) {
+        if (pieces[colorCaptured][pieceID] & endSingle)
+            return pieceID;
     }
+    // The default is when the capture destination is an empty square.
+    // This indicates an en passant (and hopefully not an error).
+    return -1;
 }
 
 
@@ -1044,60 +1038,35 @@ int Board::evaluate() {
     if ((pieces[BLACK][BISHOPS] & LIGHT) && (pieces[BLACK][BISHOPS] & DARK))
         value -= BISHOP_PAIR_VALUE;
     
-    // TODO make this faster
     // piece square tables
-    int *mailbox = getMailbox();
-    for (int i = 0; i < 64; i++) {
-        switch (mailbox[i]) {
-            case -1: // empty
-                break;
-            case PAWNS: // white pawn
-                value += pawnValues[(7 - i/8)*8 + i%8] * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
-                value += egPawnValues[(7 - i/8*8 + i%8)] * egFactor / EG_FACTOR_RES;
-                break;
-            case 6+PAWNS: // black pawn
-                value -= pawnValues[i] * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
-                value -= egPawnValues[i] * egFactor / EG_FACTOR_RES;
-                break;
-            case KNIGHTS: // white knight
-                value += knightValues[(7 - i/8)*8 + i%8];
-                break;
-            case 6+KNIGHTS: // black knight
-                value -= knightValues[i];
-                break;
-            case BISHOPS: // white bishop
-                value += bishopValues[(7 - i/8)*8 + i%8];
-                break;
-            case 6+BISHOPS: // black bishop
-                value -= bishopValues[i];
-                break;
-            case ROOKS: // white rook
-                value += rookValues[(7 - i/8)*8 + i%8];
-                break;
-            case 6+ROOKS: // black rook
-                value -= rookValues[i];
-                break;
-            case QUEENS: // white queen
-                value += queenValues[(7 - i/8)*8 + i%8];
-                break;
-            case 6+QUEENS: // black queen
-                value -= queenValues[i];
-                break;
-            case KINGS: // white king
-                value += kingValues[(7 - i/8)*8 + i%8] * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
-                value += egKingValues[(7 - i/8)*8 + i%8] * egFactor / EG_FACTOR_RES;
-                break;
-            case 6+KINGS: // black king
-                value -= kingValues[i] * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
-                value -= egKingValues[i] * egFactor / EG_FACTOR_RES;
-                break;
-            default:
-                cout << "Error in piece table switch statement." << endl;
-                break;
+    int midgamePSTVal = 0;
+    int endgamePSTVal = 0;
+    // White pieces
+    for (int pieceID = 0; pieceID < 6; pieceID++) {
+        uint64_t bitboard = pieces[0][pieceID];
+        while (bitboard) {
+            int i = bitScanForward(bitboard);
+            // Invert the board for white side
+            i = ((7 - (i >> 3)) << 3) + (i & 7);
+            bitboard &= bitboard - 1;
+            midgamePSTVal += midgamePieceValues[pieceID][i];
+            endgamePSTVal += endgamePieceValues[pieceID][i];
         }
     }
-    delete[] mailbox;
-    
+    // Black pieces
+    for (int pieceID = 0; pieceID < 6; pieceID++)  {
+        uint64_t bitboard = pieces[1][pieceID];
+        while (bitboard) {
+            int i = bitScanForward(bitboard);
+            bitboard &= bitboard - 1;
+            midgamePSTVal -= midgamePieceValues[pieceID][i];
+            endgamePSTVal -= endgamePieceValues[pieceID][i];
+        }
+    }
+    // Adjust values according to material left on board
+    value += midgamePSTVal * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
+    value += endgamePSTVal * egFactor / EG_FACTOR_RES;
+
     // Consider attacks on squares near king
     uint64_t wksq = getKingAttacks(WHITE);
     uint64_t bksq = getKingAttacks(BLACK);
@@ -1247,30 +1216,10 @@ int Board::getEGFactor() {
 
 // TODO come up with a better way to do this
 uint64_t Board::getLeastValuableAttacker(uint64_t attackers, int color, int &piece) {
-    uint64_t single = attackers & pieces[color][PAWNS];
-    if(single) {
-        piece = PAWNS;
-        return single & -single;
-    }
-    single = attackers & pieces[color][KNIGHTS];
-    if(single) {
-        piece = KNIGHTS;
-        return single & -single;
-    }
-    single = attackers & pieces[color][BISHOPS];
-    if(single) {
-        piece = BISHOPS;
-        return single & -single;
-    }
-    single = attackers & pieces[color][ROOKS];
-    if(single) {
-        piece = ROOKS;
-        return single & -single;
-    }
-    single = attackers & pieces[color][QUEENS];
-    if(single) {
-        piece = QUEENS;
-        return single & -single;
+    for (piece = 0; piece < 5; piece++) {
+        uint64_t single = attackers & pieces[color][piece];
+        if (single)
+            return single & -single;
     }
 
     piece = KINGS;
@@ -1655,40 +1604,40 @@ string Board::toString() {
             case -1: // empty
                 result += "-";
                 break;
-            case 2: // white pawn
+            case 0: // white pawn
                 result += "P";
                 break;
-            case 0: // black pawn
+            case 6: // black pawn
                 result += "p";
                 break;
-            case 3: // white knight
+            case 1: // white knight
                 result += "N";
                 break;
-            case 1: // black knight
+            case 7: // black knight
                 result += "n";
                 break;
-            case 6: // white bishop
+            case 2: // white bishop
                 result += "B";
                 break;
-            case 4: // black bishop
+            case 8: // black bishop
                 result += "b";
                 break;
-            case 7: // white rook
+            case 3: // white rook
                 result += "R";
                 break;
-            case 5: // black rook
+            case 9: // black rook
                 result += "r";
                 break;
-            case 10: // white queen
+            case 4: // white queen
                 result += "Q";
                 break;
-            case 8: // black queen
+            case 10: // black queen
                 result += "q";
                 break;
-            case 11: // white king
+            case 5: // white king
                 result += "K";
                 break;
-            case 9: // black king
+            case 11: // black king
                 result += "k";
                 break;
         }

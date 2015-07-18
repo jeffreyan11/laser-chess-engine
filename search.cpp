@@ -15,6 +15,8 @@ void swap(MoveList &moves, ScoreList &scores, int i, int j);
 int partition(MoveList &moves, ScoreList &scores, int left, int right,
     int pindex);
 
+string retrievePV(Board *b, Move bestMove);
+
 // Iterative deepening search
 Move getBestMove(Board *b, int mode, int value) {
     using namespace std::chrono;
@@ -29,10 +31,9 @@ Move getBestMove(Board *b, int mode, int value) {
     bool isMate = false;
     int currentBestMove;
     int bestScore;
-
-    double timeFactor = 0.4; // timeFactor = log b / (b - 1) where b is branch factor
     
     if (mode == TIME) {
+        double timeFactor = 0.4; // timeFactor = log b / (b - 1) where b is branch factor
         int i = 1;
         do {
             currentBestMove = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
@@ -43,9 +44,12 @@ Move getBestMove(Board *b, int mode, int value) {
             double timeSoFar = duration_cast<duration<double>>(
                     high_resolution_clock::now() - start_time).count();
             uint64_t nps = (uint64_t) ((double) nodes / timeSoFar);
+
+            string pvStr = retrievePV(b, legalMoves.get(0));
+
             cout << "info depth " << i << " score cp " << bestScore << " time "
                 << (int)(timeSoFar * ONE_SECOND) << " nodes " << nodes
-                << " nps " << nps << " pv e2e4" << endl;
+                << " nps " << nps << " pv " << pvStr << endl;
 
             if (isMate)
                 break;
@@ -65,9 +69,12 @@ Move getBestMove(Board *b, int mode, int value) {
             double timeSoFar = duration_cast<duration<double>>(
                     high_resolution_clock::now() - start_time).count();
             uint64_t nps = (uint64_t) ((double) nodes / timeSoFar);
+
+            string pvStr = retrievePV(b, legalMoves.get(0));
+
             cout << "info depth " << i << " score cp " << bestScore << " time "
                  << (int)(timeSoFar * ONE_SECOND) << " nodes " << nodes
-                 << " nps " << nps << " pv e2e4" << endl;
+                 << " nps " << nps << " pv " << pvStr << endl;
             // transpositionTable.test();
 
             if (isMate)
@@ -452,4 +459,25 @@ int partition(MoveList &moves, ScoreList &scores, int left, int right,
     swap(moves, scores, index, right);
 
     return index;
+}
+
+// Recover PV for outputting to terminal / GUI using transposition table entries
+string retrievePV(Board *b, Move bestMove) {
+    int hashDepth = 0;
+    int hashScore = 0;
+    uint8_t nodeType = 0;
+    Board copy = b->staticCopy();
+    string pvStr = moveToString(bestMove);
+    pvStr += " ";
+    copy.doMove(bestMove, copy.getPlayerToMove());
+
+    Move hashed = transpositionTable.get(copy, hashDepth, hashScore, nodeType);
+    while (hashed != NULL_MOVE) {
+        pvStr += moveToString(hashed);
+        pvStr += " ";
+        copy.doMove(hashed, copy.getPlayerToMove());
+        hashed = transpositionTable.get(copy, hashDepth, hashScore, nodeType);
+    }
+
+    return pvStr;
 }
