@@ -29,6 +29,8 @@ const uint8_t BLACKQSIDE = 0x8;
 const uint8_t WHITECASTLE = 0x3;
 const uint8_t BLACKCASTLE = 0xC;
 
+const uint16_t NO_EP_POSSIBLE = 0x8;
+
 //------------------------------Piece tables--------------------------------
 const int midgamePieceValues[6][64] = {
 { // Pawns
@@ -180,6 +182,7 @@ const int initMailbox[64] = {
 };
 
 void initZobristTable();
+int epVictimSquare(int victimColor, uint16_t file);
 
 /**
  * @brief A chess board and its associated functionality, including get legal
@@ -191,8 +194,8 @@ public:
     Board();
     Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
             bool _whiteCanQCastle, bool _blackCanQCastle,
-            uint64_t _whiteEPCaptureSq, uint64_t _blackEPCaptureSq,
-            int _fiftyMoveCounter, int _moveNumber, int _playerToMove);
+            uint16_t _epCaptureFile, int _fiftyMoveCounter, int _moveNumber,
+            int _playerToMove);
     ~Board();
     Board staticCopy();
     Board *dynamicCopy();
@@ -226,8 +229,7 @@ public:
     bool getBlackCanKCastle();
     bool getWhiteCanQCastle();
     bool getBlackCanQCastle();
-    uint64_t getWhiteEPCaptureSq();
-    uint64_t getBlackEPCaptureSq();
+    uint16_t getEPCaptureFile();
     uint8_t getFiftyMoveCounter();
     uint16_t getMoveNumber();
     int getPlayerToMove();
@@ -246,12 +248,11 @@ private:
     // Bitboards for all white or all black pieces
     uint64_t whitePieces;
     uint64_t blackPieces;
-    // 0 if cannot en passant, if en passant is possible, the bitboard has a bit
-    // set at the square of the pawn being captured
-    uint64_t whiteEPCaptureSq;
-    uint64_t blackEPCaptureSq;
+    // 8 if cannot en passant, if en passant is possible, the file of the
+    // pawn being captured is stored here (0-7)
+    uint16_t epCaptureFile;
     // Whose move is it?
-    int playerToMove;
+    uint16_t playerToMove;
     // Keep track of the last 4 half-plys for two-fold repetition
     // Lowest bits are most recent
     uint32_t twoFoldStartSqs;

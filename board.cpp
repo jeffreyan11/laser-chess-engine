@@ -2,12 +2,12 @@
 #include "board.h"
 #include "btables.h"
 
-uint64_t zobristTable[793];
+uint64_t zobristTable[794];
 uint64_t startPosZobristKey = 0;
 
 void initZobristTable() {
     mt19937_64 rng (61280152908);
-    for (int i = 0; i < 793; i++)
+    for (int i = 0; i < 794; i++)
         zobristTable[i] = rng();
 
     Board b;
@@ -15,6 +15,10 @@ void initZobristTable() {
     b.initZobristKey(mailbox);
     startPosZobristKey = b.getZobristKey();
     delete[] mailbox;
+}
+
+int epVictimSquare(int victimColor, uint16_t file) {
+    return 8 * (3 + victimColor) + file;
 }
 
 // Create a board object initialized to the start position.
@@ -34,8 +38,7 @@ Board::Board() {
     whitePieces = 0x000000000000FFFF;
     blackPieces = 0xFFFF000000000000;
 
-    whiteEPCaptureSq = 0;
-    blackEPCaptureSq = 0;
+    epCaptureFile = NO_EP_POSSIBLE;
 
     playerToMove = WHITE;
 
@@ -48,9 +51,8 @@ Board::Board() {
 
 // Create a board object from a mailbox of the current board state.
 Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
-        bool _whiteCanQCastle, bool _blackCanQCastle, uint64_t _whiteEPCaptureSq,
-        uint64_t _blackEPCaptureSq, int _fiftyMoveCounter, int _moveNumber,
-        int _playerToMove) {
+        bool _whiteCanQCastle, bool _blackCanQCastle,  uint16_t _epCaptureFile,
+        int _fiftyMoveCounter, int _moveNumber, int _playerToMove) {
     // Initialize bitboards
     for (int i = 0; i < 12; i++) {
         pieces[i/6][i%6] = 0;
@@ -74,8 +76,7 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
     castlingRights |= _whiteCanQCastle << 1;
     castlingRights |= _blackCanKCastle << 2;
     castlingRights |= _blackCanQCastle << 3;
-    whiteEPCaptureSq = _whiteEPCaptureSq;
-    blackEPCaptureSq = _blackEPCaptureSq;
+    epCaptureFile = _epCaptureFile;
     fiftyMoveCounter = _fiftyMoveCounter;
     moveNumber = _moveNumber;
     playerToMove = _playerToMove;
@@ -95,8 +96,7 @@ Board Board::staticCopy() {
     }
     result.whitePieces = whitePieces;
     result.blackPieces = blackPieces;
-    result.whiteEPCaptureSq = whiteEPCaptureSq;
-    result.blackEPCaptureSq = blackEPCaptureSq;
+    result.epCaptureFile = epCaptureFile;
     result.playerToMove = playerToMove;
     result.twoFoldStartSqs = twoFoldStartSqs;
     result.twoFoldEndSqs = twoFoldEndSqs;
@@ -117,8 +117,7 @@ Board *Board::dynamicCopy() {
     }
     result->whitePieces = whitePieces;
     result->blackPieces = blackPieces;
-    result->whiteEPCaptureSq = whiteEPCaptureSq;
-    result->blackEPCaptureSq = blackEPCaptureSq;
+    result->epCaptureFile = epCaptureFile;
     result->playerToMove = playerToMove;
     result->twoFoldStartSqs = twoFoldStartSqs;
     result->twoFoldEndSqs = twoFoldEndSqs;
@@ -144,10 +143,7 @@ void Board::doMove(Move m, int color) {
 
     // Update flag based elements of Zobrist key
     zobristKey ^= zobristTable[769 + castlingRights];
-    if (whiteEPCaptureSq | blackEPCaptureSq) {
-        int epSq = bitScanForward(whiteEPCaptureSq | blackEPCaptureSq);
-        zobristKey ^= zobristTable[785 + (epSq&7)];
-    }
+    zobristKey ^= zobristTable[785 + epCaptureFile];
 
     // Record current board position for two-fold repetition
     if (isCapture(m) || pieceID == PAWNS || isCastle(m)) {
@@ -273,20 +269,21 @@ void Board::doMove(Move m, int color) {
         if (captureType == -1) {
             pieces[color][PAWNS] &= ~MOVEMASK[startSq];
             pieces[color][PAWNS] |= MOVEMASK[endSq];
-            pieces[color^1][PAWNS] &= ~((color == WHITE) ? whiteEPCaptureSq : blackEPCaptureSq);
+            uint64_t epCaptureSq = MOVEMASK[epVictimSquare(color^1, epCaptureFile)];
+            pieces[color^1][PAWNS] &= ~epCaptureSq;
 
             if (color == WHITE) {
                 whitePieces &= ~MOVEMASK[startSq];
                 whitePieces |= MOVEMASK[endSq];
-                blackPieces &= ~whiteEPCaptureSq;
+                blackPieces &= ~epCaptureSq;
             }
             else {
                 blackPieces &= ~MOVEMASK[startSq];
                 blackPieces |= MOVEMASK[endSq];
-                whitePieces &= ~blackEPCaptureSq;
+                whitePieces &= ~epCaptureSq;
             }
 
-            int capSq = bitScanForward((color == WHITE) ? whiteEPCaptureSq : blackEPCaptureSq);
+            int capSq = epVictimSquare(color^1, epCaptureFile);
             zobristKey ^= zobristTable[384*color + startSq];
             zobristKey ^= zobristTable[384*color + endSq];
             zobristKey ^= zobristTable[384*(color^1) + capSq];
@@ -333,13 +330,11 @@ void Board::doMove(Move m, int color) {
         if (pieceID == PAWNS) {
             if (color == WHITE && startSq/8 == 1 && endSq/8 == 3) {
                 epPossible = true;
-                blackEPCaptureSq = MOVEMASK[endSq];
-                whiteEPCaptureSq = 0;
+                epCaptureFile = startSq & 7;
             }
             else if (startSq/8 == 6 && endSq/8 == 4) {
                 epPossible = true;
-                whiteEPCaptureSq = MOVEMASK[endSq];
-                blackEPCaptureSq = 0;
+                epCaptureFile = startSq & 7;
             }
             fiftyMoveCounter = 0;
         }
@@ -350,8 +345,7 @@ void Board::doMove(Move m, int color) {
 
     // change ep flags
     if (!epPossible) {
-        whiteEPCaptureSq = 0;
-        blackEPCaptureSq = 0;
+        epCaptureFile = NO_EP_POSSIBLE;
     }
 
     // change castling flags
@@ -381,10 +375,7 @@ void Board::doMove(Move m, int color) {
     } // end castling flags
 
     zobristKey ^= zobristTable[769 + castlingRights];
-    if (whiteEPCaptureSq | blackEPCaptureSq) {
-        int epSq = bitScanForward(whiteEPCaptureSq | blackEPCaptureSq);
-        zobristKey ^= zobristTable[785 + (epSq&7)];
-    }
+    zobristKey ^= zobristTable[785 + epCaptureFile];
 
     if (color == BLACK)
         moveNumber++;
@@ -551,36 +542,16 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         captures.add(encodeMove(endsq+rightDiff, endsq, PAWNS, true));
     }
 
-    if (color == WHITE) {
-        if (whiteEPCaptureSq) {
-            uint64_t taker = (whiteEPCaptureSq << 1) & NOTA & pieces[WHITE][PAWNS];
-            if (taker) {
-                captures.add(encodeMove(bitScanForward(taker),
-                        bitScanForward(whiteEPCaptureSq << 8), PAWNS, true));
-            }
-            else {
-                taker = (whiteEPCaptureSq >> 1) & NOTH & pieces[WHITE][PAWNS];
-                if (taker) {
-                    captures.add(encodeMove(bitScanForward(taker),
-                            bitScanForward(whiteEPCaptureSq << 8), PAWNS, true));
-                }
-            }
-        }
-    }
-    else {
-        if (blackEPCaptureSq) {
-            uint64_t taker = (blackEPCaptureSq << 1) & NOTA & pieces[BLACK][PAWNS];
-            if (taker) {
-                captures.add(encodeMove(bitScanForward(taker),
-                        bitScanForward(blackEPCaptureSq >> 8), PAWNS, true));
-            }
-            else {
-                taker = (blackEPCaptureSq >> 1) & NOTH & pieces[BLACK][PAWNS];
-                if (taker) {
-                    captures.add(encodeMove(bitScanForward(taker),
-                            bitScanForward(blackEPCaptureSq >> 8), PAWNS, true));
-                }
-            }
+    if (epCaptureFile != NO_EP_POSSIBLE) {
+        int victimSq = epVictimSquare(color^1, epCaptureFile);
+        int rankDiff = (color == WHITE) ? 8 : -8;
+        uint64_t taker = (MOVEMASK[victimSq] << 1) & NOTA & pieces[color][PAWNS];
+        if (taker)
+            captures.add(encodeMove(victimSq+1, victimSq+rankDiff, PAWNS, true));
+        else {
+            taker = (MOVEMASK[victimSq] >> 1) & NOTH & pieces[color][PAWNS];
+            if (taker)
+                captures.add(encodeMove(victimSq-1, victimSq+rankDiff, PAWNS, true));
         }
     }
 
@@ -821,36 +792,16 @@ MoveList Board::getPseudoLegalCaptures(int color) {
         result.add(encodeMove(endsq+rightDiff, endsq, PAWNS, true));
     }
 
-    if (color == WHITE) {
-        if (whiteEPCaptureSq) {
-            uint64_t taker = (whiteEPCaptureSq << 1) & NOTA & pieces[WHITE][PAWNS];
-            if (taker) {
-                result.add(encodeMove(bitScanForward(taker),
-                        bitScanForward(whiteEPCaptureSq << 8), PAWNS, true));
-            }
-            else {
-                taker = (whiteEPCaptureSq >> 1) & NOTH & pieces[WHITE][PAWNS];
-                if (taker) {
-                    result.add(encodeMove(bitScanForward(taker),
-                            bitScanForward(whiteEPCaptureSq << 8), PAWNS, true));
-                }
-            }
-        }
-    }
-    else {
-        if (blackEPCaptureSq) {
-            uint64_t taker = (blackEPCaptureSq << 1) & NOTA & pieces[BLACK][PAWNS];
-            if (taker) {
-                result.add(encodeMove(bitScanForward(taker),
-                        bitScanForward(blackEPCaptureSq >> 8), PAWNS, true));
-            }
-            else {
-                taker = (blackEPCaptureSq >> 1) & NOTH & pieces[BLACK][PAWNS];
-                if (taker) {
-                    result.add(encodeMove(bitScanForward(taker),
-                            bitScanForward(blackEPCaptureSq >> 8), PAWNS, true));
-                }
-            }
+    if (epCaptureFile != NO_EP_POSSIBLE) {
+        int victimSq = epVictimSquare(color^1, epCaptureFile);
+        int rankDiff = (color == WHITE) ? 8 : -8;
+        uint64_t taker = (MOVEMASK[victimSq] << 1) & NOTA & pieces[color][PAWNS];
+        if (taker)
+            result.add(encodeMove(victimSq+1, victimSq+rankDiff, PAWNS, true));
+        else {
+            taker = (MOVEMASK[victimSq] >> 1) & NOTH & pieces[color][PAWNS];
+            if (taker)
+                result.add(encodeMove(victimSq-1, victimSq+rankDiff, PAWNS, true));
         }
     }
 
@@ -1542,12 +1493,8 @@ bool Board::getBlackCanQCastle() {
     return castlingRights & BLACKQSIDE;
 }
 
-uint64_t Board::getWhiteEPCaptureSq() {
-    return whiteEPCaptureSq;
-}
-
-uint64_t Board::getBlackEPCaptureSq() {
-    return blackEPCaptureSq;
+uint16_t Board::getEPCaptureFile() {
+    return epCaptureFile;
 }
 
 uint8_t Board::getFiftyMoveCounter() {
@@ -1660,8 +1607,5 @@ void Board::initZobristKey(int *mailbox) {
     if (playerToMove == BLACK)
         zobristKey ^= zobristTable[768];
     zobristKey ^= zobristTable[769 + castlingRights];
-    if (whiteEPCaptureSq | blackEPCaptureSq) {
-        int epSq = bitScanForward(whiteEPCaptureSq | blackEPCaptureSq);
-        zobristKey ^= zobristTable[785 + (epSq&7)];
-    }
+    zobristKey ^= zobristTable[785 + epCaptureFile];
 }
