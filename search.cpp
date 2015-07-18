@@ -15,7 +15,7 @@ void swap(MoveList &moves, ScoreList &scores, int i, int j);
 int partition(MoveList &moves, ScoreList &scores, int left, int right,
     int pindex);
 
-string retrievePV(Board *b, Move bestMove);
+string retrievePV(Board *b, Move bestMove, int plies);
 
 // Iterative deepening search
 Move getBestMove(Board *b, int mode, int value) {
@@ -45,7 +45,7 @@ Move getBestMove(Board *b, int mode, int value) {
                     high_resolution_clock::now() - start_time).count();
             uint64_t nps = (uint64_t) ((double) nodes / timeSoFar);
 
-            string pvStr = retrievePV(b, legalMoves.get(0));
+            string pvStr = retrievePV(b, legalMoves.get(0), i);
 
             cout << "info depth " << i << " score cp " << bestScore << " time "
                 << (int)(timeSoFar * ONE_SECOND) << " nodes " << nodes
@@ -70,7 +70,7 @@ Move getBestMove(Board *b, int mode, int value) {
                     high_resolution_clock::now() - start_time).count();
             uint64_t nps = (uint64_t) ((double) nodes / timeSoFar);
 
-            string pvStr = retrievePV(b, legalMoves.get(0));
+            string pvStr = retrievePV(b, legalMoves.get(0), i);
 
             cout << "info depth " << i << " score cp " << bestScore << " time "
                  << (int)(timeSoFar * ONE_SECOND) << " nodes " << nodes
@@ -462,7 +462,7 @@ int partition(MoveList &moves, ScoreList &scores, int left, int right,
 }
 
 // Recover PV for outputting to terminal / GUI using transposition table entries
-string retrievePV(Board *b, Move bestMove) {
+string retrievePV(Board *b, Move bestMove, int plies) {
     int hashDepth = 0;
     int hashScore = 0;
     uint8_t nodeType = 0;
@@ -472,11 +472,15 @@ string retrievePV(Board *b, Move bestMove) {
     copy.doMove(bestMove, copy.getPlayerToMove());
 
     Move hashed = transpositionTable.get(copy, hashDepth, hashScore, nodeType);
+    int lineLength = 0;
     while (hashed != NULL_MOVE) {
         pvStr += moveToString(hashed);
         pvStr += " ";
         copy.doMove(hashed, copy.getPlayerToMove());
         hashed = transpositionTable.get(copy, hashDepth, hashScore, nodeType);
+        lineLength++;
+        if (lineLength > plies)
+            break;
     }
 
     return pvStr;
