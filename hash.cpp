@@ -2,23 +2,23 @@
 
 Hash::Hash(uint64_t MB) {
     uint64_t arrSize = MB << 20;
-    arrSize /= 4 * sizeof(HashLL);
-    table = new HashLL* [arrSize];
+    arrSize /= sizeof(HashNode);
+    table = new HashNode *[arrSize];
     size = arrSize;
     for(uint64_t i = 0; i < size; i++) {
         table[i] = NULL;
     }
     keys = 0;
+    #if HASH_DEBUG_OUTPUT
+    replacements = 0;
+    collisions = 0;
+    cerr << "Hash size: " << size << endl;
+    #endif
 }
 
 Hash::~Hash() {
     for(uint64_t i = 0; i < size; i++) {
-        HashLL* temp = table[i];
-        while(temp != NULL) {
-            HashLL *temp2 = temp->next;
-            delete temp;
-            temp = temp2;
-        }
+        delete table[i];
     }
     delete[] table;
 }
@@ -30,102 +30,89 @@ Hash::~Hash() {
 void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType) {
     uint64_t h = b.getZobristKey();
     uint64_t index = h % size;
-    HashLL *node = table[index];
+    HashNode *node = table[index];
     if(node == NULL) {
         keys++;
-        table[index] = new HashLL(b, depth, m, score, nodeType);
+        table[index] = new HashNode(b, depth, m, score, nodeType);
         return;
     }
-
-    while(node->next != NULL) {
-        if(node->cargo.zobristKey == b.getZobristKey())
+    else { // Decide whether to replace the entry
+        #if HASH_DEBUG_OUTPUT
+        collisions++;
+        #endif
+        // TODO figure out why this doesn't work
+        /*if (node->cargo.zobristKey == b.getZobristKey()) {
+            delete node;
+            table[index] = new HashNode(b, depth, m, score, nodeType);
+            #if HASH_DEBUG_OUTPUT
+            replacements++;
+            #endif
+        }
+        else */if (node->cargo.nodeType == PV_NODE) {
             return;
-        node = node->next;
+        }
+        else if (nodeType == PV_NODE) {
+            delete node;
+            table[index] = new HashNode(b, depth, m, score, nodeType);
+            #if HASH_DEBUG_OUTPUT
+            replacements++;
+            #endif
+        }
+        else if (depth >= node->cargo.depth || (node->cargo.depth <= 3)) {
+            delete node;
+            table[index] = new HashNode(b, depth, m, score, nodeType);
+            #if HASH_DEBUG_OUTPUT
+            replacements++;
+            #endif
+        }
     }
-    keys++;
-    node->next = new HashLL(b, depth, m, score, nodeType);
 }
 
 /**
- * @brief Get the move, if any, associated with a board b.
- * Also returns the depth and score.
+ * @brief Get the hash entry, if any, associated with a board b.
 */
-Move Hash::get(Board &b, int &depth, int &score, uint8_t &nodeType) {
+HashEntry *Hash::get(Board &b) {
     uint64_t h = b.getZobristKey();
     uint64_t index = h % size;
-    HashLL *node = table[index];
+    HashNode *node = table[index];
 
     if(node == NULL)
-        return NULL_MOVE;
+        return NULL;
 
-    do {
-        if(node->cargo.zobristKey == b.getZobristKey()) {
-            depth = (int) node->cargo.depth;
-            score = node->cargo.score;
-            nodeType = node->cargo.nodeType;
-            return node->cargo.m;
-        }
-        node = node->next;
+    if(node->cargo.zobristKey == b.getZobristKey()) {
+        return &(node->cargo);
     }
-    while(node != NULL);
 
-    return NULL_MOVE;
+    return NULL;
 }
 
 void Hash::clean(int moveNumber) {
     for(uint64_t i = 0; i < size; i++) {
-        HashLL *node = table[i];
-        while(node != NULL) {
-            // TODO choose aging policy
+        HashNode *node = table[i];
+        // TODO choose aging policy
+        if (node != NULL) {
             if(moveNumber > node->cargo.age) {
                 keys--;
-                table[i] = node->next;
                 delete node;
-                node = table[i];
+                table[i] = NULL;
             }
-            else
-                node = node->next;
         }
     }
-}
-
-void Hash::test() {
-    int zeros = 0;
-    int threes = 0;
-
-    for(uint64_t i = 0; i < size; i++) {
-        int linked = 0;
-        HashLL* node = table[i];
-        if(node == NULL)
-            zeros++;
-        else {
-            linked++;
-            while(node->next != NULL) {
-                node = node->next;
-                linked++;
-            }
-            if(linked >= 3) threes++;
-        }
-    }
-
-    cerr << "zeros: " << zeros << endl;
-    cerr << "threes: " << threes << endl;
+    #if HASH_DEBUG_OUTPUT
+    replacements = 0;
+    collisions = 0;
+    #endif
 }
 
 void Hash::clear() {
     for(uint64_t i = 0; i < size; i++) {
-        HashLL* temp = table[i];
-        while(temp != NULL) {
-            HashLL *temp2 = temp->next;
-            delete temp;
-            temp = temp2;
-        }
+        delete table[i];
     }
     delete[] table;
     
-    table = new HashLL *[size];
+    table = new HashNode *[size];
     for (uint64_t i = 0; i < size; i++) {
-        table[i] = 0;
+        table[i] = NULL;
     }
     keys = 0;
 }

@@ -82,6 +82,10 @@ Move getBestMove(Board *b, int mode, int value) {
         }
     }
     
+    #if HASH_DEBUG_OUTPUT
+    cerr << "collisions: " << transpositionTable.collisions << endl;
+    cerr << "replacements: " << transpositionTable.replacements << endl;
+    #endif
     transpositionTable.clean(b->getMoveNumber());
     cerr << "keys: " << transpositionTable.keys << endl;
     return legalMoves.get(0);
@@ -179,46 +183,62 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     
     int score = -MATE_SCORE;
     int prevAlpha = alpha;
+    // For PVS, the node is a PV node if beta - alpha > 1 (i.e. not a null window)
+    // We do not want to do most pruning techniques on PV nodes
+    bool isPVNode = (beta - alpha > 1);
 
     Move toHash = NULL_MOVE;
+    uint8_t nodeType = NO_NODE_INFO;
+    Move hashed = NULL_MOVE;
+
     // See if a hash move exists
-    int hashDepth = 0;
-    int hashScore = 0;
-    uint8_t nodeType = 0;
-    Move hashed = transpositionTable.get(b, hashDepth, hashScore, nodeType);
-
-    if (hashed != NULL_MOVE) {
-        Board copy = b.staticCopy();
-        if (copy.doHashMove(hashed, color)) {
-            if (hashDepth >= depth) {
-                if (nodeType == CUT_NODE && hashScore >= beta)
-                    return beta;
-                else if (nodeType == PV_NODE)
-                    return hashScore;
-                else if (nodeType == ALL_NODE && hashScore <= alpha)
-                    return alpha;
-            }
-
-            nodes++;
-            score = -PVS(copy, color^1, depth-1, -beta, -alpha);
-
-            if (score >= beta)
-                return beta;
-            if (score > alpha)
-                alpha = score;
+    HashEntry *entry = transpositionTable.get(b);
+    if (entry != NULL) {
+        // If the node is a predicted all node and score <= alpha, return alpha
+        // since score is an upper bound
+        // Vulnerable to Type-1 errors
+        int hashScore = entry->score;
+        nodeType = entry->nodeType;
+        if (nodeType == ALL_NODE) {
+            if (entry->depth >= depth && hashScore <= alpha)
+                return alpha;
         }
         else {
-            cerr << "Type-1 TT error" << endl;
-            hashed = NULL_MOVE;
-        }
-    }
+            hashed = entry->m;
+            Board copy = b.staticCopy();
+            if (copy.doHashMove(hashed, color)) {
+                // Only used a hashed score if the search depth was at least
+                // the current depth
+                if (entry->depth >= depth) {
+                    // At cut nodes if hash score >= beta return beta since hash
+                    // score is a lower bound.
+                    if (nodeType == CUT_NODE && hashScore >= beta)
+                        return beta;
+                    // At PV nodes we can simply return the exact score
+                    else if (nodeType == PV_NODE)
+                        return hashScore;
+                }
 
-    // if (hashed != NULL_MOVE)
-    //     cerr << "Type-1 TT error" << endl;
+                // If the hash score is unusable and node is not a predicted
+                // all-node, we can search the hash move first.
+                nodes++;
+                score = -PVS(copy, color^1, depth-1, -beta, -alpha);
+
+                if (score >= beta)
+                    return beta;
+                if (score > alpha)
+                    alpha = score;
+            }
+            else {
+                cerr << "Type-1 TT error on " << moveToString(hashed) << endl;
+                hashed = NULL_MOVE;
+            }
+        } 
+    }
     
     // null move pruning
     // only if doing a null move does not leave player in check
-    if (depth >= 2) {
+    if (depth >= 2 && !isPVNode) {
         if (b.doPseudoLegalMove(NULL_MOVE, color)) {
             int nullScore = -PVS(b, color^1, depth-4, -beta, -alpha);
             if (nullScore >= beta) {
@@ -255,7 +275,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         }
 
         nodes++;
-        if(depth > 1 && b.getSEE(color, getEndSq(m)) < -200)
+        if(depth > 1 && !isPVNode && b.getSEE(color, getEndSq(m)) < -200)
             reduction = 2;
         //else if(i > 2 && alpha <= prevAlpha)
         //    reduction = 1;
@@ -271,6 +291,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         }
         
         if (score >= beta) {
+            // Hash moves that caused a beta cutoff (killer heuristic)
             if (depth >= 2)
                 transpositionTable.add(b, depth, m, score, CUT_NODE);
             return beta;
@@ -300,13 +321,15 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             alpha = score;
     }
     
-    // Exact scores indicate a principal variation and should be hashed
-    if (prevAlpha < alpha && alpha < beta) {
+    // Exact scores indicate a principal variation and should always be hashed
+    if (toHash != NULL_MOVE && prevAlpha < alpha && alpha < beta) {
         transpositionTable.add(b, depth, toHash, alpha, PV_NODE);
     }
-    //else if (depth >= 3 && alpha <= prevAlpha) {
-    //    transpositionTable.add(b, depth, toHash, alpha, ALL_NODE);
-    //}
+    // Record all=nodes. The upper bound score can save a lot of search time.
+    // No best move can be recorded in a fail-hard framework.
+    else if (depth >= 2 && alpha <= prevAlpha) {
+        transpositionTable.add(b, depth, NULL_MOVE, alpha, ALL_NODE);
+    }
 
     return alpha;
 }
@@ -463,24 +486,19 @@ int partition(MoveList &moves, ScoreList &scores, int left, int right,
 
 // Recover PV for outputting to terminal / GUI using transposition table entries
 string retrievePV(Board *b, Move bestMove, int plies) {
-    int hashDepth = 0;
-    int hashScore = 0;
-    uint8_t nodeType = 0;
     Board copy = b->staticCopy();
     string pvStr = moveToString(bestMove);
     pvStr += " ";
     copy.doMove(bestMove, copy.getPlayerToMove());
 
-    Move hashed = transpositionTable.get(copy, hashDepth, hashScore, nodeType);
-    int lineLength = 0;
-    while (hashed != NULL_MOVE) {
-        pvStr += moveToString(hashed);
+    HashEntry *entry = transpositionTable.get(copy);
+    int lineLength = 1;
+    while (entry != NULL && lineLength < plies) {
+        pvStr += moveToString(entry->m);
         pvStr += " ";
-        copy.doMove(hashed, copy.getPlayerToMove());
-        hashed = transpositionTable.get(copy, hashDepth, hashScore, nodeType);
+        copy.doMove(entry->m, copy.getPlayerToMove());
+        entry = transpositionTable.get(copy);
         lineLength++;
-        if (lineLength > plies)
-            break;
     }
 
     return pvStr;
