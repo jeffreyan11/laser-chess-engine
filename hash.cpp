@@ -48,16 +48,19 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType) {
             replacements++;
             #endif
         }
-        else */if (node->cargo.nodeType == PV_NODE) {
+        else */if (node->cargo.nodeType == PV_NODE) { // Always keep PV nodes
             return;
         }
-        else if (nodeType == PV_NODE) {
+        else if (nodeType == PV_NODE) { // and replace cut/all nodes with PV nodes
             delete node;
             table[index] = new HashNode(b, depth, m, score, nodeType);
             #if HASH_DEBUG_OUTPUT
             replacements++;
             #endif
         }
+        // Otherwise, give priority to higher depths
+        // Also, replace very low depth searches with newer searches regardless of
+        // the new search's depth.
         else if (depth >= node->cargo.depth || (node->cargo.depth <= 3)) {
             delete node;
             table[index] = new HashNode(b, depth, m, score, nodeType);

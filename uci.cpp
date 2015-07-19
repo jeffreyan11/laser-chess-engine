@@ -165,12 +165,14 @@ int main() {
                     
                     int startSq = 8 * (startRank - '0' - 1) + (startFile - 'a');
                     int endSq = 8 * (endRank - '0' - 1) + (endFile - 'a');
+                    int *mailbox = board.getMailbox();
+
+                    int piece = mailbox[startSq] % 6;
                     
-                    int piece = board.getMailbox()[startSq] % 6;
-                    
-                    bool isCapture = ((board.getMailbox()[endSq] != -1)
+                    bool isCapture = ((mailbox[endSq] != -1)
                             || (piece == PAWNS && abs(abs(startSq - endSq) - 8) == 1));
                     bool isCastle = (piece == KINGS && abs(endSq - startSq) == 2);
+                    delete[] mailbox;
                     
                     int promotion = 0;
                     
