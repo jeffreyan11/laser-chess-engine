@@ -193,7 +193,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
     // See if a hash move exists
     HashEntry *entry = transpositionTable.get(b);
-    if (entry != NULL) {
+    if (!isPVNode && entry != NULL) {
         // If the node is a predicted all node and score <= alpha, return alpha
         // since score is an upper bound
         // Vulnerable to Type-1 errors
@@ -240,7 +240,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // only if doing a null move does not leave player in check
     if (depth >= 2 && !isPVNode) {
         if (b.doPseudoLegalMove(NULL_MOVE, color)) {
-            int nullScore = -PVS(b, color^1, depth-4, -beta, -alpha);
+            int nullScore = -PVS(b, color^1, depth-3, -beta, -alpha);
             if (nullScore >= beta) {
                 b.doMove(NULL_MOVE, color^1);
                 return beta;
@@ -252,6 +252,26 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
     MoveList legalMoves = b.getAllPseudoLegalMoves(color);
 
+    // Special cases for a mate or stalemate
+    if (legalMoves.size() <= 0) {
+        if (b.isWinMate()) {
+            // + 50 - depth adjusts so that quicker mates are better
+            score = (color == WHITE) ? (-MATE_SCORE + 50 - depth) : (MATE_SCORE - 50 + depth);
+        }
+        else if (b.isBinMate()) {
+            score = (color == WHITE) ? (MATE_SCORE - 50 + depth) : (-MATE_SCORE + 50 - depth);
+        }
+        else if (b.isStalemate(color)) {
+            score = 0;
+        }
+        
+        if (score >= beta)
+            return beta;
+        if (score > alpha)
+            alpha = score;
+    }
+
+    // Internal iterative deepening
     if(depth >= 4) {
         ScoreList scores;
         sortSearch(&b, legalMoves, scores, 1);
@@ -275,19 +295,23 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         }
 
         nodes++;
-        if(depth > 1 && !isPVNode && b.getSEE(color, getEndSq(m)) < -200)
-            reduction = 2;
-        //else if(i > 2 && alpha <= prevAlpha)
-        //    reduction = 1;
+        // Futility-esque reduction using SEE
+        if(depth <= 2 && !isPVNode && b.getSEE(color, getEndSq(m)) < -200)
+            reduction = 1;
+        // Late move reduction
+        else if(nodeType == ALL_NODE && depth >= 4 && i > 2 && alpha <= prevAlpha)
+            reduction = 1;
 
         if (i != 0) {
             score = -PVS(copy, color^1, depth-1-reduction, -alpha-1, -alpha);
+            // The re-search is always done at normal depth
             if (alpha < score && score < beta) {
-                score = -PVS(copy, color^1, depth-1-reduction, -beta, -alpha);
+                score = -PVS(copy, color^1, depth-1, -beta, -alpha);
             }
         }
         else {
-            score = -PVS(copy, color^1, depth-1-reduction, -beta, -alpha);
+            // The first move is always searched at a normal depth
+            score = -PVS(copy, color^1, depth-1, -beta, -alpha);
         }
         
         if (score >= beta) {
@@ -300,25 +324,6 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             alpha = score;
             toHash = m;
         }
-    }
-    
-    // Special cases for a mate or stalemate
-    if (score == -MATE_SCORE) {
-        if (b.isWinMate()) {
-            // + 50 - depth adjusts so that quicker mates are better
-            score = (color == WHITE) ? (-MATE_SCORE + 50 - depth) : (MATE_SCORE - 50 + depth);
-        }
-        else if (b.isBinMate()) {
-            score = (color == WHITE) ? (MATE_SCORE - 50 + depth) : (-MATE_SCORE + 50 - depth);
-        }
-        else if (b.isStalemate(color)) {
-            score = 0;
-        }
-        
-        if (score >= beta)
-            return beta;
-        if (score > alpha)
-            alpha = score;
     }
     
     // Exact scores indicate a principal variation and should always be hashed

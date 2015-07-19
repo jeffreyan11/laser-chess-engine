@@ -40,15 +40,15 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType) {
         #if HASH_DEBUG_OUTPUT
         collisions++;
         #endif
-        // TODO figure out why this doesn't work
-        /*if (node->cargo.zobristKey == b.getZobristKey()) {
+        // A more recent update to the same position should always be chosen
+        if (node->cargo.zobristKey == b.getZobristKey()) {
             delete node;
             table[index] = new HashNode(b, depth, m, score, nodeType);
             #if HASH_DEBUG_OUTPUT
             replacements++;
             #endif
         }
-        else */if (node->cargo.nodeType == PV_NODE) { // Always keep PV nodes
+        else if (node->cargo.nodeType == PV_NODE) { // Always keep PV nodes
             return;
         }
         else if (nodeType == PV_NODE) { // and replace cut/all nodes with PV nodes
