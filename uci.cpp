@@ -2,6 +2,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <thread>
 
 #include "uci.h"
 using namespace std;
@@ -111,6 +112,7 @@ int main() {
     string version = "0";
     string author = "Jeffrey An and Michael An";
     string pos;
+    thread searchThread;
     
     const string STARTPOS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     Board board = fenToBoard(STARTPOS);
@@ -237,7 +239,9 @@ int main() {
                 value = (value - 200) / 40;
             }
             
-            Move bestMove = getBestMove(&board, mode, value);
+            Move bestMove = NULL_MOVE;
+            searchThread = thread(getBestMove, &board, mode, value, &bestMove);
+            searchThread.join();
             cout << "bestmove " << moveToString(bestMove) << endl;
         }
         

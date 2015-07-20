@@ -17,35 +17,37 @@ int partition(MoveList &moves, ScoreList &scores, int left, int right,
 
 string retrievePV(Board *b, Move bestMove, int plies);
 
-// Iterative deepening search
-Move getBestMove(Board *b, int mode, int value) {
+void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     using namespace std::chrono;
     nodes = 0;
 
     // test if only 1 legal move
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
-    if (legalMoves.size() == 1) return legalMoves.get(0);
+    if (legalMoves.size() == 1) {
+        *bestMove = legalMoves.get(0);
+        return;
+    }
     
     auto start_time = high_resolution_clock::now();
     bool isMate = false;
-    int currentBestMove;
-    int bestScore;
+    int bestScore, bestMoveIndex;
     
     if (mode == TIME) {
         double timeFactor = 0.4; // timeFactor = log b / (b - 1) where b is branch factor
         int i = 1;
         do {
-            currentBestMove = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
+            bestMoveIndex = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
             Move temp = legalMoves.get(0);
-            legalMoves.set(0, legalMoves.get(currentBestMove));
-            legalMoves.set(currentBestMove, temp);
+            legalMoves.set(0, legalMoves.get(bestMoveIndex));
+            legalMoves.set(bestMoveIndex, temp);
+            *bestMove = legalMoves.get(0);
 
             double timeSoFar = duration_cast<duration<double>>(
                     high_resolution_clock::now() - start_time).count();
             uint64_t nps = (uint64_t) ((double) nodes / timeSoFar);
 
-            string pvStr = retrievePV(b, legalMoves.get(0), i);
+            string pvStr = retrievePV(b, *bestMove, i);
 
             cout << "info depth " << i << " score cp " << bestScore << " time "
                 << (int)(timeSoFar * ONE_SECOND) << " nodes " << nodes
@@ -61,16 +63,17 @@ Move getBestMove(Board *b, int mode, int value) {
     
     if (mode == DEPTH) {
         for (int i = 1; i <= min(value, MAX_DEPTH); i++) {
-            currentBestMove = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
+            bestMoveIndex = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
             Move temp = legalMoves.get(0);
-            legalMoves.set(0, legalMoves.get(currentBestMove));
-            legalMoves.set(currentBestMove, temp);
+            legalMoves.set(0, legalMoves.get(bestMoveIndex));
+            legalMoves.set(bestMoveIndex, temp);
+            *bestMove = legalMoves.get(0);
 
             double timeSoFar = duration_cast<duration<double>>(
                     high_resolution_clock::now() - start_time).count();
             uint64_t nps = (uint64_t) ((double) nodes / timeSoFar);
 
-            string pvStr = retrievePV(b, legalMoves.get(0), i);
+            string pvStr = retrievePV(b, *bestMove, i);
 
             cout << "info depth " << i << " score cp " << bestScore << " time "
                  << (int)(timeSoFar * ONE_SECOND) << " nodes " << nodes
@@ -88,9 +91,11 @@ Move getBestMove(Board *b, int mode, int value) {
     #endif
     transpositionTable.clean(b->getMoveNumber());
     cerr << "keys: " << transpositionTable.keys << endl;
-    return legalMoves.get(0);
+    
+    return;
 }
 
+// returns index of best move in legalMoves
 int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
         int &bestScore, bool &isMate) {
     int color = b->getPlayerToMove();
