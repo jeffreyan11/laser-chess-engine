@@ -198,7 +198,7 @@ public:
             int _playerToMove);
     ~Board();
     Board staticCopy();
-    Board *dynamicCopy();
+    // Board *dynamicCopy();
 
     void doMove(Move m, int color);
     bool doPseudoLegalMove(Move m, int color);
@@ -225,6 +225,8 @@ public:
     uint64_t getLeastValuableAttacker(uint64_t attackers, int color, int &piece);
     int getSEE(int color, int sq);
     int valueOfPiece(int piece);
+    // Most Valuable Victim / Least Valuable Attacker
+    int getMVVLVAScore(int color, Move m);
 
     // Getter methods
     bool getWhiteCanKCastle();
@@ -271,6 +273,12 @@ private:
     uint8_t castlingRights;
     // Counts half moves for the 50-move rule
     uint8_t fiftyMoveCounter;
+
+    void addMovesToList(MoveList &quiets, MoveList &captures, int pieceID,
+        int stSq, uint64_t allEndSqs, uint64_t otherPieces);
+    void addMovesToList(MoveList &moves, int pieceID, int stSq,
+        uint64_t allEndSqs, uint64_t otherPieces);
+    void addPromotionsToList(MoveList &moves, int stSq, int endSq, bool isCapture);
 
     int getCapturedPiece(int colorCaptured, int endSq);
 
