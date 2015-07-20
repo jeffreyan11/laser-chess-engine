@@ -642,6 +642,8 @@ MoveList Board::getLegalCaptures(int color) {
     return moves;
 }
 
+// Currently used in quiescence only
+// Does not generate promotions!
 MoveList Board::getPseudoLegalCaptures(int color) {
     MoveList result;
     uint64_t pawns = pieces[color][PAWNS];
@@ -657,12 +659,6 @@ MoveList Board::getPseudoLegalCaptures(int color) {
     uint64_t promotions = legal & finalRank;
     legal ^= promotions;
 
-    while (promotions) {
-        int endSq = bitScanForward(promotions);
-        promotions &= promotions-1;
-
-        addPromotionsToList(result, endSq+leftDiff, endSq, true);
-    }
     while (legal) {
         int endsq = bitScanForward(legal);
         legal &= legal-1;
@@ -675,12 +671,6 @@ MoveList Board::getPseudoLegalCaptures(int color) {
     promotions = legal & finalRank;
     legal ^= promotions;
 
-    while (promotions) {
-        int endSq = bitScanForward(promotions);
-        promotions &= promotions-1;
-
-        addPromotionsToList(result, endSq+rightDiff, endSq, true);
-    }
     while (legal) {
         int endsq = bitScanForward(legal);
         legal &= legal-1;
@@ -767,6 +757,64 @@ MoveList Board::getPseudoLegalCaptures(int color) {
     }
 
     return result;
+}
+
+// Generates all queen promotions for quiescence search
+MoveList Board::getPseudoLegalPromotions(int color) {
+    MoveList moves;
+    uint64_t otherPieces = (color == WHITE) ? blackPieces : whitePieces;
+
+    uint64_t pawns = pieces[color][PAWNS];
+    uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
+
+    int leftDiff = (color == WHITE) ? -7 : 9;
+    int rightDiff = (color == WHITE) ? -9 : 7;
+
+    uint64_t legal = (color == WHITE) ? getWPawnLeftCaptures(pawns)
+                                      : getBPawnLeftCaptures(pawns);
+    legal &= otherPieces;
+    uint64_t promotions = legal & finalRank;
+
+    while (promotions) {
+        int endSq = bitScanForward(promotions);
+        promotions &= promotions-1;
+
+        Move mq = encodeMove(endSq+leftDiff, endSq, PAWNS, true);
+        mq = setPromotion(mq, QUEENS);
+        moves.add(mq);
+    }
+
+    legal = (color == WHITE) ? getWPawnRightCaptures(pawns)
+                             : getBPawnRightCaptures(pawns);
+    legal &= otherPieces;
+    promotions = legal & finalRank;
+
+    while (promotions) {
+        int endSq = bitScanForward(promotions);
+        promotions &= promotions-1;
+
+        Move mq = encodeMove(endSq+rightDiff, endSq, PAWNS, true);
+        mq = setPromotion(mq, QUEENS);
+        moves.add(mq);
+    }
+
+    int sqDiff = (color == WHITE) ? -8 : 8;
+
+    legal = (color == WHITE) ? getWPawnSingleMoves(pawns)
+                             : getBPawnSingleMoves(pawns);
+    promotions = legal & finalRank;
+
+    while (promotions) {
+        int endSq = bitScanForward(promotions);
+        promotions &= promotions - 1;
+        int stSq = endSq + sqDiff;
+
+        Move mq = encodeMove(stSq, endSq, PAWNS, false);
+        mq = setPromotion(mq, QUEENS);
+        moves.add(mq);
+    }
+
+    return moves;
 }
 
 /*

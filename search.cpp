@@ -282,6 +282,17 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         sortSearch(&b, legalMoves, scores, 1);
         sort(legalMoves, scores, 0, legalMoves.size() - 1);
     }
+    else { //MVV/LVA
+        unsigned int index;
+        for (index = 0; index < legalMoves.size(); index++)
+            if (!isCapture(legalMoves.get(index)))
+                break;
+        ScoreList scores;
+        for (unsigned int i = 0; i < index; i++) {
+            scores.add(b.getMVVLVAScore(color, legalMoves.get(i)));
+        }
+        sort(legalMoves, scores, 0, index - 1);
+    }
 
     int reduction = 0;
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
@@ -335,7 +346,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     if (toHash != NULL_MOVE && prevAlpha < alpha && alpha < beta) {
         transpositionTable.add(b, depth, toHash, alpha, PV_NODE);
     }
-    // Record all=nodes. The upper bound score can save a lot of search time.
+    // Record all-nodes. The upper bound score can save a lot of search time.
     // No best move can be recorded in a fail-hard framework.
     else if (depth >= 2 && alpha <= prevAlpha) {
         transpositionTable.add(b, depth, NULL_MOVE, alpha, ALL_NODE);
@@ -371,9 +382,37 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheck
     
 //    if (!isCheckLine || plies > 4) {
         MoveList legalCaptures = b.getPseudoLegalCaptures(color);
+        ScoreList scores;
+        for (unsigned int i = 0; i < legalCaptures.size(); i++) {
+            scores.add(b.getMVVLVAScore(color, legalCaptures.get(i)));
+        }
+        sort(legalCaptures, scores, 0, legalCaptures.size() - 1);
         
         for (unsigned int i = 0; i < legalCaptures.size(); i++) {
             Move m = legalCaptures.get(i);
+
+            // Static exchange evaluation pruning
+            if(b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
+                continue;
+
+            Board copy = b.staticCopy();
+            if (!copy.doPseudoLegalMove(m, color))
+                continue;
+            
+            nodes++;
+            int score = -quiescence(copy, color^1, plies+1, -beta, -alpha, false);
+            
+            if (score >= beta) {
+                alpha = beta;
+                break;
+            }
+            if (score > alpha)
+                alpha = score;
+        }
+
+        MoveList legalPromotions = b.getPseudoLegalPromotions(color);
+        for (unsigned int i = 0; i < legalPromotions.size(); i++) {
+            Move m = legalPromotions.get(i);
 
             // Static exchange evaluation pruning
             if(b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
