@@ -15,4 +15,7 @@ const int DEPTH = 2;
 
 const int ONE_SECOND = 1000;
 
+// Search parameters
+const int MAX_POS_SCORE = 200;
+
 #endif

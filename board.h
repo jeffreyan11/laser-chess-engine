@@ -208,7 +208,9 @@ public:
     MoveList getAllPseudoLegalMoves(int color);
     MoveList getLegalCaptures(int color);
     MoveList getPseudoLegalCaptures(int color);
+    MoveList getPseudoLegalChecks(int color);
 
+    uint64_t getXRays(int color, int sq, int blockerColor, uint64_t blocker);
     uint64_t getAttackMap(int color, int sq);
     bool getInCheck(int color);
     bool isWinMate();

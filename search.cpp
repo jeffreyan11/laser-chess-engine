@@ -296,7 +296,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
         nodes++;
         // Futility-esque reduction using SEE
-        if(depth <= 2 && !isPVNode && b.getSEE(color, getEndSq(m)) < -200)
+        if(depth <= 2 && !isPVNode && b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
             reduction = 1;
         // Late move reduction
         else if(nodeType == ALL_NODE && depth >= 4 && i > 2 && alpha <= prevAlpha)
@@ -361,17 +361,17 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheck
         alpha = standPat;
     
     // delta prune
-    if (standPat < alpha - 1200)
+    if (standPat < alpha - MAX_POS_SCORE - QUEEN_VALUE)
         return alpha;
     
-//    if (!isCheckLine) {
+//    if (!isCheckLine || plies > 4) {
         MoveList legalCaptures = b.getPseudoLegalCaptures(color);
         
         for (unsigned int i = 0; i < legalCaptures.size(); i++) {
             Move m = legalCaptures.get(i);
 
             // Static exchange evaluation pruning
-            if(b.getSEE(color, getEndSq(m)) < -200)
+            if(b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
                 continue;
 
             Board copy = b.staticCopy();
@@ -390,10 +390,10 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheck
         }
 //    }
 
-/* TODO needs a getChecks function
     // Checks
+    /*
     else if(plies <= 4) {
-        MoveList legalMoves = b.getAllPseudoLegalMoves(color);
+        MoveList legalMoves = b.getPseudoLegalChecks(color);
 
         for (unsigned int i = 0; i < legalMoves.size(); i++) {
             Move m = legalMoves.get(i);
@@ -401,9 +401,8 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheck
             Board copy = b.staticCopy();
             if (!copy.doPseudoLegalMove(m, color))
                 continue;
-            if (!copy.getInCheck(color^1))
-                continue;
             
+            nodes++;
             int score = -checkQuiescence(copy, color^1, plies+1, -beta, -alpha);
             
             if (score >= beta) {
@@ -414,7 +413,8 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta, bool isCheck
                 alpha = score;
         }
     }
-*/
+    */
+
     return alpha;
 }
 

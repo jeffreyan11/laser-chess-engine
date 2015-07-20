@@ -445,7 +445,8 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
     int sqDiff = (color == WHITE) ? -8 : 8;
 
     uint64_t pLegal = (color == WHITE) ? getWPawnSingleMoves(pawns)
-                                      : getBPawnSingleMoves(pawns);
+                                       : getBPawnSingleMoves(pawns);
+    // Promotions occur when a pawn reaches the final rank
     uint64_t promotions = pLegal & finalRank;
     pLegal ^= promotions;
 
@@ -490,6 +491,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
                                       : getBPawnLeftCaptures(pawns);
     legal &= otherPieces;
     promotions = legal & finalRank;
+    legal ^= promotions;
 
     while (promotions) {
         int endsq = bitScanForward(promotions);
@@ -518,6 +520,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
                                       : getBPawnRightCaptures(pawns);
     legal &= otherPieces;
     promotions = legal & finalRank;
+    legal ^= promotions;
 
     while (promotions) {
         int endsq = bitScanForward(promotions);
@@ -542,9 +545,13 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         captures.add(encodeMove(endsq+rightDiff, endsq, PAWNS, true));
     }
 
+    // If there are en passants possible...
     if (epCaptureFile != NO_EP_POSSIBLE) {
         int victimSq = epVictimSquare(color^1, epCaptureFile);
+        // capturer's destination square is either the rank above (white) or
+        // below (black) the victim square
         int rankDiff = (color == WHITE) ? 8 : -8;
+        // The capturer's start square is either 1 to the left or right of victim
         uint64_t taker = (MOVEMASK[victimSq] << 1) & NOTA & pieces[color][PAWNS];
         if (taker)
             captures.add(encodeMove(victimSq+1, victimSq+rankDiff, PAWNS, true));
@@ -657,7 +664,10 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         captures.add(encodeMove(stsqK, endsq, KINGS, true));
     }
 
+    // Add all possible castles
     if (color == WHITE) {
+        // If castling rights still exist, squares in between king and rook are
+        // empty, and player is not in check
         if ((castlingRights & WHITEKSIDE)
          && ((whitePieces | blackPieces) & (MOVEMASK[5] | MOVEMASK[6])) == 0
          && !getInCheck(WHITE)) {
@@ -671,7 +681,6 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         else if ((castlingRights & WHITEQSIDE)
               && ((whitePieces | blackPieces) & (MOVEMASK[1] | MOVEMASK[2] | MOVEMASK[3])) == 0
               && !getInCheck(WHITE)) {
-            // Check for castling through check
             if (getAttackMap(BLACK, 3) == 0) {
                 Move m = encodeMove(4, 2, KINGS, false);
                 m = setCastle(m, true);
@@ -700,6 +709,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         }
     }
 
+    // Put captures before quiet moves
     for (unsigned int i = 0; i < quiets.size(); i++) {
         captures.add(quiets.get(i));
     }
@@ -740,6 +750,7 @@ MoveList Board::getPseudoLegalCaptures(int color) {
                                       : getBPawnLeftCaptures(pawns);
     legal &= otherPieces;
     uint64_t promotions = legal & finalRank;
+    legal ^= promotions;
 
     while (promotions) {
         int endsq = bitScanForward(promotions);
@@ -768,6 +779,7 @@ MoveList Board::getPseudoLegalCaptures(int color) {
                                       : getBPawnRightCaptures(pawns);
     legal &= otherPieces;
     promotions = legal & finalRank;
+    legal ^= promotions;
 
     while (promotions) {
         int endsq = bitScanForward(promotions);
@@ -867,6 +879,248 @@ MoveList Board::getPseudoLegalCaptures(int color) {
     }
 
     return result;
+}
+
+/*
+ * Get all pseudo-legal checks for a position. Used in quiescence search.
+ * This function can be optimized compared to a normal getLegalMoves() because
+ * for each piece, we can intersect the legal moves of the piece with the attack
+ * map of this piece to the opposing king square to determine direct checks.
+ * Discovered checks have to be handled separately.
+ *
+ * For simplicity, promotions and en passant are left out of this function.
+ */
+MoveList Board::getPseudoLegalChecks(int color) {
+    MoveList checks;
+    int kingSq = bitScanForward(pieces[color^1][KINGS]);
+    // Square parity for knight and bishop moves
+    uint64_t kingParity = (pieces[color^1][KINGS] & LIGHT) ? LIGHT : DARK;
+    uint64_t otherPieces = (color == WHITE) ? blackPieces : whitePieces;
+    uint64_t attackMap = getAttackMap(color, kingSq);
+
+    // We can do pawns in parallel, since the start square of a pawn move is
+    // determined by its end square.
+    uint64_t pawns = pieces[color][PAWNS];
+
+    // First, deal with discovered checks
+    uint64_t tempPawns = pawns;
+    while (tempPawns) {
+        int stsq = bitScanForward(tempPawns);
+        tempPawns &= tempPawns - 1;
+        uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
+        // If moving the pawn caused a new xray piece to attack the king
+        if (!(xrays & ~attackMap)) {
+            // Every legal move of this pawn is a legal check
+            uint64_t legal = (color == WHITE) ? getWPawnSingleMoves(MOVEMASK[stsq]) | getWPawnDoubleMoves(MOVEMASK[stsq])
+                                              : getBPawnSingleMoves(MOVEMASK[stsq]) | getBPawnDoubleMoves(MOVEMASK[stsq]);
+            while (legal) {
+                int endsq = bitScanForward(legal);
+                legal &= legal - 1;
+                checks.add(encodeMove(stsq, endsq, PAWNS, false));
+            }
+
+            legal = (color == WHITE) ? getWPawnLeftCaptures(MOVEMASK[stsq]) | getWPawnRightCaptures(MOVEMASK[stsq])
+                                     : getBPawnLeftCaptures(MOVEMASK[stsq]) | getBPawnRightCaptures(MOVEMASK[stsq]);
+            while (legal) {
+                int endsq = bitScanForward(legal);
+                legal &= legal - 1;
+                checks.add(encodeMove(stsq, endsq, PAWNS, true));
+            }
+            // Remove this pawn from future consideration
+            pawns ^= MOVEMASK[stsq];
+        }
+    }
+
+    uint64_t pAttackMap = (color == WHITE) 
+            ? getBPawnLeftCaptures(MOVEMASK[kingSq]) | getBPawnRightCaptures(MOVEMASK[kingSq])
+            : getWPawnLeftCaptures(MOVEMASK[kingSq]) | getWPawnRightCaptures(MOVEMASK[kingSq]);
+    uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
+    int sqDiff = (color == WHITE) ? -8 : 8;
+
+    uint64_t pLegal = (color == WHITE) ? getWPawnSingleMoves(pawns)
+                                       : getBPawnSingleMoves(pawns);
+    // Remove promotions
+    uint64_t promotions = pLegal & finalRank;
+    pLegal ^= promotions;
+
+    pLegal &= pAttackMap;
+    while (pLegal) {
+        int endsq = bitScanForward(pLegal);
+        pLegal &= pLegal - 1;
+        checks.add(encodeMove(endsq+sqDiff, endsq, PAWNS, false));
+    }
+
+    pLegal = (color == WHITE) ? getWPawnDoubleMoves(pawns)
+                              : getBPawnDoubleMoves(pawns);
+    pLegal &= pAttackMap;
+    while (pLegal) {
+        int endsq = bitScanForward(pLegal);
+        pLegal &= pLegal - 1;
+        checks.add(encodeMove(endsq+2*sqDiff, endsq, PAWNS, false));
+    }
+
+    // For pawn captures, we can use a similar approach, but we must consider
+    // left-hand and right-hand captures separately so we can tell which
+    // pawn is doing the capturing.
+    int leftDiff = (color == WHITE) ? -7 : 9;
+    int rightDiff = (color == WHITE) ? -9 : 7;
+
+    pLegal = (color == WHITE) ? getWPawnLeftCaptures(pawns)
+                              : getBPawnLeftCaptures(pawns);
+    pLegal &= otherPieces;
+    promotions = pLegal & finalRank;
+    pLegal ^= promotions;
+    pLegal &= pAttackMap;
+
+    while (pLegal) {
+        int endsq = bitScanForward(pLegal);
+        pLegal &= pLegal-1;
+        checks.add(encodeMove(endsq+leftDiff, endsq, PAWNS, true));
+    }
+
+    pLegal = (color == WHITE) ? getWPawnRightCaptures(pawns)
+                              : getBPawnRightCaptures(pawns);
+    pLegal &= otherPieces;
+    promotions = pLegal & finalRank;
+    pLegal ^= promotions;
+    pLegal &= pAttackMap;
+
+    while (pLegal) {
+        int endsq = bitScanForward(pLegal);
+        pLegal &= pLegal-1;
+        checks.add(encodeMove(endsq+rightDiff, endsq, PAWNS, true));
+    }
+
+    // Knights can only direct check
+    uint64_t knights = pieces[color][KNIGHTS] & kingParity;
+    uint64_t nAttackMap = getKnightSquares(kingSq);
+    while (knights) {
+        int stsq = bitScanForward(knights);
+        knights &= knights-1;
+        uint64_t nSq = getKnightSquares(stsq);
+        uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
+        if (!(xrays & ~attackMap))
+            nSq &= nAttackMap;
+
+        uint64_t legal = nSq & ~(whitePieces | blackPieces);
+        while (legal) {
+            int endsq = bitScanForward(legal);
+            legal &= legal-1;
+            checks.add(encodeMove(stsq, endsq, KNIGHTS, false));
+        }
+
+        legal = nSq & otherPieces;
+        while (legal) {
+            int endsq = bitScanForward(legal);
+            legal &= legal-1;
+            checks.add(encodeMove(stsq, endsq, KNIGHTS, true));
+        }
+    }
+
+    uint64_t bishops = pieces[color][BISHOPS] & kingParity;
+    uint64_t bAttackMap = getBishopSquares(kingSq);
+    while (bishops) {
+        int stsq = bitScanForward(bishops);
+        bishops &= bishops-1;
+        uint64_t bSq = getBishopSquares(stsq);
+        uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
+        if (!(xrays & ~attackMap))
+            bSq &= bAttackMap;
+
+        uint64_t legal = bSq & ~(whitePieces | blackPieces);
+        while (legal) {
+            int endsq = bitScanForward(legal);
+            legal &= legal-1;
+            checks.add(encodeMove(stsq, endsq, BISHOPS, false));
+        }
+
+        legal = bSq & otherPieces;
+        while (legal) {
+            int endsq = bitScanForward(legal);
+            legal &= legal-1;
+            checks.add(encodeMove(stsq, endsq, BISHOPS, true));
+        }
+    }
+
+    uint64_t rooks = pieces[color][ROOKS];
+    uint64_t rAttackMap = getRookSquares(kingSq);
+    while (rooks) {
+        int stsq = bitScanForward(rooks);
+        rooks &= rooks-1;
+        uint64_t rSq = getRookSquares(stsq) & rAttackMap;
+        uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
+        if (!(xrays & ~attackMap))
+            rSq &= rAttackMap;
+
+        uint64_t legal = rSq & ~(whitePieces | blackPieces);
+        while (legal) {
+            int endsq = bitScanForward(legal);
+            legal &= legal-1;
+            checks.add(encodeMove(stsq, endsq, ROOKS, false));
+        }
+
+        legal = rSq & otherPieces;
+        while (legal) {
+            int endsq = bitScanForward(legal);
+            legal &= legal-1;
+            checks.add(encodeMove(stsq, endsq, ROOKS, true));
+        }
+    }
+
+    uint64_t queens = pieces[color][QUEENS];
+    uint64_t qAttackMap = getQueenSquares(kingSq);
+    while (queens) {
+        int stsq = bitScanForward(queens);
+        queens &= queens-1;
+        uint64_t qSq = getQueenSquares(stsq) & qAttackMap;
+        uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
+        if (!(xrays & ~attackMap))
+            qSq &= qAttackMap;
+
+        uint64_t legal = qSq & ~(whitePieces | blackPieces);
+        while (legal) {
+            int endsq = bitScanForward(legal);
+            legal &= legal-1;
+            checks.add(encodeMove(stsq, endsq, QUEENS, false));
+        }
+
+        legal = qSq & otherPieces;
+        while (legal) {
+            int endsq = bitScanForward(legal);
+            legal &= legal-1;
+            checks.add(encodeMove(stsq, endsq, QUEENS, true));
+        }
+    }
+
+    return checks;
+}
+
+// Get the attack map of all potential x-ray pieces (bishops, rooks, queens)
+// after a blocker has been removed.
+uint64_t Board::getXRays(int color, int sq, int blockerColor, uint64_t blocker) {
+    uint64_t savePieces = 0;
+    if (blockerColor == WHITE) {
+        savePieces = whitePieces;
+        whitePieces &= ~blocker;
+    }
+    else {
+        savePieces = blackPieces;
+        blackPieces &= ~blocker;
+    }
+
+    uint64_t bishops = pieces[color][BISHOPS] & ~blocker;
+    uint64_t rooks = pieces[color][ROOKS] & ~blocker;
+    uint64_t queens = pieces[color][QUEENS] & ~blocker;
+
+    uint64_t xRayMap = (getBishopSquares(sq) & (bishops | queens))
+                     | (getRookSquares(sq) & (rooks | queens));
+
+    if (blockerColor == WHITE)
+        whitePieces = savePieces;
+    else
+        blackPieces = savePieces;
+
+    return xRayMap;
 }
 
 // Given a color and a square, returns all pieces of the color that attack the
@@ -1177,12 +1431,13 @@ uint64_t Board::getLeastValuableAttacker(uint64_t attackers, int color, int &pie
     return attackers & pieces[color][KINGS];
 }
 
-// TODO consider xrays
 // Static exchange evaluation algorithm from
 // https://chessprogramming.wikispaces.com/SEE+-+The+Swap+Algorithm
 int Board::getSEE(int color, int sq) {
     int gain[32], d = 0, piece = 0;
     uint64_t attackers = getAttackMap(WHITE, sq) | getAttackMap(BLACK, sq);
+    // used attackers that may act as blockers for x-ray pieces
+    uint64_t used = 0;
     uint64_t single = getLeastValuableAttacker(attackers, color, piece);
     // Get value of piece initially being captured. If the destination square is
     // empty, then the capture is an en passant.
@@ -1195,6 +1450,8 @@ int Board::getSEE(int color, int sq) {
         if (-gain[d-1] < 0 && gain[d] < 0) // pruning for stand pat
             break;
         attackers ^= single; // remove used attacker
+        used |= single;
+        attackers |= getXRays(WHITE, sq, color, used) | getXRays(BLACK, sq, color, used);
         single = getLeastValuableAttacker(attackers, color, piece);
     } while (single);
 

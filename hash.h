@@ -41,7 +41,7 @@ public:
         cargo.zobristKey = b.getZobristKey();
         cargo.m = m;
         cargo.score = score;
-        cargo.age = (uint16_t) (b.getMoveNumber());
+        cargo.age = b.getMoveNumber();
         cargo.depth = (uint8_t) (depth);
         cargo.nodeType = (uint8_t) (nodeType);
     }
