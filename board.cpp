@@ -428,7 +428,7 @@ MoveList Board::getAllLegalMoves(int color) {
     return moves;
 }
 
-//---------------------Pseudo-legal Moves---------------------------
+//------------------------------Pseudo-legal Moves------------------------------
 /* Pseudo-legal moves disregard whether the player's king is left in check
  * The pseudo-legal move and capture generators all follow a similar scheme:
  * Bitscan to obtain the square number for each piece (a1 is 0, a2 is 1, h8 is 63).
@@ -440,97 +440,8 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
 
     uint64_t otherPieces = (color == WHITE) ? blackPieces : whitePieces;
 
-    // We can do pawns in parallel, since the start square of a pawn move is
-    // determined by its end square.
-    uint64_t pawns = pieces[color][PAWNS];
-    uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
-    int sqDiff = (color == WHITE) ? -8 : 8;
-
-    uint64_t pLegal = (color == WHITE) ? getWPawnSingleMoves(pawns)
-                                       : getBPawnSingleMoves(pawns);
-    // Promotions occur when a pawn reaches the final rank
-    uint64_t promotions = pLegal & finalRank;
-    pLegal ^= promotions;
-
-    while (promotions) {
-        int endSq = bitScanForward(promotions);
-        promotions &= promotions - 1;
-        int stSq = endSq + sqDiff;
-
-        addPromotionsToList(quiets, stSq, endSq, false);
-    }
-    while (pLegal) {
-        int endsq = bitScanForward(pLegal);
-        pLegal &= pLegal - 1;
-        quiets.add(encodeMove(endsq+sqDiff, endsq, PAWNS, false));
-    }
-
-    pLegal = (color == WHITE) ? getWPawnDoubleMoves(pawns)
-                             : getBPawnDoubleMoves(pawns);
-    while (pLegal) {
-        int endsq = bitScanForward(pLegal);
-        pLegal &= pLegal - 1;
-        quiets.add(encodeMove(endsq+2*sqDiff, endsq, PAWNS, false));
-    }
-
-    // For pawn captures, we can use a similar approach, but we must consider
-    // left-hand and right-hand captures separately so we can tell which
-    // pawn is doing the capturing.
-    int leftDiff = (color == WHITE) ? -7 : 9;
-    int rightDiff = (color == WHITE) ? -9 : 7;
-
-    uint64_t legal = (color == WHITE) ? getWPawnLeftCaptures(pawns)
-                                      : getBPawnLeftCaptures(pawns);
-    legal &= otherPieces;
-    promotions = legal & finalRank;
-    legal ^= promotions;
-
-    while (promotions) {
-        int endSq = bitScanForward(promotions);
-        promotions &= promotions-1;
-
-        addPromotionsToList(captures, endSq+leftDiff, endSq, true);
-    }
-    while (legal) {
-        int endsq = bitScanForward(legal);
-        legal &= legal-1;
-        captures.add(encodeMove(endsq+leftDiff, endsq, PAWNS, true));
-    }
-
-    legal = (color == WHITE) ? getWPawnRightCaptures(pawns)
-                             : getBPawnRightCaptures(pawns);
-    legal &= otherPieces;
-    promotions = legal & finalRank;
-    legal ^= promotions;
-
-    while (promotions) {
-        int endSq = bitScanForward(promotions);
-        promotions &= promotions-1;
-
-        addPromotionsToList(captures, endSq+rightDiff, endSq, true);
-    }
-    while (legal) {
-        int endsq = bitScanForward(legal);
-        legal &= legal-1;
-        captures.add(encodeMove(endsq+rightDiff, endsq, PAWNS, true));
-    }
-
-    // If there are en passants possible...
-    if (epCaptureFile != NO_EP_POSSIBLE) {
-        int victimSq = epVictimSquare(color^1, epCaptureFile);
-        // capturer's destination square is either the rank above (white) or
-        // below (black) the victim square
-        int rankDiff = (color == WHITE) ? 8 : -8;
-        // The capturer's start square is either 1 to the left or right of victim
-        uint64_t taker = (MOVEMASK[victimSq] << 1) & NOTA & pieces[color][PAWNS];
-        if (taker)
-            captures.add(encodeMove(victimSq+1, victimSq+rankDiff, PAWNS, true));
-        else {
-            taker = (MOVEMASK[victimSq] >> 1) & NOTH & pieces[color][PAWNS];
-            if (taker)
-                captures.add(encodeMove(victimSq-1, victimSq+rankDiff, PAWNS, true));
-        }
-    }
+    addPawnMovesToList(quiets, color);
+    addPawnCapturesToList(captures, color, true);
 
     uint64_t knights = pieces[color][KNIGHTS];
     while (knights) {
@@ -626,69 +537,14 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
     return captures;
 }
 
-MoveList Board::getLegalCaptures(int color) {
-    MoveList moves = getPseudoLegalCaptures(color);
-
-    for (unsigned int i = 0; i < moves.size(); i++) {
-        Board b = staticCopy();
-        b.doMove(moves.get(i), color);
-
-        if (b.getInCheck(color)) {
-            moves.remove(i);
-            i--;
-        }
-    }
-
-    return moves;
-}
-
 // Currently used in quiescence only
 // Does not generate promotions!
 MoveList Board::getPseudoLegalCaptures(int color) {
     MoveList result;
-    uint64_t pawns = pieces[color][PAWNS];
+
     uint64_t otherPieces = (color == WHITE) ? blackPieces : whitePieces;
 
-    uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
-    int leftDiff = (color == WHITE) ? -7 : 9;
-    int rightDiff = (color == WHITE) ? -9 : 7;
-
-    uint64_t legal = (color == WHITE) ? getWPawnLeftCaptures(pawns)
-                                      : getBPawnLeftCaptures(pawns);
-    legal &= otherPieces;
-    uint64_t promotions = legal & finalRank;
-    legal ^= promotions;
-
-    while (legal) {
-        int endsq = bitScanForward(legal);
-        legal &= legal-1;
-        result.add(encodeMove(endsq+leftDiff, endsq, PAWNS, true));
-    }
-
-    legal = (color == WHITE) ? getWPawnRightCaptures(pawns)
-                             : getBPawnRightCaptures(pawns);
-    legal &= otherPieces;
-    promotions = legal & finalRank;
-    legal ^= promotions;
-
-    while (legal) {
-        int endsq = bitScanForward(legal);
-        legal &= legal-1;
-        result.add(encodeMove(endsq+rightDiff, endsq, PAWNS, true));
-    }
-
-    if (epCaptureFile != NO_EP_POSSIBLE) {
-        int victimSq = epVictimSquare(color^1, epCaptureFile);
-        int rankDiff = (color == WHITE) ? 8 : -8;
-        uint64_t taker = (MOVEMASK[victimSq] << 1) & NOTA & pieces[color][PAWNS];
-        if (taker)
-            result.add(encodeMove(victimSq+1, victimSq+rankDiff, PAWNS, true));
-        else {
-            taker = (MOVEMASK[victimSq] >> 1) & NOTH & pieces[color][PAWNS];
-            if (taker)
-                result.add(encodeMove(victimSq-1, victimSq+rankDiff, PAWNS, true));
-        }
-    }
+    addPawnCapturesToList(result, color, false);
 
     uint64_t knights = pieces[color][KNIGHTS];
     while (knights) {
@@ -839,6 +695,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
     uint64_t pawns = pieces[color][PAWNS];
 
     // First, deal with discovered checks
+    /*
     uint64_t tempPawns = pawns;
     while (tempPawns) {
         int stsq = bitScanForward(tempPawns);
@@ -866,6 +723,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
             pawns ^= MOVEMASK[stsq];
         }
     }
+    */
 
     uint64_t pAttackMap = (color == WHITE) 
             ? getBPawnLeftCaptures(MOVEMASK[kingSq]) | getBPawnRightCaptures(MOVEMASK[kingSq])
@@ -981,6 +839,112 @@ MoveList Board::getPseudoLegalChecks(int color) {
     }
 
     return checks;
+}
+
+//------------------------------------------------------------------------------
+//---------------------------Move Generation Helpers----------------------------
+//------------------------------------------------------------------------------
+// We can do pawns in parallel, since the start square of a pawn move is
+// determined by its end square.
+void Board::addPawnMovesToList(MoveList &quiets, int color) {
+    uint64_t pawns = pieces[color][PAWNS];
+    uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
+    int sqDiff = (color == WHITE) ? -8 : 8;
+
+    uint64_t pLegal = (color == WHITE) ? getWPawnSingleMoves(pawns)
+                                       : getBPawnSingleMoves(pawns);
+    // Promotions occur when a pawn reaches the final rank
+    uint64_t promotions = pLegal & finalRank;
+    pLegal ^= promotions;
+
+    while (promotions) {
+        int endSq = bitScanForward(promotions);
+        promotions &= promotions - 1;
+        int stSq = endSq + sqDiff;
+
+        addPromotionsToList(quiets, stSq, endSq, false);
+    }
+    while (pLegal) {
+        int endsq = bitScanForward(pLegal);
+        pLegal &= pLegal - 1;
+        quiets.add(encodeMove(endsq+sqDiff, endsq, PAWNS, false));
+    }
+
+    pLegal = (color == WHITE) ? getWPawnDoubleMoves(pawns)
+                             : getBPawnDoubleMoves(pawns);
+    while (pLegal) {
+        int endsq = bitScanForward(pLegal);
+        pLegal &= pLegal - 1;
+        quiets.add(encodeMove(endsq+2*sqDiff, endsq, PAWNS, false));
+    }
+}
+
+// For pawn captures, we can use a similar approach, but we must consider
+// left-hand and right-hand captures separately so we can tell which
+// pawn is doing the capturing.
+void Board::addPawnCapturesToList(MoveList &captures, int color, bool includePromotions) {
+    uint64_t pawns = pieces[color][PAWNS];
+    uint64_t otherPieces = (color == WHITE) ? blackPieces : whitePieces;
+    uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
+    int leftDiff = (color == WHITE) ? -7 : 9;
+    int rightDiff = (color == WHITE) ? -9 : 7;
+
+    uint64_t legal = (color == WHITE) ? getWPawnLeftCaptures(pawns)
+                                      : getBPawnLeftCaptures(pawns);
+    legal &= otherPieces;
+    uint64_t promotions = legal & finalRank;
+    legal ^= promotions;
+
+    if (includePromotions) {
+        while (promotions) {
+            int endSq = bitScanForward(promotions);
+            promotions &= promotions-1;
+
+            addPromotionsToList(captures, endSq+leftDiff, endSq, true);
+        }
+    }
+    while (legal) {
+        int endsq = bitScanForward(legal);
+        legal &= legal-1;
+        captures.add(encodeMove(endsq+leftDiff, endsq, PAWNS, true));
+    }
+
+    legal = (color == WHITE) ? getWPawnRightCaptures(pawns)
+                             : getBPawnRightCaptures(pawns);
+    legal &= otherPieces;
+    promotions = legal & finalRank;
+    legal ^= promotions;
+
+    if (includePromotions) {
+        while (promotions) {
+            int endSq = bitScanForward(promotions);
+            promotions &= promotions-1;
+
+            addPromotionsToList(captures, endSq+rightDiff, endSq, true);
+        }
+    }
+    while (legal) {
+        int endsq = bitScanForward(legal);
+        legal &= legal-1;
+        captures.add(encodeMove(endsq+rightDiff, endsq, PAWNS, true));
+    }
+
+    // If there are en passants possible...
+    if (epCaptureFile != NO_EP_POSSIBLE) {
+        int victimSq = epVictimSquare(color^1, epCaptureFile);
+        // capturer's destination square is either the rank above (white) or
+        // below (black) the victim square
+        int rankDiff = (color == WHITE) ? 8 : -8;
+        // The capturer's start square is either 1 to the left or right of victim
+        uint64_t taker = (MOVEMASK[victimSq] << 1) & NOTA & pieces[color][PAWNS];
+        if (taker)
+            captures.add(encodeMove(victimSq+1, victimSq+rankDiff, PAWNS, true));
+        else {
+            taker = (MOVEMASK[victimSq] >> 1) & NOTH & pieces[color][PAWNS];
+            if (taker)
+                captures.add(encodeMove(victimSq-1, victimSq+rankDiff, PAWNS, true));
+        }
+    }
 }
 
 // Helper function that processes a bitboard of legal moves and adds them into

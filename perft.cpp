@@ -11,9 +11,13 @@ int captures = 0;
 int main(int argc, char **argv) {
 	initZobristTable();
 
-    int depth = 5;
+    int depth = 0;
     if (argc == 2)
         depth = atoi(argv[1]);
+    else {
+    	cout << "Usage: perft [depth]" << endl;
+    	exit(1);
+    }
 
     Board b; //= fenToBoard("8/2p5/3p3r/KP5r/1R3p1k/1p6/4P1P1/8 w - - 0 1");
     using namespace std::chrono;

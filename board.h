@@ -206,7 +206,6 @@ public:
 
     MoveList getAllLegalMoves(int color);
     MoveList getAllPseudoLegalMoves(int color);
-    MoveList getLegalCaptures(int color);
     MoveList getPseudoLegalCaptures(int color);
     MoveList getPseudoLegalPromotions(int color);
     MoveList getPseudoLegalChecks(int color);
@@ -275,6 +274,8 @@ private:
     // Counts half moves for the 50-move rule
     uint8_t fiftyMoveCounter;
 
+    void addPawnMovesToList(MoveList &quiets, int color);
+    void addPawnCapturesToList(MoveList &captures, int color, bool includePromotions);
     void addMovesToList(MoveList &quiets, MoveList &captures, int pieceID,
         int stSq, uint64_t allEndSqs, uint64_t otherPieces);
     void addMovesToList(MoveList &moves, int pieceID, int stSq,
