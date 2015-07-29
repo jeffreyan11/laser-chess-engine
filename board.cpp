@@ -538,13 +538,13 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
 }
 
 // Currently used in quiescence only
-// Does not generate promotions!
-MoveList Board::getPseudoLegalCaptures(int color) {
+// Do not include promotions for quiescence search, include promotions in normal search.
+MoveList Board::getPseudoLegalCaptures(int color, bool includePromotions) {
     MoveList result;
 
     uint64_t otherPieces = (color == WHITE) ? blackPieces : whitePieces;
 
-    addPawnCapturesToList(result, color, false);
+    addPawnCapturesToList(result, color, includePromotions);
 
     uint64_t knights = pieces[color][KNIGHTS];
     while (knights) {
@@ -1398,6 +1398,15 @@ int Board::getMVVLVAScore(int color, Move m) {
         attacker = -1;
 
     return (victim * 8) + (4 - attacker);
+}
+
+// Returns a score from the initial capture
+// This helps reduce the number of times SEE must be used in quiescence search.
+int Board::getExchangeScore(int color, Move m) {
+    int endSq = getEndSq(m);
+    int attacker = getPiece(m);
+    int victim = getCapturedPiece(color^1, endSq);
+    return victim - attacker;
 }
 
 

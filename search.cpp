@@ -10,10 +10,7 @@ void sortSearch(Board *b, MoveList &pseudoLegalMoves, ScoreList &scores, int dep
 int PVS(Board &b, int color, int depth, int alpha, int beta);
 int quiescence(Board &b, int color, int plies, int alpha, int beta);
 int checkQuiescence(Board &b, int color, int plies, int alpha, int beta);
-void sort(MoveList &moves, ScoreList &scores, int left, int right);
-void swap(MoveList &moves, ScoreList &scores, int i, int j);
-int partition(MoveList &moves, ScoreList &scores, int left, int right,
-    int pindex);
+Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 
 string retrievePV(Board *b, Move bestMove, int plies);
 
@@ -30,6 +27,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     }
     
     auto start_time = high_resolution_clock::now();
+    double timeSoFar = duration_cast<duration<double>>(
+            high_resolution_clock::now() - start_time).count();
     bool isMate = false;
     int bestScore, bestMoveIndex;
     
@@ -38,12 +37,10 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         int i = 1;
         do {
             bestMoveIndex = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
-            Move temp = legalMoves.get(0);
-            legalMoves.set(0, legalMoves.get(bestMoveIndex));
-            legalMoves.set(bestMoveIndex, temp);
+            legalMoves.swap(0, bestMoveIndex);
             *bestMove = legalMoves.get(0);
 
-            double timeSoFar = duration_cast<duration<double>>(
+            timeSoFar = duration_cast<duration<double>>(
                     high_resolution_clock::now() - start_time).count();
             uint64_t nps = (uint64_t) ((double) nodes / timeSoFar);
 
@@ -57,19 +54,16 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 break;
             i++;
         }
-        while ((duration_cast<duration<double>>(high_resolution_clock::now() - start_time).count() * ONE_SECOND
-            < value * timeFactor) && (i <= MAX_DEPTH));
+        while ((timeSoFar * ONE_SECOND < value * timeFactor) && (i <= MAX_DEPTH));
     }
     
     if (mode == DEPTH) {
         for (int i = 1; i <= min(value, MAX_DEPTH); i++) {
             bestMoveIndex = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
-            Move temp = legalMoves.get(0);
-            legalMoves.set(0, legalMoves.get(bestMoveIndex));
-            legalMoves.set(bestMoveIndex, temp);
+            legalMoves.swap(0, bestMoveIndex);
             *bestMove = legalMoves.get(0);
 
-            double timeSoFar = duration_cast<duration<double>>(
+            timeSoFar = duration_cast<duration<double>>(
                     high_resolution_clock::now() - start_time).count();
             uint64_t nps = (uint64_t) ((double) nodes / timeSoFar);
 
@@ -191,6 +185,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // For PVS, the node is a PV node if beta - alpha > 1 (i.e. not a null window)
     // We do not want to do most pruning techniques on PV nodes
     bool isPVNode = (beta - alpha > 1);
+    // Similarly, we do not want to prune if we are in check
     bool isInCheck = b.getInCheck(color);
 
     Move toHash = NULL_MOVE;
@@ -275,16 +270,17 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             return beta;
         if (score > alpha)
             alpha = score;
+
+        return alpha;
     }
 
     ScoreList scores;
     // Internal iterative deepening
     if(depth >= 4) {
         sortSearch(&b, legalMoves, scores, 1);
-        sort(legalMoves, scores, 0, legalMoves.size() - 1);
     }
     /*
-    else { //MVV/LVA
+    else { // MVV/LVA
         unsigned int index;
         for (index = 0; index < legalMoves.size(); index++)
             if (!isCapture(legalMoves.get(index)))
@@ -292,7 +288,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         for (unsigned int i = 0; i < index; i++) {
             scores.add(b.getMVVLVAScore(color, legalMoves.get(i)));
         }
-        sort(legalMoves, scores, 0, index - 1);
+        for (unsigned int i = index; i < legalMoves.size(); i++)
+            scores.add(-MATE_SCORE);
     }
     */
     else { // sort by SEE
@@ -303,12 +300,14 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         for (unsigned int i = 0; i < index; i++) {
             scores.add(b.getSEE(color, getEndSq(legalMoves.get(i))));
         }
-        sort(legalMoves, scores, 0, index - 1);
+        for (unsigned int i = index; i < legalMoves.size(); i++)
+            scores.add(-MATE_SCORE);
     }
 
     int reduction = 0;
-    for (unsigned int i = 0; i < legalMoves.size(); i++) {
-        Move m = legalMoves.get(i);
+    unsigned int i = 0;
+    for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
+            m = nextMove(legalMoves, scores, ++i)) {
         if (m == hashed)
             continue;
 
@@ -343,7 +342,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         }
         
         if (score >= beta) {
-            // Hash moves that caused a beta cutoff (killer heuristic)
+            // Hash moves that caused a beta cutoff
             if (depth >= 2)
                 transpositionTable.add(b, depth, m, score, CUT_NODE);
             return beta;
@@ -392,18 +391,17 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
     if (standPat < alpha - MAX_POS_SCORE - QUEEN_VALUE)
         return alpha;
     
-    MoveList legalCaptures = b.getPseudoLegalCaptures(color);
+    MoveList legalCaptures = b.getPseudoLegalCaptures(color, false);
     ScoreList scores;
     for (unsigned int i = 0; i < legalCaptures.size(); i++) {
         scores.add(b.getMVVLVAScore(color, legalCaptures.get(i)));
     }
-    sort(legalCaptures, scores, 0, legalCaptures.size() - 1);
     
-    for (unsigned int i = 0; i < legalCaptures.size(); i++) {
-        Move m = legalCaptures.get(i);
-
+    unsigned int i = 0;
+    for (Move m = nextMove(legalCaptures, scores, i); m != NULL_MOVE;
+            m = nextMove(legalCaptures, scores, ++i)) {
         // Static exchange evaluation pruning
-        if(b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
+        if(b.getExchangeScore(color, m) < 0 && b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
             continue;
 
         Board copy = b.staticCopy();
@@ -504,43 +502,21 @@ void clearTranspositionTable() {
     transpositionTable.clear();
 }
 
-// Basic quicksort implementation. The lists are both sorted by scores, with
-// moves simply changing to mirror the changes to scores.
-void sort(MoveList &moves, ScoreList &scores, int left, int right) {
-    int pivot = (left + right) / 2;
-
-    if (left < right) {
-        pivot = partition(moves, scores, left, right, pivot);
-        sort(moves, scores, left, pivot-1);
-        sort(moves, scores, pivot+1, right);
-    }
-}
-
-void swap(MoveList &moves, ScoreList &scores, int i, int j) {
-    int temp = moves.get(j);
-    moves.set(j, moves.get(i));
-    moves.set(i, temp);
-
-    scores.swap(i, j);
-}
-
-int partition(MoveList &moves, ScoreList &scores, int left, int right,
-    int pindex) {
-
-    int index = left;
-    int pivot = scores.get(pindex);
-
-    swap(moves, scores, pindex, right);
-
-    for (int i = left; i < right; i++) {
-        if (scores.get(i) > pivot) {
-            swap(moves, scores, i, index);
-            index++;
+// Retrieves the next move with the highest score, starting from index using a
+// partial selection sort. This way, the entire list does not have to be sorted
+// if an early cutoff occurs.
+Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index) {
+    if (index >= moves.size())
+        return NULL_MOVE;
+    int bestScore = scores.get(index);
+    for (unsigned int i = index + 1; i < moves.size(); i++) {
+        if (scores.get(i) > bestScore) {
+            bestScore = scores.get(i);
+            moves.swap(i, index);
+            scores.swap(i, index);
         }
     }
-    swap(moves, scores, index, right);
-
-    return index;
+    return moves.get(index);
 }
 
 // Recover PV for outputting to terminal / GUI using transposition table entries
