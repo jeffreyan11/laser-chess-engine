@@ -89,12 +89,12 @@ HashEntry *Hash::get(Board &b) {
     return NULL;
 }
 
-void Hash::clean(int moveNumber) {
+void Hash::clean(uint16_t moveNumber) {
     for(uint64_t i = 0; i < size; i++) {
         HashNode *node = table[i];
         // TODO choose aging policy
         if (node != NULL) {
-            if(moveNumber > node->cargo.age) {
+            if(moveNumber >= node->cargo.age) {
                 keys--;
                 delete node;
                 table[i] = NULL;

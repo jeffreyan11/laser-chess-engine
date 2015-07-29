@@ -70,7 +70,7 @@ public:
 
     void add(Board &b, int depth, Move m, int score, uint8_t nodeType);
     HashEntry *get(Board &b);
-    void clean(int moveNumber);
+    void clean(uint16_t moveNumber);
     void clear();
 };
 

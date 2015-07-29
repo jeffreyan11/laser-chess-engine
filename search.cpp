@@ -3,6 +3,7 @@
 
 Hash transpositionTable(16);
 uint64_t nodes;
+extern bool isStop;
 
 int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int &bestScore, bool &isMate);
@@ -21,8 +22,11 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     // test if only 1 legal move
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
+    *bestMove = legalMoves.get(0);
+
     if (legalMoves.size() == 1) {
-        *bestMove = legalMoves.get(0);
+        isStop = true;
+        cout << "bestmove " << moveToString(*bestMove) << endl;
         return;
     }
     
@@ -37,6 +41,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         int i = 1;
         do {
             bestMoveIndex = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
+            if (bestMoveIndex == -1)
+                break;
             legalMoves.swap(0, bestMoveIndex);
             *bestMove = legalMoves.get(0);
 
@@ -57,9 +63,11 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         while ((timeSoFar * ONE_SECOND < value * timeFactor) && (i <= MAX_DEPTH));
     }
     
-    if (mode == DEPTH) {
+    else if (mode == DEPTH) {
         for (int i = 1; i <= min(value, MAX_DEPTH); i++) {
             bestMoveIndex = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
+            if (bestMoveIndex == -1)
+                break;
             legalMoves.swap(0, bestMoveIndex);
             *bestMove = legalMoves.get(0);
 
@@ -86,6 +94,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     transpositionTable.clean(b->getMoveNumber());
     cerr << "keys: " << transpositionTable.keys << endl;
     
+    isStop = true;
+    cout << "bestmove " << moveToString(*bestMove) << endl;
     return;
 }
 
@@ -100,6 +110,8 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int beta = MATE_SCORE;
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
+        if (isStop)
+            return -1;
         Board copy = b->staticCopy();
         copy.doMove(legalMoves.get(i), color);
         nodes++;
