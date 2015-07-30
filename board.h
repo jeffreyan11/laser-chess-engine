@@ -66,9 +66,10 @@ public:
     bool isWInMate();
     bool isBInMate();
     bool isStalemate(int sideToMove);
+    bool isDraw();
 
     // Evaluation
-    int evaluate(int rootDistance);
+    int evaluate();
     int getPseudoMobility(int color);
     int getEGFactor();
     // Static exchange evaluation code: for checking material trades on a single square

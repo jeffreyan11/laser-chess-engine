@@ -127,7 +127,7 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
             bestScore = MATE_SCORE;
             return i;
         }
-        else if (copy.isStalemate(color^1)) {
+        else if (copy.isStalemate(color^1) || copy.isDraw()) {
             score = 0;
             if (score > alpha) {
                 alpha = score;
@@ -171,15 +171,6 @@ void sortSearch(Board *b, MoveList &legalMoves, ScoreList &scores, int depth) {
             continue;
         }
         
-        if (copy.isWInMate() || copy.isBInMate()) {
-            scores.add(MATE_SCORE);
-            continue;
-        }
-        else if (copy.isStalemate(color^1)) {
-            scores.add(0);
-            continue;
-        }
-        
         scores.add(-PVS(copy, color^1, depth-1, -MATE_SCORE, MATE_SCORE));
     }
 }
@@ -192,6 +183,15 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     if (depth <= 0) {
         return quiescence(b, color, 0, alpha, beta);
     }
+
+    if (b.isDraw()) {
+        if (0 >= beta)
+            return beta;
+        if (0 > alpha)
+            return 0;
+        else
+            return alpha;
+    }
     
     int score = -MATE_SCORE;
     int prevAlpha = alpha;
@@ -200,30 +200,6 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     bool isPVNode = (beta - alpha > 1);
     // Similarly, we do not want to prune if we are in check
     bool isInCheck = b.isInCheck(color);
-
-    // Special cases for a mate or stalemate
-    if (b.isWInMate()) {
-        // Adjust score so that quicker mates are better
-        score = (color == WHITE) ? (-MATE_SCORE + rootDepth - depth) : (MATE_SCORE - rootDepth + depth);
-        if (score >= beta)
-            return beta;
-        if (score > alpha)
-            alpha = score;
-    }
-    else if (b.isBInMate()) {
-        score = (color == WHITE) ? (MATE_SCORE - rootDepth + depth) : (-MATE_SCORE + rootDepth - depth);
-        if (score >= beta)
-            return beta;
-        if (score > alpha)
-            alpha = score;
-    }
-    else if (b.isStalemate(color)) {
-        score = 0;
-        if (score >= beta)
-            return beta;
-        if (score > alpha)
-            alpha = score;
-    }
 
     Move toHash = NULL_MOVE;
     uint8_t nodeType = NO_NODE_INFO;
@@ -322,6 +298,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
     int reduction = 0;
     unsigned int i = 0;
+    score = -INFTY;
     for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
             m = nextMove(legalMoves, scores, ++i)) {
         if (m == hashed)
@@ -363,6 +340,22 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             toHash = m;
         }
     }
+
+    // If there were no legal moves
+    if (score == -INFTY) {
+        // and in check, then checkmate
+        if (isInCheck) {
+            // Adjust score so that quicker mates are better
+            score = (-MATE_SCORE + rootDepth - depth);
+        }
+        else { // else, it is a stalemate
+            score = 0;
+        }
+        if (score >= beta)
+            return beta;
+        if (score > alpha)
+            alpha = score;
+    }
     
     // Exact scores indicate a principal variation and should always be hashed
     if (toHash != NULL_MOVE && prevAlpha < alpha && alpha < beta) {
@@ -385,14 +378,20 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
  * The search is done within a fail-hard framework (alpha <= score <= beta)
  */
 int quiescence(Board &b, int color, int plies, int alpha, int beta) {
-    if (b.isStalemate(color))
-        return 0;
     if (b.isInCheck(color))
         return checkQuiescence(b, color, plies, alpha, beta);
+    if (b.isDraw()) {
+        if (0 >= beta)
+            return beta;
+        if (0 > alpha)
+            return 0;
+        else
+            return alpha;
+    }
 
     // Stand pat: if our current position is already way too good or way too bad
     // we can simply stop the search here
-    int standPat = (color == WHITE) ? b.evaluate(rootDepth+plies) : -b.evaluate(rootDepth+plies);
+    int standPat = (color == WHITE) ? b.evaluate() : -b.evaluate();
     if (standPat >= beta)
         return beta;
     if (alpha < standPat)
@@ -408,6 +407,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
         scores.add(b.getMVVLVAScore(color, legalCaptures.get(i)));
     }
     
+    int score = -INFTY;
     unsigned int i = 0;
     for (Move m = nextMove(legalCaptures, scores, i); m != NULL_MOVE;
             m = nextMove(legalCaptures, scores, ++i)) {
@@ -420,7 +420,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
             continue;
         
         nodes++;
-        int score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
+        score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
         
         if (score >= beta) {
             alpha = beta;
@@ -443,7 +443,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
             continue;
         
         nodes++;
-        int score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
+        score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
         
         if (score >= beta) {
             alpha = beta;
@@ -451,6 +451,11 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
         }
         if (score > alpha)
             alpha = score;
+    }
+
+    if (score == INFTY) {
+        if (b.isStalemate(color))
+            return 0;
     }
 
     // Checks
@@ -487,29 +492,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
  */
 int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
     MoveList legalMoves = b.getAllPseudoLegalMoves(color);
-
-    if (b.isWInMate()) {
-        // Adjust score so that quicker mates are better
-        int score = (color == WHITE) ? (-MATE_SCORE + rootDepth + plies) : (MATE_SCORE - rootDepth - plies);
-        if (score >= beta)
-            return beta;
-        if (score > alpha)
-            alpha = score;
-    }
-    else if (b.isBInMate()) {
-        int score = (color == WHITE) ? (MATE_SCORE - rootDepth - plies) : (-MATE_SCORE + rootDepth + plies);
-        if (score >= beta)
-            return beta;
-        if (score > alpha)
-            alpha = score;
-    }
-    else if (b.isStalemate(color)) {
-        int score = 0;
-        if (score >= beta)
-            return beta;
-        if (score > alpha)
-            alpha = score;
-    }
+    int score = -INFTY;
 
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
@@ -519,12 +502,23 @@ int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
             continue;
         
         nodes++;
-        int score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
+        score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
         
         if (score >= beta) {
             alpha = beta;
             break;
         }
+        if (score > alpha)
+            alpha = score;
+    }
+
+    // If there were no legal moves
+    if (score == -INFTY) {
+        // We already know we are in check, so it must be a checkmate
+        // Adjust score so that quicker mates are better
+        score = (-MATE_SCORE + rootDepth + plies);
+        if (score >= beta)
+            return beta;
         if (score > alpha)
             alpha = score;
     }

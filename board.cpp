@@ -1083,6 +1083,16 @@ bool Board::isBInMate() {
 
 // TODO Includes 3-fold repetition draw for now.
 bool Board::isStalemate(int sideToMove) {
+    MoveList moves = getAllLegalMoves(sideToMove);
+    bool isInStalemate = false;
+
+    if (moves.size() == 0 && !isInCheck(sideToMove))
+        isInStalemate = true;
+
+    return isInStalemate;
+}
+
+bool Board::isDraw() {
     if (fiftyMoveCounter >= 100) return true;
 
     if(!(twoFoldStartSqs & (1 << 31))) {
@@ -1098,13 +1108,7 @@ bool Board::isStalemate(int sideToMove) {
         if (isTwoFold) return true;
     }
 
-    MoveList moves = getAllLegalMoves(sideToMove);
-    bool isInStalemate = false;
-
-    if (moves.size() == 0 && !isInCheck(sideToMove))
-        isInStalemate = true;
-
-    return isInStalemate;
+    return false;
 }
 
 // TODO Tune evaluation function
@@ -1112,17 +1116,7 @@ bool Board::isStalemate(int sideToMove) {
  * Evaluates the current board position in hundredths of pawns. White is
  * positive and black is negative in traditional negamax format.
  */
-int Board::evaluate(int rootDistance) {
-    // special cases
-    if (fiftyMoveCounter >= 100)
-        return 0;
-    else if (isWInMate())
-        return MATE_SCORE - rootDistance;
-    else if (isBInMate())
-        return -MATE_SCORE + rootDistance;
-    else if (isStalemate(playerToMove))
-        return 0;
-
+int Board::evaluate() {
     int value = 0;
 
     // material
