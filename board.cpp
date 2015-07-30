@@ -388,7 +388,7 @@ void Board::doMove(Move m, int color) {
 bool Board::doPseudoLegalMove(Move m, int color) {
     doMove(m, color);
 
-    if (getInCheck(color))
+    if (isInCheck(color))
         return false;
     else return true;
 }
@@ -419,7 +419,7 @@ MoveList Board::getAllLegalMoves(int color) {
         Board b = staticCopy();
         b.doMove(moves.get(i), color);
 
-        if (b.getInCheck(color)) {
+        if (b.isInCheck(color)) {
             moves.remove(i);
             i--;
         }
@@ -491,7 +491,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         // empty, and player is not in check
         if ((castlingRights & WHITEKSIDE)
          && ((whitePieces | blackPieces) & (MOVEMASK[5] | MOVEMASK[6])) == 0
-         && !getInCheck(WHITE)) {
+         && !isInCheck(WHITE)) {
             // Check for castling through check
             if (getAttackMap(BLACK, 5) == 0) {
                 Move m = encodeMove(4, 6, KINGS, false);
@@ -501,7 +501,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         }
         else if ((castlingRights & WHITEQSIDE)
               && ((whitePieces | blackPieces) & (MOVEMASK[1] | MOVEMASK[2] | MOVEMASK[3])) == 0
-              && !getInCheck(WHITE)) {
+              && !isInCheck(WHITE)) {
             if (getAttackMap(BLACK, 3) == 0) {
                 Move m = encodeMove(4, 2, KINGS, false);
                 m = setCastle(m, true);
@@ -512,7 +512,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
     else {
         if ((castlingRights & BLACKKSIDE)
          && ((whitePieces | blackPieces) & (MOVEMASK[61] | MOVEMASK[62])) == 0
-         && !getInCheck(BLACK)) {
+         && !isInCheck(BLACK)) {
             if (getAttackMap(WHITE, 61) == 0) {
                 Move m = encodeMove(60, 62, KINGS, false);
                 m = setCastle(m, true);
@@ -521,7 +521,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
         }
         if ((castlingRights & BLACKQSIDE)
          && ((whitePieces | blackPieces) & (MOVEMASK[57] | MOVEMASK[58] | MOVEMASK[59])) == 0
-         && !getInCheck(BLACK)) {
+         && !isInCheck(BLACK)) {
             if (getAttackMap(WHITE, 59) == 0) {
                 Move m = encodeMove(60, 58, KINGS, false);
                 m = setCastle(m, true);
@@ -1057,25 +1057,25 @@ int Board::getCapturedPiece(int colorCaptured, int endSq) {
 
 
 // ---------------------King: check, checkmate, stalemate----------------------
-bool Board::getInCheck(int color) {
+bool Board::isInCheck(int color) {
     int sq = bitScanForward(pieces[color][KINGS]);
 
     return getAttackMap(color^1, sq);
 }
 
-bool Board::isWinMate() {
+bool Board::isWInMate() {
     MoveList moves = getAllLegalMoves(WHITE);
     bool isInMate = false;
-    if (moves.size() == 0 && getInCheck(WHITE))
+    if (moves.size() == 0 && isInCheck(WHITE))
         isInMate = true;
     
     return isInMate;
 }
 
-bool Board::isBinMate() {
+bool Board::isBInMate() {
     MoveList moves = getAllLegalMoves(BLACK);
     bool isInMate = false;
-    if (moves.size() == 0 && getInCheck(BLACK))
+    if (moves.size() == 0 && isInCheck(BLACK))
         isInMate = true;
 
     return isInMate;
@@ -1101,7 +1101,7 @@ bool Board::isStalemate(int sideToMove) {
     MoveList moves = getAllLegalMoves(sideToMove);
     bool isInStalemate = false;
 
-    if (moves.size() == 0 && !getInCheck(sideToMove))
+    if (moves.size() == 0 && !isInCheck(sideToMove))
         isInStalemate = true;
 
     return isInStalemate;
@@ -1112,14 +1112,14 @@ bool Board::isStalemate(int sideToMove) {
  * Evaluates the current board position in hundredths of pawns. White is
  * positive and black is negative in traditional negamax format.
  */
-int Board::evaluate() {
+int Board::evaluate(int rootDistance) {
     // special cases
     if (fiftyMoveCounter >= 100)
         return 0;
-    else if (isWinMate())
-        return MATE_SCORE - 100 - moveNumber;
-    else if (isBinMate())
-        return -MATE_SCORE + 100 + moveNumber;
+    else if (isWInMate())
+        return MATE_SCORE - rootDistance;
+    else if (isBInMate())
+        return -MATE_SCORE + rootDistance;
     else if (isStalemate(playerToMove))
         return 0;
 

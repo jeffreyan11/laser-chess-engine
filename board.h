@@ -62,13 +62,13 @@ public:
 
     uint64_t getXRays(int color, int sq, int blockerColor, uint64_t blocker);
     uint64_t getAttackMap(int color, int sq);
-    bool getInCheck(int color);
-    bool isWinMate();
-    bool isBinMate();
+    bool isInCheck(int color);
+    bool isWInMate();
+    bool isBInMate();
     bool isStalemate(int sideToMove);
 
     // Evaluation
-    int evaluate();
+    int evaluate(int rootDistance);
     int getPseudoMobility(int color);
     int getEGFactor();
     // Static exchange evaluation code: for checking material trades on a single square

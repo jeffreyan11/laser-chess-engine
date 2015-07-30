@@ -2,6 +2,7 @@
 #include "search.h"
 
 Hash transpositionTable(16);
+int rootDepth;
 uint64_t nodes;
 extern bool isStop;
 
@@ -38,9 +39,9 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     
     if (mode == TIME) {
         double timeFactor = 0.4; // timeFactor = log b / (b - 1) where b is branch factor
-        int i = 1;
+        rootDepth = 1;
         do {
-            bestMoveIndex = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
+            bestMoveIndex = getBestMoveAtDepth(b, legalMoves, rootDepth, bestScore, isMate);
             if (bestMoveIndex == -1)
                 break;
             legalMoves.swap(0, bestMoveIndex);
@@ -50,22 +51,22 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     high_resolution_clock::now() - start_time).count();
             uint64_t nps = (uint64_t) ((double) nodes / timeSoFar);
 
-            string pvStr = retrievePV(b, *bestMove, i);
+            string pvStr = retrievePV(b, *bestMove, rootDepth);
 
-            cout << "info depth " << i << " score cp " << bestScore << " time "
+            cout << "info depth " << rootDepth << " score cp " << bestScore << " time "
                 << (int)(timeSoFar * ONE_SECOND) << " nodes " << nodes
                 << " nps " << nps << " pv " << pvStr << endl;
 
             if (isMate)
                 break;
-            i++;
+            rootDepth++;
         }
-        while ((timeSoFar * ONE_SECOND < value * timeFactor) && (i <= MAX_DEPTH));
+        while ((timeSoFar * ONE_SECOND < value * timeFactor) && (rootDepth <= MAX_DEPTH));
     }
     
     else if (mode == DEPTH) {
-        for (int i = 1; i <= min(value, MAX_DEPTH); i++) {
-            bestMoveIndex = getBestMoveAtDepth(b, legalMoves, i, bestScore, isMate);
+        for (rootDepth = 1; rootDepth <= min(value, MAX_DEPTH); rootDepth++) {
+            bestMoveIndex = getBestMoveAtDepth(b, legalMoves, rootDepth, bestScore, isMate);
             if (bestMoveIndex == -1)
                 break;
             legalMoves.swap(0, bestMoveIndex);
@@ -75,9 +76,9 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     high_resolution_clock::now() - start_time).count();
             uint64_t nps = (uint64_t) ((double) nodes / timeSoFar);
 
-            string pvStr = retrievePV(b, *bestMove, i);
+            string pvStr = retrievePV(b, *bestMove, rootDepth);
 
-            cout << "info depth " << i << " score cp " << bestScore << " time "
+            cout << "info depth " << rootDepth << " score cp " << bestScore << " time "
                  << (int)(timeSoFar * ONE_SECOND) << " nodes " << nodes
                  << " nps " << nps << " pv " << pvStr << endl;
             // transpositionTable.test();
@@ -116,12 +117,12 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
         copy.doMove(legalMoves.get(i), color);
         nodes++;
         
-        if (copy.isWinMate()) {
+        if (copy.isWInMate()) {
             isMate = true;
             bestScore = MATE_SCORE;
             return i;
         }
-        else if (copy.isBinMate()) {
+        else if (copy.isBInMate()) {
             isMate = true;
             bestScore = MATE_SCORE;
             return i;
@@ -152,7 +153,7 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     }
 
     // If a mate has been found, indicate so
-    if(alpha > MATE_SCORE - 300)
+    if(alpha >= MATE_SCORE - MAX_DEPTH)
         isMate = true;
     bestScore = alpha;
 
@@ -170,7 +171,7 @@ void sortSearch(Board *b, MoveList &legalMoves, ScoreList &scores, int depth) {
             continue;
         }
         
-        if (copy.isWinMate() || copy.isBinMate()) {
+        if (copy.isWInMate() || copy.isBInMate()) {
             scores.add(MATE_SCORE);
             continue;
         }
@@ -198,7 +199,31 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // We do not want to do most pruning techniques on PV nodes
     bool isPVNode = (beta - alpha > 1);
     // Similarly, we do not want to prune if we are in check
-    bool isInCheck = b.getInCheck(color);
+    bool isInCheck = b.isInCheck(color);
+
+    // Special cases for a mate or stalemate
+    if (b.isWInMate()) {
+        // Adjust score so that quicker mates are better
+        score = (color == WHITE) ? (-MATE_SCORE + rootDepth - depth) : (MATE_SCORE - rootDepth + depth);
+        if (score >= beta)
+            return beta;
+        if (score > alpha)
+            alpha = score;
+    }
+    else if (b.isBInMate()) {
+        score = (color == WHITE) ? (MATE_SCORE - rootDepth + depth) : (-MATE_SCORE + rootDepth - depth);
+        if (score >= beta)
+            return beta;
+        if (score > alpha)
+            alpha = score;
+    }
+    else if (b.isStalemate(color)) {
+        score = 0;
+        if (score >= beta)
+            return beta;
+        if (score > alpha)
+            alpha = score;
+    }
 
     Move toHash = NULL_MOVE;
     uint8_t nodeType = NO_NODE_INFO;
@@ -246,7 +271,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                 cerr << "Type-1 TT error on " << moveToString(hashed) << endl;
                 hashed = NULL_MOVE;
             }
-        } 
+        }
     }
     
     // null move pruning
@@ -264,27 +289,6 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     }
 
     MoveList legalMoves = b.getAllPseudoLegalMoves(color);
-
-    // Special cases for a mate or stalemate
-    if (legalMoves.size() <= 0) {
-        if (b.isWinMate()) {
-            // + 50 - depth adjusts so that quicker mates are better
-            score = (color == WHITE) ? (-MATE_SCORE + 50 - depth) : (MATE_SCORE - 50 + depth);
-        }
-        else if (b.isBinMate()) {
-            score = (color == WHITE) ? (MATE_SCORE - 50 + depth) : (-MATE_SCORE + 50 - depth);
-        }
-        else if (b.isStalemate(color)) {
-            score = 0;
-        }
-        
-        if (score >= beta)
-            return beta;
-        if (score > alpha)
-            alpha = score;
-
-        return alpha;
-    }
 
     ScoreList scores;
     // Internal iterative deepening
@@ -325,13 +329,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
         reduction = 0;
         Board copy = b.staticCopy();
-        if (depth < 4) {
-            if (!copy.doPseudoLegalMove(m, color))
-                continue;
-        }
-        else {
-            copy.doMove(m, color);
-        }
+        if (!copy.doPseudoLegalMove(m, color))
+            continue;
 
         nodes++;
         // Futility-esque reduction using SEE
@@ -356,7 +355,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         if (score >= beta) {
             // Hash moves that caused a beta cutoff
             if (depth >= 2)
-                transpositionTable.add(b, depth, m, score, CUT_NODE);
+                transpositionTable.add(b, depth, m, beta, CUT_NODE);
             return beta;
         }
         if (score > alpha) {
@@ -388,12 +387,12 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 int quiescence(Board &b, int color, int plies, int alpha, int beta) {
     if (b.isStalemate(color))
         return 0;
-    if (b.getInCheck(color))
+    if (b.isInCheck(color))
         return checkQuiescence(b, color, plies, alpha, beta);
 
     // Stand pat: if our current position is already way too good or way too bad
     // we can simply stop the search here
-    int standPat = (color == WHITE) ? b.evaluate() : -b.evaluate();
+    int standPat = (color == WHITE) ? b.evaluate(rootDepth+plies) : -b.evaluate(rootDepth+plies);
     if (standPat >= beta)
         return beta;
     if (alpha < standPat)
@@ -488,6 +487,29 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
  */
 int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
     MoveList legalMoves = b.getAllPseudoLegalMoves(color);
+
+    if (b.isWInMate()) {
+        // Adjust score so that quicker mates are better
+        int score = (color == WHITE) ? (-MATE_SCORE + rootDepth + plies) : (MATE_SCORE - rootDepth - plies);
+        if (score >= beta)
+            return beta;
+        if (score > alpha)
+            alpha = score;
+    }
+    else if (b.isBInMate()) {
+        int score = (color == WHITE) ? (MATE_SCORE - rootDepth - plies) : (-MATE_SCORE + rootDepth + plies);
+        if (score >= beta)
+            return beta;
+        if (score > alpha)
+            alpha = score;
+    }
+    else if (b.isStalemate(color)) {
+        int score = 0;
+        if (score >= beta)
+            return beta;
+        if (score > alpha)
+            alpha = score;
+    }
 
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);

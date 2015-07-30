@@ -22,7 +22,7 @@ struct HashEntry {
     HashEntry() {
         zobristKey = 0;
         m = NULL_MOVE;
-        score = -MATE_SCORE;
+        score = 0;
         age = 0;
         depth = 0;
         nodeType = 0;
