@@ -263,6 +263,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     
     // null move pruning
     // only if doing a null move does not leave player in check
+    // Possibly remove staticEval >= beta condition?
     if (depth >= 2 && !isPVNode && staticEval >= beta && !isInCheck) {
         int reduction;
         if (depth >= 6)
@@ -334,6 +335,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         if(depth <= 2 && !isPVNode && staticEval <= alpha && !isInCheck && b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
             reduction = 1;
         // Late move reduction
+        // Possibly remove TT info dependency?
         else if((nodeType & (ALL_NODE | NO_NODE_INFO)) && staticEval <= alpha && !isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && i > 2 && alpha <= prevAlpha) {
             if (depth >= 6)
                 reduction = 2;

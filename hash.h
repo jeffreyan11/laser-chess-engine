@@ -6,10 +6,10 @@
 
 #define HASH_DEBUG_OUTPUT false
 
-const uint8_t PV_NODE = 0;
-const uint8_t CUT_NODE = 1;
-const uint8_t ALL_NODE = 2;
-const uint8_t NO_NODE_INFO = 3;
+const uint8_t PV_NODE = 1;
+const uint8_t CUT_NODE = 2;
+const uint8_t ALL_NODE = 4;
+const uint8_t NO_NODE_INFO = 8;
 
 struct HashEntry {
     uint64_t zobristKey;
@@ -25,28 +25,43 @@ struct HashEntry {
         score = 0;
         age = 0;
         depth = 0;
-        nodeType = 0;
+        nodeType = NO_NODE_INFO;
+    }
+
+    HashEntry(Board &b, int _depth, Move _m, int _score, uint8_t _nodeType) {
+        zobristKey = b.getZobristKey();
+        m = _m;
+        score = _score;
+        age = b.getMoveNumber();
+        depth = (uint8_t) (_depth);
+        nodeType = (uint8_t) (_nodeType);
     }
 
     ~HashEntry() {}
 };
 
-// This contains each of the hash table entries (currently 1 per array slot).
-// The class is here in case a multi-bucket system is implemented in the future.
+// This contains each of the hash table entries, in a two-bucket system.
 class HashNode {
 public:
-    HashEntry cargo;
+    HashEntry *slot1;
+    HashEntry *slot2;
 
-    HashNode(Board &b, int depth, Move m, int score, uint8_t nodeType) {
-        cargo.zobristKey = b.getZobristKey();
-        cargo.m = m;
-        cargo.score = score;
-        cargo.age = b.getMoveNumber();
-        cargo.depth = (uint8_t) (depth);
-        cargo.nodeType = (uint8_t) (nodeType);
+    HashNode() {
+        slot1 = NULL;
+        slot2 = NULL;
     }
 
-    ~HashNode() {}
+    HashNode(Board &b, int depth, Move m, int score, uint8_t nodeType) {
+        slot1 = new HashEntry(b, depth, m, score, nodeType);
+        slot2 = NULL;
+    }
+
+    ~HashNode() {
+        if (slot1 != NULL)
+            delete slot1;
+        if (slot2 != NULL)
+            delete slot2;
+    }
 };
 
 class Hash {
