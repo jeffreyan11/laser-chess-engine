@@ -6,16 +6,16 @@
 
 #define HASH_DEBUG_OUTPUT false
 
-const uint8_t PV_NODE = 1;
-const uint8_t CUT_NODE = 2;
-const uint8_t ALL_NODE = 4;
-const uint8_t NO_NODE_INFO = 8;
+const uint8_t PV_NODE = 0;
+const uint8_t CUT_NODE = 1;
+const uint8_t ALL_NODE = 2;
+const uint8_t NO_NODE_INFO = 3;
 
 struct HashEntry {
-    uint64_t zobristKey;
+    uint32_t zobristKey;
     Move m;
-    int score;
-    uint16_t age;
+    int16_t score;
+    uint8_t age;
     uint8_t depth;
     uint8_t nodeType;
 
@@ -28,13 +28,22 @@ struct HashEntry {
         nodeType = NO_NODE_INFO;
     }
 
-    HashEntry(Board &b, int _depth, Move _m, int _score, uint8_t _nodeType) {
-        zobristKey = b.getZobristKey();
+    void setEntry(Board &b, int _depth, Move _m, int _score, uint8_t _nodeType, uint8_t searchGen) {
+        zobristKey = (uint32_t) (b.getZobristKey() >> 32);
         m = _m;
-        score = _score;
-        age = b.getMoveNumber();
+        score = (int16_t) _score;
+        age = searchGen;
         depth = (uint8_t) (_depth);
         nodeType = (uint8_t) (_nodeType);
+    }
+
+    void clearEntry() {
+        zobristKey = 0;
+        m = NULL_MOVE;
+        score = 0;
+        age = 0;
+        depth = 0;
+        nodeType = NO_NODE_INFO;
     }
 
     ~HashEntry() {}
@@ -43,25 +52,16 @@ struct HashEntry {
 // This contains each of the hash table entries, in a two-bucket system.
 class HashNode {
 public:
-    HashEntry *slot1;
-    HashEntry *slot2;
+    HashEntry slot1;
+    HashEntry slot2;
 
-    HashNode() {
-        slot1 = NULL;
-        slot2 = NULL;
+    HashNode() {}
+
+    HashNode(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t searchGen) {
+        slot1.setEntry(b, depth, m, score, nodeType, searchGen);
     }
 
-    HashNode(Board &b, int depth, Move m, int score, uint8_t nodeType) {
-        slot1 = new HashEntry(b, depth, m, score, nodeType);
-        slot2 = NULL;
-    }
-
-    ~HashNode() {
-        if (slot1 != NULL)
-            delete slot1;
-        if (slot2 != NULL)
-            delete slot2;
-    }
+    ~HashNode() {}
 };
 
 class Hash {
@@ -69,8 +69,6 @@ class Hash {
 private:
     HashNode **table;
     uint64_t size;
-
-    uint64_t hash(Board &b);
 
 public:
     int keys;
@@ -83,9 +81,9 @@ public:
     Hash(uint64_t MB);
     ~Hash();
 
-    void add(Board &b, int depth, Move m, int score, uint8_t nodeType);
+    void add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t searchGen);
     HashEntry *get(Board &b);
-    void clean(uint16_t moveNumber);
+    //void clean(uint16_t moveNumber);
     void clear();
 };
 

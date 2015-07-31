@@ -24,8 +24,8 @@ const int KNIGHT_VALUE = 340;
 const int BISHOP_VALUE = 350;
 const int ROOK_VALUE = 520;
 const int QUEEN_VALUE = 1000;
-const int MATE_SCORE = 99999;
-const int INFTY = (1 << 20);
+const int MATE_SCORE = (1 << 15) - 1;
+const int INFTY = (1 << 15) - 1;
 
 const int BISHOP_PAIR_VALUE = 40;
 

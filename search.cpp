@@ -4,6 +4,7 @@
 Hash transpositionTable(16);
 int rootDepth;
 uint64_t nodes;
+uint8_t searchGen;
 extern bool isStop;
 
 int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
@@ -19,6 +20,7 @@ string retrievePV(Board *b, Move bestMove, int plies);
 void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     using namespace std::chrono;
     nodes = 0;
+    searchGen = (uint8_t) (b->getMoveNumber());
 
     // test if only 1 legal move
     int color = b->getPlayerToMove();
@@ -92,7 +94,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     cerr << "collisions: " << transpositionTable.collisions << endl;
     cerr << "replacements: " << transpositionTable.replacements << endl;
     #endif
-    transpositionTable.clean(b->getMoveNumber());
+    //transpositionTable.clean(b->getMoveNumber());
     cerr << "keys: " << transpositionTable.keys << endl;
     
     isStop = true;
@@ -336,7 +338,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             reduction = 1;
         // Late move reduction
         // Possibly remove TT info dependency?
-        else if((nodeType & (ALL_NODE | NO_NODE_INFO)) && staticEval <= alpha && !isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && i > 2 && alpha <= prevAlpha) {
+        else if((nodeType == ALL_NODE || nodeType == NO_NODE_INFO) && staticEval <= alpha && !isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && i > 2 && alpha <= prevAlpha) {
             if (depth >= 6)
                 reduction = 2;
             else
@@ -358,7 +360,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         if (score >= beta) {
             // Hash moves that caused a beta cutoff
             if (depth >= 2)
-                transpositionTable.add(b, depth, m, beta, CUT_NODE);
+                transpositionTable.add(b, depth, m, beta, CUT_NODE, searchGen);
             return beta;
         }
         if (score > alpha) {
@@ -385,12 +387,12 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     
     // Exact scores indicate a principal variation and should always be hashed
     if (toHash != NULL_MOVE && prevAlpha < alpha && alpha < beta) {
-        transpositionTable.add(b, depth, toHash, alpha, PV_NODE);
+        transpositionTable.add(b, depth, toHash, alpha, PV_NODE, searchGen);
     }
     // Record all-nodes. The upper bound score can save a lot of search time.
     // No best move can be recorded in a fail-hard framework.
     else if (depth >= 2 && alpha <= prevAlpha) {
-        transpositionTable.add(b, depth, NULL_MOVE, alpha, ALL_NODE);
+        transpositionTable.add(b, depth, NULL_MOVE, alpha, ALL_NODE, searchGen);
     }
 
     return alpha;
