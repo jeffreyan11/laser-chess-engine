@@ -1,3 +1,4 @@
+#include <chrono>
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -110,6 +111,24 @@ int main() {
                 if (i % 8 == 7) cerr << endl;
             }
             delete[] mailbox;
+        }
+
+        if (input.substr(0, 5) == "perft" && inputVector.size() == 2) {
+            int depth = stoi(inputVector.at(1));
+
+            Board b;
+            uint64_t captures = 0;
+            using namespace std::chrono;
+            auto start_time = high_resolution_clock::now();
+
+            cerr << "Nodes: " << perft(b, 1, depth, captures) << endl;
+            cerr << "Captures: " << captures << endl;
+
+            auto end_time = high_resolution_clock::now();
+            duration<double> time_span = duration_cast<duration<double>>(
+                end_time-start_time);
+
+            cerr << time_span.count() << endl;
         }
     }
 }

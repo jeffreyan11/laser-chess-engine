@@ -174,4 +174,6 @@ private:
     uint64_t nwAttacks(uint64_t bishops, uint64_t empty);
 };
 
+uint64_t perft(Board &b, int color, int depth, uint64_t &captures);
+
 #endif

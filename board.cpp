@@ -21,6 +21,35 @@ int epVictimSquare(int victimColor, uint16_t file) {
     return 8 * (3 + victimColor) + file;
 }
 
+/*
+ * Performs a PERFT. Useful for testing/debugging
+ * 7/8/15: PERFT 5, 1.46 s (i5-2450m)
+ * 7/11/15: PERFT 5, 1.22 s (i5-2450m)
+ * 7/13/15: PERFT 5, 1.27/1.08 s (i5-2450m) before/after pass Board by reference
+ * 7/14/15: PERFT 5, 0.86 s (i5-2450m)
+ * 7/17/15: PERFT 5, 0.32 s (i5-2450m)
+ */
+uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
+    if (depth == 0)
+        return 1;
+    
+    MoveList pl = b.getAllPseudoLegalMoves(color);
+    uint64_t nodes = 0;
+    
+    for (unsigned int i = 0; i < pl.size(); i++) {
+        Board copy = b.staticCopy();
+        if (!copy.doPseudoLegalMove(pl.get(i), color))
+            continue;
+
+        if (isCapture(pl.get(i)))
+            captures++;
+        
+        nodes += perft(copy, color^1, depth-1, captures);
+    }
+    
+    return nodes;
+}
+
 // Create a board object initialized to the start position.
 Board::Board() {
     pieces[WHITE][PAWNS] = 0x000000000000FF00; // white pawns
