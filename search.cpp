@@ -258,10 +258,12 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             }
         }
     }
+
+    int staticEval = (color == WHITE) ? b.evaluate() : -b.evaluate();
     
     // null move pruning
     // only if doing a null move does not leave player in check
-    if (depth >= 2 && !isPVNode && !isInCheck) {
+    if (depth >= 2 && !isPVNode && staticEval >= beta && !isInCheck) {
         int reduction;
         if (depth >= 6)
             reduction = 3;
@@ -285,10 +287,10 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
     ScoreList scores;
     // Internal iterative deepening, SEE, and MVV/LVA move ordering
-    if (depth >= 9) {
+    if (depth >= 9 && nodeType != ALL_NODE) {
         sortSearch(&b, legalMoves, scores, 2);
     }
-    else if (depth >= 4) {
+    else if ((depth >= 4 && nodeType != ALL_NODE) || (depth >= 3 && isPVNode)) {
         sortSearch(&b, legalMoves, scores, 1);
     }
     else if (depth >= 2) { // sort by SEE
@@ -329,11 +331,15 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
         nodes++;
         // Futility-esque reduction using SEE
-        if(depth <= 2 && !isPVNode && !isInCheck && b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
+        if(depth <= 2 && !isPVNode && staticEval <= alpha && !isInCheck && b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
             reduction = 1;
         // Late move reduction
-        else if(nodeType == ALL_NODE && !isInCheck && !isCapture(m) && depth >= 3 && i > 2 && alpha <= prevAlpha)
-            reduction = 1;
+        else if((nodeType & (ALL_NODE | NO_NODE_INFO)) && staticEval <= alpha && !isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && i > 2 && alpha <= prevAlpha) {
+            if (depth >= 6)
+                reduction = 2;
+            else
+                reduction = 1;
+        }
 
         if (i != 0) {
             score = -PVS(copy, color^1, depth-1-reduction, -alpha-1, -alpha);
