@@ -25,11 +25,11 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     MoveList legalMoves = b->getAllLegalMoves(color);
     *bestMove = legalMoves.get(0);
 
-    if (legalMoves.size() == 1) {
+    /*if (legalMoves.size() == 1) {
         isStop = true;
         cout << "bestmove " << moveToString(*bestMove) << endl;
         return;
-    }
+    }*/
     
     auto start_time = high_resolution_clock::now();
     double timeSoFar = duration_cast<duration<double>>(
@@ -109,6 +109,15 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int score = -MATE_SCORE;
     int alpha = -MATE_SCORE;
     int beta = MATE_SCORE;
+
+    // root move ordering
+    /*if (depth == 1) {
+        ScoreList scores;
+        sortSearch(b, legalMoves, scores, 1);
+        unsigned int i = 0;
+        for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
+                m = nextMove(legalMoves, scores, ++i));
+    }*/
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         if (isStop)
@@ -119,12 +128,12 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
         
         if (copy.isWInMate()) {
             isMate = true;
-            bestScore = MATE_SCORE;
+            bestScore = MATE_SCORE - 1;
             return i;
         }
         else if (copy.isBInMate()) {
             isMate = true;
-            bestScore = MATE_SCORE;
+            bestScore = MATE_SCORE - 1;
             return i;
         }
         else if (copy.isStalemate(color^1) || copy.isDraw()) {
@@ -253,8 +262,16 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // null move pruning
     // only if doing a null move does not leave player in check
     if (depth >= 2 && !isPVNode && !isInCheck) {
+        int reduction;
+        if (depth >= 6)
+            reduction = 3;
+        else if (depth >= 5)
+            reduction = 2;
+        else
+            reduction = depth - 2;
+
         b.doMove(NULL_MOVE, color);
-        int nullScore = -PVS(b, color^1, depth-3, -beta, -alpha);
+        int nullScore = -PVS(b, color^1, depth-1-reduction, -beta, -alpha);
         if (nullScore >= beta) {
             b.doMove(NULL_MOVE, color^1);
             return beta;
@@ -267,11 +284,24 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     MoveList legalMoves = b.getAllPseudoLegalMoves(color);
 
     ScoreList scores;
-    // Internal iterative deepening
-    if(depth >= 4) {
+    // Internal iterative deepening, SEE, and MVV/LVA move ordering
+    if (depth >= 9) {
+        sortSearch(&b, legalMoves, scores, 2);
+    }
+    else if (depth >= 4) {
         sortSearch(&b, legalMoves, scores, 1);
     }
-    /*
+    else if (depth >= 2) { // sort by SEE
+        unsigned int index;
+        for (index = 0; index < legalMoves.size(); index++)
+            if (!isCapture(legalMoves.get(index)))
+                break;
+        for (unsigned int i = 0; i < index; i++) {
+            scores.add(b.getSEE(color, getEndSq(legalMoves.get(i))));
+        }
+        for (unsigned int i = index; i < legalMoves.size(); i++)
+            scores.add(-MATE_SCORE);
+    }
     else { // MVV/LVA
         unsigned int index;
         for (index = 0; index < legalMoves.size(); index++)
@@ -279,18 +309,6 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                 break;
         for (unsigned int i = 0; i < index; i++) {
             scores.add(b.getMVVLVAScore(color, legalMoves.get(i)));
-        }
-        for (unsigned int i = index; i < legalMoves.size(); i++)
-            scores.add(-MATE_SCORE);
-    }
-    */
-    else { // sort by SEE
-        unsigned int index;
-        for (index = 0; index < legalMoves.size(); index++)
-            if (!isCapture(legalMoves.get(index)))
-                break;
-        for (unsigned int i = 0; i < index; i++) {
-            scores.add(b.getSEE(color, getEndSq(legalMoves.get(i))));
         }
         for (unsigned int i = index; i < legalMoves.size(); i++)
             scores.add(-MATE_SCORE);
@@ -392,6 +410,8 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
     // Stand pat: if our current position is already way too good or way too bad
     // we can simply stop the search here
     int standPat = (color == WHITE) ? b.evaluate() : -b.evaluate();
+    // if (b.getEGFactor() >= EG_FACTOR_RES)
+    //     return standPat;
     if (standPat >= beta)
         return beta;
     if (alpha < standPat)
@@ -411,8 +431,11 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
     unsigned int i = 0;
     for (Move m = nextMove(legalCaptures, scores, i); m != NULL_MOVE;
             m = nextMove(legalCaptures, scores, ++i)) {
+        // Delta prune
+        if (standPat + b.valueOfPiece(b.getCapturedPiece(color^1, getEndSq(m))) < alpha - MAX_POS_SCORE)
+            continue;
         // Static exchange evaluation pruning
-        if(b.getExchangeScore(color, m) < 0 && b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
+        if (b.getExchangeScore(color, m) < 0 && b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
             continue;
 
         Board copy = b.staticCopy();
@@ -423,8 +446,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
         score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
         
         if (score >= beta) {
-            alpha = beta;
-            break;
+            return beta;
         }
         if (score > alpha)
             alpha = score;
@@ -446,8 +468,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
         score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
         
         if (score >= beta) {
-            alpha = beta;
-            break;
+            return beta;
         }
         if (score > alpha)
             alpha = score;
@@ -536,14 +557,18 @@ void clearTranspositionTable() {
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index) {
     if (index >= moves.size())
         return NULL_MOVE;
+    // Find the index of the next best move
+    int bestIndex = index;
     int bestScore = scores.get(index);
     for (unsigned int i = index + 1; i < moves.size(); i++) {
         if (scores.get(i) > bestScore) {
-            bestScore = scores.get(i);
-            moves.swap(i, index);
-            scores.swap(i, index);
+            bestIndex = i;
+            bestScore = scores.get(bestIndex);
         }
     }
+    // Swap the best move to the correct position
+    moves.swap(bestIndex, index);
+    scores.swap(bestIndex, index);
     return moves.get(index);
 }
 

@@ -62,6 +62,7 @@ public:
 
     uint64_t getXRays(int color, int sq, int blockerColor, uint64_t blocker);
     uint64_t getAttackMap(int color, int sq);
+    int getCapturedPiece(int colorCaptured, int endSq);
     bool isInCheck(int color);
     bool isWInMate();
     bool isBInMate();
@@ -133,8 +134,6 @@ private:
     void addMovesToList(MoveList &moves, int pieceID, int stSq,
         uint64_t allEndSqs, uint64_t otherPieces);
     void addPromotionsToList(MoveList &moves, int stSq, int endSq, bool isCapture);
-
-    int getCapturedPiece(int colorCaptured, int endSq);
 
     // Move generation
     // ___Moves(): moves for all of that piece type on the board.
