@@ -2,8 +2,57 @@
 #include "board.h"
 #include "btables.h"
 
+uint64_t rankArray[8][64];
+uint64_t fileArray[8][64];
 uint64_t zobristTable[794];
 uint64_t startPosZobristKey = 0;
+
+// Dumb7fill methods
+uint64_t southAttacks(uint64_t rooks, uint64_t empty);
+uint64_t northAttacks(uint64_t rooks, uint64_t empty);
+uint64_t eastAttacks(uint64_t rooks, uint64_t empty);
+uint64_t neAttacks(uint64_t bishops, uint64_t empty);
+uint64_t seAttacks(uint64_t bishops, uint64_t empty);
+uint64_t westAttacks(uint64_t rooks, uint64_t empty);
+uint64_t swAttacks(uint64_t bishops, uint64_t empty);
+uint64_t nwAttacks(uint64_t bishops, uint64_t empty);
+
+void initKindergartenTables() {
+    // Generate the kindergarten bitboard attack table.
+    // We index by the file the slider is on, and the middle 6 bits occupancy of
+    // the rank.
+    for(int file = 0; file < 8; file++) {
+        for(int occ = 0; occ < 64; occ++) {
+            // East/west attacks since we are considering one rank
+            // occ << 1 to map the occupancy to the middle 6 bits
+            // This gives the result in the lowest 8 bits
+            uint64_t rankEmpty = RANKS[0] & ~(occ << 1);
+            uint64_t result = eastAttacks((1 << file), rankEmpty)
+                            | westAttacks((1 << file), rankEmpty);
+            // We must now copy these 8 bits 7 times to fill the bitboard...
+            result |= result << 8;
+            result |= result << 16;
+            result |= result << 32;
+            // ...and record the result
+            rankArray[file][occ] = result;
+        }
+    }
+
+    // Files use a slightly different table, with a single instance of the A-file
+    for(uint64_t rank = 0; rank < 8; rank++) {
+        for(uint64_t occ = 0; occ < 64; occ++) {
+            uint64_t fileEmpty = 0;
+            // Move occupancy from the first rank to the A file
+            for(int i = 0; i < 6; i++) {
+                fileEmpty |= (occ & (1 << i)) << (7 * i);
+            }
+            fileEmpty = AFILE & ~(fileEmpty << 8);
+            uint64_t result = northAttacks((1ULL << (rank * 8)), fileEmpty)
+                            | southAttacks((1ULL << (rank * 8)), fileEmpty);
+            fileArray[rank][occ] = result;
+        }
+    }
+}
 
 void initZobristTable() {
     mt19937_64 rng (61280152908);
@@ -1589,101 +1638,6 @@ uint64_t Board::antiDiagAttacks(uint64_t occ, int single) {
     return (ANTIDIAGRAY[single] & rankArray[single&7][occ]);
 }
 
-// Dumb7Fill
-uint64_t Board::southAttacks(uint64_t rooks, uint64_t empty) {
-    uint64_t flood = rooks;
-    flood |= rooks = (rooks >> 8) & empty;
-    flood |= rooks = (rooks >> 8) & empty;
-    flood |= rooks = (rooks >> 8) & empty;
-    flood |= rooks = (rooks >> 8) & empty;
-    flood |= rooks = (rooks >> 8) & empty;
-    flood |=         (rooks >> 8) & empty;
-    return           (flood >> 8);
-}
-
-uint64_t Board::northAttacks(uint64_t rooks, uint64_t empty) {
-    uint64_t flood = rooks;
-    flood |= rooks = (rooks << 8) & empty;
-    flood |= rooks = (rooks << 8) & empty;
-    flood |= rooks = (rooks << 8) & empty;
-    flood |= rooks = (rooks << 8) & empty;
-    flood |= rooks = (rooks << 8) & empty;
-    flood |=         (rooks << 8) & empty;
-    return           (flood << 8);
-}
-
-uint64_t Board::eastAttacks(uint64_t rooks, uint64_t empty) {
-    uint64_t flood = rooks;
-    empty &= NOTA;
-    flood |= rooks = (rooks << 1) & empty;
-    flood |= rooks = (rooks << 1) & empty;
-    flood |= rooks = (rooks << 1) & empty;
-    flood |= rooks = (rooks << 1) & empty;
-    flood |= rooks = (rooks << 1) & empty;
-    flood |=         (rooks << 1) & empty;
-    return           (flood << 1) & NOTA ;
-}
-
-uint64_t Board::neAttacks(uint64_t bishops, uint64_t empty) {
-    uint64_t flood = bishops;
-    empty &= NOTA;
-    flood |= bishops = (bishops << 9) & empty;
-    flood |= bishops = (bishops << 9) & empty;
-    flood |= bishops = (bishops << 9) & empty;
-    flood |= bishops = (bishops << 9) & empty;
-    flood |= bishops = (bishops << 9) & empty;
-    flood |=         (bishops << 9) & empty;
-    return           (flood << 9) & NOTA ;
-}
-
-uint64_t Board::seAttacks(uint64_t bishops, uint64_t empty) {
-    uint64_t flood = bishops;
-    empty &= NOTA;
-    flood |= bishops = (bishops >> 7) & empty;
-    flood |= bishops = (bishops >> 7) & empty;
-    flood |= bishops = (bishops >> 7) & empty;
-    flood |= bishops = (bishops >> 7) & empty;
-    flood |= bishops = (bishops >> 7) & empty;
-    flood |=         (bishops >> 7) & empty;
-    return           (flood >> 7) & NOTA ;
-}
-
-uint64_t Board::westAttacks(uint64_t rooks, uint64_t empty) {
-    uint64_t flood = rooks;
-    empty &= NOTH;
-    flood |= rooks = (rooks >> 1) & empty;
-    flood |= rooks = (rooks >> 1) & empty;
-    flood |= rooks = (rooks >> 1) & empty;
-    flood |= rooks = (rooks >> 1) & empty;
-    flood |= rooks = (rooks >> 1) & empty;
-    flood |=         (rooks >> 1) & empty;
-    return           (flood >> 1) & NOTH ;
-}
-
-uint64_t Board::swAttacks(uint64_t bishops, uint64_t empty) {
-    uint64_t flood = bishops;
-    empty &= NOTH;
-    flood |= bishops = (bishops >> 9) & empty;
-    flood |= bishops = (bishops >> 9) & empty;
-    flood |= bishops = (bishops >> 9) & empty;
-    flood |= bishops = (bishops >> 9) & empty;
-    flood |= bishops = (bishops >> 9) & empty;
-    flood |=         (bishops >> 9) & empty;
-    return           (flood >> 9) & NOTH ;
-}
-
-uint64_t Board::nwAttacks(uint64_t bishops, uint64_t empty) {
-    uint64_t flood = bishops;
-    empty &= NOTH;
-    flood |= bishops = (bishops << 7) & empty;
-    flood |= bishops = (bishops << 7) & empty;
-    flood |= bishops = (bishops << 7) & empty;
-    flood |= bishops = (bishops << 7) & empty;
-    flood |= bishops = (bishops << 7) & empty;
-    flood |=         (bishops << 7) & empty;
-    return           (flood << 7) & NOTH ;
-}
-
 // Getter methods
 bool Board::getWhiteCanKCastle() {
     return castlingRights & WHITEKSIDE;
@@ -1816,4 +1770,99 @@ void Board::initZobristKey(int *mailbox) {
         zobristKey ^= zobristTable[768];
     zobristKey ^= zobristTable[769 + castlingRights];
     zobristKey ^= zobristTable[785 + epCaptureFile];
+}
+
+// Dumb7Fill
+uint64_t southAttacks(uint64_t rooks, uint64_t empty) {
+    uint64_t flood = rooks;
+    flood |= rooks = (rooks >> 8) & empty;
+    flood |= rooks = (rooks >> 8) & empty;
+    flood |= rooks = (rooks >> 8) & empty;
+    flood |= rooks = (rooks >> 8) & empty;
+    flood |= rooks = (rooks >> 8) & empty;
+    flood |=         (rooks >> 8) & empty;
+    return           (flood >> 8);
+}
+
+uint64_t northAttacks(uint64_t rooks, uint64_t empty) {
+    uint64_t flood = rooks;
+    flood |= rooks = (rooks << 8) & empty;
+    flood |= rooks = (rooks << 8) & empty;
+    flood |= rooks = (rooks << 8) & empty;
+    flood |= rooks = (rooks << 8) & empty;
+    flood |= rooks = (rooks << 8) & empty;
+    flood |=         (rooks << 8) & empty;
+    return           (flood << 8);
+}
+
+uint64_t eastAttacks(uint64_t rooks, uint64_t empty) {
+    uint64_t flood = rooks;
+    empty &= NOTA;
+    flood |= rooks = (rooks << 1) & empty;
+    flood |= rooks = (rooks << 1) & empty;
+    flood |= rooks = (rooks << 1) & empty;
+    flood |= rooks = (rooks << 1) & empty;
+    flood |= rooks = (rooks << 1) & empty;
+    flood |=         (rooks << 1) & empty;
+    return           (flood << 1) & NOTA ;
+}
+
+uint64_t neAttacks(uint64_t bishops, uint64_t empty) {
+    uint64_t flood = bishops;
+    empty &= NOTA;
+    flood |= bishops = (bishops << 9) & empty;
+    flood |= bishops = (bishops << 9) & empty;
+    flood |= bishops = (bishops << 9) & empty;
+    flood |= bishops = (bishops << 9) & empty;
+    flood |= bishops = (bishops << 9) & empty;
+    flood |=         (bishops << 9) & empty;
+    return           (flood << 9) & NOTA ;
+}
+
+uint64_t seAttacks(uint64_t bishops, uint64_t empty) {
+    uint64_t flood = bishops;
+    empty &= NOTA;
+    flood |= bishops = (bishops >> 7) & empty;
+    flood |= bishops = (bishops >> 7) & empty;
+    flood |= bishops = (bishops >> 7) & empty;
+    flood |= bishops = (bishops >> 7) & empty;
+    flood |= bishops = (bishops >> 7) & empty;
+    flood |=         (bishops >> 7) & empty;
+    return           (flood >> 7) & NOTA ;
+}
+
+uint64_t westAttacks(uint64_t rooks, uint64_t empty) {
+    uint64_t flood = rooks;
+    empty &= NOTH;
+    flood |= rooks = (rooks >> 1) & empty;
+    flood |= rooks = (rooks >> 1) & empty;
+    flood |= rooks = (rooks >> 1) & empty;
+    flood |= rooks = (rooks >> 1) & empty;
+    flood |= rooks = (rooks >> 1) & empty;
+    flood |=         (rooks >> 1) & empty;
+    return           (flood >> 1) & NOTH ;
+}
+
+uint64_t swAttacks(uint64_t bishops, uint64_t empty) {
+    uint64_t flood = bishops;
+    empty &= NOTH;
+    flood |= bishops = (bishops >> 9) & empty;
+    flood |= bishops = (bishops >> 9) & empty;
+    flood |= bishops = (bishops >> 9) & empty;
+    flood |= bishops = (bishops >> 9) & empty;
+    flood |= bishops = (bishops >> 9) & empty;
+    flood |=         (bishops >> 9) & empty;
+    return           (flood >> 9) & NOTH ;
+}
+
+uint64_t nwAttacks(uint64_t bishops, uint64_t empty) {
+    uint64_t flood = bishops;
+    empty &= NOTH;
+    flood |= bishops = (bishops << 7) & empty;
+    flood |= bishops = (bishops << 7) & empty;
+    flood |= bishops = (bishops << 7) & empty;
+    flood |= bishops = (bishops << 7) & empty;
+    flood |= bishops = (bishops << 7) & empty;
+    flood |=         (bishops << 7) & empty;
+    return           (flood << 7) & NOTH ;
 }

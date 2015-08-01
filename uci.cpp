@@ -17,6 +17,7 @@ Board fenToBoard(string s);
 volatile bool isStop = true;
 
 int main() {
+    initKindergartenTables();
     initZobristTable();
 
     string input;

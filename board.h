@@ -31,6 +31,7 @@ const uint8_t BLACKCASTLE = 0xC;
 
 const uint16_t NO_EP_POSSIBLE = 0x8;
 
+void initKindergartenTables();
 void initZobristTable();
 int epVictimSquare(int victimColor, uint16_t file);
 
@@ -162,16 +163,6 @@ private:
     uint64_t fileAttacks(uint64_t occ, int single);
     uint64_t diagAttacks(uint64_t occ, int single);
     uint64_t antiDiagAttacks(uint64_t occ, int single);
-
-    // Dumb7fill methods
-    uint64_t southAttacks(uint64_t rooks, uint64_t empty);
-    uint64_t northAttacks(uint64_t rooks, uint64_t empty);
-    uint64_t eastAttacks(uint64_t rooks, uint64_t empty);
-    uint64_t neAttacks(uint64_t bishops, uint64_t empty);
-    uint64_t seAttacks(uint64_t bishops, uint64_t empty);
-    uint64_t westAttacks(uint64_t rooks, uint64_t empty);
-    uint64_t swAttacks(uint64_t bishops, uint64_t empty);
-    uint64_t nwAttacks(uint64_t bishops, uint64_t empty);
 };
 
 uint64_t perft(Board &b, int color, int depth, uint64_t &captures);
