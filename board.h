@@ -132,11 +132,8 @@ private:
 
     void addPawnMovesToList(MoveList &quiets, int color);
     void addPawnCapturesToList(MoveList &captures, int color, bool includePromotions);
-    void addMovesToList(MoveList &quiets, MoveList &captures, int pieceID,
-        int stSq, uint64_t allEndSqs, uint64_t otherPieces);
     void addMovesToList(MoveList &moves, int pieceID, int stSq,
-        uint64_t allEndSqs, uint64_t otherPieces);
-    void addQuietsToList(MoveList &moves, int pieceID, int stSq, uint64_t allEndSqs);
+        uint64_t allEndSqs, bool isCapture, uint64_t otherPieces = 0);
     void addPromotionsToList(MoveList &moves, int stSq, int endSq, bool isCapture);
 
     // Move generation
