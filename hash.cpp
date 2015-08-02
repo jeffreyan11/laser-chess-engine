@@ -12,7 +12,7 @@ Hash::Hash(uint64_t MB) {
     #if HASH_DEBUG_OUTPUT
     replacements = 0;
     collisions = 0;
-    cerr << "Hash size: " << size << endl;
+    cerr << "Hash size: " << 2*size << endl;
     #endif
 }
 
@@ -132,6 +132,11 @@ HashEntry *Hash::get(Board &b) {
 
     return NULL;
 }
+
+uint64_t Hash::getSize() {
+    return 2 * size;
+}
+
 /*
 void Hash::clean(uint16_t moveNumber) {
     for(uint64_t i = 0; i < size; i++) {

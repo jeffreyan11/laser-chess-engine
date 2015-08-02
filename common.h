@@ -28,6 +28,7 @@ const int MATE_SCORE = (1 << 15) - 1;
 const int INFTY = (1 << 15) - 1;
 
 const int BISHOP_PAIR_VALUE = 40;
+const int TEMPO_VALUE = 10;
 
 const int START_VALUE = 8 * PAWN_VALUE + 2 * KNIGHT_VALUE + 2 * BISHOP_VALUE + 2 * ROOK_VALUE + QUEEN_VALUE;
 const int EG_FACTOR_RES = 1000;

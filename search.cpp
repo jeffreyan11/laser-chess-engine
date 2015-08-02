@@ -1,11 +1,57 @@
 #include <chrono>
 #include "search.h"
 
+struct SearchStatistics {
+    uint64_t hashProbes;
+    uint64_t hashHits;
+    uint64_t hashScoreCuts;
+    uint64_t hashMoveAttempts;
+    uint64_t hashMoveCuts;
+    uint64_t searchSpaces;
+    uint64_t failHighs;
+    uint64_t firstFailHighs;
+    uint64_t qsNodes;
+    uint64_t qsSearchSpaces;
+    uint64_t qsFailHighs;
+    uint64_t qsFirstFailHighs;
+
+    SearchStatistics() {
+        hashProbes = 0;
+        hashHits = 0;
+        hashScoreCuts = 0;
+        hashMoveAttempts = 0;
+        hashMoveCuts = 0;
+        searchSpaces = 0;
+        failHighs = 0;
+        firstFailHighs = 0;
+        qsNodes = 0;
+        qsSearchSpaces = 0;
+        qsFailHighs = 0;
+        qsFirstFailHighs = 0;
+    }
+
+    void reset() {
+        hashProbes = 0;
+        hashHits = 0;
+        hashScoreCuts = 0;
+        hashMoveAttempts = 0;
+        hashMoveCuts = 0;
+        searchSpaces = 0;
+        failHighs = 0;
+        firstFailHighs = 0;
+        qsNodes = 0;
+        qsSearchSpaces = 0;
+        qsFailHighs = 0;
+        qsFirstFailHighs = 0;
+    }
+};
+
 Hash transpositionTable(16);
 int rootDepth;
 uint64_t nodes;
 uint8_t searchGen;
 extern bool isStop;
+SearchStatistics searchStats;
 
 int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int &bestScore, bool &isMate);
@@ -13,13 +59,16 @@ void sortSearch(Board *b, MoveList &pseudoLegalMoves, ScoreList &scores, int dep
 int PVS(Board &b, int color, int depth, int alpha, int beta);
 int quiescence(Board &b, int color, int plies, int alpha, int beta);
 int checkQuiescence(Board &b, int color, int plies, int alpha, int beta);
-Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 
+int probeTT(Board &b, int color, Move &hashed, uint8_t &nodeType, int depth, int alpha, int beta);
+
+Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 string retrievePV(Board *b, Move bestMove, int plies);
 
 void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     using namespace std::chrono;
     nodes = 0;
+    searchStats.reset();
     searchGen = (uint8_t) (b->getMoveNumber());
 
     // test if only 1 legal move
@@ -95,7 +144,16 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     cerr << "replacements: " << transpositionTable.replacements << endl;
     #endif
     //transpositionTable.clean(b->getMoveNumber());
-    cerr << "keys: " << transpositionTable.keys << endl;
+    cerr << "TT occupancy: " << transpositionTable.keys << "/" << transpositionTable.getSize() << endl;
+    cerr << "Hash scorecut/hit/probe: " << searchStats.hashScoreCuts << "/"
+         << searchStats.hashHits << "/" << searchStats.hashProbes << endl;
+    cerr << "Hash movecut rate: " << searchStats.hashMoveCuts << "/"
+         << searchStats.hashMoveAttempts << endl;
+    cerr << "First fail-high/fail-high rate: " << searchStats.firstFailHighs << "/"
+         << searchStats.failHighs << "/" << searchStats.searchSpaces << endl;
+    cerr << "QS Nodes: " << searchStats.qsNodes << endl;
+    cerr << "QS FFH/FH rate: " << searchStats.qsFirstFailHighs << "/"
+         << searchStats.qsFailHighs << "/" << searchStats.qsSearchSpaces << endl;
     
     isStop = true;
     cout << "bestmove " << moveToString(*bestMove) << endl;
@@ -186,6 +244,10 @@ void sortSearch(Board *b, MoveList &legalMoves, ScoreList &scores, int depth) {
     }
 }
 
+//------------------------------------------------------------------------------
+//------------------------------Search functions--------------------------------
+//------------------------------------------------------------------------------
+
 // The standard implementation of a null-window PVS search.
 // The implementation is fail-hard (score returned must be within [alpha, beta])
 int PVS(Board &b, int color, int depth, int alpha, int beta) {
@@ -204,7 +266,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             return alpha;
     }
     
-    int score = -MATE_SCORE;
+    int score;
     int prevAlpha = alpha;
     // For PVS, the node is a PV node if beta - alpha > 1 (i.e. not a null window)
     // We do not want to do most pruning techniques on PV nodes
@@ -212,56 +274,14 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // Similarly, we do not want to prune if we are in check
     bool isInCheck = b.isInCheck(color);
 
-    Move toHash = NULL_MOVE;
     uint8_t nodeType = NO_NODE_INFO;
     Move hashed = NULL_MOVE;
 
-    // See if a hash move exists
-    HashEntry *entry = transpositionTable.get(b);
-    if (!isPVNode && entry != NULL) {
-        // If the node is a predicted all node and score <= alpha, return alpha
-        // since score is an upper bound
-        // Vulnerable to Type-1 errors
-        int hashScore = entry->score;
-        nodeType = entry->nodeType;
-        if (nodeType == ALL_NODE) {
-            if (entry->depth >= depth && hashScore <= alpha)
-                return alpha;
-        }
-        else {
-            hashed = entry->m;
-            Board copy = b.staticCopy();
-            if (copy.doHashMove(hashed, color)) {
-                // Only used a hashed score if the search depth was at least
-                // the current depth
-                if (entry->depth >= depth) {
-                    // At cut nodes if hash score >= beta return beta since hash
-                    // score is a lower bound.
-                    if (nodeType == CUT_NODE && hashScore >= beta)
-                        return beta;
-                    // At PV nodes we can simply return the exact score
-                    else if (nodeType == PV_NODE)
-                        return hashScore;
-                }
-                if (entry->depth >= 2 && entry->depth + 2 >= depth) {
-                    // If the hash score is unusable and node is not a predicted
-                    // all-node, we can search the hash move first.
-                    nodes++;
-                    score = -PVS(copy, color^1, depth-1, -beta, -alpha);
-
-                    if (score >= beta)
-                        return beta;
-                    if (score > alpha)
-                        alpha = score;
-                }
-                else
-                    hashed = NULL_MOVE;
-            }
-            else {
-                cerr << "Type-1 TT error on " << moveToString(hashed) << endl;
-                hashed = NULL_MOVE;
-            }
-        }
+    if (!isPVNode) {
+        searchStats.hashProbes++;
+        score = probeTT(b, color, hashed, nodeType, depth, alpha, beta);
+        if (score != -INFTY)
+            return score;
     }
 
     int staticEval = (color == WHITE) ? b.evaluate() : -b.evaluate();
@@ -276,7 +296,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         else if (depth >= 5)
             reduction = 2;
         else
-            reduction = depth - 2;
+            reduction = 1;
 
         b.doMove(NULL_MOVE, color);
         int nullScore = -PVS(b, color^1, depth-1-reduction, -beta, -alpha);
@@ -322,9 +342,12 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             scores.add(-MATE_SCORE);
     }
 
+    Move toHash = NULL_MOVE;
     int reduction = 0;
     unsigned int i = 0;
+    unsigned int j = 0; // separate counter only incremented when valid move is searched
     score = -INFTY;
+    searchStats.searchSpaces++;
     for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
             m = nextMove(legalMoves, scores, ++i)) {
         if (m == hashed)
@@ -348,7 +371,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                 reduction = 1;
         }
 
-        if (i != 0) {
+        if (j != 0) {
             score = -PVS(copy, color^1, depth-1-reduction, -alpha-1, -alpha);
             // The re-search is always done at normal depth
             if (alpha < score && score < beta) {
@@ -361,6 +384,9 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         }
         
         if (score >= beta) {
+            searchStats.failHighs++;
+            if (j == 0)
+                searchStats.firstFailHighs++;
             // Hash moves that caused a beta cutoff
             transpositionTable.add(b, depth, m, beta, CUT_NODE, searchGen);
             return beta;
@@ -369,6 +395,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             alpha = score;
             toHash = m;
         }
+        j++;
     }
 
     // If there were no legal moves
@@ -398,6 +425,67 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     }
 
     return alpha;
+}
+
+// See if a hash move exists.
+int probeTT(Board &b, int color, Move &hashed, uint8_t &nodeType, int depth, int alpha, int beta) {
+    HashEntry *entry = transpositionTable.get(b);
+    if (entry != NULL) {
+        searchStats.hashHits++;
+        // If the node is a predicted all node and score <= alpha, return alpha
+        // since score is an upper bound
+        // Vulnerable to Type-1 errors
+        int hashScore = entry->score;
+        nodeType = entry->nodeType;
+        if (nodeType == ALL_NODE) {
+            if (entry->depth >= depth && hashScore <= alpha) {
+                searchStats.hashScoreCuts++;
+                return alpha;
+            }
+        }
+        else {
+            hashed = entry->m;
+            Board copy = b.staticCopy();
+            if (copy.doHashMove(hashed, color)) {
+                // Only used a hashed score if the search depth was at least
+                // the current depth
+                if (entry->depth >= depth) {
+                    // At cut nodes if hash score >= beta return beta since hash
+                    // score is a lower bound.
+                    if (nodeType == CUT_NODE && hashScore >= beta) {
+                        searchStats.hashScoreCuts++;
+                        return beta;
+                    }
+                    // At PV nodes we can simply return the exact score
+                    else if (nodeType == PV_NODE) {
+                        searchStats.hashScoreCuts++;
+                        return hashScore;
+                    }
+                }
+                if (entry->depth >= 2 && entry->depth + 2 >= depth) {
+                    searchStats.hashMoveAttempts++;
+                    // If the hash score is unusable and node is not a predicted
+                    // all-node, we can search the hash move first.
+                    nodes++;
+                    int score = -PVS(copy, color^1, depth-1, -beta, -alpha);
+
+                    if (score >= beta) {
+                        searchStats.hashMoveCuts++;
+                        return beta;
+                    }
+                    if (score > alpha)
+                        alpha = score;
+                }
+                else
+                    hashed = NULL_MOVE;
+            }
+            else {
+                cerr << "Type-1 TT error on " << moveToString(hashed) << endl;
+                hashed = NULL_MOVE;
+            }
+        }
+    }
+    return -INFTY;
 }
 
 /* Quiescence search, which completes all capture and check lines (thus reaching
@@ -441,8 +529,10 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
     
     int score = -INFTY;
     unsigned int i = 0;
+    unsigned int j = 0; // separate counter only incremented when valid move is searched
+    searchStats.qsSearchSpaces++;
     for (Move m = nextMove(legalCaptures, scores, i); m != NULL_MOVE;
-            m = nextMove(legalCaptures, scores, ++i)) {
+              m = nextMove(legalCaptures, scores, ++i)) {
         // Delta prune
         if (standPat + b.valueOfPiece(b.getCapturedPiece(color^1, getEndSq(m))) < alpha - MAX_POS_SCORE)
             continue;
@@ -455,13 +545,18 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
             continue;
         
         nodes++;
+        searchStats.qsNodes++;
         score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
         
         if (score >= beta) {
+            searchStats.qsFailHighs++;
+            if (j == 0)
+                searchStats.qsFirstFailHighs++;
             return beta;
         }
         if (score > alpha)
             alpha = score;
+        j++;
     }
 
     MoveList legalPromotions = b.getPseudoLegalPromotions(color);
@@ -477,13 +572,18 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
             continue;
         
         nodes++;
+        searchStats.qsNodes++;
         score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
         
         if (score >= beta) {
+            searchStats.qsFailHighs++;
+            if (j == 0)
+                searchStats.qsFirstFailHighs++;
             return beta;
         }
         if (score > alpha)
             alpha = score;
+        j++;
     }
 
     if (score == INFTY) {
@@ -527,6 +627,7 @@ int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
     MoveList legalMoves = b.getAllPseudoLegalMoves(color);
     int score = -INFTY;
 
+    searchStats.qsSearchSpaces++;
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
 
@@ -535,9 +636,11 @@ int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
             continue;
         
         nodes++;
+        searchStats.qsNodes++;
         score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
         
         if (score >= beta) {
+            searchStats.qsFailHighs++;
             alpha = beta;
             break;
         }
@@ -558,6 +661,10 @@ int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
     
     return alpha;
 }
+
+//------------------------------------------------------------------------------
+//------------------------------Other functions---------------------------------
+//------------------------------------------------------------------------------
 
 void clearTranspositionTable() {
     transpositionTable.clear();

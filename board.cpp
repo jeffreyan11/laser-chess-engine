@@ -81,7 +81,28 @@ int epVictimSquare(int victimColor, uint16_t file) {
 uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
     if (depth == 0)
         return 1;
+
+    MoveList pl = b.getPseudoLegalQuiets(color);
+    uint64_t nodes = 0;
     
+    for (unsigned int i = 0; i < pl.size(); i++) {
+        Board copy = b.staticCopy();
+        if (!copy.doPseudoLegalMove(pl.get(i), color))
+            continue;
+        
+        nodes += perft(copy, color^1, depth-1, captures);
+    }
+
+    MoveList pc = b.getPseudoLegalCaptures(color, true);
+    for (unsigned int i = 0; i < pc.size(); i++) {
+        Board copy = b.staticCopy();
+        if (!copy.doPseudoLegalMove(pc.get(i), color))
+            continue;
+        
+        captures++;
+        nodes += perft(copy, color^1, depth-1, captures);
+    }
+/*    
     MoveList pl = b.getAllPseudoLegalMoves(color);
     uint64_t nodes = 0;
     
@@ -95,7 +116,7 @@ uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
         
         nodes += perft(copy, color^1, depth-1, captures);
     }
-    
+*/
     return nodes;
 }
 
@@ -615,7 +636,101 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
     return captures;
 }
 
-// Currently used in quiescence only
+MoveList Board::getPseudoLegalQuiets(int color) {
+    MoveList quiets;
+
+    addPawnMovesToList(quiets, color);
+
+    uint64_t knights = pieces[color][KNIGHTS];
+    while (knights) {
+        int stsq = bitScanForward(knights);
+        knights &= knights-1;
+        uint64_t nSq = getKnightSquares(stsq);
+
+        addQuietsToList(quiets, KNIGHTS, stsq, nSq);
+    }
+
+    uint64_t bishops = pieces[color][BISHOPS];
+    while (bishops) {
+        int stsq = bitScanForward(bishops);
+        bishops &= bishops-1;
+        uint64_t bSq = getBishopSquares(stsq);
+
+        addQuietsToList(quiets, BISHOPS, stsq, bSq);
+    }
+
+    uint64_t rooks = pieces[color][ROOKS];
+    while (rooks) {
+        int stsq = bitScanForward(rooks);
+        rooks &= rooks-1;
+        uint64_t rSq = getRookSquares(stsq);
+
+        addQuietsToList(quiets, ROOKS, stsq, rSq);
+    }
+
+    uint64_t queens = pieces[color][QUEENS];
+    while (queens) {
+        int stsq = bitScanForward(queens);
+        queens &= queens-1;
+        uint64_t qSq = getQueenSquares(stsq);
+
+        addQuietsToList(quiets, QUEENS, stsq, qSq);
+    }
+
+    uint64_t kings = pieces[color][KINGS];
+    int stsqK = bitScanForward(kings);
+    uint64_t kingSqs = getKingSquares(stsqK);
+
+    addQuietsToList(quiets, KINGS, stsqK, kingSqs);
+
+    // Add all possible castles
+    if (color == WHITE) {
+        // If castling rights still exist, squares in between king and rook are
+        // empty, and player is not in check
+        if ((castlingRights & WHITEKSIDE)
+         && ((whitePieces | blackPieces) & (MOVEMASK[5] | MOVEMASK[6])) == 0
+         && !isInCheck(WHITE)) {
+            // Check for castling through check
+            if (getAttackMap(BLACK, 5) == 0) {
+                Move m = encodeMove(4, 6, KINGS, false);
+                m = setCastle(m, true);
+                quiets.add(m);
+            }
+        }
+        else if ((castlingRights & WHITEQSIDE)
+              && ((whitePieces | blackPieces) & (MOVEMASK[1] | MOVEMASK[2] | MOVEMASK[3])) == 0
+              && !isInCheck(WHITE)) {
+            if (getAttackMap(BLACK, 3) == 0) {
+                Move m = encodeMove(4, 2, KINGS, false);
+                m = setCastle(m, true);
+                quiets.add(m);
+            }
+        }
+    }
+    else {
+        if ((castlingRights & BLACKKSIDE)
+         && ((whitePieces | blackPieces) & (MOVEMASK[61] | MOVEMASK[62])) == 0
+         && !isInCheck(BLACK)) {
+            if (getAttackMap(WHITE, 61) == 0) {
+                Move m = encodeMove(60, 62, KINGS, false);
+                m = setCastle(m, true);
+                quiets.add(m);
+            }
+        }
+        if ((castlingRights & BLACKQSIDE)
+         && ((whitePieces | blackPieces) & (MOVEMASK[57] | MOVEMASK[58] | MOVEMASK[59])) == 0
+         && !isInCheck(BLACK)) {
+            if (getAttackMap(WHITE, 59) == 0) {
+                Move m = encodeMove(60, 58, KINGS, false);
+                m = setCastle(m, true);
+                quiets.add(m);
+            }
+        }
+    }
+
+    return quiets;
+}
+
 // Do not include promotions for quiescence search, include promotions in normal search.
 MoveList Board::getPseudoLegalCaptures(int color, bool includePromotions) {
     MoveList result;
@@ -1065,6 +1180,19 @@ void Board::addMovesToList(MoveList &moves, int pieceID, int stSq,
     }
 }
 
+// Helper function that processes a bitboard of legal moves and adds all
+// quiet moves into a list.
+void Board::addQuietsToList(MoveList &moves, int pieceID, int stSq,
+    uint64_t allEndSqs) {
+
+    uint64_t legal = allEndSqs & ~(whitePieces | blackPieces);
+    while (legal) {
+        int endSq = bitScanForward(legal);
+        legal &= legal-1;
+        moves.add(encodeMove(stSq, endSq, pieceID, false));
+    }
+}
+
 void Board::addPromotionsToList(MoveList &moves, int stSq, int endSq, bool isCapture) {
     Move mk = encodeMove(stSq, endSq, PAWNS, isCapture);
     mk = setPromotion(mk, KNIGHTS);
@@ -1195,7 +1323,8 @@ bool Board::isDraw() {
  * positive and black is negative in traditional negamax format.
  */
 int Board::evaluate() {
-    int value = 0;
+    // Tempo bonus
+    int value = (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
 
     // material
     int whiteMaterial = PAWN_VALUE * count(pieces[WHITE][PAWNS])

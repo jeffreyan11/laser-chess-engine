@@ -83,6 +83,7 @@ public:
 
     void add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t searchGen);
     HashEntry *get(Board &b);
+    uint64_t getSize();
     //void clean(uint16_t moveNumber);
     void clear();
 };

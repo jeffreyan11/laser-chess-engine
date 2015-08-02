@@ -57,6 +57,7 @@ public:
 
     MoveList getAllLegalMoves(int color);
     MoveList getAllPseudoLegalMoves(int color);
+    MoveList getPseudoLegalQuiets(int color);
     MoveList getPseudoLegalCaptures(int color, bool includePromotions);
     MoveList getPseudoLegalPromotions(int color);
     MoveList getPseudoLegalChecks(int color);
@@ -134,6 +135,7 @@ private:
         int stSq, uint64_t allEndSqs, uint64_t otherPieces);
     void addMovesToList(MoveList &moves, int pieceID, int stSq,
         uint64_t allEndSqs, uint64_t otherPieces);
+    void addQuietsToList(MoveList &moves, int pieceID, int stSq, uint64_t allEndSqs);
     void addPromotionsToList(MoveList &moves, int stSq, int endSq, bool isCapture);
 
     // Move generation
