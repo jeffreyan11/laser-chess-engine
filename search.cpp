@@ -602,7 +602,6 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
     }
 
     // Checks
-    /*
     if(plies == 0) {
         MoveList legalMoves = b.getPseudoLegalChecks(color);
 
@@ -614,17 +613,21 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
                 continue;
             
             nodes++;
+            searchStats.qsNodes++;
             int score = -checkQuiescence(copy, color^1, plies+1, -beta, -alpha);
             
             if (score >= beta) {
+                searchStats.qsFailHighs++;
+                if (j == 0)
+                    searchStats.qsFirstFailHighs++;
                 alpha = beta;
-                break;
+                return beta;
             }
             if (score > alpha)
                 alpha = score;
+            j++;
         }
     }
-    */
 
     return alpha;
 }
