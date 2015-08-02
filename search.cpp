@@ -446,7 +446,7 @@ int probeTT(Board &b, int color, Move &hashed, uint8_t &nodeType, int depth, int
         // since score is an upper bound
         // Vulnerable to Type-1 errors
         int hashScore = entry->score;
-        nodeType = entry->nodeType;
+        nodeType = entry->getNodeType();
         if (nodeType == ALL_NODE) {
             if (entry->depth >= depth && hashScore <= alpha) {
                 searchStats.hashScoreCuts++;

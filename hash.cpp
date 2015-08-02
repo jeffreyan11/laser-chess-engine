@@ -55,8 +55,10 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
         // Replace cut/all nodes with PV nodes
         else if (nodeType == PV_NODE) {
             HashEntry *toReplace = NULL;
-            int score1 = 4*(searchGen - node->slot1.age) - 4*(node->slot1.nodeType == PV_NODE) + depth - node->slot1.depth;
-            int score2 = 4*(searchGen - node->slot2.age) - 4*(node->slot2.nodeType == PV_NODE) + depth - node->slot2.depth;
+            int score1 = 4*(searchGen - node->slot1.getAge())
+                       - 4*(node->slot1.getNodeType() == PV_NODE) + depth - node->slot1.depth;
+            int score2 = 4*(searchGen - node->slot2.getAge())
+                       - 4*(node->slot2.getNodeType() == PV_NODE) + depth - node->slot2.depth;
             if (score1 >= score2)
                 toReplace = &(node->slot1);
             else
@@ -66,8 +68,8 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
             toReplace->setEntry(b, depth, m, score, nodeType, searchGen);
         }
         // Always keep PV nodes if possible
-        else if (node->slot1.age == searchGen && node->slot1.nodeType == PV_NODE
-              && node->slot2.age == searchGen && node->slot2.nodeType == PV_NODE) {
+        else if (node->slot1.getAge() == searchGen && node->slot1.getNodeType() == PV_NODE
+              && node->slot2.getAge() == searchGen && node->slot2.getNodeType() == PV_NODE) {
             return;
         }
         // Otherwise, replace an entry from a previous search space, or otherwise the lowest
@@ -77,8 +79,8 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
             //int score1 = 4*(node->slot1.age != searchGen) + depth - node->slot1.depth;
             //int score2 = 4*(node->slot2.age != searchGen) + depth - node->slot2.depth;
             // This should underflow correctly according to the C++11 standards?
-            int score1 = 4*(searchGen - node->slot1.age) + depth - node->slot1.depth;
-            int score2 = 4*(searchGen - node->slot2.age) + depth - node->slot2.depth;
+            int score1 = 4*(searchGen - node->slot1.getAge()) + depth - node->slot1.depth;
+            int score2 = 4*(searchGen - node->slot2.getAge()) + depth - node->slot2.depth;
             if (score1 >= score2)
                 toReplace = &(node->slot1);
             else

@@ -15,35 +15,35 @@ struct HashEntry {
     uint32_t zobristKey;
     Move m;
     int16_t score;
-    uint8_t age;
+    uint8_t ageNT;
     int8_t depth;
-    uint8_t nodeType;
 
     HashEntry() {
-        zobristKey = 0;
-        m = NULL_MOVE;
-        score = 0;
-        age = 0;
-        depth = 0;
-        nodeType = NO_NODE_INFO;
+        clearEntry();
     }
 
-    void setEntry(Board &b, int _depth, Move _m, int _score, uint8_t _nodeType, uint8_t searchGen) {
+    void setEntry(Board &b, int _depth, Move _m, int _score, uint8_t nodeType, uint8_t searchGen) {
         zobristKey = (uint32_t) (b.getZobristKey() >> 32);
         m = _m;
         score = (int16_t) _score;
-        age = searchGen;
+        ageNT = (searchGen << 2) | nodeType;
         depth = (int8_t) (_depth);
-        nodeType = (uint8_t) (_nodeType);
     }
 
     void clearEntry() {
         zobristKey = 0;
         m = NULL_MOVE;
         score = 0;
-        age = 0;
+        ageNT = NO_NODE_INFO;
         depth = 0;
-        nodeType = NO_NODE_INFO;
+    }
+
+    uint8_t getAge() {
+        return ageNT >> 2;
+    }
+
+    uint8_t getNodeType() {
+        return ageNT & 0x3;
     }
 
     ~HashEntry() {}
@@ -65,7 +65,6 @@ public:
 };
 
 class Hash {
-
 private:
     HashNode **table;
     uint64_t size;
