@@ -3,7 +3,7 @@ CFLAGS      = -Wall -ansi -pedantic -ggdb -std=c++0x -g -O3
 LDFLAGS     =
 OBJS        = board.o common.o hash.o search.o
 
-ifneq ($(comp),mingw)
+ifeq ($(UNAME), Linux)
 	LDFLAGS += -lpthread
 endif
 
