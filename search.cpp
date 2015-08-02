@@ -243,16 +243,19 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                     else if (nodeType == PV_NODE)
                         return hashScore;
                 }
+                if (entry->depth >= 2 && entry->depth + 2 >= depth) {
+                    // If the hash score is unusable and node is not a predicted
+                    // all-node, we can search the hash move first.
+                    nodes++;
+                    score = -PVS(copy, color^1, depth-1, -beta, -alpha);
 
-                // If the hash score is unusable and node is not a predicted
-                // all-node, we can search the hash move first.
-                nodes++;
-                score = -PVS(copy, color^1, depth-1, -beta, -alpha);
-
-                if (score >= beta)
-                    return beta;
-                if (score > alpha)
-                    alpha = score;
+                    if (score >= beta)
+                        return beta;
+                    if (score > alpha)
+                        alpha = score;
+                }
+                else
+                    hashed = NULL_MOVE;
             }
             else {
                 cerr << "Type-1 TT error on " << moveToString(hashed) << endl;
@@ -266,9 +269,9 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // null move pruning
     // only if doing a null move does not leave player in check
     // Possibly remove staticEval >= beta condition?
-    if (depth >= 2 && !isPVNode && staticEval >= beta && !isInCheck) {
+    if (depth >= 3 && !isPVNode && staticEval >= beta && !isInCheck) {
         int reduction;
-        if (depth >= 6)
+        if (depth >= 8)
             reduction = 3;
         else if (depth >= 5)
             reduction = 2;
@@ -290,7 +293,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
     ScoreList scores;
     // Internal iterative deepening, SEE, and MVV/LVA move ordering
-    if (depth >= 9 && nodeType != ALL_NODE) {
+    if (depth >= 8 && nodeType != ALL_NODE) {
         sortSearch(&b, legalMoves, scores, 2);
     }
     else if ((depth >= 4 && nodeType != ALL_NODE) || (depth >= 3 && isPVNode)) {
@@ -334,11 +337,11 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
         nodes++;
         // Futility-esque reduction using SEE
-        if(depth <= 2 && !isPVNode && staticEval <= alpha && !isInCheck && b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
-            reduction = 1;
+        //if(depth <= 2 && !isPVNode && staticEval <= alpha && !isInCheck && b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
+        //    reduction = 1;
         // Late move reduction
         // Possibly remove TT info dependency?
-        else if((nodeType == ALL_NODE || nodeType == NO_NODE_INFO) && staticEval <= alpha && !isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && i > 2 && alpha <= prevAlpha) {
+        if(/*(nodeType == ALL_NODE || nodeType == NO_NODE_INFO) && */!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && i > 2 && alpha <= prevAlpha) {
             if (depth >= 6)
                 reduction = 2;
             else
@@ -359,8 +362,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         
         if (score >= beta) {
             // Hash moves that caused a beta cutoff
-            if (depth >= 2)
-                transpositionTable.add(b, depth, m, beta, CUT_NODE, searchGen);
+            transpositionTable.add(b, depth, m, beta, CUT_NODE, searchGen);
             return beta;
         }
         if (score > alpha) {
@@ -391,7 +393,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     }
     // Record all-nodes. The upper bound score can save a lot of search time.
     // No best move can be recorded in a fail-hard framework.
-    else if (depth >= 2 && alpha <= prevAlpha) {
+    else if (alpha <= prevAlpha) {
         transpositionTable.add(b, depth, NULL_MOVE, alpha, ALL_NODE, searchGen);
     }
 

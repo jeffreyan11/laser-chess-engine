@@ -53,7 +53,8 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
             node->slot2.setEntry(b, depth, m, score, nodeType, searchGen);
         }
         // Always keep PV nodes
-        else if (node->slot1.nodeType == PV_NODE && node->slot2.nodeType == PV_NODE) {
+        else if (node->slot1.age == searchGen && node->slot1.nodeType == PV_NODE
+              && node->slot2.age == searchGen && node->slot2.nodeType == PV_NODE) {
             return;
         }
         // and replace cut/all nodes with PV nodes
@@ -71,13 +72,16 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
         // depth entry with the new entry if the new entry's depth is higher
         else {
             HashEntry *toReplace = NULL;
-            int score1 = 2*(node->slot1.age != searchGen) + (depth >= node->slot1.depth);
-            int score2 = 2*(node->slot2.age != searchGen) + (depth >= node->slot2.depth);
+            //int score1 = 4*(node->slot1.age != searchGen) + depth - node->slot1.depth;
+            //int score2 = 4*(node->slot2.age != searchGen) + depth - node->slot2.depth;
+            // This should underflow correctly according to the C++11 standards?
+            int score1 = 4*(searchGen - node->slot1.age) + depth - node->slot1.depth;
+            int score2 = 4*(searchGen - node->slot2.age) + depth - node->slot2.depth;
             if (score1 >= score2)
                 toReplace = &(node->slot1);
             else
                 toReplace = &(node->slot2);
-            if (score1 == 0 && score2 == 0)
+            if (score1 <= 0 && score2 <= 0)
                 toReplace = NULL;
 
             if (toReplace != NULL) {

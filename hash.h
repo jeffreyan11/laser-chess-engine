@@ -16,7 +16,7 @@ struct HashEntry {
     Move m;
     int16_t score;
     uint8_t age;
-    uint8_t depth;
+    int8_t depth;
     uint8_t nodeType;
 
     HashEntry() {
@@ -33,7 +33,7 @@ struct HashEntry {
         m = _m;
         score = (int16_t) _score;
         age = searchGen;
-        depth = (uint8_t) (_depth);
+        depth = (int8_t) (_depth);
         nodeType = (uint8_t) (_nodeType);
     }
 
