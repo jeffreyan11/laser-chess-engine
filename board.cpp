@@ -1380,30 +1380,13 @@ int Board::evaluate() {
     value += midgamePSTVal * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
     value += endgamePSTVal * egFactor / EG_FACTOR_RES;
 
-    // Consider attacks on squares near king
+    // Consider attacked squares near king
     uint64_t wksq = getKingAttacks(WHITE);
     uint64_t bksq = getKingAttacks(BLACK);
-    uint64_t bAtt = getBPawnLeftCaptures(pieces[BLACK][PAWNS])
-                  | getBPawnRightCaptures(pieces[BLACK][PAWNS])
-                  | getKnightMoves(pieces[BLACK][KNIGHTS])
-                  | getBishopMoves(pieces[BLACK][BISHOPS])
-                  | getRookMoves(pieces[BLACK][ROOKS])
-                  | getQueenMoves(pieces[BLACK][QUEENS]);
-    uint64_t wAtt = getWPawnLeftCaptures(pieces[WHITE][PAWNS])
-                  | getWPawnRightCaptures(pieces[WHITE][PAWNS])
-                  | getKnightMoves(pieces[WHITE][KNIGHTS])
-                  | getBishopMoves(pieces[WHITE][BISHOPS])
-                  | getRookMoves(pieces[WHITE][ROOKS])
-                  | getQueenMoves(pieces[WHITE][QUEENS]);
     
-    value -= 25 * count(wksq & bAtt) * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
-    value += 25 * count(bksq & wAtt) * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
-    
-    uint64_t wpawnShield = (wksq | pieces[WHITE][KINGS]) << 8;
-    uint64_t bpawnShield = (bksq | pieces[BLACK][KINGS]) >> 8;
-    // Have only pawns on ABC, FGH files count towards the pawn shield
-    value += (30 * egFactor / EG_FACTOR_RES) * count(wpawnShield & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-    value -= (30 * egFactor / EG_FACTOR_RES) * count(bpawnShield & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    // Pawn shield bonus (files ABC, FGH)
+    value += (25 * egFactor / EG_FACTOR_RES) * count(wksq & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    value -= (25 * egFactor / EG_FACTOR_RES) * count(bksq & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
     
     value += getPseudoMobility(WHITE);
     value -= getPseudoMobility(BLACK);
@@ -1420,7 +1403,7 @@ int Board::evaluate() {
     notbp = ~notbp;
     uint64_t tempwp = pieces[WHITE][PAWNS];
     uint64_t tempbp = pieces[BLACK][PAWNS];
-    // Flood fill to simulate pushing the pawn to the 8th (or 1st) rank
+    // Flood fill to simulate pushing the pawn to the 7th (or 2nd) rank
     for(int i = 0; i < 6; i++) {
         tempwp |= (tempwp << 8) & notbp;
         tempbp |= (tempbp >> 8) & notwp;
