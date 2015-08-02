@@ -52,21 +52,23 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
             node->slot2.clearEntry();
             node->slot2.setEntry(b, depth, m, score, nodeType, searchGen);
         }
-        // Always keep PV nodes
+        // Replace cut/all nodes with PV nodes
+        else if (nodeType == PV_NODE) {
+            HashEntry *toReplace = NULL;
+            int score1 = 4*(searchGen - node->slot1.age) - 4*(node->slot1.nodeType == PV_NODE) + depth - node->slot1.depth;
+            int score2 = 4*(searchGen - node->slot2.age) - 4*(node->slot2.nodeType == PV_NODE) + depth - node->slot2.depth;
+            if (score1 >= score2)
+                toReplace = &(node->slot1);
+            else
+                toReplace = &(node->slot2);
+
+            toReplace->clearEntry();
+            toReplace->setEntry(b, depth, m, score, nodeType, searchGen);
+        }
+        // Always keep PV nodes if possible
         else if (node->slot1.age == searchGen && node->slot1.nodeType == PV_NODE
               && node->slot2.age == searchGen && node->slot2.nodeType == PV_NODE) {
             return;
-        }
-        // and replace cut/all nodes with PV nodes
-        else if (nodeType == PV_NODE) {
-            if (node->slot1.nodeType != PV_NODE) {
-                node->slot1.clearEntry();
-                node->slot1.setEntry(b, depth, m, score, nodeType, searchGen);
-            }
-            else {
-                node->slot2.clearEntry();
-                node->slot2.setEntry(b, depth, m, score, nodeType, searchGen);
-            }
         }
         // Otherwise, replace an entry from a previous search space, or otherwise the lowest
         // depth entry with the new entry if the new entry's depth is higher
@@ -89,25 +91,6 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
                 toReplace->setEntry(b, depth, m, score, nodeType, searchGen);
             }
             else return;
-/*
-            if (node->slot1->age != searchGen) {
-                delete node->slot1;
-                node->slot1.setEntry(b, depth, m, score, nodeType, searchGen);
-            }
-            else if (node->slot2->age != searchGen) {
-                delete node->slot2;
-                node->slot2.setEntry(b, depth, m, score, nodeType, searchGen);
-            }
-            else if ((depth >= node->slot1->depth) || (node->slot1->depth <= 2)) {
-                delete node->slot1;
-                node->slot1.setEntry(b, depth, m, score, nodeType, searchGen);
-            }
-            else if ((depth >= node->slot2->depth) || (node->slot2->depth <= 2)) {
-                delete node->slot2;
-                node->slot2.setEntry(b, depth, m, score, nodeType, searchGen);
-            }
-            else return;
-            */
         }
         
         #if HASH_DEBUG_OUTPUT

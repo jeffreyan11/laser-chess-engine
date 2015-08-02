@@ -1,6 +1,18 @@
 #include <chrono>
 #include "search.h"
 
+struct SearchParameters {
+    int nullMoveCount;
+
+    SearchParameters() {
+        reset();
+    }
+
+    void reset() {
+        nullMoveCount = 0;
+    }
+};
+
 struct SearchStatistics {
     uint64_t hashProbes;
     uint64_t hashHits;
@@ -16,18 +28,7 @@ struct SearchStatistics {
     uint64_t qsFirstFailHighs;
 
     SearchStatistics() {
-        hashProbes = 0;
-        hashHits = 0;
-        hashScoreCuts = 0;
-        hashMoveAttempts = 0;
-        hashMoveCuts = 0;
-        searchSpaces = 0;
-        failHighs = 0;
-        firstFailHighs = 0;
-        qsNodes = 0;
-        qsSearchSpaces = 0;
-        qsFailHighs = 0;
-        qsFirstFailHighs = 0;
+        reset();
     }
 
     void reset() {
@@ -51,6 +52,7 @@ int rootDepth;
 uint64_t nodes;
 uint8_t searchGen;
 extern bool isStop;
+SearchParameters searchParams;
 SearchStatistics searchStats;
 
 int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
@@ -68,10 +70,10 @@ string retrievePV(Board *b, Move bestMove, int plies);
 void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     using namespace std::chrono;
     nodes = 0;
+    searchParams.reset();
     searchStats.reset();
     searchGen = (uint8_t) (b->getMoveNumber());
 
-    // test if only 1 legal move
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
     *bestMove = legalMoves.get(0);
@@ -165,7 +167,7 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
         int &bestScore, bool &isMate) {
     int color = b->getPlayerToMove();
     
-    unsigned int tempMove = 0;
+    unsigned int tempMove = NULL_MOVE;
     int score = -MATE_SCORE;
     int alpha = -MATE_SCORE;
     int beta = MATE_SCORE;
@@ -180,8 +182,11 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     }*/
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
-        if (isStop)
+        if (isStop) {
+            if (tempMove != NULL_MOVE)
+                return tempMove;
             return -1;
+        }
         Board copy = b->staticCopy();
         copy.doMove(legalMoves.get(i), color);
         nodes++;
@@ -289,7 +294,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // null move pruning
     // only if doing a null move does not leave player in check
     // Possibly remove staticEval >= beta condition?
-    if (depth >= 3 && !isPVNode && staticEval >= beta && !isInCheck) {
+    if (depth >= 3 && !isPVNode && searchParams.nullMoveCount < 2 && staticEval >= beta && !isInCheck) {
         int reduction;
         if (depth >= 8)
             reduction = 3;
@@ -299,14 +304,17 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             reduction = 1;
 
         b.doMove(NULL_MOVE, color);
+        searchParams.nullMoveCount++;
         int nullScore = -PVS(b, color^1, depth-1-reduction, -beta, -alpha);
         if (nullScore >= beta) {
             b.doMove(NULL_MOVE, color^1);
+            searchParams.nullMoveCount--;
             return beta;
         }
         
         // Undo the null move
         b.doMove(NULL_MOVE, color^1);
+        searchParams.nullMoveCount--;
     }
 
     MoveList legalMoves = b.getAllPseudoLegalMoves(color);
@@ -349,9 +357,11 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     score = -INFTY;
     searchStats.searchSpaces++;
     for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
-            m = nextMove(legalMoves, scores, ++i)) {
+              m = nextMove(legalMoves, scores, ++i)) {
         if (m == hashed)
             continue;
+        if (isStop)
+            return -INFTY;
 
         reduction = 0;
         Board copy = b.staticCopy();
@@ -462,7 +472,7 @@ int probeTT(Board &b, int color, Move &hashed, uint8_t &nodeType, int depth, int
                         return hashScore;
                     }
                 }
-                if (entry->depth >= 2 && entry->depth + 2 >= depth) {
+                if ((entry->depth >= 2 && entry->depth + 2 >= depth) || nodeType == PV_NODE) {
                     searchStats.hashMoveAttempts++;
                     // If the hash score is unusable and node is not a predicted
                     // all-node, we can search the hash move first.
@@ -701,6 +711,8 @@ string retrievePV(Board *b, Move bestMove, int plies) {
     HashEntry *entry = transpositionTable.get(copy);
     int lineLength = 1;
     while (entry != NULL && lineLength < plies) {
+        if (entry->m == NULL_MOVE)
+            break;
         pvStr += moveToString(entry->m);
         pvStr += " ";
         copy.doMove(entry->m, copy.getPlayerToMove());
