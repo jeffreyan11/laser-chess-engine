@@ -61,6 +61,7 @@ public:
     MoveList getPseudoLegalCaptures(int color, bool includePromotions);
     MoveList getPseudoLegalPromotions(int color);
     MoveList getPseudoLegalChecks(int color);
+    MoveList getPseudoLegalCheckEscapes(int color);
 
     uint64_t getXRays(int color, int sq, int blockerColor, uint64_t blocker);
     uint64_t getAttackMap(int color, int sq);

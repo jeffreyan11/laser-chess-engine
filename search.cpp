@@ -638,6 +638,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
  */
 int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
     MoveList legalMoves = b.getAllPseudoLegalMoves(color);
+    //MoveList legalMoves = b.getPseudoLegalCheckEscapes(color);
     int score = -INFTY;
 
     searchStats.qsSearchSpaces++;

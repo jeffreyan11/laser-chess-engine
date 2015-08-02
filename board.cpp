@@ -1034,6 +1034,102 @@ MoveList Board::getPseudoLegalChecks(int color) {
     return checks;
 }
 
+MoveList Board::getPseudoLegalCheckEscapes(int color) {
+    MoveList captures, blocks;
+
+    int kingSq = bitScanForward(pieces[color][KINGS]);
+    uint64_t otherPieces = (color == WHITE) ? blackPieces : whitePieces;
+    uint64_t attackMap = getAttackMap(color^1, kingSq);
+    otherPieces &= attackMap;
+
+    if (count(otherPieces) >= 2) {
+        uint64_t kingSqs = getKingSquares(kingSq);
+
+        addMovesToList(captures, KINGS, kingSq, kingSqs, (color == WHITE) ? blackPieces : whitePieces);
+        return captures;
+    }
+
+    addPawnMovesToList(blocks, color);
+    addPawnCapturesToList(captures, color, true);
+
+    uint64_t knights = pieces[color][KNIGHTS];
+    while (knights) {
+        int stsq = bitScanForward(knights);
+        knights &= knights-1;
+        uint64_t nSq = getKnightSquares(stsq);
+
+        addQuietsToList(blocks, KNIGHTS, stsq, nSq);
+
+        uint64_t legal = nSq & otherPieces;
+        while (legal) {
+            int endsq = bitScanForward(legal);
+            legal &= legal-1;
+            captures.add(encodeMove(stsq, endsq, KNIGHTS, true));
+        }
+    }
+
+    uint64_t bishops = pieces[color][BISHOPS];
+    while (bishops) {
+        int stsq = bitScanForward(bishops);
+        bishops &= bishops-1;
+        uint64_t bSq = getBishopSquares(stsq);
+
+        addQuietsToList(blocks, BISHOPS, stsq, bSq);
+
+        uint64_t legal = bSq & otherPieces;
+        while (legal) {
+            int endsq = bitScanForward(legal);
+            legal &= legal-1;
+            captures.add(encodeMove(stsq, endsq, BISHOPS, true));
+        }
+    }
+
+    uint64_t rooks = pieces[color][ROOKS];
+    while (rooks) {
+        int stsq = bitScanForward(rooks);
+        rooks &= rooks-1;
+        uint64_t rSq = getRookSquares(stsq);
+
+        addQuietsToList(blocks, ROOKS, stsq, rSq);
+
+        uint64_t legal = rSq & otherPieces;
+        while (legal) {
+            int endsq = bitScanForward(legal);
+            legal &= legal-1;
+            captures.add(encodeMove(stsq, endsq, ROOKS, true));
+        }
+    }
+
+    uint64_t queens = pieces[color][QUEENS];
+    while (queens) {
+        int stsq = bitScanForward(queens);
+        queens &= queens-1;
+        uint64_t qSq = getQueenSquares(stsq);
+
+        addQuietsToList(blocks, QUEENS, stsq, qSq);
+
+        uint64_t legal = qSq & otherPieces;
+        while (legal) {
+            int endsq = bitScanForward(legal);
+            legal &= legal-1;
+            captures.add(encodeMove(stsq, endsq, QUEENS, true));
+        }
+    }
+
+    uint64_t kings = pieces[color][KINGS];
+    int stsqK = bitScanForward(kings);
+    uint64_t kingSqs = getKingSquares(stsqK);
+
+    addMovesToList(blocks, captures, KINGS, stsqK, kingSqs, (color == WHITE) ? blackPieces : whitePieces);
+
+    // Put captures before blocking moves
+    for (unsigned int i = 0; i < blocks.size(); i++) {
+        captures.add(blocks.get(i));
+    }
+
+    return captures;
+}
+
 //------------------------------------------------------------------------------
 //---------------------------Move Generation Helpers----------------------------
 //------------------------------------------------------------------------------
@@ -1064,7 +1160,7 @@ void Board::addPawnMovesToList(MoveList &quiets, int color) {
     }
 
     pLegal = (color == WHITE) ? getWPawnDoubleMoves(pawns)
-                             : getBPawnDoubleMoves(pawns);
+                              : getBPawnDoubleMoves(pawns);
     while (pLegal) {
         int endsq = bitScanForward(pLegal);
         pLegal &= pLegal - 1;
