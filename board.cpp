@@ -1250,10 +1250,10 @@ void Board::addPromotionsToList(MoveList &moves, int stSq, int endSq, bool isCap
     mr = setPromotion(mr, ROOKS);
     Move mq = encodeMove(stSq, endSq, PAWNS, isCapture);
     mq = setPromotion(mq, QUEENS);
-    moves.add(mk);
-    moves.add(mb);
-    moves.add(mr);
     moves.add(mq);
+    moves.add(mr);
+    moves.add(mb);
+    moves.add(mk);
 }
 
 

@@ -187,6 +187,8 @@ public:
 
     int get(int i) { return scores[i]; }
 
+    void set(int i, int s) { scores[i] = s; }
+
     void swap(int i, int j) {
         int temp = scores[i];
         scores[i] = scores[j];

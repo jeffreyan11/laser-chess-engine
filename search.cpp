@@ -55,14 +55,15 @@ extern bool isStop;
 SearchParameters searchParams;
 SearchStatistics searchStats;
 
-int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
+unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int &bestScore, bool &isMate);
-void sortSearch(Board *b, MoveList &pseudoLegalMoves, ScoreList &scores, int depth);
+unsigned int getBestMoveForSort(Board &b, MoveList &legalMoves, int depth);
+void sortSearch(Board &b, MoveList &pseudoLegalMoves, ScoreList &scores, int depth);
 int PVS(Board &b, int color, int depth, int alpha, int beta);
 int quiescence(Board &b, int color, int plies, int alpha, int beta);
 int checkQuiescence(Board &b, int color, int plies, int alpha, int beta);
 
-int probeTT(Board &b, int color, Move &hashed, uint8_t &nodeType, int depth, int alpha, int beta);
+int probeTT(Board &b, int color, Move &hashed, uint8_t &nodeType, int depth, int &alpha, int beta);
 
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 string retrievePV(Board *b, Move bestMove, int plies);
@@ -163,11 +164,11 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 }
 
 // returns index of best move in legalMoves
-int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
+unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
         int &bestScore, bool &isMate) {
     int color = b->getPlayerToMove();
     
-    unsigned int tempMove = NULL_MOVE;
+    unsigned int tempMove = -1;
     int score = -MATE_SCORE;
     int alpha = -MATE_SCORE;
     int beta = MATE_SCORE;
@@ -183,9 +184,7 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         if (isStop) {
-            if (tempMove != NULL_MOVE)
-                return tempMove;
-            return -1;
+            return tempMove;
         }
         Board copy = b->staticCopy();
         copy.doMove(legalMoves.get(i), color);
@@ -234,11 +233,11 @@ int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     return tempMove;
 }
 
-void sortSearch(Board *b, MoveList &legalMoves, ScoreList &scores, int depth) {
-    int color = b->getPlayerToMove();
+void sortSearch(Board &b, MoveList &legalMoves, ScoreList &scores, int depth) {
+    int color = b.getPlayerToMove();
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
-        Board copy = b->staticCopy();
+        Board copy = b.staticCopy();
         if(!copy.doPseudoLegalMove(legalMoves.get(i), color)) {
             legalMoves.remove(i);
             i--;
@@ -247,6 +246,37 @@ void sortSearch(Board *b, MoveList &legalMoves, ScoreList &scores, int depth) {
         
         scores.add(-PVS(copy, color^1, depth-1, -MATE_SCORE, MATE_SCORE));
     }
+}
+
+unsigned int getBestMoveForSort(Board &b, MoveList &legalMoves, int depth) {
+    int color = b.getPlayerToMove();
+    
+    unsigned int tempMove = -1;
+    int score = -MATE_SCORE;
+    int alpha = -MATE_SCORE;
+    int beta = MATE_SCORE;
+    
+    for (unsigned int i = 0; i < legalMoves.size(); i++) {
+        Board copy = b.staticCopy();
+        copy.doMove(legalMoves.get(i), color);
+        
+        if (i != 0) {
+            score = -PVS(copy, color^1, depth-1, -alpha-1, -alpha);
+            if (alpha < score && score < beta) {
+                score = -PVS(copy, color^1, depth-1, -beta, -alpha);
+            }
+        }
+        else {
+            score = -PVS(copy, color^1, depth-1, -beta, -alpha);
+        }
+        
+        if (score > alpha) {
+            alpha = score;
+            tempMove = i;
+        }
+    }
+
+    return tempMove;
 }
 
 //------------------------------------------------------------------------------
@@ -321,11 +351,24 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
     ScoreList scores;
     // Internal iterative deepening, SEE, and MVV/LVA move ordering
-    if (depth >= 8 && nodeType != ALL_NODE) {
-        sortSearch(&b, legalMoves, scores, 2);
+    if (depth >= 8 && isPVNode && hashed == NULL_MOVE) {
+        sortSearch(b, legalMoves, scores, 2);
     }
-    else if ((depth >= 4 && nodeType != ALL_NODE) || (depth >= 3 && isPVNode)) {
-        sortSearch(&b, legalMoves, scores, 1);
+    else if (depth >= 3 && isPVNode && hashed == NULL_MOVE) {
+        sortSearch(b, legalMoves, scores, 1);
+    }
+    else if (depth >= 4 && hashed == NULL_MOVE) {
+        unsigned int bestIndex = getBestMoveForSort(b, legalMoves, (depth >= 9) ? 2 : 1);
+        unsigned int index;
+        for (index = 0; index < legalMoves.size(); index++)
+            if (!isCapture(legalMoves.get(index)))
+                break;
+        for (unsigned int i = 0; i < index; i++) {
+            scores.add(b.getSEE(color, getEndSq(legalMoves.get(i))));
+        }
+        for (unsigned int i = index; i < legalMoves.size(); i++)
+            scores.add(-MATE_SCORE);
+        scores.set(bestIndex, scores.get(bestIndex) + (1 << 16));
     }
     else if (depth >= 2) { // sort by SEE
         unsigned int index;
@@ -349,6 +392,13 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         for (unsigned int i = index; i < legalMoves.size(); i++)
             scores.add(-MATE_SCORE);
     }
+    /*
+    if (depth >= 8 && isPVNode && hashed == NULL_MOVE) {
+        sortSearch(b, legalMoves, scores, 2);
+    }
+    else if (((depth >= 4 && nodeType != ALL_NODE) || (depth >= 3 && isPVNode)) && hashed == NULL_MOVE) {
+        sortSearch(b, legalMoves, scores, 1);
+    }*/
 
     Move toHash = NULL_MOVE;
     int reduction = 0;
@@ -374,7 +424,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         //    reduction = 1;
         // Late move reduction
         // Possibly remove TT info dependency?
-        if(/*(nodeType == ALL_NODE || nodeType == NO_NODE_INFO) && */!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && i > 2 && alpha <= prevAlpha) {
+        if(/*(nodeType == ALL_NODE || nodeType == NO_NODE_INFO) && */!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && j > 2 && alpha <= prevAlpha) {
             if (depth >= 6)
                 reduction = 2;
             else
@@ -438,7 +488,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 }
 
 // See if a hash move exists.
-int probeTT(Board &b, int color, Move &hashed, uint8_t &nodeType, int depth, int alpha, int beta) {
+int probeTT(Board &b, int color, Move &hashed, uint8_t &nodeType, int depth, int &alpha, int beta) {
     HashEntry *entry = transpositionTable.get(b);
     if (entry != NULL) {
         searchStats.hashHits++;
@@ -472,7 +522,7 @@ int probeTT(Board &b, int color, Move &hashed, uint8_t &nodeType, int depth, int
                         return hashScore;
                     }
                 }
-                if ((entry->depth >= 2 && entry->depth + 2 >= depth) || nodeType == PV_NODE) {
+                if ((entry->depth >= 2 && entry->depth + 1 >= depth)/* || nodeType == PV_NODE*/) {
                     searchStats.hashMoveAttempts++;
                     // If the hash score is unusable and node is not a predicted
                     // all-node, we can search the hash move first.
