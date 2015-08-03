@@ -3,6 +3,7 @@
 
 struct SearchParameters {
     int nullMoveCount;
+    Move killers[MAX_DEPTH][2];
 
     SearchParameters() {
         reset();
@@ -10,6 +11,10 @@ struct SearchParameters {
 
     void reset() {
         nullMoveCount = 0;
+        for (int i = 0; i < MAX_DEPTH; i++) {
+            killers[i][0] = NULL_MOVE;
+            killers[i][1] = NULL_MOVE;
+        }
     }
 };
 
@@ -167,6 +172,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
         int &bestScore, bool &isMate) {
     int color = b->getPlayerToMove();
+    searchParams.reset();
     
     unsigned int tempMove = -1;
     int score = -MATE_SCORE;
@@ -312,6 +318,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     uint8_t nodeType = NO_NODE_INFO;
     Move hashed = NULL_MOVE;
 
+    // Probe the hash table for a match/cutoff
     if (!isPVNode) {
         searchStats.hashProbes++;
         score = probeTT(b, color, hashed, nodeType, depth, alpha, beta);
@@ -348,13 +355,21 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     }
 
     MoveList legalMoves = b.getAllPseudoLegalMoves(color);
+    if (hashed != NULL_MOVE) {
+        for (unsigned int i = 0; i < legalMoves.size(); i++) {
+            if (legalMoves.get(i) == hashed) {
+                legalMoves.remove(i);
+                break;
+            }
+        }
+    }
 
     ScoreList scores;
     // Internal iterative deepening, SEE, and MVV/LVA move ordering
-    if (depth >= 8 && isPVNode && hashed == NULL_MOVE) {
+    if (depth >= 8 && isPVNode) {
         sortSearch(b, legalMoves, scores, 2);
     }
-    else if (depth >= 3 && isPVNode && hashed == NULL_MOVE) {
+    else if (depth >= 4 && isPVNode) {
         sortSearch(b, legalMoves, scores, 1);
     }
     else if (depth >= 4 && hashed == NULL_MOVE) {
@@ -366,9 +381,15 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         for (unsigned int i = 0; i < index; i++) {
             scores.add(b.getSEE(color, getEndSq(legalMoves.get(i))));
         }
-        for (unsigned int i = index; i < legalMoves.size(); i++)
-            scores.add(-MATE_SCORE);
-        scores.set(bestIndex, scores.get(bestIndex) + (1 << 16));
+        for (unsigned int i = index; i < legalMoves.size(); i++) {
+            if (legalMoves.get(i) == searchParams.killers[depth][0])
+                scores.add(0);
+            else if (legalMoves.get(i) == searchParams.killers[depth][1])
+                scores.add(-1);
+            else
+                scores.add(-MATE_SCORE);
+        }
+        scores.set(bestIndex, (1 << 15));
     }
     else if (depth >= 2) { // sort by SEE
         unsigned int index;
@@ -378,8 +399,14 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         for (unsigned int i = 0; i < index; i++) {
             scores.add(b.getSEE(color, getEndSq(legalMoves.get(i))));
         }
-        for (unsigned int i = index; i < legalMoves.size(); i++)
-            scores.add(-MATE_SCORE);
+        for (unsigned int i = index; i < legalMoves.size(); i++) {
+            if (legalMoves.get(i) == searchParams.killers[depth][0])
+                scores.add(0);
+            else if (legalMoves.get(i) == searchParams.killers[depth][1])
+                scores.add(-1);
+            else
+                scores.add(-MATE_SCORE);
+        }
     }
     else { // MVV/LVA
         unsigned int index;
@@ -388,17 +415,18 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                 break;
         for (unsigned int i = 0; i < index; i++) {
             scores.add(b.getMVVLVAScore(color, legalMoves.get(i)));
+            if (b.getExchangeScore(color, legalMoves.get(i)) < 0)
+                scores.set(i, scores.get(i) - 64);
         }
-        for (unsigned int i = index; i < legalMoves.size(); i++)
-            scores.add(-MATE_SCORE);
+        for (unsigned int i = index; i < legalMoves.size(); i++) {
+            if (legalMoves.get(i) == searchParams.killers[depth][0])
+                scores.add(0);
+            else if (legalMoves.get(i) == searchParams.killers[depth][1])
+                scores.add(-1);
+            else
+                scores.add(-MATE_SCORE);
+        }
     }
-    /*
-    if (depth >= 8 && isPVNode && hashed == NULL_MOVE) {
-        sortSearch(b, legalMoves, scores, 2);
-    }
-    else if (((depth >= 4 && nodeType != ALL_NODE) || (depth >= 3 && isPVNode)) && hashed == NULL_MOVE) {
-        sortSearch(b, legalMoves, scores, 1);
-    }*/
 
     Move toHash = NULL_MOVE;
     int reduction = 0;
@@ -408,8 +436,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     searchStats.searchSpaces++;
     for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
               m = nextMove(legalMoves, scores, ++i)) {
-        if (m == hashed)
-            continue;
+        //if (m == hashed)
+        //    continue;
         if (isStop)
             return -INFTY;
 
@@ -423,8 +451,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         //if(depth <= 2 && !isPVNode && staticEval <= alpha && !isInCheck && b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
         //    reduction = 1;
         // Late move reduction
-        // Possibly remove TT info dependency?
-        if(/*(nodeType == ALL_NODE || nodeType == NO_NODE_INFO) && */!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && j > 2 && alpha <= prevAlpha) {
+        if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && j > 2 && alpha <= prevAlpha) {
             if (depth >= 6)
                 reduction = 2;
             else
@@ -449,6 +476,12 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                 searchStats.firstFailHighs++;
             // Hash moves that caused a beta cutoff
             transpositionTable.add(b, depth, m, beta, CUT_NODE, searchGen);
+            if (!isCapture(m)) {
+                if (m != searchParams.killers[depth][0]) {
+                    searchParams.killers[depth][1] = searchParams.killers[depth][0];
+                    searchParams.killers[depth][0] = m;
+                }
+            }
             return beta;
         }
         if (score > alpha) {
