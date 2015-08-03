@@ -53,22 +53,10 @@ int count(uint64_t bb) {
 
 string moveToString(Move m) {
     char startFile = 'a' + (getStartSq(m) & 7);
-    string startRank = to_string((getStartSq(m) >> 3) + 1);
+    char startRank = '1' + (getStartSq(m) >> 3);
 	char endFile = 'a' + (getEndSq(m) & 7);
-	string endRank = to_string((getEndSq(m) >> 3) + 1);
-    string moveStr = startFile + startRank + endFile + endRank;
-    
-    int promotion = getPromotion(m);
-    if (promotion) {
-        if (promotion == KNIGHTS)
-            moveStr += 'n';
-        if (promotion == BISHOPS)
-            moveStr += 'b';
-        if (promotion == ROOKS)
-            moveStr += 'r';
-        if (promotion == QUEENS)
-            moveStr += 'q';
-    }
-    
+	char endRank = '1' + (getEndSq(m) >> 3);
+    string moveStr = {startFile, startRank, endFile, endRank};
+    if (getPromotion(m)) moveStr += " nbrq"[getPromotion(m)];
     return moveStr;
 }

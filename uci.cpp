@@ -45,20 +45,14 @@ int main() {
             cout << "uciok" << endl;
         }
         
-        if (input == "isready") {
-            // return "readyok" when all initialization of values is done
-            // must return "readyok" even when searching
-            cout << "readyok" << endl;
-        }
+        if (input == "isready") cout << "readyok" << endl;
         
         if (input == "ucinewgame") {
             board = fenToBoard(STARTPOS);
             clearTranspositionTable();
         }
         
-        if (input.substr(0, 8) == "position") {
-            setPosition(input, inputVector, board);
-        }
+        if (input.substr(0, 8) == "position") setPosition(input, inputVector, board);
         
         if (input.substr(0, 2) == "go" && isStop) {
             int mode = DEPTH, value = 1;
@@ -131,6 +125,8 @@ int main() {
 
             cerr << time_span.count() << endl;
         }
+        
+        // According to UCI protocol, inputs that do not make sense are ignored
     }
 }
 
@@ -141,8 +137,14 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
         pos = STARTPOS;
     
     if (input.find("fen") != string::npos) {
-        pos = inputVector.at(2) + ' ' + inputVector.at(3) + ' ' + inputVector.at(4) + ' '
+        if (inputVector.size() < 7 || inputVector.at(6) == "moves") {
+            pos = inputVector.at(2) + ' ' + inputVector.at(3) + ' ' + inputVector.at(4) + ' '
+                + inputVector.at(5) + " 0 1";
+        }
+        else {
+            pos = inputVector.at(2) + ' ' + inputVector.at(3) + ' ' + inputVector.at(4) + ' '
                 + inputVector.at(5) + ' ' + inputVector.at(6) + ' ' + inputVector.at(7);
+        }
     }
     
     board = fenToBoard(pos);
@@ -154,43 +156,26 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
         for (unsigned i = 0; i < moveVector.size(); i++) {
             // moveString contains the move in long algebraic notation
             string moveString = moveVector.at(i);
+            
             char startFile = moveString.at(0);
             char startRank = moveString.at(1);
             char endFile = moveString.at(2);
             char endRank = moveString.at(3);
+            int startSq = 8 * (startRank - '1') + (startFile - 'a');
+            int endSq = 8 * (endRank - '1') + (endFile - 'a');
             
-            int startSq = 8 * (startRank - '0' - 1) + (startFile - 'a');
-            int endSq = 8 * (endRank - '0' - 1) + (endFile - 'a');
             int *mailbox = board.getMailbox();
-
             int piece = mailbox[startSq] % 6;
-            
             bool isCapture = ((mailbox[endSq] != -1)
-                    || (piece == PAWNS && abs(abs(startSq - endSq) - 8) == 1));
-            bool isCastle = (piece == KINGS && abs(endSq - startSq) == 2);
+                    || (piece == PAWNS && ((startSq - endSq) & 1)));
             delete[] mailbox;
             
-            int promotion = 0;
-            
-            if (moveString.length() == 5) {
-                switch (moveString.at(4)) {
-                    case 'n':
-                        promotion = KNIGHTS;
-                        break;
-                    case 'b':
-                        promotion = BISHOPS;
-                        break;
-                    case 'r':
-                        promotion = ROOKS;
-                        break;
-                    case 'q':
-                        promotion = QUEENS;
-                        break;
-                }
-            }
+            bool isCastle = (piece == KINGS && abs(endSq - startSq) == 2);
+            string promotionString = " nbrq";
+            int promotion = (moveString.length() == 5)
+                ? promotionString.find(moveString.at(4)) : 0;
             
             Move m = encodeMove(startSq, endSq, piece, isCapture);
-            
             m = setCastle(m, isCastle);
             m = setPromotion(m, promotion);
             
@@ -215,61 +200,20 @@ Board fenToBoard(string s) {
     vector<string> rows = split(components.at(0), '/');
     int mailbox[64];
     int sqCounter = 0;
+    string pieceString = "PNBRQKpnbrqk";
     
     // iterate through rows backwards (because mailbox goes a1 -> h8), converting into mailbox format
     for (int elem = 7; elem >= 0; elem--) {
         string rowAtElem = rows.at(elem);
         
         for (unsigned col = 0; col < rowAtElem.length(); col++) {
-            // determine what piece is on rowAtElem.at(col) and fill out if not blank
-            switch (rowAtElem.at(col)) {
-                case 'P':
-                    mailbox[sqCounter] = PAWNS;
-                    break;
-                case 'N':
-                    mailbox[sqCounter] = KNIGHTS;
-                    break;
-                case 'B':
-                    mailbox[sqCounter] = BISHOPS;
-                    break;
-                case 'R':
-                    mailbox[sqCounter] = ROOKS;
-                    break;
-                case 'Q':
-                    mailbox[sqCounter] = QUEENS;
-                    break;
-                case 'K':
-                    mailbox[sqCounter] = KINGS;
-                    break;
-                case 'p':
-                    mailbox[sqCounter] = 6 + PAWNS;
-                    break;
-                case 'n':
-                    mailbox[sqCounter] = 6 + KNIGHTS;
-                    break;
-                case 'b':
-                    mailbox[sqCounter] = 6 + BISHOPS;
-                    break;
-                case 'r':
-                    mailbox[sqCounter] = 6 + ROOKS;
-                    break;
-                case 'q':
-                    mailbox[sqCounter] = 6 + QUEENS;
-                    break;
-                case 'k':
-                    mailbox[sqCounter] = 6 + KINGS;
-                    break;
+            char sq = rowAtElem.at(col);
+            do {
+                mailbox[sqCounter] = pieceString.find(sq);
+                sqCounter++;
+                sq--;
             }
-            
-            if (rowAtElem.at(col) >= 'B') sqCounter++;
-            
-            // fill out blank squares
-            if ('1' <= rowAtElem.at(col) && rowAtElem.at(col) <= '8') {
-                for (int i = 0; i < rowAtElem.at(col) - '0'; i++) {
-                    mailbox[sqCounter] = -1; // -1 is blank square
-                    sqCounter++;
-                }
-            }
+            while ('0' < sq && sq < '8');
         }
     }
     
@@ -278,11 +222,8 @@ Board fenToBoard(string s) {
     bool whiteCanQCastle = (components.at(2).find("Q") != string::npos);
     bool blackCanKCastle = (components.at(2).find("k") != string::npos);
     bool blackCanQCastle = (components.at(2).find("q") != string::npos);
-    
-    uint16_t epCaptureFile = NO_EP_POSSIBLE;
-    if (components.at(3).find("6") != string::npos
-     || components.at(3).find("3") != string::npos)
-        epCaptureFile = components.at(3).at(0) - 'a';
+    int epCaptureFile = (components.at(3) == "-") ? NO_EP_POSSIBLE
+        : components.at(3).at(0) - 'a';
     int fiftyMoveCounter = stoi(components.at(4));
     int moveNumber = stoi(components.at(5));
     return Board(mailbox, whiteCanKCastle, blackCanKCastle, whiteCanQCastle,
