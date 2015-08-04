@@ -18,43 +18,8 @@ struct SearchParameters {
     }
 };
 
-struct SearchStatistics {
-    uint64_t hashProbes;
-    uint64_t hashHits;
-    uint64_t hashScoreCuts;
-    uint64_t hashMoveAttempts;
-    uint64_t hashMoveCuts;
-    uint64_t searchSpaces;
-    uint64_t failHighs;
-    uint64_t firstFailHighs;
-    uint64_t qsNodes;
-    uint64_t qsSearchSpaces;
-    uint64_t qsFailHighs;
-    uint64_t qsFirstFailHighs;
-
-    SearchStatistics() {
-        reset();
-    }
-
-    void reset() {
-        hashProbes = 0;
-        hashHits = 0;
-        hashScoreCuts = 0;
-        hashMoveAttempts = 0;
-        hashMoveCuts = 0;
-        searchSpaces = 0;
-        failHighs = 0;
-        firstFailHighs = 0;
-        qsNodes = 0;
-        qsSearchSpaces = 0;
-        qsFailHighs = 0;
-        qsFirstFailHighs = 0;
-    }
-};
-
 Hash transpositionTable(16);
 int rootDepth;
-uint64_t nodes;
 uint8_t searchGen;
 extern bool isStop;
 SearchParameters searchParams;
@@ -73,9 +38,8 @@ int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta);
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 string retrievePV(Board *b, Move bestMove, int plies);
 
-void getBestMove(Board *b, int mode, int value, Move *bestMove) {
+void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *bestMove) {
     using namespace std::chrono;
-    nodes = 0;
     searchParams.reset();
     searchStats.reset();
     searchGen = (uint8_t) (b->getMoveNumber());
@@ -108,12 +72,12 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
             timeSoFar = duration_cast<duration<double>>(
                     high_resolution_clock::now() - start_time).count();
-            uint64_t nps = (uint64_t) ((double) nodes / timeSoFar);
+            uint64_t nps = (uint64_t) ((double) searchStats.nodes / timeSoFar);
 
             string pvStr = retrievePV(b, *bestMove, rootDepth);
 
             cout << "info depth " << rootDepth << " score cp " << bestScore << " time "
-                << (int)(timeSoFar * ONE_SECOND) << " nodes " << nodes
+                << (int)(timeSoFar * ONE_SECOND) << " nodes " << searchStats.nodes
                 << " nps " << nps << " pv " << pvStr << endl;
 
             if (isMate)
@@ -133,12 +97,12 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
             timeSoFar = duration_cast<duration<double>>(
                     high_resolution_clock::now() - start_time).count();
-            uint64_t nps = (uint64_t) ((double) nodes / timeSoFar);
+            uint64_t nps = (uint64_t) ((double) searchStats.nodes / timeSoFar);
 
             string pvStr = retrievePV(b, *bestMove, rootDepth);
 
             cout << "info depth " << rootDepth << " score cp " << bestScore << " time "
-                 << (int)(timeSoFar * ONE_SECOND) << " nodes " << nodes
+                 << (int)(timeSoFar * ONE_SECOND) << " nodes " << searchStats.nodes
                  << " nps " << nps << " pv " << pvStr << endl;
             // transpositionTable.test();
 
@@ -165,6 +129,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     
     isStop = true;
     cout << "bestmove " << moveToString(*bestMove) << endl;
+    *stats = searchStats;
     return;
 }
 
@@ -196,7 +161,7 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
         }
         Board copy = b->staticCopy();
         copy.doMove(legalMoves.get(i), color);
-        nodes++;
+        searchStats.nodes++;
         
         if (copy.isWInMate()) {
             isMate = true;
@@ -467,7 +432,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         if (!copy.doPseudoLegalMove(m, color))
             continue;
 
-        nodes++;
+        searchStats.nodes++;
         // Late move reduction
         if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && j > 2 && alpha <= prevAlpha) {
             if (depth >= 6)
@@ -578,7 +543,7 @@ int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta) 
                     searchStats.hashMoveAttempts++;
                     // If the hash score is unusable and node is not a predicted
                     // all-node, we can search the hash move first.
-                    nodes++;
+                    searchStats.nodes++;
                     int score = -PVS(copy, color^1, depth-1, -beta, -alpha);
 
                     if (score >= beta) {
@@ -656,7 +621,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
         if (!copy.doPseudoLegalMove(m, color))
             continue;
         
-        nodes++;
+        searchStats.nodes++;
         searchStats.qsNodes++;
         score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
         
@@ -683,7 +648,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
         if (!copy.doPseudoLegalMove(m, color))
             continue;
         
-        nodes++;
+        searchStats.nodes++;
         searchStats.qsNodes++;
         score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
         
@@ -714,7 +679,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
             if (!copy.doPseudoLegalMove(m, color))
                 continue;
             
-            nodes++;
+            searchStats.nodes++;
             searchStats.qsNodes++;
             int score = -checkQuiescence(copy, color^1, plies+1, -beta, -alpha);
             
@@ -752,7 +717,7 @@ int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
         if (!copy.doPseudoLegalMove(m, color))
             continue;
         
-        nodes++;
+        searchStats.nodes++;
         searchStats.qsNodes++;
         score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
         

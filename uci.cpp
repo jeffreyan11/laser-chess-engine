@@ -9,6 +9,10 @@
 using namespace std;
 
 const string STARTPOS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const vector<string> positions = {
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+    "r2q4/pp1k1pp1/2p1r1np/5p2/2N5/1P5Q/5PPP/3RR1K1 b - -"
+};
 
 void setPosition(string &input, vector<string> &inputVector, Board &board);
 vector<string> split(const string &s, char d);
@@ -27,6 +31,7 @@ int main() {
     string author = "Jeffrey An and Michael An";
     thread searchThread;
     Move bestMove = NULL_MOVE;
+    SearchStatistics stats;
     
     Board board = fenToBoard(STARTPOS);
     
@@ -90,7 +95,7 @@ int main() {
             
             bestMove = NULL_MOVE;
             isStop = false;
-            searchThread = thread(getBestMove, &board, mode, value, &bestMove);
+            searchThread = thread(getBestMove, &board, mode, value, &stats, &bestMove);
             searchThread.detach();
         }
         
@@ -115,15 +120,42 @@ int main() {
             uint64_t captures = 0;
             using namespace std::chrono;
             auto start_time = high_resolution_clock::now();
-
-            cerr << "Nodes: " << perft(b, 1, depth, captures) << endl;
-            cerr << "Captures: " << captures << endl;
-
+            
+            uint64_t nodes = perft(b, 1, depth, captures);
+            
             auto end_time = high_resolution_clock::now();
-            duration<double> time_span = duration_cast<duration<double>>(
-                end_time-start_time);
-
-            cerr << time_span.count() << endl;
+            double time = duration_cast<duration<double>>(
+                end_time-start_time).count();
+            
+            cerr << "Nodes: " << nodes << endl;
+            cerr << "Captures: " << captures << endl;
+            cerr << "Time: " << (int)(time * ONE_SECOND) << endl;
+            cerr << "Nodes/second: " << (uint64_t)(nodes / time) << endl;
+        }
+        
+        if (input == "bench") {
+            using namespace std::chrono;
+            auto start_time = high_resolution_clock::now();
+            uint64_t totalNodes = 0;
+            
+            for (unsigned int i = 0; i < positions.size(); i++) {
+                clearTranspositionTable();
+                board = fenToBoard(positions.at(i));
+                bestMove = NULL_MOVE;
+                isStop = false;
+                
+                searchThread = thread(getBestMove, &board, DEPTH, 10, &stats, &bestMove);
+                searchThread.join();
+                totalNodes += stats.nodes;
+            }
+            
+            auto end_time = high_resolution_clock::now();
+            double time = duration_cast<duration<double>>(
+                end_time-start_time).count();
+            
+            cerr << "Nodes: " << totalNodes << endl;
+            cerr << "Time: " << (int)(time * ONE_SECOND) << endl;
+            cerr << "Nodes/second: " << (uint64_t)(totalNodes / time) << endl;
         }
         
         // According to UCI protocol, inputs that do not make sense are ignored
@@ -139,7 +171,7 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
     if (input.find("fen") != string::npos) {
         if (inputVector.size() < 7 || inputVector.at(6) == "moves") {
             pos = inputVector.at(2) + ' ' + inputVector.at(3) + ' ' + inputVector.at(4) + ' '
-                + inputVector.at(5) + " 0 1";
+                + inputVector.at(5);
         }
         else {
             pos = inputVector.at(2) + ' ' + inputVector.at(3) + ' ' + inputVector.at(4) + ' '
@@ -224,8 +256,8 @@ Board fenToBoard(string s) {
     bool blackCanQCastle = (components.at(2).find("q") != string::npos);
     int epCaptureFile = (components.at(3) == "-") ? NO_EP_POSSIBLE
         : components.at(3).at(0) - 'a';
-    int fiftyMoveCounter = stoi(components.at(4));
-    int moveNumber = stoi(components.at(5));
+    int fiftyMoveCounter = (components.size() == 6) ? stoi(components.at(4)) : 0;
+    int moveNumber = (components.size() == 6) ? stoi(components.at(5)) : 1;
     return Board(mailbox, whiteCanKCastle, blackCanKCastle, whiteCanQCastle,
             blackCanQCastle, epCaptureFile, fiftyMoveCounter, moveNumber,
             playerToMove);
