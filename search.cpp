@@ -189,6 +189,8 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     }*/
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
+        // Stop condition. If stopping, return search results from incomplete
+        // search, if any.
         if (isStop) {
             return tempMove;
         }
@@ -239,6 +241,7 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     return tempMove;
 }
 
+// Gets a sorting score for every move by searching each with a full window PVS.
 void sortSearch(Board &b, MoveList &legalMoves, ScoreList &scores, int depth) {
     int color = b.getPlayerToMove();
     
@@ -254,6 +257,7 @@ void sortSearch(Board &b, MoveList &legalMoves, ScoreList &scores, int depth) {
     }
 }
 
+// Gets a best move to try first when a hash move is not available.
 unsigned int getBestMoveForSort(Board &b, MoveList &legalMoves, int depth) {
     int color = b.getPlayerToMove();
     
@@ -364,12 +368,15 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
     ScoreList scores;
     // Internal iterative deepening, SEE, and MVV/LVA move ordering
+    // Do a full sort on PV nodes since good move ordering is the most important here
     if (depth >= 8 && isPVNode) {
         sortSearch(b, legalMoves, scores, 2);
     }
     else if (depth >= 4 && isPVNode) {
         sortSearch(b, legalMoves, scores, 1);
     }
+    // Otherwise, get a best move (hoping for a first move cutoff) if we don't have
+    // a hash move available
     else if (depth >= 4 && hashed == NULL_MOVE) {
         unsigned int bestIndex = getBestMoveForSort(b, legalMoves, (depth >= 9) ? 2 : 1);
         unsigned int index;
@@ -379,6 +386,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         for (unsigned int i = 0; i < index; i++) {
             scores.add(b.getSEE(color, getEndSq(legalMoves.get(i))));
         }
+        // Score killers below even captures but above losing captures
         for (unsigned int i = index; i < legalMoves.size(); i++) {
             if (legalMoves.get(i) == searchParams.killers[depth][0])
                 scores.add(0);
@@ -446,6 +454,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
               m = nextMove(legalMoves, scores, ++i)) {
         //if (m == hashed)
         //    continue;
+        // Stop condition to help break out as quickly as possible
         if (isStop)
             return -INFTY;
 
@@ -485,6 +494,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                 searchStats.firstFailHighs++;
             // Hash moves that caused a beta cutoff
             transpositionTable.add(b, depth, m, beta, CUT_NODE, searchGen);
+            // Record killer if applicable
             if (!isCapture(m)) {
                 if (m != searchParams.killers[depth][0]) {
                     searchParams.killers[depth][1] = searchParams.killers[depth][0];
