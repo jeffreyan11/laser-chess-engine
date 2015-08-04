@@ -131,7 +131,7 @@ private:
     uint8_t fiftyMoveCounter;
 
     void addPawnMovesToList(MoveList &quiets, int color);
-    void addPawnCapturesToList(MoveList &captures, int color, bool includePromotions);
+    void addPawnCapturesToList(MoveList &captures, int color, uint64_t otherPieces, bool includePromotions);
     void addMovesToList(MoveList &moves, int pieceID, int stSq,
         uint64_t allEndSqs, bool isCapture, uint64_t otherPieces = 0);
     void addPromotionsToList(MoveList &moves, int stSq, int endSq, bool isCapture);

@@ -68,7 +68,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta);
 int quiescence(Board &b, int color, int plies, int alpha, int beta);
 int checkQuiescence(Board &b, int color, int plies, int alpha, int beta);
 
-int probeTT(Board &b, int color, Move &hashed, uint8_t &nodeType, int depth, int &alpha, int beta);
+int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta);
 
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 string retrievePV(Board *b, Move bestMove, int plies);
@@ -315,13 +315,11 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // Similarly, we do not want to prune if we are in check
     bool isInCheck = b.isInCheck(color);
 
-    uint8_t nodeType = NO_NODE_INFO;
     Move hashed = NULL_MOVE;
-
     // Probe the hash table for a match/cutoff
     if (!isPVNode) {
         searchStats.hashProbes++;
-        score = probeTT(b, color, hashed, nodeType, depth, alpha, beta);
+        score = probeTT(b, color, hashed, depth, alpha, beta);
         if (score != -INFTY)
             return score;
     }
@@ -386,6 +384,10 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                 scores.add(0);
             else if (legalMoves.get(i) == searchParams.killers[depth][1])
                 scores.add(-1);
+            /*else if (legalMoves.get(i) == searchParams.killers[depth+2][0])
+                scores.add(-2);
+            else if (legalMoves.get(i) == searchParams.killers[depth+2][1])
+                scores.add(-3);*/
             else
                 scores.add(-MATE_SCORE);
         }
@@ -404,6 +406,10 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                 scores.add(0);
             else if (legalMoves.get(i) == searchParams.killers[depth][1])
                 scores.add(-1);
+            /*else if (legalMoves.get(i) == searchParams.killers[depth+2][0])
+                scores.add(-2);
+            else if (legalMoves.get(i) == searchParams.killers[depth+2][1])
+                scores.add(-3);*/
             else
                 scores.add(-MATE_SCORE);
         }
@@ -415,14 +421,16 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                 break;
         for (unsigned int i = 0; i < index; i++) {
             scores.add(b.getMVVLVAScore(color, legalMoves.get(i)));
-            if (b.getExchangeScore(color, legalMoves.get(i)) < 0)
-                scores.set(i, scores.get(i) - 64);
         }
         for (unsigned int i = index; i < legalMoves.size(); i++) {
             if (legalMoves.get(i) == searchParams.killers[depth][0])
-                scores.add(0);
+                scores.add(-64);
             else if (legalMoves.get(i) == searchParams.killers[depth][1])
-                scores.add(-1);
+                scores.add(-65);
+            /*else if (legalMoves.get(i) == searchParams.killers[depth+2][0])
+                scores.add(-66);
+            else if (legalMoves.get(i) == searchParams.killers[depth+2][1])
+                scores.add(-67);*/
             else
                 scores.add(-MATE_SCORE);
         }
@@ -441,15 +449,16 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         if (isStop)
             return -INFTY;
 
+        // Futility pruning using SEE
+        //if(depth == 1 && !isPVNode && staticEval <= alpha - MAX_POS_SCORE && !isInCheck && !isCapture(m) && b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
+        //    continue;
+
         reduction = 0;
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(m, color))
             continue;
 
         nodes++;
-        // Futility-esque reduction using SEE
-        //if(depth <= 2 && !isPVNode && staticEval <= alpha && !isInCheck && b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
-        //    reduction = 1;
         // Late move reduction
         if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && j > 2 && alpha <= prevAlpha) {
             if (depth >= 6)
@@ -521,7 +530,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 }
 
 // See if a hash move exists.
-int probeTT(Board &b, int color, Move &hashed, uint8_t &nodeType, int depth, int &alpha, int beta) {
+int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta) {
     HashEntry *entry = transpositionTable.get(b);
     if (entry != NULL) {
         searchStats.hashHits++;
@@ -529,7 +538,7 @@ int probeTT(Board &b, int color, Move &hashed, uint8_t &nodeType, int depth, int
         // since score is an upper bound
         // Vulnerable to Type-1 errors
         int hashScore = entry->score;
-        nodeType = entry->getNodeType();
+        uint8_t nodeType = entry->getNodeType();
         if (nodeType == ALL_NODE) {
             if (entry->depth >= depth && hashScore <= alpha) {
                 searchStats.hashScoreCuts++;
@@ -720,11 +729,12 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
  * not just captures, necessitating this function.
  */
 int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
-    MoveList legalMoves = b.getAllPseudoLegalMoves(color);
-    //MoveList legalMoves = b.getPseudoLegalCheckEscapes(color);
+    //MoveList legalMoves = b.getAllPseudoLegalMoves(color);
+    MoveList legalMoves = b.getPseudoLegalCheckEscapes(color);
     int score = -INFTY;
 
     searchStats.qsSearchSpaces++;
+    unsigned int j = 0; // separate counter only incremented when valid move is searched
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
 
@@ -738,11 +748,13 @@ int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
         
         if (score >= beta) {
             searchStats.qsFailHighs++;
-            alpha = beta;
-            break;
+            if (j == 0)
+                searchStats.qsFirstFailHighs++;
+            return beta;
         }
         if (score > alpha)
             alpha = score;
+        j++;
     }
 
     // If there were no legal moves

@@ -540,7 +540,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
     uint64_t otherPieces = (color == WHITE) ? blackPieces : whitePieces;
 
     addPawnMovesToList(quiets, color);
-    addPawnCapturesToList(captures, color, true);
+    addPawnCapturesToList(captures, color, otherPieces, true);
 
     uint64_t knights = pieces[color][KNIGHTS];
     while (knights) {
@@ -742,7 +742,7 @@ MoveList Board::getPseudoLegalCaptures(int color, bool includePromotions) {
 
     uint64_t otherPieces = (color == WHITE) ? blackPieces : whitePieces;
 
-    addPawnCapturesToList(captures, color, includePromotions);
+    addPawnCapturesToList(captures, color, otherPieces, includePromotions);
 
     uint64_t knights = pieces[color][KNIGHTS];
     while (knights) {
@@ -1023,14 +1023,20 @@ MoveList Board::getPseudoLegalChecks(int color) {
     return checkCaptures;
 }
 
+// Generate moves that (sort of but not really) get out of check
+// This can only be used if we know the side to move is in check
+// Optimizations include looking for double check (king moves only),
+// otherwise we can only capture the checker or block if it is an xray piece
 MoveList Board::getPseudoLegalCheckEscapes(int color) {
     MoveList captures, blocks;
 
     int kingSq = bitScanForward(pieces[color][KINGS]);
     uint64_t otherPieces = (color == WHITE) ? blackPieces : whitePieces;
     uint64_t attackMap = getAttackMap(color^1, kingSq);
+    // Consider only captures of pieces giving check
     otherPieces &= attackMap;
 
+    // If double check, we can only move the king
     if (count(otherPieces) >= 2) {
         uint64_t kingSqs = getKingSquares(kingSq);
 
@@ -1039,7 +1045,19 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
     }
 
     addPawnMovesToList(blocks, color);
-    addPawnCapturesToList(captures, color, true);
+    addPawnCapturesToList(captures, color, otherPieces, true);
+
+    // If bishops, rooks, or queens, get bitboard of attack path so we
+    // can intersect with legal moves to get legal block moves
+    uint64_t xraySqs = 0;
+    int attackerSq = bitScanForward(otherPieces);
+    int attackerType = getCapturedPiece(color^1, attackerSq);
+    if (attackerType == BISHOPS)
+        xraySqs = getBishopSquares(attackerSq);
+    else if (attackerType == ROOKS)
+        xraySqs = getRookSquares(attackerSq);
+    else if (attackerType == QUEENS)
+        xraySqs = getQueenSquares(attackerSq);
 
     uint64_t knights = pieces[color][KNIGHTS];
     while (knights) {
@@ -1047,7 +1065,7 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
         knights &= knights-1;
         uint64_t nSq = getKnightSquares(stsq);
 
-        addMovesToList(blocks, KNIGHTS, stsq, nSq, false);
+        addMovesToList(blocks, KNIGHTS, stsq, nSq & xraySqs, false);
 
         uint64_t legal = nSq & otherPieces;
         while (legal) {
@@ -1063,7 +1081,7 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
         bishops &= bishops-1;
         uint64_t bSq = getBishopSquares(stsq);
 
-        addMovesToList(blocks, BISHOPS, stsq, bSq, false);
+        addMovesToList(blocks, BISHOPS, stsq, bSq & xraySqs, false);
 
         uint64_t legal = bSq & otherPieces;
         while (legal) {
@@ -1079,7 +1097,7 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
         rooks &= rooks-1;
         uint64_t rSq = getRookSquares(stsq);
 
-        addMovesToList(blocks, ROOKS, stsq, rSq, false);
+        addMovesToList(blocks, ROOKS, stsq, rSq & xraySqs, false);
 
         uint64_t legal = rSq & otherPieces;
         while (legal) {
@@ -1095,7 +1113,7 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
         queens &= queens-1;
         uint64_t qSq = getQueenSquares(stsq);
 
-        addMovesToList(blocks, QUEENS, stsq, qSq, false);
+        addMovesToList(blocks, QUEENS, stsq, qSq & xraySqs, false);
 
         uint64_t legal = qSq & otherPieces;
         while (legal) {
@@ -1162,9 +1180,8 @@ void Board::addPawnMovesToList(MoveList &quiets, int color) {
 // For pawn captures, we can use a similar approach, but we must consider
 // left-hand and right-hand captures separately so we can tell which
 // pawn is doing the capturing.
-void Board::addPawnCapturesToList(MoveList &captures, int color, bool includePromotions) {
+void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherPieces, bool includePromotions) {
     uint64_t pawns = pieces[color][PAWNS];
-    uint64_t otherPieces = (color == WHITE) ? blackPieces : whitePieces;
     uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
     int leftDiff = (color == WHITE) ? -7 : 9;
     int rightDiff = (color == WHITE) ? -9 : 7;
