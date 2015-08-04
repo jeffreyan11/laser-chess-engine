@@ -31,6 +31,7 @@ int main() {
     string author = "Jeffrey An and Michael An";
     thread searchThread;
     Move bestMove = NULL_MOVE;
+    SearchStatistics stats;
     
     Board board = fenToBoard(STARTPOS);
     
@@ -94,7 +95,7 @@ int main() {
             
             bestMove = NULL_MOVE;
             isStop = false;
-            searchThread = thread(getBestMove, &board, mode, value, &bestMove);
+            searchThread = thread(getBestMove, &board, mode, value, &stats, &bestMove);
             searchThread.detach();
         }
         
@@ -119,34 +120,42 @@ int main() {
             uint64_t captures = 0;
             using namespace std::chrono;
             auto start_time = high_resolution_clock::now();
-
-            cerr << "Nodes: " << perft(b, 1, depth, captures) << endl;
-            cerr << "Captures: " << captures << endl;
-
+            
+            uint64_t nodes = perft(b, 1, depth, captures);
+            
             auto end_time = high_resolution_clock::now();
-            duration<double> time_span = duration_cast<duration<double>>(
-                end_time-start_time);
-
-            cerr << "Time: " << time_span.count() << endl;
+            double time = duration_cast<duration<double>>(
+                end_time-start_time).count();
+            
+            cerr << "Nodes: " << nodes << endl;
+            cerr << "Captures: " << captures << endl;
+            cerr << "Time: " << (int)(time * ONE_SECOND) << endl;
+            cerr << "Nodes/second: " << (uint64_t)(nodes / time) << endl;
         }
         
         if (input == "bench") {
             using namespace std::chrono;
             auto start_time = high_resolution_clock::now();
+            uint64_t totalNodes = 0;
             
             for (unsigned int i = 0; i < positions.size(); i++) {
+                clearTranspositionTable();
                 board = fenToBoard(positions.at(i));
                 bestMove = NULL_MOVE;
                 isStop = false;
-                searchThread = thread(getBestMove, &board, DEPTH, 10, &bestMove);
+                
+                searchThread = thread(getBestMove, &board, DEPTH, 10, &stats, &bestMove);
                 searchThread.join();
+                totalNodes += stats.nodes;
             }
             
             auto end_time = high_resolution_clock::now();
-            duration<double> time_span = duration_cast<duration<double>>(
-                end_time-start_time);
-
-            cerr << "Time: " << time_span.count() << endl;
+            double time = duration_cast<duration<double>>(
+                end_time-start_time).count();
+            
+            cerr << "Nodes: " << totalNodes << endl;
+            cerr << "Time: " << (int)(time * ONE_SECOND) << endl;
+            cerr << "Nodes/second: " << (uint64_t)(totalNodes / time) << endl;
         }
         
         // According to UCI protocol, inputs that do not make sense are ignored

@@ -18,42 +18,6 @@ struct SearchParameters {
     }
 };
 
-struct SearchStatistics {
-    uint64_t nodes;
-    uint64_t hashProbes;
-    uint64_t hashHits;
-    uint64_t hashScoreCuts;
-    uint64_t hashMoveAttempts;
-    uint64_t hashMoveCuts;
-    uint64_t searchSpaces;
-    uint64_t failHighs;
-    uint64_t firstFailHighs;
-    uint64_t qsNodes;
-    uint64_t qsSearchSpaces;
-    uint64_t qsFailHighs;
-    uint64_t qsFirstFailHighs;
-
-    SearchStatistics() {
-        reset();
-    }
-
-    void reset() {
-        nodes = 0;
-        hashProbes = 0;
-        hashHits = 0;
-        hashScoreCuts = 0;
-        hashMoveAttempts = 0;
-        hashMoveCuts = 0;
-        searchSpaces = 0;
-        failHighs = 0;
-        firstFailHighs = 0;
-        qsNodes = 0;
-        qsSearchSpaces = 0;
-        qsFailHighs = 0;
-        qsFirstFailHighs = 0;
-    }
-};
-
 Hash transpositionTable(16);
 int rootDepth;
 uint8_t searchGen;
@@ -74,7 +38,7 @@ int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta);
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 string retrievePV(Board *b, Move bestMove, int plies);
 
-void getBestMove(Board *b, int mode, int value, Move *bestMove) {
+void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *bestMove) {
     using namespace std::chrono;
     searchParams.reset();
     searchStats.reset();
@@ -165,6 +129,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     
     isStop = true;
     cout << "bestmove " << moveToString(*bestMove) << endl;
+    *stats = searchStats;
     return;
 }
 
