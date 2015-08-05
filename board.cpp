@@ -1039,7 +1039,8 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
     if (count(otherPieces) >= 2) {
         uint64_t kingSqs = getKingSquares(kingSq);
 
-        addMovesToList(captures, KINGS, kingSq, kingSqs, (color == WHITE) ? blackPieces : whitePieces);
+        addMovesToList(captures, KINGS, kingSq, kingSqs, true, (color == WHITE) ? blackPieces : whitePieces);
+        addMovesToList(captures, KINGS, kingSq, kingSqs, false);
         return captures;
     }
 
