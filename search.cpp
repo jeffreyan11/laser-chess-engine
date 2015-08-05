@@ -27,13 +27,14 @@ SearchStatistics searchStats;
 
 unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int &bestScore, bool &isMate);
-unsigned int getBestMoveForSort(Board &b, MoveList &legalMoves, int depth);
+int getBestMoveForSort(Board &b, MoveList &legalMoves, int depth);
 void sortSearch(Board &b, MoveList &pseudoLegalMoves, ScoreList &scores, int depth);
 int PVS(Board &b, int color, int depth, int alpha, int beta);
 int quiescence(Board &b, int color, int plies, int alpha, int beta);
 int checkQuiescence(Board &b, int color, int plies, int alpha, int beta);
 
 int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta);
+int scoreMate(bool isInCheck, int depth, int alpha, int beta);
 
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 string retrievePV(Board *b, Move bestMove, int plies);
@@ -223,17 +224,18 @@ void sortSearch(Board &b, MoveList &legalMoves, ScoreList &scores, int depth) {
 }
 
 // Gets a best move to try first when a hash move is not available.
-unsigned int getBestMoveForSort(Board &b, MoveList &legalMoves, int depth) {
+int getBestMoveForSort(Board &b, MoveList &legalMoves, int depth) {
     int color = b.getPlayerToMove();
     
-    unsigned int tempMove = -1;
+    int tempMove = -1;
     int score = -MATE_SCORE;
     int alpha = -MATE_SCORE;
     int beta = MATE_SCORE;
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Board copy = b.staticCopy();
-        copy.doMove(legalMoves.get(i), color);
+        if(!copy.doPseudoLegalMove(legalMoves.get(i), color))
+            continue;
         
         if (i != 0) {
             score = -PVS(copy, color^1, depth-1, -alpha-1, -alpha);
@@ -321,7 +323,15 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         searchParams.nullMoveCount--;
     }
 
-    MoveList legalMoves = b.getAllPseudoLegalMoves(color);
+    MoveList legalMoves = isInCheck ? b.getPseudoLegalCheckEscapes(color)
+                                    : b.getAllPseudoLegalMoves(color);
+
+    // If there were no pseudo-legal moves
+    // This is an early check to prevent sorting from crashing
+    if (legalMoves.size() == 0)
+        return scoreMate(isInCheck, depth, alpha, beta);
+
+    // TODO make this nicer
     if (hashed != NULL_MOVE) {
         for (unsigned int i = 0; i < legalMoves.size(); i++) {
             if (legalMoves.get(i) == hashed) {
@@ -343,7 +353,11 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // Otherwise, get a best move (hoping for a first move cutoff) if we don't have
     // a hash move available
     else if (depth >= 4 && hashed == NULL_MOVE) {
-        unsigned int bestIndex = getBestMoveForSort(b, legalMoves, (depth >= 9) ? 2 : 1);
+        int bestIndex = getBestMoveForSort(b, legalMoves, (depth >= 9) ? 2 : 1);
+        // Mate check to prevent crashes
+        if (bestIndex == -1)
+            return scoreMate(isInCheck, depth, alpha, beta);
+
         unsigned int index;
         for (index = 0; index < legalMoves.size(); index++)
             if (!isCapture(legalMoves.get(index)))
@@ -476,20 +490,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     }
 
     // If there were no legal moves
-    if (score == -INFTY) {
-        // and in check, then checkmate
-        if (isInCheck) {
-            // Adjust score so that quicker mates are better
-            score = (-MATE_SCORE + rootDepth - depth);
-        }
-        else { // else, it is a stalemate
-            score = 0;
-        }
-        if (score >= beta)
-            return beta;
-        if (score > alpha)
-            alpha = score;
-    }
+    if (score == -INFTY)
+        return scoreMate(isInCheck, depth, alpha, beta);
     
     // Exact scores indicate a principal variation and should always be hashed
     if (toHash != NULL_MOVE && prevAlpha < alpha && alpha < beta) {
@@ -539,10 +541,10 @@ int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta) 
                         return hashScore;
                     }
                 }
+                // If the hash score is unusable and node is not a predicted
+                // all-node, we can search the hash move first.
                 if ((entry->depth >= 2 && entry->depth + 1 >= depth)/* || nodeType == PV_NODE*/) {
                     searchStats.hashMoveAttempts++;
-                    // If the hash score is unusable and node is not a predicted
-                    // all-node, we can search the hash move first.
                     searchStats.nodes++;
                     int score = -PVS(copy, color^1, depth-1, -beta, -alpha);
 
@@ -553,6 +555,7 @@ int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta) 
                     if (score > alpha)
                         alpha = score;
                 }
+                // Otherwise, we aren't using the hash move
                 else
                     hashed = NULL_MOVE;
             }
@@ -563,6 +566,24 @@ int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta) 
         }
     }
     return -INFTY;
+}
+
+// Used to get a score when we have realized that we have no legal moves.
+int scoreMate(bool isInCheck, int depth, int alpha, int beta) {
+    int score;
+    // If we are in check, then checkmate
+    if (isInCheck) {
+        // Adjust score so that quicker mates are better
+        score = (-MATE_SCORE + rootDepth - depth);
+    }
+    else { // else, it is a stalemate
+        score = 0;
+    }
+    if (score >= beta)
+        return beta;
+    if (score > alpha)
+        alpha = score;
+    return alpha;
 }
 
 /* Quiescence search, which completes all capture and check lines (thus reaching
@@ -663,11 +684,6 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
         j++;
     }
 
-    if (score == INFTY) {
-        if (b.isStalemate(color))
-            return 0;
-    }
-
     // Checks
     if(plies == 0) {
         MoveList legalMoves = b.getPseudoLegalChecks(color);
@@ -695,6 +711,12 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
             j++;
         }
     }
+
+    // TODO This is too slow to be effective
+/*    if (score == -INFTY) {
+        if (b.isStalemate(color))
+            return 0;
+    }*/
 
     return alpha;
 }
