@@ -185,25 +185,27 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
 
 Board::~Board() {}
 
+// Creates a copy of a board
+// Private constructor used only with staticCopy()
+Board::Board(Board *b) {
+    for (int i = 0; i < 6; i++) {
+        pieces[0][i] = b->pieces[0][i];
+    }
+    for (int i = 0; i < 6; i++) {
+        pieces[1][i] = b->pieces[1][i];
+    }
+    whitePieces = b->whitePieces;
+    blackPieces = b->blackPieces;
+    epCaptureFile = b->epCaptureFile;
+    playerToMove = b->playerToMove;
+    zobristKey = b->zobristKey;
+    moveNumber = b->moveNumber;
+    castlingRights = b->castlingRights;
+    fiftyMoveCounter = b->fiftyMoveCounter;
+}
+
 Board Board::staticCopy() {
-    Board result;
-    for (int i = 0; i < 6; i++) {
-        result.pieces[0][i] = pieces[0][i];
-    }
-    for (int i = 0; i < 6; i++) {
-        result.pieces[1][i] = pieces[1][i];
-    }
-    result.whitePieces = whitePieces;
-    result.blackPieces = blackPieces;
-    result.epCaptureFile = epCaptureFile;
-    result.playerToMove = playerToMove;
-    result.twoFoldStartSqs = twoFoldStartSqs;
-    result.twoFoldEndSqs = twoFoldEndSqs;
-    result.zobristKey = zobristKey;
-    result.moveNumber = moveNumber;
-    result.castlingRights = castlingRights;
-    result.fiftyMoveCounter = fiftyMoveCounter;
-    return result;
+    return Board(this);
 }
 
 /*
@@ -1264,10 +1266,11 @@ void Board::addPromotionsToList(MoveList &moves, int stSq, int endSq, bool isCap
     mr = setPromotion(mr, ROOKS);
     Move mq = encodeMove(stSq, endSq, PAWNS, isCapture);
     mq = setPromotion(mq, QUEENS);
+    // Order promotions queen, knight, rook, bishop
     moves.add(mq);
+    moves.add(mk);
     moves.add(mr);
     moves.add(mb);
-    moves.add(mk);
 }
 
 

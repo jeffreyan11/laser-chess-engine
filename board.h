@@ -130,6 +130,9 @@ private:
     // Counts half moves for the 50-move rule
     uint8_t fiftyMoveCounter;
 
+    // Private constructor used only with staticCopy()
+    Board(Board *b);
+
     void addPawnMovesToList(MoveList &quiets, int color);
     void addPawnCapturesToList(MoveList &captures, int color, uint64_t otherPieces, bool includePromotions);
     void addMovesToList(MoveList &moves, int pieceID, int stSq,
