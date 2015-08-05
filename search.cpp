@@ -543,7 +543,7 @@ int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta) 
                 }
                 // If the hash score is unusable and node is not a predicted
                 // all-node, we can search the hash move first.
-                if ((entry->depth >= 2 && entry->depth + 1 >= depth)/* || nodeType == PV_NODE*/) {
+                if ((entry->depth >= 2 && entry->depth + 1 >= depth) || nodeType == PV_NODE) {
                     searchStats.hashMoveAttempts++;
                     searchStats.nodes++;
                     int score = -PVS(copy, color^1, depth-1, -beta, -alpha);
