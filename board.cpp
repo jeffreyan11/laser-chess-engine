@@ -259,9 +259,6 @@ void Board::doMove(Move m, int color) {
         twoFoldEndSqs |= (uint8_t) endSq;
     }
 
-    // Reset EP flag
-    epCaptureFile = NO_EP_POSSIBLE;
-
     if (getPromotion(m)) {
         if (isCapture(m)) {
             int captureType = getCapturedPiece(color^1, endSq);
@@ -300,6 +297,7 @@ void Board::doMove(Move m, int color) {
             zobristKey ^= zobristTable[384*color + startSq];
             zobristKey ^= zobristTable[384*color + 64*getPromotion(m) + endSq];
         }
+        epCaptureFile = NO_EP_POSSIBLE;
         fiftyMoveCounter = 0;
     } // end promotion
     else if (isCapture(m)) {
@@ -346,6 +344,7 @@ void Board::doMove(Move m, int color) {
             zobristKey ^= zobristTable[384*color + 64*pieceID + endSq];
             zobristKey ^= zobristTable[384*(color^1) + 64*captureType + endSq];
         }
+        epCaptureFile = NO_EP_POSSIBLE;
         fiftyMoveCounter = 0;
     } // end capture
     else { // Quiet moves
@@ -414,6 +413,7 @@ void Board::doMove(Move m, int color) {
                 zobristKey ^= zobristTable[384+64*ROOKS+56];
                 zobristKey ^= zobristTable[384+64*ROOKS+59];
             }
+            epCaptureFile = NO_EP_POSSIBLE;
             fiftyMoveCounter++;
         } // end castling
         else { // other quiet moves
@@ -440,9 +440,13 @@ void Board::doMove(Move m, int color) {
                 else if (startSq/8 == 6 && endSq/8 == 4) {
                     epCaptureFile = startSq & 7;
                 }
+                else {
+                    epCaptureFile = NO_EP_POSSIBLE;
+                }
                 fiftyMoveCounter = 0;
             }
             else {
+                epCaptureFile = NO_EP_POSSIBLE;
                 fiftyMoveCounter++;
             }
         } // end other quiet moves
@@ -958,14 +962,17 @@ MoveList Board::getPseudoLegalChecks(int color) {
         checkCaptures.add(encodeMove(endsq+rightDiff, endsq, PAWNS, true));
     }
 
-    // Knights can only direct check
     uint64_t knights = pieces[color][KNIGHTS] & kingParity;
     uint64_t nAttackMap = getKnightSquares(kingSq);
     while (knights) {
         int stsq = bitScanForward(knights);
         knights &= knights-1;
         uint64_t nSq = getKnightSquares(stsq);
+        // Get any bishops, rooks, queens attacking king after knight has moved
         uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
+        // If none of these xray-ers are new, no discovered check.
+        // Otherwise, we have an xray-er, and any move by this piece will
+        // give discovered check
         if (!(xrays & ~attackMap))
             nSq &= nAttackMap;
 
