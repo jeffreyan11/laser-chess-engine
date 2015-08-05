@@ -11,7 +11,12 @@ using namespace std;
 const string STARTPOS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const vector<string> positions = {
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
-    "r2q4/pp1k1pp1/2p1r1np/5p2/2N5/1P5Q/5PPP/3RR1K1 b - -"
+    "r2q4/pp1k1pp1/2p1r1np/5p2/2N5/1P5Q/5PPP/3RR1K1 b - -",
+    "5k2/1qr2pp1/2Np1n1r/QB2p3/2R4p/3PPRPb/PP2P2P/6K1 w - -",
+    "r2r2k1/2p2pp1/p1n4p/1qbnp3/2Q5/1PPP1RPP/3NN2K/R1B5 b - -",
+    "8/3k4/p6Q/pq6/3p4/1P6/P3p1P1/6K1 w - -",
+    "8/8/k7/2B5/P1K5/8/8/1r6 w - -",
+    "8/8/8/p1k4p/P2R3P/2P5/1K6/5q2 w - -"
 };
 
 void setPosition(string &input, vector<string> &inputVector, Board &board);
@@ -144,7 +149,7 @@ int main() {
                 bestMove = NULL_MOVE;
                 isStop = false;
                 
-                searchThread = thread(getBestMove, &board, DEPTH, 10, &stats, &bestMove);
+                searchThread = thread(getBestMove, &board, DEPTH, 8, &stats, &bestMove);
                 searchThread.join();
                 totalNodes += stats.nodes;
             }
