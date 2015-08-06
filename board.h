@@ -34,7 +34,7 @@ const uint64_t BLACK_KSIDE_PASSTHROUGH_SQS = MOVEMASK[61] | MOVEMASK[62];
 const uint64_t BLACK_QSIDE_PASSTHROUGH_SQS = MOVEMASK[57] | MOVEMASK[58] | MOVEMASK[59];
 
 const uint16_t NO_EP_POSSIBLE = 0x8;
-const uint32_t RESET_TWOFOLD = 0x80808080;
+const uint64_t RESET_TWOFOLD = 0x8080808080808080;
 
 void initKindergartenTables();
 void initZobristTable();
@@ -123,8 +123,7 @@ private:
     uint16_t playerToMove;
     // Keep track of the last 4 half-plys for two-fold repetition
     // Lowest bits are most recent
-    uint32_t twoFoldStartSqs;
-    uint32_t twoFoldEndSqs;
+    uint64_t twoFoldSqs;
     // Zobrist key for hash table use
     uint64_t zobristKey;
     // Move number

@@ -139,8 +139,7 @@ Board::Board() {
 
     epCaptureFile = NO_EP_POSSIBLE;
     playerToMove = WHITE;
-    twoFoldStartSqs = RESET_TWOFOLD;
-    twoFoldEndSqs = RESET_TWOFOLD;
+    twoFoldSqs = RESET_TWOFOLD;
     zobristKey = startPosZobristKey;
     moveNumber = 1;
     castlingRights = WHITECASTLE | BLACKCASTLE;
@@ -171,8 +170,7 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
 
     epCaptureFile = _epCaptureFile;
     playerToMove = _playerToMove;
-    twoFoldStartSqs = RESET_TWOFOLD;
-    twoFoldEndSqs = RESET_TWOFOLD;
+    twoFoldSqs = RESET_TWOFOLD;
     moveNumber = _moveNumber;
     castlingRights = 0;
     if (_whiteCanKCastle)
@@ -203,8 +201,7 @@ Board::Board(Board *b) {
 
     epCaptureFile = b->epCaptureFile;
     playerToMove = b->playerToMove;
-    twoFoldStartSqs = b->twoFoldStartSqs;
-    twoFoldEndSqs = b->twoFoldEndSqs;
+    twoFoldSqs = b->twoFoldSqs;
     zobristKey = b->zobristKey;
     moveNumber = b->moveNumber;
     castlingRights = b->castlingRights;
@@ -228,8 +225,7 @@ Board *Board::dynamicCopy() {
     result->blackPieces = blackPieces;
     result->epCaptureFile = epCaptureFile;
     result->playerToMove = playerToMove;
-    result->twoFoldStartSqs = twoFoldStartSqs;
-    result->twoFoldEndSqs = twoFoldEndSqs;
+    result->twoFoldSqs = twoFoldSqs;
     result->zobristKey = zobristKey;
     result->moveNumber = moveNumber;
     result->castlingRights = castlingRights;
@@ -256,14 +252,11 @@ void Board::doMove(Move m, int color) {
 
     // Record current board position for two-fold repetition
     if (isCapture(m) || pieceID == PAWNS || isCastle(m)) {
-        twoFoldStartSqs = RESET_TWOFOLD;
-        twoFoldEndSqs = RESET_TWOFOLD;
+        twoFoldSqs = RESET_TWOFOLD;
     }
     else {
-        twoFoldStartSqs <<= 8;
-        twoFoldEndSqs <<= 8;
-        twoFoldStartSqs |= (uint8_t) startSq;
-        twoFoldEndSqs |= (uint8_t) endSq;
+        twoFoldSqs <<= 16;
+        twoFoldSqs |= (startSq << 8) | endSq;
     }
 
     if (getPromotion(m)) {
@@ -1311,19 +1304,17 @@ bool Board::isStalemate(int sideToMove) {
 bool Board::isDraw() {
     if (fiftyMoveCounter >= 100) return true;
 
-    if(!(twoFoldStartSqs & (1 << 31))) {
-        bool isTwoFold = true;
-
-        if ( (((twoFoldStartSqs >> 24) & 0xFF) != ((twoFoldEndSqs >> 8) & 0xFF))
-          || (((twoFoldStartSqs >> 8) & 0xFF) != ((twoFoldEndSqs >> 24) & 0xFF))
-          || (((twoFoldStartSqs >> 16) & 0xFF) != (twoFoldEndSqs & 0xFF))
-          || ((twoFoldStartSqs & 0xFF) != ((twoFoldEndSqs >> 16) & 0xFF))) {
-            isTwoFold = false;
+    if ((twoFoldSqs >> 63) == 0) {
+        uint8_t *pTwoFoldSqs = (uint8_t*) (&twoFoldSqs);
+        
+        if ( (pTwoFoldSqs[7] == pTwoFoldSqs[2])
+          && (pTwoFoldSqs[3] == pTwoFoldSqs[6])
+          && (pTwoFoldSqs[5] == pTwoFoldSqs[0])
+          && (pTwoFoldSqs[1] == pTwoFoldSqs[4])) {
+            return true;
         }
-
-        if (isTwoFold) return true;
     }
-
+    
     return false;
 }
 
