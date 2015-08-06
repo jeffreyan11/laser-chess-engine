@@ -107,12 +107,11 @@ public:
     void initZobristKey(int *mailbox);
 
 private:
+    // Bitboards for all white or all black pieces
+    uint64_t allPieces[2];
     // 12 bitboards, one for each of the 12 piece types, indexed by the
     // constants given in common.h
     uint64_t pieces[2][6];
-    // Bitboards for all white or all black pieces
-    uint64_t whitePieces;
-    uint64_t blackPieces;
     // 8 if cannot en passant, if en passant is possible, the file of the
     // pawn being captured is stored here (0-7)
     uint16_t epCaptureFile;
