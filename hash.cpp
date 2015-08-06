@@ -18,7 +18,8 @@ Hash::Hash(uint64_t MB) {
 
 Hash::~Hash() {
     for(uint64_t i = 0; i < size; i++) {
-        delete table[i];
+        if (table[i] != NULL)
+            delete table[i];
     }
     delete[] table;
 }
@@ -158,7 +159,8 @@ void Hash::clean(uint16_t moveNumber) {
 */
 void Hash::clear() {
     for(uint64_t i = 0; i < size; i++) {
-        delete table[i];
+        if (table[i] != NULL)
+            delete table[i];
     }
     delete[] table;
     

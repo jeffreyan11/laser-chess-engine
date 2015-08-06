@@ -18,12 +18,13 @@ struct SearchParameters {
     }
 };
 
-Hash transpositionTable(16);
-int rootDepth;
-uint8_t searchGen;
+static Hash transpositionTable(16);
+static int rootDepth;
+static uint8_t searchGen;
+static SearchParameters searchParams;
+static SearchStatistics searchStats;
+
 extern bool isStop;
-SearchParameters searchParams;
-SearchStatistics searchStats;
 
 unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int &bestScore, bool &isMate);
@@ -375,10 +376,6 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                 scores.add(0);
             else if (legalMoves.get(i) == searchParams.killers[depth][1])
                 scores.add(-1);
-            /*else if (legalMoves.get(i) == searchParams.killers[depth+2][0])
-                scores.add(-2);
-            else if (legalMoves.get(i) == searchParams.killers[depth+2][1])
-                scores.add(-3);*/
             else
                 scores.add(-MATE_SCORE);
         }
@@ -397,10 +394,6 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                 scores.add(0);
             else if (legalMoves.get(i) == searchParams.killers[depth][1])
                 scores.add(-1);
-            /*else if (legalMoves.get(i) == searchParams.killers[depth+2][0])
-                scores.add(-2);
-            else if (legalMoves.get(i) == searchParams.killers[depth+2][1])
-                scores.add(-3);*/
             else
                 scores.add(-MATE_SCORE);
         }
@@ -418,10 +411,6 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                 scores.add(-64);
             else if (legalMoves.get(i) == searchParams.killers[depth][1])
                 scores.add(-65);
-            /*else if (legalMoves.get(i) == searchParams.killers[depth+2][0])
-                scores.add(-66);
-            else if (legalMoves.get(i) == searchParams.killers[depth+2][1])
-                scores.add(-67);*/
             else
                 scores.add(-MATE_SCORE);
         }
@@ -547,7 +536,7 @@ int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta) 
                 }
                 // If the hash score is unusable and node is not a predicted
                 // all-node, we can search the hash move first.
-                if ((entry->depth >= 2 && entry->depth + 1 >= depth) || nodeType == PV_NODE) {
+                if ((/*entry->depth >= 2 && */entry->depth + 1 >= depth) || nodeType == PV_NODE) {
                     searchStats.hashMoveAttempts++;
                     searchStats.nodes++;
                     int score = -PVS(copy, color^1, depth-1, -beta, -alpha);

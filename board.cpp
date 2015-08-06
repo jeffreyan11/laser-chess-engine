@@ -2,10 +2,10 @@
 #include "board.h"
 #include "btables.h"
 
-uint64_t rankArray[8][64];
-uint64_t fileArray[8][64];
-uint64_t zobristTable[794];
-uint64_t startPosZobristKey = 0;
+static uint64_t rankArray[8][64];
+static uint64_t fileArray[8][64];
+static uint64_t zobristTable[794];
+static uint64_t startPosZobristKey = 0;
 
 // Dumb7fill methods
 uint64_t southAttacks(uint64_t rooks, uint64_t empty);
@@ -173,14 +173,18 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
     playerToMove = _playerToMove;
     twoFoldStartSqs = RESET_TWOFOLD;
     twoFoldEndSqs = RESET_TWOFOLD;
-    initZobristKey(mailboxBoard);
     moveNumber = _moveNumber;
     castlingRights = 0;
-    castlingRights = _whiteCanKCastle;
-    castlingRights |= _whiteCanQCastle << 1;
-    castlingRights |= _blackCanKCastle << 2;
-    castlingRights |= _blackCanQCastle << 3;
+    if (_whiteCanKCastle)
+        castlingRights |= WHITEKSIDE;
+    if (_whiteCanQCastle)
+        castlingRights |= WHITEQSIDE;
+    if (_blackCanKCastle)
+        castlingRights |= BLACKKSIDE;
+    if (_blackCanQCastle)
+        castlingRights |= BLACKQSIDE;
     fiftyMoveCounter = _fiftyMoveCounter;
+    initZobristKey(mailboxBoard);
 }
 
 Board::~Board() {}
