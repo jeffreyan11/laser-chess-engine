@@ -431,6 +431,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             return -INFTY;
 
         // Futility pruning using SEE
+        // Needs check detection
         //if(depth == 1 && !isPVNode && staticEval <= alpha - MAX_POS_SCORE && !isInCheck && !isCapture(m) && b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
         //    continue;
 
@@ -517,26 +518,26 @@ int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta) 
         }
         else {
             hashed = entry->m;
+            // Only used a hashed score if the search depth was at least
+            // the current depth
+            if (entry->depth >= depth) {
+                // At cut nodes if hash score >= beta return beta since hash
+                // score is a lower bound.
+                if (nodeType == CUT_NODE && hashScore >= beta) {
+                    searchStats.hashScoreCuts++;
+                    return beta;
+                }
+                // At PV nodes we can simply return the exact score
+                else if (nodeType == PV_NODE) {
+                    searchStats.hashScoreCuts++;
+                    return hashScore;
+                }
+            }
             Board copy = b.staticCopy();
             if (copy.doHashMove(hashed, color)) {
-                // Only used a hashed score if the search depth was at least
-                // the current depth
-                if (entry->depth >= depth) {
-                    // At cut nodes if hash score >= beta return beta since hash
-                    // score is a lower bound.
-                    if (nodeType == CUT_NODE && hashScore >= beta) {
-                        searchStats.hashScoreCuts++;
-                        return beta;
-                    }
-                    // At PV nodes we can simply return the exact score
-                    else if (nodeType == PV_NODE) {
-                        searchStats.hashScoreCuts++;
-                        return hashScore;
-                    }
-                }
                 // If the hash score is unusable and node is not a predicted
                 // all-node, we can search the hash move first.
-                if ((/*entry->depth >= 2 && */entry->depth + 1 >= depth) || nodeType == PV_NODE) {
+                if ((/*entry->depth >= 2 && */entry->depth + 2 >= depth) || nodeType == PV_NODE) {
                     searchStats.hashMoveAttempts++;
                     searchStats.nodes++;
                     int score = -PVS(copy, color^1, depth-1, -beta, -alpha);
@@ -655,7 +656,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
         Move m = legalPromotions.get(i);
 
         // Static exchange evaluation pruning
-        if(b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
+        if(b.getSEE(color, getEndSq(m)) < 0)
             continue;
 
         Board copy = b.staticCopy();
@@ -678,7 +679,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
     }
 
     // Checks
-    if(plies == 0) {
+    if(plies <= 0) {
         MoveList legalMoves = b.getPseudoLegalChecks(color);
 
         for (unsigned int i = 0; i < legalMoves.size(); i++) {
@@ -719,8 +720,8 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
  * not just captures, necessitating this function.
  */
 int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
-    //MoveList legalMoves = b.getAllPseudoLegalMoves(color);
     MoveList legalMoves = b.getPseudoLegalCheckEscapes(color);
+
     int score = -INFTY;
 
     searchStats.qsSearchSpaces++;
