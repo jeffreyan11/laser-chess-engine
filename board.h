@@ -30,6 +30,7 @@ const uint8_t WHITECASTLE = 0x3;
 const uint8_t BLACKCASTLE = 0xC;
 
 const uint16_t NO_EP_POSSIBLE = 0x8;
+const uint32_t RESET_TWOFOLD = 0x80808080;
 
 void initKindergartenTables();
 void initZobristTable();

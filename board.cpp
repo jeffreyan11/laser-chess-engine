@@ -139,11 +139,11 @@ Board::Board() {
 
     epCaptureFile = NO_EP_POSSIBLE;
     playerToMove = WHITE;
-    twoFoldStartSqs = 0x80808080;
-    twoFoldEndSqs = 0x80808080;
+    twoFoldStartSqs = RESET_TWOFOLD;
+    twoFoldEndSqs = RESET_TWOFOLD;
     zobristKey = startPosZobristKey;
     moveNumber = 1;
-    castlingRights = 0xF;
+    castlingRights = WHITECASTLE | BLACKCASTLE;
     fiftyMoveCounter = 0;
 }
 
@@ -171,8 +171,8 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
 
     epCaptureFile = _epCaptureFile;
     playerToMove = _playerToMove;
-    twoFoldStartSqs = 0x80808080;
-    twoFoldEndSqs = 0x80808080;
+    twoFoldStartSqs = RESET_TWOFOLD;
+    twoFoldEndSqs = RESET_TWOFOLD;
     initZobristKey(mailboxBoard);
     moveNumber = _moveNumber;
     castlingRights = 0;
@@ -252,8 +252,8 @@ void Board::doMove(Move m, int color) {
 
     // Record current board position for two-fold repetition
     if (isCapture(m) || pieceID == PAWNS || isCastle(m)) {
-        twoFoldStartSqs = 0x80808080;
-        twoFoldEndSqs = 0x80808080;
+        twoFoldStartSqs = RESET_TWOFOLD;
+        twoFoldEndSqs = RESET_TWOFOLD;
     }
     else {
         twoFoldStartSqs <<= 8;
@@ -458,26 +458,26 @@ void Board::doMove(Move m, int color) {
     // change castling flags
     if (pieceID == KINGS) {
         if (color == WHITE) {
-            castlingRights &= BLACKCASTLE;
+            castlingRights &= ~WHITECASTLE;
         }
         else {
-            castlingRights &= WHITECASTLE;
+            castlingRights &= ~BLACKCASTLE;
         }
     }
     else {
         if (castlingRights & WHITECASTLE) {
             int whiteR = (int)(RANKS[0] & pieces[WHITE][ROOKS]);
             if ((whiteR & 0x80) == 0)
-                castlingRights &= BLACKCASTLE | WHITEQSIDE;
+                castlingRights &= ~WHITEKSIDE;
             if ((whiteR & 1) == 0)
-                castlingRights &= BLACKCASTLE | WHITEKSIDE;
+                castlingRights &= ~WHITEQSIDE;
         }
         if (castlingRights & BLACKCASTLE) {
             int blackR = (int)((RANKS[7] & pieces[BLACK][ROOKS]) >> 56);
             if ((blackR & 0x80) == 0)
-                castlingRights &= WHITECASTLE | BLACKQSIDE;
+                castlingRights &= ~BLACKKSIDE;
             if ((blackR & 1) == 0)
-                castlingRights &= WHITECASTLE | BLACKKSIDE;
+                castlingRights &= ~BLACKQSIDE;
         }
     } // end castling flags
 
