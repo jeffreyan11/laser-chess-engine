@@ -109,12 +109,18 @@ int main() {
             isStop = true;
         }
         
-        if (input == "mailbox") {
+        if (input == "board") {
             int *mailbox = board.getMailbox();
-            for (unsigned i = 0; i < 64; i++) {
-                cerr << mailbox[i] << ' ';
-                if (i % 8 == 7) cerr << endl;
+            string pieceString = "PNBRQKpnbrqk";
+            for (int i = 7; i >= 0; i--) {
+                cerr << (char)(i + '1') << '|';
+                for (int j = 0; j < 8; j++) {
+                    if (mailbox[8 * i + j] == -1) cerr << ' ';
+                    else cerr << pieceString[mailbox[8 * i + j]];
+                }
+                cerr << '|' << endl;
             }
+            cerr << "  abcdefgh" << endl;
             delete[] mailbox;
         }
 
