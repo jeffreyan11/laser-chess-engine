@@ -111,12 +111,11 @@ int main() {
         
         if (input == "board") {
             int *mailbox = board.getMailbox();
-            string pieceString = "PNBRQKpnbrqk";
+            string pieceString = " PNBRQKpnbrqk";
             for (int i = 7; i >= 0; i--) {
                 cerr << (char)(i + '1') << '|';
                 for (int j = 0; j < 8; j++) {
-                    if (mailbox[8 * i + j] == -1) cerr << ' ';
-                    else cerr << pieceString[mailbox[8 * i + j]];
+                    cerr << pieceString[mailbox[8 * i + j] + 1];
                 }
                 cerr << '|' << endl;
             }
@@ -163,6 +162,9 @@ int main() {
             auto end_time = high_resolution_clock::now();
             double time = duration_cast<duration<double>>(
                 end_time-start_time).count();
+                
+            board = fenToBoard(STARTPOS);
+            clearTranspositionTable();
             
             cerr << "Nodes: " << totalNodes << endl;
             cerr << "Time: " << (int)(time * ONE_SECOND) << endl;
@@ -197,26 +199,22 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
         vector<string> moveVector = split(moveList, ' ');
         
         for (unsigned i = 0; i < moveVector.size(); i++) {
-            // moveString contains the move in long algebraic notation
-            string moveString = moveVector.at(i);
+            // moveStr contains the move in long algebraic notation
+            string moveStr = moveVector.at(i);
             
-            char startFile = moveString.at(0);
-            char startRank = moveString.at(1);
-            char endFile = moveString.at(2);
-            char endRank = moveString.at(3);
-            int startSq = 8 * (startRank - '1') + (startFile - 'a');
-            int endSq = 8 * (endRank - '1') + (endFile - 'a');
+            int startSq = 8 * (moveStr.at(1) - '1') + (moveStr.at(0) - 'a');
+            int endSq = 8 * (moveStr.at(3) - '1') + (moveStr.at(2) - 'a');
             
             int *mailbox = board.getMailbox();
             int piece = mailbox[startSq] % 6;
             bool isCapture = ((mailbox[endSq] != -1)
-                    || (piece == PAWNS && ((startSq - endSq) & 1)));
+                    || (piece == PAWNS && ((endSq - startSq) & 1)));
             delete[] mailbox;
             
             bool isCastle = (piece == KINGS && abs(endSq - startSq) == 2);
             string promotionString = " nbrq";
-            int promotion = (moveString.length() == 5)
-                ? promotionString.find(moveString.at(4)) : 0;
+            int promotion = (moveStr.length() == 5)
+                ? promotionString.find(moveStr.at(4)) : 0;
             
             Move m = encodeMove(startSq, endSq, piece, isCapture);
             m = setCastle(m, isCastle);
