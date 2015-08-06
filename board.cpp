@@ -562,50 +562,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
     addMovesToList(quiets, KINGS, stsqK, kingSqs, false);
     addMovesToList(captures, KINGS, stsqK, kingSqs, true, otherPieces);
 
-    // Add all possible castles
-    if (color == WHITE) {
-        // If castling rights still exist, squares in between king and rook are
-        // empty, and player is not in check
-        if ((castlingRights & WHITEKSIDE)
-         && ((allPieces[WHITE] | allPieces[BLACK]) & (MOVEMASK[5] | MOVEMASK[6])) == 0
-         && !isInCheck(WHITE)) {
-            // Check for castling through check
-            if (getAttackMap(BLACK, 5) == 0) {
-                Move m = encodeMove(4, 6, KINGS, false);
-                m = setCastle(m, true);
-                quiets.add(m);
-            }
-        }
-        if ((castlingRights & WHITEQSIDE)
-         && ((allPieces[WHITE] | allPieces[BLACK]) & (MOVEMASK[1] | MOVEMASK[2] | MOVEMASK[3])) == 0
-         && !isInCheck(WHITE)) {
-            if (getAttackMap(BLACK, 3) == 0) {
-                Move m = encodeMove(4, 2, KINGS, false);
-                m = setCastle(m, true);
-                quiets.add(m);
-            }
-        }
-    }
-    else {
-        if ((castlingRights & BLACKKSIDE)
-         && ((allPieces[WHITE] | allPieces[BLACK]) & (MOVEMASK[61] | MOVEMASK[62])) == 0
-         && !isInCheck(BLACK)) {
-            if (getAttackMap(WHITE, 61) == 0) {
-                Move m = encodeMove(60, 62, KINGS, false);
-                m = setCastle(m, true);
-                quiets.add(m);
-            }
-        }
-        if ((castlingRights & BLACKQSIDE)
-         && ((allPieces[WHITE] | allPieces[BLACK]) & (MOVEMASK[57] | MOVEMASK[58] | MOVEMASK[59])) == 0
-         && !isInCheck(BLACK)) {
-            if (getAttackMap(WHITE, 59) == 0) {
-                Move m = encodeMove(60, 58, KINGS, false);
-                m = setCastle(m, true);
-                quiets.add(m);
-            }
-        }
-    }
+    addCastlesToList(quiets, color);
 
     // Put captures before quiet moves
     for (unsigned int i = 0; i < quiets.size(); i++) {
@@ -661,50 +618,7 @@ MoveList Board::getPseudoLegalQuiets(int color) {
 
     addMovesToList(quiets, KINGS, stsqK, kingSqs, false);
 
-    // Add all possible castles
-    if (color == WHITE) {
-        // If castling rights still exist, squares in between king and rook are
-        // empty, and player is not in check
-        if ((castlingRights & WHITEKSIDE)
-         && ((allPieces[WHITE] | allPieces[BLACK]) & (MOVEMASK[5] | MOVEMASK[6])) == 0
-         && !isInCheck(WHITE)) {
-            // Check for castling through check
-            if (getAttackMap(BLACK, 5) == 0) {
-                Move m = encodeMove(4, 6, KINGS, false);
-                m = setCastle(m, true);
-                quiets.add(m);
-            }
-        }
-        if ((castlingRights & WHITEQSIDE)
-         && ((allPieces[WHITE] | allPieces[BLACK]) & (MOVEMASK[1] | MOVEMASK[2] | MOVEMASK[3])) == 0
-         && !isInCheck(WHITE)) {
-            if (getAttackMap(BLACK, 3) == 0) {
-                Move m = encodeMove(4, 2, KINGS, false);
-                m = setCastle(m, true);
-                quiets.add(m);
-            }
-        }
-    }
-    else {
-        if ((castlingRights & BLACKKSIDE)
-         && ((allPieces[WHITE] | allPieces[BLACK]) & (MOVEMASK[61] | MOVEMASK[62])) == 0
-         && !isInCheck(BLACK)) {
-            if (getAttackMap(WHITE, 61) == 0) {
-                Move m = encodeMove(60, 62, KINGS, false);
-                m = setCastle(m, true);
-                quiets.add(m);
-            }
-        }
-        if ((castlingRights & BLACKQSIDE)
-         && ((allPieces[WHITE] | allPieces[BLACK]) & (MOVEMASK[57] | MOVEMASK[58] | MOVEMASK[59])) == 0
-         && !isInCheck(BLACK)) {
-            if (getAttackMap(WHITE, 59) == 0) {
-                Move m = encodeMove(60, 58, KINGS, false);
-                m = setCastle(m, true);
-                quiets.add(m);
-            }
-        }
-    }
+    addCastlesToList(quiets, color);
 
     return quiets;
 }
@@ -1246,6 +1160,53 @@ void Board::addPromotionsToList(MoveList &moves, int stSq, int endSq, bool isCap
     moves.add(mk);
     moves.add(mr);
     moves.add(mb);
+}
+
+void Board::addCastlesToList(MoveList &moves, int color) {
+    // Add all possible castles
+    if (color == WHITE) {
+        // If castling rights still exist, squares in between king and rook are
+        // empty, and player is not in check
+        if ((castlingRights & WHITEKSIDE)
+         && ((allPieces[WHITE] | allPieces[BLACK]) & WHITE_KSIDE_PASSTHROUGH_SQS) == 0
+         && !isInCheck(WHITE)) {
+            // Check for castling through check
+            if (getAttackMap(BLACK, 5) == 0) {
+                Move m = encodeMove(4, 6, KINGS, false);
+                m = setCastle(m, true);
+                moves.add(m);
+            }
+        }
+        if ((castlingRights & WHITEQSIDE)
+         && ((allPieces[WHITE] | allPieces[BLACK]) & WHITE_QSIDE_PASSTHROUGH_SQS) == 0
+         && !isInCheck(WHITE)) {
+            if (getAttackMap(BLACK, 3) == 0) {
+                Move m = encodeMove(4, 2, KINGS, false);
+                m = setCastle(m, true);
+                moves.add(m);
+            }
+        }
+    }
+    else {
+        if ((castlingRights & BLACKKSIDE)
+         && ((allPieces[WHITE] | allPieces[BLACK]) & BLACK_KSIDE_PASSTHROUGH_SQS) == 0
+         && !isInCheck(BLACK)) {
+            if (getAttackMap(WHITE, 61) == 0) {
+                Move m = encodeMove(60, 62, KINGS, false);
+                m = setCastle(m, true);
+                moves.add(m);
+            }
+        }
+        if ((castlingRights & BLACKQSIDE)
+         && ((allPieces[WHITE] | allPieces[BLACK]) & BLACK_QSIDE_PASSTHROUGH_SQS) == 0
+         && !isInCheck(BLACK)) {
+            if (getAttackMap(WHITE, 59) == 0) {
+                Move m = encodeMove(60, 58, KINGS, false);
+                m = setCastle(m, true);
+                moves.add(m);
+            }
+        }
+    }
 }
 
 

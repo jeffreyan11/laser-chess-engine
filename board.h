@@ -28,6 +28,10 @@ const uint8_t BLACKKSIDE = 0x4;
 const uint8_t BLACKQSIDE = 0x8;
 const uint8_t WHITECASTLE = 0x3;
 const uint8_t BLACKCASTLE = 0xC;
+const uint64_t WHITE_KSIDE_PASSTHROUGH_SQS = MOVEMASK[5] | MOVEMASK[6];
+const uint64_t WHITE_QSIDE_PASSTHROUGH_SQS = MOVEMASK[1] | MOVEMASK[2] | MOVEMASK[3];
+const uint64_t BLACK_KSIDE_PASSTHROUGH_SQS = MOVEMASK[61] | MOVEMASK[62];
+const uint64_t BLACK_QSIDE_PASSTHROUGH_SQS = MOVEMASK[57] | MOVEMASK[58] | MOVEMASK[59];
 
 const uint16_t NO_EP_POSSIBLE = 0x8;
 const uint32_t RESET_TWOFOLD = 0x80808080;
@@ -142,6 +146,7 @@ private:
     void addMovesToList(MoveList &moves, int pieceID, int stSq,
         uint64_t allEndSqs, bool isCapture, uint64_t otherPieces = 0);
     void addPromotionsToList(MoveList &moves, int stSq, int endSq, bool isCapture);
+    void addCastlesToList(MoveList &moves, int color);
 
     // Move generation
     // Takes into account blocking for sliders, but otherwise leaves
