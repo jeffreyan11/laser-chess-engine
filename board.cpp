@@ -865,7 +865,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
     // Square parity for knight and bishop moves
     uint64_t kingParity = (pieces[color^1][KINGS] & LIGHT) ? LIGHT : DARK;
     uint64_t otherPieces = (color == WHITE) ? blackPieces : whitePieces;
-    uint64_t attackMap = getAttackMap(color, kingSq);
+    uint64_t invAttackMap = ~(getInitXRays(color, kingSq));
 
     // We can do pawns in parallel, since the start square of a pawn move is
     // determined by its end square.
@@ -879,7 +879,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
         tempPawns &= tempPawns - 1;
         uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
         // If moving the pawn caused a new xray piece to attack the king
-        if (!(xrays & ~attackMap)) {
+        if (!(xrays & invAttackMap)) {
             // Every legal move of this pawn is a legal check
             uint64_t legal = (color == WHITE) ? getWPawnSingleMoves(MOVEMASK[stsq]) | getWPawnDoubleMoves(MOVEMASK[stsq])
                                               : getBPawnSingleMoves(MOVEMASK[stsq]) | getBPawnDoubleMoves(MOVEMASK[stsq]);
@@ -973,7 +973,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
         // If none of these xray-ers are new, no discovered check.
         // Otherwise, we have an xray-er, and any move by this piece will
         // give discovered check
-        if (!(xrays & ~attackMap))
+        if (!(xrays & invAttackMap))
             nSq &= nAttackMap;
 
         addMovesToList(checks, KNIGHTS, stsq, nSq, false);
@@ -987,7 +987,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
         bishops &= bishops-1;
         uint64_t bSq = getBishopSquares(stsq);
         uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
-        if (!(xrays & ~attackMap))
+        if (!(xrays & invAttackMap))
             bSq &= bAttackMap;
 
         addMovesToList(checks, BISHOPS, stsq, bSq, false);
@@ -999,9 +999,9 @@ MoveList Board::getPseudoLegalChecks(int color) {
     while (rooks) {
         int stsq = bitScanForward(rooks);
         rooks &= rooks-1;
-        uint64_t rSq = getRookSquares(stsq) & rAttackMap;
+        uint64_t rSq = getRookSquares(stsq);
         uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
-        if (!(xrays & ~attackMap))
+        if (!(xrays & invAttackMap))
             rSq &= rAttackMap;
 
         addMovesToList(checks, ROOKS, stsq, rSq, false);
@@ -1014,9 +1014,6 @@ MoveList Board::getPseudoLegalChecks(int color) {
         int stsq = bitScanForward(queens);
         queens &= queens-1;
         uint64_t qSq = getQueenSquares(stsq) & qAttackMap;
-        uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
-        if (!(xrays & ~attackMap))
-            qSq &= qAttackMap;
 
         addMovesToList(checks, QUEENS, stsq, qSq, false);
         addMovesToList(checkCaptures, QUEENS, stsq, qSq, true, otherPieces);
@@ -1046,7 +1043,8 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
     if (count(otherPieces) >= 2) {
         uint64_t kingSqs = getKingSquares(kingSq);
 
-        addMovesToList(captures, KINGS, kingSq, kingSqs, true, (color == WHITE) ? blackPieces : whitePieces);
+        addMovesToList(captures, KINGS, kingSq, kingSqs, true,
+            (color == WHITE) ? blackPieces : whitePieces);
         addMovesToList(captures, KINGS, kingSq, kingSqs, false);
         return captures;
     }
@@ -1288,15 +1286,10 @@ void Board::addPromotionsToList(MoveList &moves, int stSq, int endSq, bool isCap
 // Get the attack map of all potential x-ray pieces (bishops, rooks, queens)
 // after a blocker has been removed.
 uint64_t Board::getXRays(int color, int sq, int blockerColor, uint64_t blocker) {
-    uint64_t savePieces = 0;
-    if (blockerColor == WHITE) {
-        savePieces = whitePieces;
-        whitePieces &= ~blocker;
-    }
-    else {
-        savePieces = blackPieces;
-        blackPieces &= ~blocker;
-    }
+    if (blockerColor == WHITE)
+        whitePieces ^= blocker;
+    else
+        blackPieces ^= blocker;
 
     uint64_t bishops = pieces[color][BISHOPS] & ~blocker;
     uint64_t rooks = pieces[color][ROOKS] & ~blocker;
@@ -1306,11 +1299,23 @@ uint64_t Board::getXRays(int color, int sq, int blockerColor, uint64_t blocker) 
                      | (getRookSquares(sq) & (rooks | queens));
 
     if (blockerColor == WHITE)
-        whitePieces = savePieces;
+        whitePieces ^= blocker;
     else
-        blackPieces = savePieces;
+        blackPieces ^= blocker;
 
     return xRayMap;
+}
+
+// Get the attack map of all potential x-ray pieces (bishops, rooks, queens)
+// with no blockers removed. Used to compare with the results of the function
+// above to find pins/discovered checks
+uint64_t Board::getInitXRays(int color, int sq) {
+    uint64_t bishops = pieces[color][BISHOPS];
+    uint64_t rooks = pieces[color][ROOKS];
+    uint64_t queens = pieces[color][QUEENS];
+
+    return (getBishopSquares(sq) & (bishops | queens))
+         | (getRookSquares(sq) & (rooks | queens));
 }
 
 // Given a color and a square, returns all pieces of the color that attack the
@@ -1458,8 +1463,8 @@ int Board::evaluate() {
     value += endgamePSTVal * egFactor / EG_FACTOR_RES;
 
     // Consider attacked squares near king
-    uint64_t wksq = getKingAttacks(WHITE);
-    uint64_t bksq = getKingAttacks(BLACK);
+    uint64_t wksq = getKingSquares(bitScanForward(pieces[WHITE][KINGS]));
+    uint64_t bksq = getKingSquares(bitScanForward(pieces[BLACK][KINGS]));
     
     // Pawn shield bonus (files ABC, FGH)
     value += (25 * egFactor / EG_FACTOR_RES) * count(wksq & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
@@ -1524,7 +1529,7 @@ int Board::evaluate() {
     return value;
 }
 
-// Faster estimates of piece mobility (number of legal moves)
+// Scores the board for a player based on estimates of mobility
 int Board::getPseudoMobility(int color) {
     int result = 0;
     uint64_t knights = pieces[color][KNIGHTS];
@@ -1572,6 +1577,8 @@ int Board::getPseudoMobility(int color) {
     return result;
 }
 
+// Gets the endgame factor, which adjusts the evaluation based on how much
+// material is left on the board.
 int Board::getEGFactor() {
     int whiteMaterial = PAWN_VALUE * count(pieces[WHITE][PAWNS])
             + KNIGHT_VALUE * count(pieces[WHITE][KNIGHTS])
@@ -1587,7 +1594,8 @@ int Board::getEGFactor() {
     return max(0, min(EG_FACTOR_RES, egFactor));
 }
 
-// TODO come up with a better way to do this
+// Given a bitboard of attackers, finds the least valuable attacker of color and
+// returns a single occupancy bitboard of that piece
 uint64_t Board::getLeastValuableAttacker(uint64_t attackers, int color, int &piece) {
     for (piece = 0; piece < 5; piece++) {
         uint64_t single = attackers & pieces[color][piece];
@@ -1662,7 +1670,9 @@ int Board::getMVVLVAScore(int color, Move m) {
 }
 
 // Returns a score from the initial capture
-// This helps reduce the number of times SEE must be used in quiescence search.
+// This helps reduce the number of times SEE must be used in quiescence search,
+// since if we have a losing trade after capture-recapture our opponent could
+// likely stand pat, or we could've captured with a better piece
 int Board::getExchangeScore(int color, Move m) {
     int endSq = getEndSq(m);
     int attacker = getPiece(m);
@@ -1716,22 +1726,6 @@ uint64_t Board::getKnightSquares(int single) {
     return KNIGHTMOVES[single];
 }
 
-// Parallel-prefix knight move generation
-// l1, l2, r1, r2 are the 4 possible directions a knight can move for the first
-// half of its "L" shaped movement
-// Then, l1 and r1 must be moved up or down 2 squares (shift 16)
-// Similarly, l2 and r2 are moved up or down 1 square to complete the "L".
-uint64_t Board::getKnightMoves(uint64_t knights) {
-    uint64_t kn = knights;
-    uint64_t l1 = (kn >> 1) & 0x7f7f7f7f7f7f7f7f;
-    uint64_t l2 = (kn >> 2) & 0x3f3f3f3f3f3f3f3f;
-    uint64_t r1 = (kn << 1) & 0xfefefefefefefefe;
-    uint64_t r2 = (kn << 2) & 0xfcfcfcfcfcfcfcfc;
-    uint64_t h1 = l1 | r1;
-    uint64_t h2 = l2 | r2;
-    return (h1<<16) | (h1>>16) | (h2<<8) | (h2>>8);
-}
-
 uint64_t Board::getBishopSquares(int single) {
     uint64_t occ = whitePieces | blackPieces;
 
@@ -1741,15 +1735,6 @@ uint64_t Board::getBishopSquares(int single) {
     return diagAtt | antiDiagAtt;
 }
 
-uint64_t Board::getBishopMoves(uint64_t bishops) {
-    uint64_t open = ~(whitePieces | blackPieces);
-    uint64_t result = neAttacks(bishops, open);
-    result |= seAttacks(bishops, open);
-    result |= nwAttacks(bishops, open);
-    result |= swAttacks(bishops, open);
-    return result;
-}
-
 uint64_t Board::getRookSquares(int single) {
     uint64_t occ = whitePieces | blackPieces;
 
@@ -1757,15 +1742,6 @@ uint64_t Board::getRookSquares(int single) {
     uint64_t fileAtt = fileAttacks(occ, single);
 
     return rankAtt | fileAtt;
-}
-
-uint64_t Board::getRookMoves(uint64_t rooks) {
-    uint64_t open = ~(whitePieces | blackPieces);
-    uint64_t result = southAttacks(rooks, open);
-    result |= northAttacks(rooks, open);
-    result |= eastAttacks(rooks, open);
-    result |= westAttacks(rooks, open);
-    return result;
 }
 
 uint64_t Board::getQueenSquares(int single) {
@@ -1779,29 +1755,8 @@ uint64_t Board::getQueenSquares(int single) {
     return rankAtt | fileAtt | diagAtt | antiDiagAtt;
 }
 
-uint64_t Board::getQueenMoves(uint64_t queens) {
-    uint64_t open = ~(whitePieces | blackPieces);
-    uint64_t result = southAttacks(queens, open);
-    result |= northAttacks(queens, open);
-    result |= eastAttacks(queens, open);
-    result |= westAttacks(queens, open);
-    result |= neAttacks(queens, open);
-    result |= seAttacks(queens, open);
-    result |= nwAttacks(queens, open);
-    result |= swAttacks(queens, open);
-    return result;
-}
-
 uint64_t Board::getKingSquares(int single) {
     return KINGMOVES[single];
-}
-
-uint64_t Board::getKingAttacks(int color) {
-    uint64_t kings = pieces[color][KINGS];
-    uint64_t attacks = ((kings << 1) & NOTA) | ((kings >> 1) & NOTH);
-    kings |= attacks;
-    attacks |= (kings >> 8) | (kings << 8);
-    return attacks;
 }
 
 // Kindergarten bitboard slider attacks

@@ -63,7 +63,11 @@ public:
     MoveList getPseudoLegalChecks(int color);
     MoveList getPseudoLegalCheckEscapes(int color);
 
+    // Get a bitboard of all xray-ers attacking a square if a blocker has been removed
     uint64_t getXRays(int color, int sq, int blockerColor, uint64_t blocker);
+    // Get a bitboard of all xray-ers attacking a square with no blocker removed
+    uint64_t getInitXRays(int color, int sq);
+    // Get all pieces of that color attacking the square
     uint64_t getAttackMap(int color, int sq);
     int getCapturedPiece(int colorCaptured, int endSq);
     bool isInCheck(int color);
@@ -140,8 +144,9 @@ private:
     void addPromotionsToList(MoveList &moves, int stSq, int endSq, bool isCapture);
 
     // Move generation
-    // ___Moves(): moves for all of that piece type on the board.
-    // ___Squares(): moves for a single piece of that type.
+    // Takes into account blocking for sliders, but otherwise leaves
+    // the occupancy of the end square up to the move generation function
+    // This is necessary for captures
     uint64_t getWPawnSingleMoves(uint64_t pawns);
     uint64_t getBPawnSingleMoves(uint64_t pawns);
     uint64_t getWPawnDoubleMoves(uint64_t pawns);
@@ -151,15 +156,10 @@ private:
     uint64_t getWPawnRightCaptures(uint64_t pawns);
     uint64_t getBPawnRightCaptures(uint64_t pawns);
     uint64_t getKnightSquares(int single);
-    uint64_t getKnightMoves(uint64_t knights);
     uint64_t getBishopSquares(int single);
-    uint64_t getBishopMoves(uint64_t bishops);
     uint64_t getRookSquares(int single);
-    uint64_t getRookMoves(uint64_t rooks);
     uint64_t getQueenSquares(int single);
-    uint64_t getQueenMoves(uint64_t queens);
     uint64_t getKingSquares(int single);
-    uint64_t getKingAttacks(int color);
 
     // Kindergarten bitboard methods
     uint64_t rankAttacks(uint64_t occ, int single);

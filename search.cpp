@@ -295,6 +295,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             return score;
     }
 
+    // A static evaluation, currently only used for null move pruning
+    // May in the future be used for futility pruning/razoring/etc.
     int staticEval = (color == WHITE) ? b.evaluate() : -b.evaluate();
     
     // null move pruning
@@ -331,6 +333,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     if (legalMoves.size() == 0)
         return scoreMate(isInCheck, depth, alpha, beta);
 
+    // Remove the hash move from the list, since it has already been tried
     // TODO make this nicer
     if (hashed != NULL_MOVE) {
         for (unsigned int i = 0; i < legalMoves.size(); i++) {
@@ -343,6 +346,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
     ScoreList scores;
     // Internal iterative deepening, SEE, and MVV/LVA move ordering
+    // The scoring relies partially on the fact that our selection sort is stable
     // Do a full sort on PV nodes since good move ordering is the most important here
     if (depth >= 8 && isPVNode) {
         sortSearch(b, legalMoves, scores, 2);
