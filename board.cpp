@@ -138,11 +138,10 @@ Board::Board() {
     blackPieces = 0xFFFF000000000000;
 
     epCaptureFile = NO_EP_POSSIBLE;
-
     playerToMove = WHITE;
-
+    twoFoldStartSqs = 0x80808080;
+    twoFoldEndSqs = 0x80808080;
     zobristKey = startPosZobristKey;
-
     moveNumber = 1;
     castlingRights = 0xF;
     fiftyMoveCounter = 0;
@@ -169,18 +168,19 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
     blackPieces = 0;
     for (int i = 0; i < 6; i++)
         blackPieces |= pieces[1][i];
-    
+
+    epCaptureFile = _epCaptureFile;
+    playerToMove = _playerToMove;
+    twoFoldStartSqs = 0x80808080;
+    twoFoldEndSqs = 0x80808080;
+    initZobristKey(mailboxBoard);
+    moveNumber = _moveNumber;
     castlingRights = 0;
     castlingRights = _whiteCanKCastle;
     castlingRights |= _whiteCanQCastle << 1;
     castlingRights |= _blackCanKCastle << 2;
     castlingRights |= _blackCanQCastle << 3;
-    epCaptureFile = _epCaptureFile;
     fiftyMoveCounter = _fiftyMoveCounter;
-    moveNumber = _moveNumber;
-    playerToMove = _playerToMove;
-
-    initZobristKey(mailboxBoard);
 }
 
 Board::~Board() {}
@@ -196,8 +196,11 @@ Board::Board(Board *b) {
     }
     whitePieces = b->whitePieces;
     blackPieces = b->blackPieces;
+
     epCaptureFile = b->epCaptureFile;
     playerToMove = b->playerToMove;
+    twoFoldStartSqs = b->twoFoldStartSqs;
+    twoFoldEndSqs = b->twoFoldEndSqs;
     zobristKey = b->zobristKey;
     moveNumber = b->moveNumber;
     castlingRights = b->castlingRights;
