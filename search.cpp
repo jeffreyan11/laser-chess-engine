@@ -430,17 +430,19 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         if (isStop)
             return -INFTY;
 
-        // Futility pruning using SEE
-        // Needs check detection
-        //if(depth == 1 && !isPVNode && staticEval <= alpha - MAX_POS_SCORE && !isInCheck && !isCapture(m) && b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
-        //    continue;
-
         reduction = 0;
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(m, color))
             continue;
-
         searchStats.nodes++;
+
+        // Futility pruning
+        // Needs better check detection
+        if(depth == 1 && !isPVNode && staticEval <= alpha - MAX_POS_SCORE && !isInCheck && !isCapture(m) && !copy.isInCheck(color^1) /*&& b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE*/) {
+            score = alpha;
+            continue;
+        }
+
         // Late move reduction
         if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && j > 2 && alpha <= prevAlpha) {
             if (depth >= 6)
