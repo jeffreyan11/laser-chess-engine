@@ -74,9 +74,10 @@ int epVictimSquare(int victimColor, uint16_t file) {
  * Performs a PERFT. Useful for testing/debugging
  * 7/8/15: PERFT 5, 1.46 s (i5-2450m)
  * 7/11/15: PERFT 5, 1.22 s (i5-2450m)
- * 7/13/15: PERFT 5, 1.27/1.08 s (i5-2450m) before/after pass Board by reference
+ * 7/13/15: PERFT 5, 1.08 s (i5-2450m)
  * 7/14/15: PERFT 5, 0.86 s (i5-2450m)
  * 7/17/15: PERFT 5, 0.32 s (i5-2450m)
+ * 8/7/15: PERFT 5, 0.28 s, PERFT 6, 6.71 s (i5-5200u)
  */
 uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
     if (depth == 0)
@@ -137,10 +138,10 @@ Board::Board() {
     pieces[BLACK][QUEENS] = 0x0800000000000000; // black queens
     pieces[BLACK][KINGS] = 0x1000000000000000; // black kings
 
-    epCaptureFile = NO_EP_POSSIBLE;
-    playerToMove = WHITE;
     twoFoldSqs = RESET_TWOFOLD;
     zobristKey = startPosZobristKey;
+    epCaptureFile = NO_EP_POSSIBLE;
+    playerToMove = WHITE;
     moveNumber = 1;
     castlingRights = WHITECASTLE | BLACKCASTLE;
     fiftyMoveCounter = 0;
@@ -168,9 +169,9 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
     for (int i = 0; i < 6; i++)
         allPieces[BLACK] |= pieces[1][i];
 
+    twoFoldSqs = RESET_TWOFOLD;
     epCaptureFile = _epCaptureFile;
     playerToMove = _playerToMove;
-    twoFoldSqs = RESET_TWOFOLD;
     moveNumber = _moveNumber;
     castlingRights = 0;
     if (_whiteCanKCastle)
@@ -199,10 +200,10 @@ Board::Board(Board *b) {
         pieces[1][i] = b->pieces[1][i];
     }
 
-    epCaptureFile = b->epCaptureFile;
-    playerToMove = b->playerToMove;
     twoFoldSqs = b->twoFoldSqs;
     zobristKey = b->zobristKey;
+    epCaptureFile = b->epCaptureFile;
+    playerToMove = b->playerToMove;
     moveNumber = b->moveNumber;
     castlingRights = b->castlingRights;
     fiftyMoveCounter = b->fiftyMoveCounter;

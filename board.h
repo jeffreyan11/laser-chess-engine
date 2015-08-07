@@ -118,16 +118,16 @@ private:
     // 12 bitboards, one for each of the 12 piece types, indexed by the
     // constants given in common.h
     uint64_t pieces[2][6];
-    // 8 if cannot en passant, if en passant is possible, the file of the
-    // pawn being captured is stored here (0-7)
-    uint16_t epCaptureFile;
-    // Whose move is it?
-    uint16_t playerToMove;
     // Keep track of the last 4 half-plys for two-fold repetition
     // Lowest bits are most recent
     uint64_t twoFoldSqs;
     // Zobrist key for hash table use
     uint64_t zobristKey;
+    // 8 if cannot en passant, if en passant is possible, the file of the
+    // pawn being captured is stored here (0-7)
+    uint16_t epCaptureFile;
+    // Whose move is it?
+    uint16_t playerToMove;
     // Move number
     uint16_t moveNumber;
     // Booleans indicating whether castling is possible
