@@ -75,6 +75,8 @@ public:
     // Get all pieces of that color attacking the square
     uint64_t getAttackMap(int color, int sq);
     int getCapturedPiece(int colorCaptured, int endSq);
+    bool isCheckMove(Move m, int color);
+
     bool isInCheck(int color);
     bool isWInMate();
     bool isBInMate();

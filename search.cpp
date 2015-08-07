@@ -419,7 +419,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     Move toHash = NULL_MOVE;
     int reduction = 0;
     unsigned int i = 0;
-    unsigned int j = 0; // separate counter only incremented when valid move is searched
+    unsigned int j = (hashed == NULL_MOVE) ? 0 : 1; // separate counter only incremented when valid move is searched
     score = -INFTY;
     searchStats.searchSpaces++;
     for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
@@ -430,26 +430,46 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         if (isStop)
             return -INFTY;
 
+        // Futility pruning
+        //if(!isPVNode && ((depth == 1 && staticEval <= alpha - MAX_POS_SCORE)/* || (depth == 2 && staticEval <= alpha - 3*MAX_POS_SCORE)*/)
+        //&& !isInCheck && !isCapture(m) && abs(alpha) < QUEEN_VALUE && !b.isCheckMove(m, color)) {
+        //    score = alpha;
+        //    continue;
+        //}
+
         reduction = 0;
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(m, color))
             continue;
-        searchStats.nodes++;
 
         // Futility pruning
         // Needs better check detection
         if(!isPVNode && ((depth == 1 && staticEval <= alpha - MAX_POS_SCORE)/* || (depth == 2 && staticEval <= alpha - 3*MAX_POS_SCORE)*/)
-        && !isInCheck && !isCapture(m) && !copy.isInCheck(color^1) /*&& b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE*/) {
+        && !isInCheck && !isCapture(m) && abs(alpha) < QUEEN_VALUE && !copy.isInCheck(color^1)) {
             score = alpha;
             continue;
         }
 
+        searchStats.nodes++;
+
         // Late move reduction
-        if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && j > 2 && alpha <= prevAlpha && !copy.isInCheck(color^1)) {
-            if (depth >= 9)
+        if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && j > 2 && alpha <= prevAlpha
+        && m != searchParams.killers[depth][0] && m != searchParams.killers[depth][1]
+        && !copy.isInCheck(color^1)) {
+            /*if (depth >= 9)
                 reduction = 3;
             else if (depth >= 6)
-                reduction = 2;
+                reduction = 2;*/
+            if (depth >= 8)
+                reduction = (j > 12) ? 3 : 2;
+            else if (depth >= 7)
+                reduction = (j > 4) ? 2 : 1;
+            else if (depth >= 6)
+                reduction = (j > 5) ? 2 : 1;
+            else if (depth >= 5)
+                reduction = (j > 6) ? 2 : 1;
+            //else if (depth >= 4)
+            //    reduction = (j > legalMoves.size() / 2) ? 2 : 1;
             else
                 reduction = 1;
         }

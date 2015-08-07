@@ -1264,6 +1264,53 @@ int Board::getCapturedPiece(int colorCaptured, int endSq) {
     return -1;
 }
 
+// Returns true if a move puts the opponent in check
+// Precondition: opposing king is not already in check (obviously)
+bool Board::isCheckMove(Move m, int color) {
+    int kingSq = bitScanForward(pieces[color^1][KINGS]);
+
+    // See if move is a direct check
+    uint64_t attackMap = 0;
+    switch (getPiece(m)) {
+        case PAWNS:
+            attackMap = (color == WHITE) 
+                ? getBPawnLeftCaptures(MOVEMASK[kingSq]) | getBPawnRightCaptures(MOVEMASK[kingSq])
+                : getWPawnLeftCaptures(MOVEMASK[kingSq]) | getWPawnRightCaptures(MOVEMASK[kingSq]);
+            break;
+        case KNIGHTS:
+            attackMap = getKnightSquares(kingSq);
+            break;
+        case BISHOPS:
+            attackMap = getBishopSquares(kingSq);
+            break;
+        case ROOKS:
+            attackMap = getRookSquares(kingSq);
+            break;
+        case QUEENS:
+            attackMap = getQueenSquares(kingSq);
+            break;
+        case KINGS:
+            // keep attackMap 0
+            break;
+    }
+    if (MOVEMASK[getEndSq(m)] & attackMap)
+        return true;
+
+    // See if move is a discovered check
+    // Get a bitboard of all pieces that could possibly xray
+    uint64_t xrayPieces = pieces[color][BISHOPS] | pieces[color][ROOKS] | pieces[color][QUEENS];
+
+    // Get any bishops, rooks, queens attacking king after piece has moved
+    uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[getStartSq(m)]);
+    // If there is an xray piece attacking the king square after the piece has
+    // moved, we have discovered check
+    if (xrays & xrayPieces)
+        return true;
+
+    // If not direct or discovered check, then not a check
+    return false;
+}
+
 
 //----------------------King: check, checkmate, stalemate-----------------------
 bool Board::isInCheck(int color) {
