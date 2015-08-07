@@ -438,7 +438,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
         // Futility pruning
         // Needs better check detection
-        if(depth == 1 && !isPVNode && staticEval <= alpha - MAX_POS_SCORE && !isInCheck && !isCapture(m) && !copy.isInCheck(color^1) /*&& b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE*/) {
+        if(!isPVNode && ((depth == 1 && staticEval <= alpha - MAX_POS_SCORE)/* || (depth == 2 && staticEval <= alpha - 3*MAX_POS_SCORE)*/)
+        && !isInCheck && !isCapture(m) && !copy.isInCheck(color^1) /*&& b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE*/) {
             score = alpha;
             continue;
         }
