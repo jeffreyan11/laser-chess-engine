@@ -444,8 +444,10 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         }
 
         // Late move reduction
-        if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && j > 2 && alpha <= prevAlpha) {
-            if (depth >= 6)
+        if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && j > 2 && alpha <= prevAlpha && !copy.isInCheck(color^1)) {
+            if (depth >= 9)
+                reduction = 3;
+            else if (depth >= 6)
                 reduction = 2;
             else
                 reduction = 1;
