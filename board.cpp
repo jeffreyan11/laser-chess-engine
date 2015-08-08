@@ -1,3 +1,4 @@
+#include <iostream>
 #include <random>
 #include "board.h"
 #include "btables.h"
@@ -7,15 +8,70 @@ static uint64_t fileArray[8][64];
 static uint64_t zobristTable[794];
 static uint64_t startPosZobristKey = 0;
 
-// Dumb7fill methods
-uint64_t southAttacks(uint64_t rooks, uint64_t empty);
-uint64_t northAttacks(uint64_t rooks, uint64_t empty);
-uint64_t eastAttacks(uint64_t rooks, uint64_t empty);
-uint64_t neAttacks(uint64_t bishops, uint64_t empty);
-uint64_t seAttacks(uint64_t bishops, uint64_t empty);
-uint64_t westAttacks(uint64_t rooks, uint64_t empty);
-uint64_t swAttacks(uint64_t bishops, uint64_t empty);
-uint64_t nwAttacks(uint64_t bishops, uint64_t empty);
+struct MagicInfo {
+    uint64_t *table;
+    uint64_t mask;
+    uint64_t magic;
+    int shift;
+};
+
+static uint64_t *attackTable;
+static MagicInfo magicBishops[64];
+static MagicInfo magicRooks[64];
+
+uint64_t index_to_uint64(int index, int nBits, uint64_t mask);
+uint64_t ratt(int sq, uint64_t block);
+uint64_t batt(int sq, uint64_t block);
+int magicMap(uint64_t masked, uint64_t magic, int nBits);
+uint64_t find_magic(int sq, int m, bool isBishop, mt19937_64 &magicRNG);
+
+void initMagicTables() {
+    mt19937_64 magicRNG (7511753);
+    attackTable = new uint64_t[107648];
+    // Do bishops
+    int runningPtrLoc = 0;
+    for (int i = 0; i < 64; i++) {
+        uint64_t *tableStart = attackTable;
+        magicBishops[i].table = tableStart + runningPtrLoc;
+        magicBishops[i].mask = BISHOP_MASK[i];
+        magicBishops[i].magic = find_magic(i, NUM_BISHOP_BITS[i], true, magicRNG);
+        magicBishops[i].shift = 64 - NUM_BISHOP_BITS[i];
+        runningPtrLoc += 1 << NUM_BISHOP_BITS[i];
+    }
+    // Do rooks
+    for (int i = 0; i < 64; i++) {
+        uint64_t *tableStart = attackTable;
+        magicRooks[i].table = tableStart + runningPtrLoc;
+        magicRooks[i].mask = ROOK_MASK[i];
+        magicRooks[i].magic = find_magic(i, NUM_ROOK_BITS[i], false, magicRNG);
+        magicRooks[i].shift = 64 - NUM_ROOK_BITS[i];
+        runningPtrLoc += 1 << NUM_ROOK_BITS[i];
+    }
+    // Set up the actual attack table, bishops first
+    for (int sq = 0; sq < 64; sq++) {
+        int nBits = NUM_BISHOP_BITS[sq];
+        uint64_t mask = BISHOP_MASK[sq];
+        for (int i = 0; i < (1 << nBits); i++) {
+            uint64_t *attTableLoc = magicBishops[sq].table;
+            uint64_t occ = index_to_uint64(i, nBits, mask);
+            uint64_t attSet = batt(sq, occ);
+            int magicIndex = magicMap(occ, magicBishops[sq].magic, nBits);
+            attTableLoc[magicIndex] = attSet;
+        }
+    }
+    // Then rooks
+    for (int sq = 0; sq < 64; sq++) {
+        int nBits = NUM_ROOK_BITS[sq];
+        uint64_t mask = ROOK_MASK[sq];
+        for (int i = 0; i < (1 << nBits); i++) {
+            uint64_t *attTableLoc = magicRooks[sq].table;
+            uint64_t occ = index_to_uint64(i, nBits, mask);
+            uint64_t attSet = ratt(sq, occ);
+            int magicIndex = magicMap(occ, magicRooks[sq].magic, nBits);
+            attTableLoc[magicIndex] = attSet;
+        }
+    }
+}
 
 void initKindergartenTables() {
     // Generate the kindergarten bitboard attack table.
@@ -77,7 +133,7 @@ int epVictimSquare(int victimColor, uint16_t file) {
  * 7/13/15: PERFT 5, 1.08 s (i5-2450m)
  * 7/14/15: PERFT 5, 0.86 s (i5-2450m)
  * 7/17/15: PERFT 5, 0.32 s (i5-2450m)
- * 8/7/15: PERFT 5, 0.28 s, PERFT 6, 6.71 s (i5-5200u)
+ * 8/7/15: PERFT 5, 0.25 s, PERFT 6, 6.17 s (i5-5200u)
  */
 uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
     if (depth == 0)
@@ -90,7 +146,7 @@ uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(pl.get(i), color))
             continue;
-        
+
         nodes += perft(copy, color^1, depth-1, captures);
     }
 
@@ -1696,30 +1752,41 @@ uint64_t Board::getKnightSquares(int single) {
 uint64_t Board::getBishopSquares(int single) {
     uint64_t occ = allPieces[WHITE] | allPieces[BLACK];
 
-    uint64_t diagAtt = diagAttacks(occ, single);
+    /*uint64_t diagAtt = diagAttacks(occ, single);
     uint64_t antiDiagAtt = antiDiagAttacks(occ, single);
 
-    return diagAtt | antiDiagAtt;
+    return diagAtt | antiDiagAtt;*/
+    uint64_t *attTableLoc = magicBishops[single].table;
+    occ &= magicBishops[single].mask;
+    occ *= magicBishops[single].magic;
+    occ >>= magicBishops[single].shift;
+    return attTableLoc[occ];
 }
 
 uint64_t Board::getRookSquares(int single) {
     uint64_t occ = allPieces[WHITE] | allPieces[BLACK];
 
-    uint64_t rankAtt = rankAttacks(occ, single);
+    /*uint64_t rankAtt = rankAttacks(occ, single);
     uint64_t fileAtt = fileAttacks(occ, single);
 
-    return rankAtt | fileAtt;
+    return rankAtt | fileAtt;*/
+    uint64_t *attTableLoc = magicRooks[single].table;
+    occ &= magicRooks[single].mask;
+    occ *= magicRooks[single].magic;
+    occ >>= magicRooks[single].shift;
+    return attTableLoc[occ];
 }
 
 uint64_t Board::getQueenSquares(int single) {
-    uint64_t occ = allPieces[WHITE] | allPieces[BLACK];
+    //uint64_t occ = allPieces[WHITE] | allPieces[BLACK];
 
-    uint64_t rankAtt = rankAttacks(occ, single);
+    /*uint64_t rankAtt = rankAttacks(occ, single);
     uint64_t fileAtt = fileAttacks(occ, single);
     uint64_t diagAtt = diagAttacks(occ, single);
     uint64_t antiDiagAtt = antiDiagAttacks(occ, single);
 
-    return rankAtt | fileAtt | diagAtt | antiDiagAtt;
+    return rankAtt | fileAtt | diagAtt | antiDiagAtt;*/
+    return getBishopSquares(single) | getRookSquares(single);
 }
 
 uint64_t Board::getKingSquares(int single) {
@@ -1976,4 +2043,84 @@ uint64_t nwAttacks(uint64_t bishops, uint64_t empty) {
     flood |= bishops = (bishops << 7) & empty;
     flood |=         (bishops << 7) & empty;
     return           (flood << 7) & NOTH ;
+}
+
+
+//------------------------------------------------------------------------------
+//-----------------------------MAGIC BITBOARDS----------------------------------
+//------------------------------------------------------------------------------
+
+// Maps an index from 0 from 2^nBits - 1 into one of the
+// 2^nBits possible masks
+uint64_t index_to_uint64(int index, int nBits, uint64_t mask) {
+    uint64_t result = 0;
+    // For each bit in the mask
+    for (int i = 0; i < nBits; i++) {
+        int j = bitScanForward(mask);
+        mask &= mask - 1;
+        // If this bit should be set...
+        if (index & (1 << i))
+            // Set it at the same position in the result
+            result |= (1ULL << j);
+    }
+    return result;
+}
+
+uint64_t ratt(int sq, uint64_t block) {
+    return southAttacks(MOVEMASK[sq], ~block) | northAttacks(MOVEMASK[sq], ~block)
+         | eastAttacks(MOVEMASK[sq], ~block) | westAttacks(MOVEMASK[sq], ~block);
+}
+
+uint64_t batt(int sq, uint64_t block) {
+    return neAttacks(MOVEMASK[sq], ~block) | nwAttacks(MOVEMASK[sq], ~block)
+         | swAttacks(MOVEMASK[sq], ~block) | seAttacks(MOVEMASK[sq], ~block);
+}
+
+int magicMap(uint64_t masked, uint64_t magic, int nBits) {
+    return (int) ((masked * magic) >> (64 - nBits));
+}
+
+uint64_t find_magic(int sq, int iBits, bool isBishop, mt19937_64 &magicRNG) {
+    uint64_t mask, maskedBits[4096], attSet[4096], used[4096], magic;
+    bool failed;
+
+    mask = isBishop ? BISHOP_MASK[sq] : ROOK_MASK[sq];
+    int nBits = count(mask);
+
+    for (int i = 0; i < (1 << nBits); i++) {
+        maskedBits[i] = index_to_uint64(i, nBits, mask);
+        attSet[i] = isBishop ? batt(sq, maskedBits[i]) : ratt(sq, maskedBits[i]);
+    }
+    // Try 10 mill iterations before giving up
+    for (int k = 0; k < 10000000; k++) {
+        // Get a random magic candidate
+        // We make this random 64-bit integer sparse by &-ing 3 random numbers
+        magic = magicRNG() & magicRNG() & magicRNG();
+        // We want a large number of high bits to get a higher success rate
+        if (count((mask * magic) & 0xFF00000000000000ULL) < 6)
+            continue;
+        // Clear the used table
+        for (int i = 0; i < 4096; i++)
+            used[i] = 0;
+        // Calculate the packed bits for every possible mask using this magic
+        // and see if any fail
+        failed = false;
+        for (int i = 0; !failed && i < (1 << nBits); i++) {
+            int mappedIndex = magicMap(maskedBits[i], magic, iBits);
+            // No collision
+            if (!used[mappedIndex])
+                used[mappedIndex] = attSet[i];
+            // If not constructive collsion, then we failed
+            else if (used[mappedIndex] != attSet[i])
+                failed = true;
+        }
+        if (!failed)
+            return magic;
+    }
+
+    // TODO testing seeds
+    cerr << "uh oh" << endl;
+    // Otherwise we failed :(
+    // (this should never happen)
+    return 0;
 }

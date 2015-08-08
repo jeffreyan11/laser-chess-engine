@@ -9,6 +9,9 @@ all: uci
 uci: $(OBJS) uci.o
 	$(CC) -o $(ENGINENAME) $^ $(LDFLAGS)
 
+magic: common.o board.o magic.o
+	$(CC) -o magic $^
+
 %.o: %.cpp
 	$(CC) -c $(CFLAGS) -x c++ $< -o $@
 

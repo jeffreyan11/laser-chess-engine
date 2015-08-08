@@ -26,6 +26,7 @@ Board fenToBoard(string s);
 volatile bool isStop = true;
 
 int main() {
+    initMagicTables();
     initKindergartenTables();
     initZobristTable();
 
@@ -131,7 +132,7 @@ int main() {
             using namespace std::chrono;
             auto start_time = high_resolution_clock::now();
             
-            uint64_t nodes = perft(b, 1, depth, captures);
+            uint64_t nodes = perft(b, WHITE, depth, captures);
             
             auto end_time = high_resolution_clock::now();
             double time = duration_cast<duration<double>>(
