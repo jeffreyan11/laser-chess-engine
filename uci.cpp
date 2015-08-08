@@ -176,7 +176,7 @@ int main() {
             int iters = stoi(inputVector.at(1));
             uint64_t seed = stoull(inputVector.at(2));
             mt19937_64 rng (seed);
-            double min = 999;
+            double minTime = 999;
             uint64_t bestSeed = 0;
             for (int i = 0; i < iters; i++) {
                 if ((i & 0xFF) == 0xFF) cerr << "Trial " << i+1 << endl;
@@ -186,14 +186,14 @@ int main() {
                 auto init_end = std::chrono::high_resolution_clock::now();
                 double init_time = std::chrono::duration_cast<std::chrono::duration<double>>(
                     init_end-init_start).count();
-                if (init_time < min) {
+                if (init_time < minTime) {
                     bestSeed = test;
-                    min = init_time;
+                    minTime = init_time;
                     cerr << "New best! Seed: " << bestSeed << " Time: " << init_time << endl;
                 }
             }
             cerr << "Best seed: " << bestSeed << endl;
-            cerr << "Time: " << min << endl;
+            cerr << "Time: " << minTime << endl;
         }
         
         // According to UCI protocol, inputs that do not make sense are ignored

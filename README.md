@@ -19,3 +19,4 @@ Estimated ELO is currently 2100-2200, tested using Stockfish 280615 64 BMI2 (htt
 Known issues:
 getPseudoLegalChecks() does not handle any discovered checks properly
 isCheckMove() ignores en passant and castling and needs debugging
+tunemagic command leaks a large amount of memory

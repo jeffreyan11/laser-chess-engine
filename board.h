@@ -104,8 +104,7 @@ public:
     uint8_t getFiftyMoveCounter();
     uint16_t getMoveNumber();
     int getPlayerToMove();
-    uint64_t getWhitePieces();
-    uint64_t getBlackPieces();
+    uint64_t getAllPieces(int color);
     int *getMailbox();
     uint64_t getZobristKey();
 
@@ -166,6 +165,7 @@ private:
     uint64_t getRookSquares(int single);
     uint64_t getQueenSquares(int single);
     uint64_t getKingSquares(int single);
+    uint64_t getOccupancy();
 
     // Kindergarten bitboard methods
     uint64_t rankAttacks(uint64_t occ, int single);

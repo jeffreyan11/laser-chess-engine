@@ -268,23 +268,7 @@ Board Board::staticCopy() {
 
 /*
 Board *Board::dynamicCopy() {
-    Board *result = new Board();
-    for (int i = 0; i < 6; i++) {
-        result->pieces[0][i] = pieces[0][i];
-    }
-    for (int i = 0; i < 6; i++) {
-        result->pieces[1][i] = pieces[1][i];
-    }
-    result->whitePieces = whitePieces;
-    result->blackPieces = blackPieces;
-    result->epCaptureFile = epCaptureFile;
-    result->playerToMove = playerToMove;
-    result->twoFoldSqs = twoFoldSqs;
-    result->zobristKey = zobristKey;
-    result->moveNumber = moveNumber;
-    result->castlingRights = castlingRights;
-    result->fiftyMoveCounter = fiftyMoveCounter;
-    return result;
+    return (new Board(this));
 }
 */
 
@@ -527,7 +511,7 @@ bool Board::doHashMove(Move m, int color) {
     uint64_t endSingle = MOVEMASK[getEndSq(m)];
     bool captureRoutes = (isCapture(m) && (otherPieces & endSingle))
                       || (isCapture(m) && pieceID == PAWNS && (~otherPieces & endSingle));
-    uint64_t empty = ~(allPieces[WHITE] | allPieces[BLACK]);
+    uint64_t empty = ~getOccupancy();
     if (!(captureRoutes || (!isCapture(m) && (empty & endSingle))))
         return false;
 
@@ -1188,7 +1172,7 @@ void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherP
 void Board::addMovesToList(MoveList &moves, int pieceID, int stSq,
     uint64_t allEndSqs, bool isCapture, uint64_t otherPieces) {
 
-    uint64_t intersect = (isCapture) ? otherPieces : ~(allPieces[WHITE] | allPieces[BLACK]);
+    uint64_t intersect = (isCapture) ? otherPieces : ~getOccupancy();
     uint64_t legal = allEndSqs & intersect;
     while (legal) {
         int endSq = bitScanForward(legal);
@@ -1219,7 +1203,7 @@ void Board::addCastlesToList(MoveList &moves, int color) {
         // If castling rights still exist, squares in between king and rook are
         // empty, and player is not in check
         if ((castlingRights & WHITEKSIDE)
-         && ((allPieces[WHITE] | allPieces[BLACK]) & WHITE_KSIDE_PASSTHROUGH_SQS) == 0
+         && (getOccupancy() & WHITE_KSIDE_PASSTHROUGH_SQS) == 0
          && !isInCheck(WHITE)) {
             // Check for castling through check
             if (getAttackMap(BLACK, 5) == 0) {
@@ -1229,7 +1213,7 @@ void Board::addCastlesToList(MoveList &moves, int color) {
             }
         }
         if ((castlingRights & WHITEQSIDE)
-         && ((allPieces[WHITE] | allPieces[BLACK]) & WHITE_QSIDE_PASSTHROUGH_SQS) == 0
+         && (getOccupancy() & WHITE_QSIDE_PASSTHROUGH_SQS) == 0
          && !isInCheck(WHITE)) {
             if (getAttackMap(BLACK, 3) == 0) {
                 Move m = encodeMove(4, 2, KINGS, false);
@@ -1240,7 +1224,7 @@ void Board::addCastlesToList(MoveList &moves, int color) {
     }
     else {
         if ((castlingRights & BLACKKSIDE)
-         && ((allPieces[WHITE] | allPieces[BLACK]) & BLACK_KSIDE_PASSTHROUGH_SQS) == 0
+         && (getOccupancy() & BLACK_KSIDE_PASSTHROUGH_SQS) == 0
          && !isInCheck(BLACK)) {
             if (getAttackMap(WHITE, 61) == 0) {
                 Move m = encodeMove(60, 62, KINGS, false);
@@ -1249,7 +1233,7 @@ void Board::addCastlesToList(MoveList &moves, int color) {
             }
         }
         if ((castlingRights & BLACKQSIDE)
-         && ((allPieces[WHITE] | allPieces[BLACK]) & BLACK_QSIDE_PASSTHROUGH_SQS) == 0
+         && (getOccupancy() & BLACK_QSIDE_PASSTHROUGH_SQS) == 0
          && !isInCheck(BLACK)) {
             if (getAttackMap(WHITE, 59) == 0) {
                 Move m = encodeMove(60, 58, KINGS, false);
@@ -1703,24 +1687,24 @@ int Board::getExchangeScore(int color, Move m) {
 
 //-----------------------------MOVE GENERATION----------------------------------
 uint64_t Board::getWPawnSingleMoves(uint64_t pawns) {
-    uint64_t open = ~(allPieces[WHITE] | allPieces[BLACK]);
+    uint64_t open = ~getOccupancy();
     return (pawns << 8) & open;
 }
 
 uint64_t Board::getBPawnSingleMoves(uint64_t pawns) {
-    uint64_t open = ~(allPieces[WHITE] | allPieces[BLACK]);
+    uint64_t open = ~getOccupancy();
     return (pawns >> 8) & open;
 }
 
 uint64_t Board::getWPawnDoubleMoves(uint64_t pawns) {
-    uint64_t open = ~(allPieces[WHITE] | allPieces[BLACK]);
+    uint64_t open = ~getOccupancy();
     uint64_t temp = (pawns << 8) & open;
     pawns = (temp << 8) & open & RANKS[3];
     return pawns;
 }
 
 uint64_t Board::getBPawnDoubleMoves(uint64_t pawns) {
-    uint64_t open = ~(allPieces[WHITE] | allPieces[BLACK]);
+    uint64_t open = ~getOccupancy();
     uint64_t temp = (pawns >> 8) & open;
     pawns = (temp >> 8) & open & RANKS[4];
     return pawns;
@@ -1747,12 +1731,8 @@ uint64_t Board::getKnightSquares(int single) {
 }
 
 uint64_t Board::getBishopSquares(int single) {
-    uint64_t occ = allPieces[WHITE] | allPieces[BLACK];
+    uint64_t occ = getOccupancy();
 
-    /*uint64_t diagAtt = diagAttacks(occ, single);
-    uint64_t antiDiagAtt = antiDiagAttacks(occ, single);
-
-    return diagAtt | antiDiagAtt;*/
     uint64_t *attTableLoc = magicBishops[single].table;
     occ &= magicBishops[single].mask;
     occ *= magicBishops[single].magic;
@@ -1761,12 +1741,8 @@ uint64_t Board::getBishopSquares(int single) {
 }
 
 uint64_t Board::getRookSquares(int single) {
-    uint64_t occ = allPieces[WHITE] | allPieces[BLACK];
+    uint64_t occ = getOccupancy();
 
-    /*uint64_t rankAtt = rankAttacks(occ, single);
-    uint64_t fileAtt = fileAttacks(occ, single);
-
-    return rankAtt | fileAtt;*/
     uint64_t *attTableLoc = magicRooks[single].table;
     occ &= magicRooks[single].mask;
     occ *= magicRooks[single].magic;
@@ -1775,19 +1751,16 @@ uint64_t Board::getRookSquares(int single) {
 }
 
 uint64_t Board::getQueenSquares(int single) {
-    //uint64_t occ = allPieces[WHITE] | allPieces[BLACK];
-
-    /*uint64_t rankAtt = rankAttacks(occ, single);
-    uint64_t fileAtt = fileAttacks(occ, single);
-    uint64_t diagAtt = diagAttacks(occ, single);
-    uint64_t antiDiagAtt = antiDiagAttacks(occ, single);
-
-    return rankAtt | fileAtt | diagAtt | antiDiagAtt;*/
+    //uint64_t occ = getOccupancy();
     return getBishopSquares(single) | getRookSquares(single);
 }
 
 uint64_t Board::getKingSquares(int single) {
     return KINGMOVES[single];
+}
+
+inline uint64_t Board::getOccupancy() {
+    return allPieces[WHITE] | allPieces[BLACK];
 }
 
 // Getter methods
@@ -1823,12 +1796,8 @@ int Board::getPlayerToMove() {
     return playerToMove;
 }
 
-uint64_t Board::getWhitePieces() {
-    return allPieces[WHITE];
-}
-
-uint64_t Board::getBlackPieces() {
-    return allPieces[BLACK];
+uint64_t Board::getAllPieces(int color) {
+    return allPieces[color];
 }
 
 int *Board::getMailbox() {
