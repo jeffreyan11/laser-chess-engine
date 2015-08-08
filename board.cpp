@@ -888,7 +888,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
         knights &= knights-1;
         uint64_t nSq = getKnightSquares(stsq);
         // Get any bishops, rooks, queens attacking king after knight has moved
-        uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
+        uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq], 0);
         // If still no xrayers are giving check, then we have no discovered
         // check. Otherwise, every move by this piece is a (discovered) checking
         // move
@@ -905,7 +905,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
         int stsq = bitScanForward(bishops);
         bishops &= bishops-1;
         uint64_t bSq = getBishopSquares(stsq);
-        uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
+        uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq], 0);
         if (!(xrays & potentialXRay))
             bSq &= bAttackMap;
 
@@ -919,7 +919,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
         int stsq = bitScanForward(rooks);
         rooks &= rooks-1;
         uint64_t rSq = getRookSquares(stsq);
-        uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
+        uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq], 0);
         if (!(xrays & potentialXRay))
             rSq &= rAttackMap;
 
@@ -1250,17 +1250,20 @@ void Board::addCastlesToList(MoveList &moves, int color) {
 
 // Get the attack map of all potential x-ray pieces (bishops, rooks, queens)
 // after a blocker has been removed.
-uint64_t Board::getXRays(int color, int sq, int blockerColor, uint64_t blocker) {
-    allPieces[blockerColor] ^= blocker;
+uint64_t Board::getXRays(int color, int sq, int blockerColor,
+    uint64_t blockerStart, uint64_t blockerEnd) {
+    allPieces[blockerColor] ^= blockerStart;
+    allPieces[blockerColor] ^= blockerEnd;
 
-    uint64_t bishops = pieces[color][BISHOPS] & ~blocker;
-    uint64_t rooks = pieces[color][ROOKS] & ~blocker;
-    uint64_t queens = pieces[color][QUEENS] & ~blocker;
+    uint64_t bishops = pieces[color][BISHOPS] & ~blockerStart;
+    uint64_t rooks = pieces[color][ROOKS] & ~blockerStart;
+    uint64_t queens = pieces[color][QUEENS] & ~blockerStart;
 
     uint64_t xRayMap = (getBishopSquares(sq) & (bishops | queens))
                      | (getRookSquares(sq) & (rooks | queens));
 
-    allPieces[blockerColor] ^= blocker;
+    allPieces[blockerColor] ^= blockerStart;
+    allPieces[blockerColor] ^= blockerEnd;
 
     return xRayMap;
 }
@@ -1340,7 +1343,7 @@ bool Board::isCheckMove(Move m, int color) {
     uint64_t xrayPieces = pieces[color][BISHOPS] | pieces[color][ROOKS] | pieces[color][QUEENS];
 
     // Get any bishops, rooks, queens attacking king after piece has moved
-    uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[getStartSq(m)]);
+    uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[getStartSq(m)], MOVEMASK[getEndSq(m)]);
     // If there is an xray piece attacking the king square after the piece has
     // moved, we have discovered check
     if (xrays & xrayPieces)
@@ -1632,7 +1635,7 @@ int Board::getSEE(int color, int sq) {
             break;
         attackers ^= single; // remove used attacker
         used |= single;
-        attackers |= getXRays(WHITE, sq, color, used) | getXRays(BLACK, sq, color, used);
+        attackers |= getXRays(WHITE, sq, color, used, 0) | getXRays(BLACK, sq, color, used, 0);
         single = getLeastValuableAttacker(attackers, color, piece);
     } while (single);
 

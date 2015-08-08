@@ -431,11 +431,11 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             return -INFTY;
 
         // Futility pruning
-        //if(!isPVNode && ((depth == 1 && staticEval <= alpha - MAX_POS_SCORE)/* || (depth == 2 && staticEval <= alpha - 3*MAX_POS_SCORE)*/)
-        //&& !isInCheck && !isCapture(m) && abs(alpha) < QUEEN_VALUE && !b.isCheckMove(m, color)) {
-        //    score = alpha;
-        //    continue;
-        //}
+        if(!isPVNode && ((depth == 1 && staticEval <= alpha - MAX_POS_SCORE)/* || (depth == 2 && staticEval <= alpha - 3*MAX_POS_SCORE)*/)
+        && !isInCheck && !isCapture(m) && abs(alpha) < QUEEN_VALUE && !b.isCheckMove(m, color)) {
+            score = alpha;
+            continue;
+        }
 
         reduction = 0;
         Board copy = b.staticCopy();
@@ -444,11 +444,11 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
         // Futility pruning
         // Needs better check detection
-        if(!isPVNode && ((depth == 1 && staticEval <= alpha - MAX_POS_SCORE)/* || (depth == 2 && staticEval <= alpha - 3*MAX_POS_SCORE)*/)
-        && !isInCheck && !isCapture(m) && abs(alpha) < QUEEN_VALUE && !copy.isInCheck(color^1)) {
-            score = alpha;
-            continue;
-        }
+        //if(!isPVNode && ((depth == 1 && staticEval <= alpha - MAX_POS_SCORE)/* || (depth == 2 && staticEval <= alpha - 3*MAX_POS_SCORE)*/)
+        //&& !isInCheck && !isCapture(m) && abs(alpha) < QUEEN_VALUE && !copy.isInCheck(color^1)) {
+        //    score = alpha;
+        //    continue;
+        //}
 
         searchStats.nodes++;
 
