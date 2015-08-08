@@ -1,4 +1,4 @@
-#include <iostream>
+#include <iostream> // for testing magic seeds, remove eventually
 #include <random>
 #include "board.h"
 #include "btables.h"
@@ -124,21 +124,25 @@ int epVictimSquare(int victimColor, uint16_t file) {
 }
 
 /*
- * Performs a PERFT. Useful for testing/debugging
+ * Performs a PERFT (performance test). Useful for testing/debugging
+ * PERFT n counts the number of possible positions after n moves by either side,
+ * ex. PERFT 4 = # of positions after 2 moves from each side
+ * 
  * 7/8/15: PERFT 5, 1.46 s (i5-2450m)
  * 7/11/15: PERFT 5, 1.22 s (i5-2450m)
  * 7/13/15: PERFT 5, 1.08 s (i5-2450m)
  * 7/14/15: PERFT 5, 0.86 s (i5-2450m)
  * 7/17/15: PERFT 5, 0.32 s (i5-2450m)
  * 8/7/15: PERFT 5, 0.25 s, PERFT 6, 6.17 s (i5-5200u)
+ * 8/8/15: PERFT 6, 5.90 s (i5-5200u)
  */
 uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
     if (depth == 0)
         return 1;
 
-    MoveList pl = b.getPseudoLegalQuiets(color);
     uint64_t nodes = 0;
-    
+
+    MoveList pl = b.getPseudoLegalQuiets(color);
     for (unsigned int i = 0; i < pl.size(); i++) {
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(pl.get(i), color))
@@ -158,8 +162,6 @@ uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
     }
 /*    
     MoveList pl = b.getAllPseudoLegalMoves(color);
-    uint64_t nodes = 0;
-    
     for (unsigned int i = 0; i < pl.size(); i++) {
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(pl.get(i), color))
@@ -210,7 +212,7 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
     }
     for (int i = 0; i < 64; i++) {
         if (0 <= mailboxBoard[i] && mailboxBoard[i] <= 11) {
-            pieces[mailboxBoard[i]/6][mailboxBoard[i]%6] |= MOVEMASK[i];
+            pieces[mailboxBoard[i]/6][mailboxBoard[i]%6] |= INDEX_TO_BIT[i];
         }
         else if (mailboxBoard[i] > 11)
             cerr << "Error in constructor." << endl;
@@ -300,24 +302,24 @@ void Board::doMove(Move m, int color) {
     if (getPromotion(m)) {
         if (isCapture(m)) {
             int captureType = getPieceOnSquare(color^1, endSq);
-            pieces[color][PAWNS] &= ~MOVEMASK[startSq];
-            pieces[color][getPromotion(m)] |= MOVEMASK[endSq];
-            pieces[color^1][captureType] &= ~MOVEMASK[endSq];
+            pieces[color][PAWNS] &= ~INDEX_TO_BIT[startSq];
+            pieces[color][getPromotion(m)] |= INDEX_TO_BIT[endSq];
+            pieces[color^1][captureType] &= ~INDEX_TO_BIT[endSq];
 
-            allPieces[color] &= ~MOVEMASK[startSq];
-            allPieces[color] |= MOVEMASK[endSq];
-            allPieces[color^1] &= ~MOVEMASK[endSq];
+            allPieces[color] &= ~INDEX_TO_BIT[startSq];
+            allPieces[color] |= INDEX_TO_BIT[endSq];
+            allPieces[color^1] &= ~INDEX_TO_BIT[endSq];
 
             zobristKey ^= zobristTable[384*color + startSq];
             zobristKey ^= zobristTable[384*color + 64*getPromotion(m) + endSq];
             zobristKey ^= zobristTable[384*(color^1) + 64*captureType + endSq];
         }
         else {
-            pieces[color][PAWNS] &= ~MOVEMASK[startSq];
-            pieces[color][getPromotion(m)] |= MOVEMASK[endSq];
+            pieces[color][PAWNS] &= ~INDEX_TO_BIT[startSq];
+            pieces[color][getPromotion(m)] |= INDEX_TO_BIT[endSq];
 
-            allPieces[color] &= ~MOVEMASK[startSq];
-            allPieces[color] |= MOVEMASK[endSq];
+            allPieces[color] &= ~INDEX_TO_BIT[startSq];
+            allPieces[color] |= INDEX_TO_BIT[endSq];
 
             zobristKey ^= zobristTable[384*color + startSq];
             zobristKey ^= zobristTable[384*color + 64*getPromotion(m) + endSq];
@@ -328,13 +330,13 @@ void Board::doMove(Move m, int color) {
     else if (isCapture(m)) {
         int captureType = getPieceOnSquare(color^1, endSq);
         if (captureType == -1) {
-            pieces[color][PAWNS] &= ~MOVEMASK[startSq];
-            pieces[color][PAWNS] |= MOVEMASK[endSq];
-            uint64_t epCaptureSq = MOVEMASK[epVictimSquare(color^1, epCaptureFile)];
+            pieces[color][PAWNS] &= ~INDEX_TO_BIT[startSq];
+            pieces[color][PAWNS] |= INDEX_TO_BIT[endSq];
+            uint64_t epCaptureSq = INDEX_TO_BIT[epVictimSquare(color^1, epCaptureFile)];
             pieces[color^1][PAWNS] &= ~epCaptureSq;
 
-            allPieces[color] &= ~MOVEMASK[startSq];
-            allPieces[color] |= MOVEMASK[endSq];
+            allPieces[color] &= ~INDEX_TO_BIT[startSq];
+            allPieces[color] |= INDEX_TO_BIT[endSq];
             allPieces[color^1] &= ~epCaptureSq;
 
             int capSq = epVictimSquare(color^1, epCaptureFile);
@@ -343,13 +345,13 @@ void Board::doMove(Move m, int color) {
             zobristKey ^= zobristTable[384*(color^1) + capSq];
         }
         else {
-            pieces[color][pieceID] &= ~MOVEMASK[startSq];
-            pieces[color][pieceID] |= MOVEMASK[endSq];
-            pieces[color^1][captureType] &= ~MOVEMASK[endSq];
+            pieces[color][pieceID] &= ~INDEX_TO_BIT[startSq];
+            pieces[color][pieceID] |= INDEX_TO_BIT[endSq];
+            pieces[color^1][captureType] &= ~INDEX_TO_BIT[endSq];
 
-            allPieces[color] &= ~MOVEMASK[startSq];
-            allPieces[color] |= MOVEMASK[endSq];
-            allPieces[color^1] &= ~MOVEMASK[endSq];
+            allPieces[color] &= ~INDEX_TO_BIT[startSq];
+            allPieces[color] |= INDEX_TO_BIT[endSq];
+            allPieces[color^1] &= ~INDEX_TO_BIT[endSq];
 
             zobristKey ^= zobristTable[384*color + 64*pieceID + startSq];
             zobristKey ^= zobristTable[384*color + 64*pieceID + endSq];
@@ -361,15 +363,15 @@ void Board::doMove(Move m, int color) {
     else { // Quiet moves
         if (isCastle(m)) {
             if (endSq == 6) { // white kside
-                pieces[WHITE][KINGS] &= ~MOVEMASK[4];
-                pieces[WHITE][KINGS] |= MOVEMASK[6];
-                pieces[WHITE][ROOKS] &= ~MOVEMASK[7];
-                pieces[WHITE][ROOKS] |= MOVEMASK[5];
+                pieces[WHITE][KINGS] &= ~INDEX_TO_BIT[4];
+                pieces[WHITE][KINGS] |= INDEX_TO_BIT[6];
+                pieces[WHITE][ROOKS] &= ~INDEX_TO_BIT[7];
+                pieces[WHITE][ROOKS] |= INDEX_TO_BIT[5];
 
-                allPieces[WHITE] &= ~MOVEMASK[4];
-                allPieces[WHITE] |= MOVEMASK[6];
-                allPieces[WHITE] &= ~MOVEMASK[7];
-                allPieces[WHITE] |= MOVEMASK[5];
+                allPieces[WHITE] &= ~INDEX_TO_BIT[4];
+                allPieces[WHITE] |= INDEX_TO_BIT[6];
+                allPieces[WHITE] &= ~INDEX_TO_BIT[7];
+                allPieces[WHITE] |= INDEX_TO_BIT[5];
 
                 zobristKey ^= zobristTable[64*KINGS+4];
                 zobristKey ^= zobristTable[64*KINGS+6];
@@ -377,15 +379,15 @@ void Board::doMove(Move m, int color) {
                 zobristKey ^= zobristTable[64*ROOKS+5];
             }
             else if (endSq == 2) { // white qside
-                pieces[WHITE][KINGS] &= ~MOVEMASK[4];
-                pieces[WHITE][KINGS] |= MOVEMASK[2];
-                pieces[WHITE][ROOKS] &= ~MOVEMASK[0];
-                pieces[WHITE][ROOKS] |= MOVEMASK[3];
+                pieces[WHITE][KINGS] &= ~INDEX_TO_BIT[4];
+                pieces[WHITE][KINGS] |= INDEX_TO_BIT[2];
+                pieces[WHITE][ROOKS] &= ~INDEX_TO_BIT[0];
+                pieces[WHITE][ROOKS] |= INDEX_TO_BIT[3];
 
-                allPieces[WHITE] &= ~MOVEMASK[4];
-                allPieces[WHITE] |= MOVEMASK[2];
-                allPieces[WHITE] &= ~MOVEMASK[0];
-                allPieces[WHITE] |= MOVEMASK[3];
+                allPieces[WHITE] &= ~INDEX_TO_BIT[4];
+                allPieces[WHITE] |= INDEX_TO_BIT[2];
+                allPieces[WHITE] &= ~INDEX_TO_BIT[0];
+                allPieces[WHITE] |= INDEX_TO_BIT[3];
 
                 zobristKey ^= zobristTable[64*KINGS+4];
                 zobristKey ^= zobristTable[64*KINGS+2];
@@ -393,15 +395,15 @@ void Board::doMove(Move m, int color) {
                 zobristKey ^= zobristTable[64*ROOKS+3];
             }
             else if (endSq == 62) { // black kside
-                pieces[BLACK][KINGS] &= ~MOVEMASK[60];
-                pieces[BLACK][KINGS] |= MOVEMASK[62];
-                pieces[BLACK][ROOKS] &= ~MOVEMASK[63];
-                pieces[BLACK][ROOKS] |= MOVEMASK[61];
+                pieces[BLACK][KINGS] &= ~INDEX_TO_BIT[60];
+                pieces[BLACK][KINGS] |= INDEX_TO_BIT[62];
+                pieces[BLACK][ROOKS] &= ~INDEX_TO_BIT[63];
+                pieces[BLACK][ROOKS] |= INDEX_TO_BIT[61];
 
-                allPieces[BLACK] &= ~MOVEMASK[60];
-                allPieces[BLACK] |= MOVEMASK[62];
-                allPieces[BLACK] &= ~MOVEMASK[63];
-                allPieces[BLACK] |= MOVEMASK[61];
+                allPieces[BLACK] &= ~INDEX_TO_BIT[60];
+                allPieces[BLACK] |= INDEX_TO_BIT[62];
+                allPieces[BLACK] &= ~INDEX_TO_BIT[63];
+                allPieces[BLACK] |= INDEX_TO_BIT[61];
 
                 zobristKey ^= zobristTable[384+64*KINGS+60];
                 zobristKey ^= zobristTable[384+64*KINGS+62];
@@ -409,15 +411,15 @@ void Board::doMove(Move m, int color) {
                 zobristKey ^= zobristTable[384+64*ROOKS+61];
             }
             else { // black qside
-                pieces[BLACK][KINGS] &= ~MOVEMASK[60];
-                pieces[BLACK][KINGS] |= MOVEMASK[58];
-                pieces[BLACK][ROOKS] &= ~MOVEMASK[56];
-                pieces[BLACK][ROOKS] |= MOVEMASK[59];
+                pieces[BLACK][KINGS] &= ~INDEX_TO_BIT[60];
+                pieces[BLACK][KINGS] |= INDEX_TO_BIT[58];
+                pieces[BLACK][ROOKS] &= ~INDEX_TO_BIT[56];
+                pieces[BLACK][ROOKS] |= INDEX_TO_BIT[59];
 
-                allPieces[BLACK] &= ~MOVEMASK[60];
-                allPieces[BLACK] |= MOVEMASK[58];
-                allPieces[BLACK] &= ~MOVEMASK[56];
-                allPieces[BLACK] |= MOVEMASK[59];
+                allPieces[BLACK] &= ~INDEX_TO_BIT[60];
+                allPieces[BLACK] |= INDEX_TO_BIT[58];
+                allPieces[BLACK] &= ~INDEX_TO_BIT[56];
+                allPieces[BLACK] |= INDEX_TO_BIT[59];
 
                 zobristKey ^= zobristTable[384+64*KINGS+60];
                 zobristKey ^= zobristTable[384+64*KINGS+58];
@@ -428,11 +430,11 @@ void Board::doMove(Move m, int color) {
             fiftyMoveCounter++;
         } // end castling
         else { // other quiet moves
-            pieces[color][pieceID] &= ~MOVEMASK[startSq];
-            pieces[color][pieceID] |= MOVEMASK[endSq];
+            pieces[color][pieceID] &= ~INDEX_TO_BIT[startSq];
+            pieces[color][pieceID] |= INDEX_TO_BIT[endSq];
 
-            allPieces[color] &= ~MOVEMASK[startSq];
-            allPieces[color] |= MOVEMASK[endSq];
+            allPieces[color] &= ~INDEX_TO_BIT[startSq];
+            allPieces[color] |= INDEX_TO_BIT[endSq];
 
             zobristKey ^= zobristTable[384*color + 64*pieceID + startSq];
             zobristKey ^= zobristTable[384*color + 64*pieceID + endSq];
@@ -459,26 +461,26 @@ void Board::doMove(Move m, int color) {
 
     // change castling flags
     if (pieceID == KINGS) {
-        if (color == WHITE) {
+        if (color == WHITE)
             castlingRights &= ~WHITECASTLE;
-        }
-        else {
+        else
             castlingRights &= ~BLACKCASTLE;
-        }
     }
-    else {
+    // Castling rights change because of the rook only when the rook moves or
+    // is captured
+    else if (isCapture(m) || pieceID == ROOKS) {
+        // No sense in remove the rights if they're already gone
         if (castlingRights & WHITECASTLE) {
-            int whiteR = (int)(RANKS[0] & pieces[WHITE][ROOKS]);
-            if ((whiteR & 0x80) == 0)
+            if ((pieces[WHITE][ROOKS] & 0x80) == 0)
                 castlingRights &= ~WHITEKSIDE;
-            if ((whiteR & 1) == 0)
+            if ((pieces[WHITE][ROOKS] & 1) == 0)
                 castlingRights &= ~WHITEQSIDE;
         }
         if (castlingRights & BLACKCASTLE) {
-            int blackR = (int)((RANKS[7] & pieces[BLACK][ROOKS]) >> 56);
+            uint64_t blackR = pieces[BLACK][ROOKS] >> 56;
             if ((blackR & 0x80) == 0)
                 castlingRights &= ~BLACKKSIDE;
-            if ((blackR & 1) == 0)
+            if ((blackR & 0x1) == 0)
                 castlingRights &= ~BLACKQSIDE;
         }
     } // end castling flags
@@ -504,11 +506,11 @@ bool Board::doPseudoLegalMove(Move m, int color) {
 bool Board::doHashMove(Move m, int color) {
     int pieceID = getPiece(m);
     // Check that the correct piece is on the start square
-    if (!(pieces[color][pieceID] & MOVEMASK[getStartSq(m)]))
+    if (!(pieces[color][pieceID] & INDEX_TO_BIT[getStartSq(m)]))
         return false;
     // Check that the end square has correct occupancy
     uint64_t otherPieces = allPieces[color^1];
-    uint64_t endSingle = MOVEMASK[getEndSq(m)];
+    uint64_t endSingle = INDEX_TO_BIT[getEndSq(m)];
     bool captureRoutes = (isCapture(m) && (otherPieces & endSingle))
                       || (isCapture(m) && pieceID == PAWNS && (~otherPieces & endSingle));
     uint64_t empty = ~getOccupancy();
@@ -791,39 +793,40 @@ MoveList Board::getPseudoLegalChecks(int color) {
     uint64_t pawns = pieces[color][PAWNS];
 
     // First, deal with discovered checks
+    // TODO this is way too slow
     /*
     uint64_t tempPawns = pawns;
     while (tempPawns) {
         int stsq = bitScanForward(tempPawns);
         tempPawns &= tempPawns - 1;
-        uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
+        uint64_t xrays = getXRays(color, kingSq, color, INDEX_TO_BIT[stsq]);
         // If moving the pawn caused a new xray piece to attack the king
         if (!(xrays & invAttackMap)) {
             // Every legal move of this pawn is a legal check
-            uint64_t legal = (color == WHITE) ? getWPawnSingleMoves(MOVEMASK[stsq]) | getWPawnDoubleMoves(MOVEMASK[stsq])
-                                              : getBPawnSingleMoves(MOVEMASK[stsq]) | getBPawnDoubleMoves(MOVEMASK[stsq]);
+            uint64_t legal = (color == WHITE) ? getWPawnSingleMoves(INDEX_TO_BIT[stsq]) | getWPawnDoubleMoves(INDEX_TO_BIT[stsq])
+                                              : getBPawnSingleMoves(INDEX_TO_BIT[stsq]) | getBPawnDoubleMoves(INDEX_TO_BIT[stsq]);
             while (legal) {
                 int endsq = bitScanForward(legal);
                 legal &= legal - 1;
                 checks.add(encodeMove(stsq, endsq, PAWNS, false));
             }
 
-            legal = (color == WHITE) ? getWPawnLeftCaptures(MOVEMASK[stsq]) | getWPawnRightCaptures(MOVEMASK[stsq])
-                                     : getBPawnLeftCaptures(MOVEMASK[stsq]) | getBPawnRightCaptures(MOVEMASK[stsq]);
+            legal = (color == WHITE) ? getWPawnLeftCaptures(INDEX_TO_BIT[stsq]) | getWPawnRightCaptures(INDEX_TO_BIT[stsq])
+                                     : getBPawnLeftCaptures(INDEX_TO_BIT[stsq]) | getBPawnRightCaptures(INDEX_TO_BIT[stsq]);
             while (legal) {
                 int endsq = bitScanForward(legal);
                 legal &= legal - 1;
                 checkCaptures.add(encodeMove(stsq, endsq, PAWNS, true));
             }
             // Remove this pawn from future consideration
-            pawns ^= MOVEMASK[stsq];
+            pawns ^= INDEX_TO_BIT[stsq];
         }
     }
     */
 
     uint64_t pAttackMap = (color == WHITE) 
-            ? getBPawnLeftCaptures(MOVEMASK[kingSq]) | getBPawnRightCaptures(MOVEMASK[kingSq])
-            : getWPawnLeftCaptures(MOVEMASK[kingSq]) | getWPawnRightCaptures(MOVEMASK[kingSq]);
+            ? getBPawnLeftCaptures(INDEX_TO_BIT[kingSq]) | getBPawnRightCaptures(INDEX_TO_BIT[kingSq])
+            : getWPawnLeftCaptures(INDEX_TO_BIT[kingSq]) | getWPawnRightCaptures(INDEX_TO_BIT[kingSq]);
     uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
     int sqDiff = (color == WHITE) ? -8 : 8;
 
@@ -888,7 +891,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
         knights &= knights-1;
         uint64_t nSq = getKnightSquares(stsq);
         // Get any bishops, rooks, queens attacking king after knight has moved
-        uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq], 0);
+        uint64_t xrays = getXRays(color, kingSq, color, INDEX_TO_BIT[stsq], 0);
         // If still no xrayers are giving check, then we have no discovered
         // check. Otherwise, every move by this piece is a (discovered) checking
         // move
@@ -905,7 +908,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
         int stsq = bitScanForward(bishops);
         bishops &= bishops-1;
         uint64_t bSq = getBishopSquares(stsq);
-        uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq], 0);
+        uint64_t xrays = getXRays(color, kingSq, color, INDEX_TO_BIT[stsq], 0);
         if (!(xrays & potentialXRay))
             bSq &= bAttackMap;
 
@@ -919,7 +922,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
         int stsq = bitScanForward(rooks);
         rooks &= rooks-1;
         uint64_t rSq = getRookSquares(stsq);
-        uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq], 0);
+        uint64_t xrays = getXRays(color, kingSq, color, INDEX_TO_BIT[stsq], 0);
         if (!(xrays & potentialXRay))
             rSq &= rAttackMap;
 
@@ -1156,11 +1159,11 @@ void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherP
         // below (black) the victim square
         int rankDiff = (color == WHITE) ? 8 : -8;
         // The capturer's start square is either 1 to the left or right of victim
-        uint64_t taker = (MOVEMASK[victimSq] << 1) & NOTA & pieces[color][PAWNS];
+        uint64_t taker = (INDEX_TO_BIT[victimSq] << 1) & NOTA & pieces[color][PAWNS];
         if (taker)
             captures.add(encodeMove(victimSq+1, victimSq+rankDiff, PAWNS, true));
         else {
-            taker = (MOVEMASK[victimSq] >> 1) & NOTH & pieces[color][PAWNS];
+            taker = (INDEX_TO_BIT[victimSq] >> 1) & NOTH & pieces[color][PAWNS];
             if (taker)
                 captures.add(encodeMove(victimSq-1, victimSq+rankDiff, PAWNS, true));
         }
@@ -1284,8 +1287,8 @@ uint64_t Board::getXRays(int color, int sq, int blockerColor,
 // square. Useful for checks, captures
 uint64_t Board::getAttackMap(int color, int sq) {
     uint64_t pawnCap = (color == WHITE)
-                     ? getBPawnLeftCaptures(MOVEMASK[sq]) | getBPawnRightCaptures(MOVEMASK[sq])
-                     : getWPawnLeftCaptures(MOVEMASK[sq]) | getWPawnRightCaptures(MOVEMASK[sq]);
+                     ? getBPawnLeftCaptures(INDEX_TO_BIT[sq]) | getBPawnRightCaptures(INDEX_TO_BIT[sq])
+                     : getWPawnLeftCaptures(INDEX_TO_BIT[sq]) | getWPawnRightCaptures(INDEX_TO_BIT[sq]);
     return (pawnCap & pieces[color][PAWNS])
          | (getKnightSquares(sq) & pieces[color][KNIGHTS])
          | (getBishopSquares(sq) & (pieces[color][BISHOPS] | pieces[color][QUEENS]))
@@ -1296,7 +1299,7 @@ uint64_t Board::getAttackMap(int color, int sq) {
 // Given the on a given square, used to get either the piece moving or the
 // captured piece.
 int Board::getPieceOnSquare(int color, int sq) {
-    uint64_t endSingle = MOVEMASK[sq];
+    uint64_t endSingle = INDEX_TO_BIT[sq];
     for (int pieceID = 0; pieceID < 5; pieceID++) {
         if (pieces[color][pieceID] & endSingle)
             return pieceID;
@@ -1316,8 +1319,8 @@ bool Board::isCheckMove(Move m, int color) {
     switch (getPiece(m)) {
         case PAWNS:
             attackMap = (color == WHITE) 
-                ? getBPawnLeftCaptures(MOVEMASK[kingSq]) | getBPawnRightCaptures(MOVEMASK[kingSq])
-                : getWPawnLeftCaptures(MOVEMASK[kingSq]) | getWPawnRightCaptures(MOVEMASK[kingSq]);
+                ? getBPawnLeftCaptures(INDEX_TO_BIT[kingSq]) | getBPawnRightCaptures(INDEX_TO_BIT[kingSq])
+                : getWPawnLeftCaptures(INDEX_TO_BIT[kingSq]) | getWPawnRightCaptures(INDEX_TO_BIT[kingSq]);
             break;
         case KNIGHTS:
             attackMap = getKnightSquares(kingSq);
@@ -1335,7 +1338,7 @@ bool Board::isCheckMove(Move m, int color) {
             // keep attackMap 0
             break;
     }
-    if (MOVEMASK[getEndSq(m)] & attackMap)
+    if (INDEX_TO_BIT[getEndSq(m)] & attackMap)
         return true;
 
     // See if move is a discovered check
@@ -1343,7 +1346,7 @@ bool Board::isCheckMove(Move m, int color) {
     uint64_t xrayPieces = pieces[color][BISHOPS] | pieces[color][ROOKS] | pieces[color][QUEENS];
 
     // Get any bishops, rooks, queens attacking king after piece has moved
-    uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[getStartSq(m)], MOVEMASK[getEndSq(m)]);
+    uint64_t xrays = getXRays(color, kingSq, color, INDEX_TO_BIT[getStartSq(m)], INDEX_TO_BIT[getEndSq(m)]);
     // If there is an xray piece attacking the king square after the piece has
     // moved, we have discovered check
     if (xrays & xrayPieces)
@@ -1361,6 +1364,7 @@ bool Board::isInCheck(int color) {
     return getAttackMap(color^1, sq);
 }
 
+// Checks for mate: white is in check and has no legal moves
 bool Board::isWInMate() {
     MoveList moves = getAllLegalMoves(WHITE);
     bool isInMate = false;
@@ -1370,6 +1374,7 @@ bool Board::isWInMate() {
     return isInMate;
 }
 
+// Checks for mate: black is in check and has no legal moves
 bool Board::isBInMate() {
     MoveList moves = getAllLegalMoves(BLACK);
     bool isInMate = false;
@@ -1379,7 +1384,7 @@ bool Board::isBInMate() {
     return isInMate;
 }
 
-// TODO Includes 3-fold repetition draw for now.
+// Checks for stalemate: side to move is not in check, but has no legal moves
 bool Board::isStalemate(int sideToMove) {
     MoveList moves = getAllLegalMoves(sideToMove);
     bool isInStalemate = false;
@@ -1393,13 +1398,27 @@ bool Board::isStalemate(int sideToMove) {
 bool Board::isDraw() {
     if (fiftyMoveCounter >= 100) return true;
 
+    // If the highest bit is set, this is a flag telling us the two-fold repetition
+    // counter was reset too recently
     if ((twoFoldSqs >> 63) == 0) {
         uint8_t *pTwoFoldSqs = (uint8_t*) (&twoFoldSqs);
         
-        if ( (pTwoFoldSqs[7] == pTwoFoldSqs[2])
-          && (pTwoFoldSqs[3] == pTwoFoldSqs[6])
-          && (pTwoFoldSqs[5] == pTwoFoldSqs[0])
-          && (pTwoFoldSqs[1] == pTwoFoldSqs[4])) {
+        /* Check for a loop in moves. For example:
+         * =====most recent=====
+         * 0 b2 (white end sq)
+         * 1 a1 (white start sq)
+         * 2 a8 (black end sq)
+         * 3 b7 (black start sq)
+         * 4 a1 (white end sq)
+         * 5 b2 (white start sq)
+         * 6 b7 (black end sq)
+         * 7 a8 (black start sq)
+         * =====least recent=====
+         */
+        if ((pTwoFoldSqs[0] == pTwoFoldSqs[5])
+         && (pTwoFoldSqs[1] == pTwoFoldSqs[4])
+         && (pTwoFoldSqs[2] == pTwoFoldSqs[7])
+         && (pTwoFoldSqs[3] == pTwoFoldSqs[6])) {
             return true;
         }
     }
@@ -1949,27 +1968,27 @@ uint64_t index_to_uint64(int index, int nBits, uint64_t mask) {
         int j = bitScanForward(mask);
         mask &= mask - 1;
         // If this bit should be set...
-        if (index & (1 << i))
+        if (index & INDEX_TO_BIT[i])
             // Set it at the same position in the result
-            result |= (1ULL << j);
+            result |= INDEX_TO_BIT[j];
     }
     return result;
 }
 
 // Gets rook attacks using Dumb7Fill methods
 uint64_t ratt(int sq, uint64_t block) {
-    return fillRayRight(MOVEMASK[sq], ~block, NORTH_SOUTH_FILL) // south
-         | fillRayLeft(MOVEMASK[sq], ~block, NORTH_SOUTH_FILL)  // north
-         | fillRayLeft(MOVEMASK[sq], ~block, EAST_WEST_FILL)    // east
-         | fillRayRight(MOVEMASK[sq], ~block, EAST_WEST_FILL);  // west
+    return fillRayRight(INDEX_TO_BIT[sq], ~block, NORTH_SOUTH_FILL) // south
+         | fillRayLeft(INDEX_TO_BIT[sq], ~block, NORTH_SOUTH_FILL)  // north
+         | fillRayLeft(INDEX_TO_BIT[sq], ~block, EAST_WEST_FILL)    // east
+         | fillRayRight(INDEX_TO_BIT[sq], ~block, EAST_WEST_FILL);  // west
 }
 
 // Gets bishop attacks using Dumb7Fill methods
 uint64_t batt(int sq, uint64_t block) {
-    return fillRayLeft(MOVEMASK[sq], ~block, NE_SW_FILL)   // northeast
-         | fillRayLeft(MOVEMASK[sq], ~block, NW_SE_FILL)   // northwest
-         | fillRayRight(MOVEMASK[sq], ~block, NE_SW_FILL)  // southwest
-         | fillRayRight(MOVEMASK[sq], ~block, NW_SE_FILL); // southeast
+    return fillRayLeft(INDEX_TO_BIT[sq], ~block, NE_SW_FILL)   // northeast
+         | fillRayLeft(INDEX_TO_BIT[sq], ~block, NW_SE_FILL)   // northwest
+         | fillRayRight(INDEX_TO_BIT[sq], ~block, NE_SW_FILL)  // southwest
+         | fillRayRight(INDEX_TO_BIT[sq], ~block, NW_SE_FILL); // southeast
 }
 
 // Maps a mask using a candidate magic into an index nBits long
