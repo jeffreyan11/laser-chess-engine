@@ -3,11 +3,27 @@
 #include "board.h"
 #include "btables.h"
 
-static uint64_t rankArray[8][64];
-static uint64_t fileArray[8][64];
 static uint64_t zobristTable[794];
 static uint64_t startPosZobristKey = 0;
 
+// Dumb7fill methods
+uint64_t southAttacks(uint64_t rooks, uint64_t empty);
+uint64_t northAttacks(uint64_t rooks, uint64_t empty);
+uint64_t eastAttacks(uint64_t rooks, uint64_t empty);
+uint64_t neAttacks(uint64_t bishops, uint64_t empty);
+uint64_t seAttacks(uint64_t bishops, uint64_t empty);
+uint64_t westAttacks(uint64_t rooks, uint64_t empty);
+uint64_t swAttacks(uint64_t bishops, uint64_t empty);
+uint64_t nwAttacks(uint64_t bishops, uint64_t empty);
+
+/**
+ * @brief Stores the 4 values necessary to get a magic ray attack from a
+ * specific square
+ * @var table A pointer to the start of the array of attack sets for this square
+ * @var mask The mask of relevant occupancy bits for this square
+ * @var magic The magic 64-bit integer that maps the mask to the array index
+ * @var shift The amount to shift by after multiplying mask by magic
+ */
 struct MagicInfo {
     uint64_t *table;
     uint64_t mask;
@@ -15,8 +31,11 @@ struct MagicInfo {
     int shift;
 };
 
+// The full attack table containing all attack sets of bishops and rooks
 static uint64_t *attackTable;
+// The magic values for bishops, one for each square
 static MagicInfo magicBishops[64];
+// The magic values for rooks, one for each square
 static MagicInfo magicRooks[64];
 
 uint64_t index_to_uint64(int index, int nBits, uint64_t mask);
@@ -25,11 +44,23 @@ uint64_t batt(int sq, uint64_t block);
 int magicMap(uint64_t masked, uint64_t magic, int nBits);
 uint64_t find_magic(int sq, int m, bool isBishop, mt19937_64 &magicRNG);
 
+/**
+ * @brief Initializes the tables and values necessary for magic bitboards.
+ * We use the "fancy" approach.
+ * https://chessprogramming.wikispaces.com/Magic+Bitboards
+ */
 void initMagicTables() {
-    mt19937_64 magicRNG (7511753);
+    // An arbitrarily chosen random number generator and seed
+    // The constant seed allows this process to be deterministic for optimization
+    // and debugging.
+    // 218091209
+    mt19937_64 magicRNG (218091209);
+    // The attack table has 107648 entries, found by summing the 2^(# relevant bits)
+    // for all squares of both bishops and rooks
     attackTable = new uint64_t[107648];
-    // Do bishops
+    // Keeps track of the start location of attack set arrays
     int runningPtrLoc = 0;
+    // Initialize bishop magic values
     for (int i = 0; i < 64; i++) {
         uint64_t *tableStart = attackTable;
         magicBishops[i].table = tableStart + runningPtrLoc;
@@ -38,7 +69,7 @@ void initMagicTables() {
         magicBishops[i].shift = 64 - NUM_BISHOP_BITS[i];
         runningPtrLoc += 1 << NUM_BISHOP_BITS[i];
     }
-    // Do rooks
+    // Initialize rook magic values
     for (int i = 0; i < 64; i++) {
         uint64_t *tableStart = attackTable;
         magicRooks[i].table = tableStart + runningPtrLoc;
@@ -51,6 +82,7 @@ void initMagicTables() {
     for (int sq = 0; sq < 64; sq++) {
         int nBits = NUM_BISHOP_BITS[sq];
         uint64_t mask = BISHOP_MASK[sq];
+        // For each possible mask result
         for (int i = 0; i < (1 << nBits); i++) {
             uint64_t *attTableLoc = magicBishops[sq].table;
             uint64_t occ = index_to_uint64(i, nBits, mask);
@@ -69,43 +101,6 @@ void initMagicTables() {
             uint64_t attSet = ratt(sq, occ);
             int magicIndex = magicMap(occ, magicRooks[sq].magic, nBits);
             attTableLoc[magicIndex] = attSet;
-        }
-    }
-}
-
-void initKindergartenTables() {
-    // Generate the kindergarten bitboard attack table.
-    // We index by the file the slider is on, and the middle 6 bits occupancy of
-    // the rank.
-    for(int file = 0; file < 8; file++) {
-        for(int occ = 0; occ < 64; occ++) {
-            // East/west attacks since we are considering one rank
-            // occ << 1 to map the occupancy to the middle 6 bits
-            // This gives the result in the lowest 8 bits
-            uint64_t rankEmpty = RANKS[0] & ~(occ << 1);
-            uint64_t result = eastAttacks((1 << file), rankEmpty)
-                            | westAttacks((1 << file), rankEmpty);
-            // We must now copy these 8 bits 7 times to fill the bitboard...
-            result |= result << 8;
-            result |= result << 16;
-            result |= result << 32;
-            // ...and record the result
-            rankArray[file][occ] = result;
-        }
-    }
-
-    // Files use a slightly different table, with a single instance of the A-file
-    for(uint64_t rank = 0; rank < 8; rank++) {
-        for(uint64_t occ = 0; occ < 64; occ++) {
-            uint64_t fileEmpty = 0;
-            // Move occupancy from the first rank to the A file
-            for(int i = 0; i < 6; i++) {
-                fileEmpty |= (occ & (1 << i)) << (7 * i);
-            }
-            fileEmpty = AFILE & ~(fileEmpty << 8);
-            uint64_t result = northAttacks((1ULL << (rank * 8)), fileEmpty)
-                            | southAttacks((1ULL << (rank * 8)), fileEmpty);
-            fileArray[rank][occ] = result;
         }
     }
 }
@@ -1793,29 +1788,6 @@ uint64_t Board::getKingSquares(int single) {
     return KINGMOVES[single];
 }
 
-// Kindergarten bitboard slider attacks
-// http://chessprogramming.wikispaces.com/Kindergarten+Bitboards
-uint64_t Board::rankAttacks(uint64_t occ, int single) {
-    occ = (RANKRAY[single] & occ) * FILES[1] >> 58;
-    return (RANKRAY[single] & rankArray[single&7][occ]);
-}
-
-uint64_t Board::fileAttacks(uint64_t occ, int single) {
-    occ = AFILE & (occ >> (single & 7));
-    occ = (0x0004081020408000 * occ) >> 58;
-    return (fileArray[single>>3][occ] << (single & 7));
-}
-
-uint64_t Board::diagAttacks(uint64_t occ, int single) {
-    occ = (DIAGRAY[single] & occ) * FILES[1] >> 58;
-    return (DIAGRAY[single] & rankArray[single&7][occ]);
-}
-
-uint64_t Board::antiDiagAttacks(uint64_t occ, int single) {
-    occ = (ANTIDIAGRAY[single] & occ) * FILES[1] >> 58;
-    return (ANTIDIAGRAY[single] & rankArray[single&7][occ]);
-}
-
 // Getter methods
 bool Board::getWhiteCanKCastle() {
     return castlingRights & WHITEKSIDE;
@@ -2049,6 +2021,8 @@ uint64_t nwAttacks(uint64_t bishops, uint64_t empty) {
 //------------------------------------------------------------------------------
 //-----------------------------MAGIC BITBOARDS----------------------------------
 //------------------------------------------------------------------------------
+// This code is adapted from Tord Romstad's approach to finding magics,
+// available online at https://chessprogramming.wikispaces.com/Looking+for+Magics
 
 // Maps an index from 0 from 2^nBits - 1 into one of the
 // 2^nBits possible masks
@@ -2066,27 +2040,38 @@ uint64_t index_to_uint64(int index, int nBits, uint64_t mask) {
     return result;
 }
 
+// Gets rook attacks using Dumb7Fill methods
 uint64_t ratt(int sq, uint64_t block) {
     return southAttacks(MOVEMASK[sq], ~block) | northAttacks(MOVEMASK[sq], ~block)
          | eastAttacks(MOVEMASK[sq], ~block) | westAttacks(MOVEMASK[sq], ~block);
 }
 
+// Gets bishop attacks using Dumb7Fill methods
 uint64_t batt(int sq, uint64_t block) {
     return neAttacks(MOVEMASK[sq], ~block) | nwAttacks(MOVEMASK[sq], ~block)
          | swAttacks(MOVEMASK[sq], ~block) | seAttacks(MOVEMASK[sq], ~block);
 }
 
+// Maps a mask using a candidate magic into an index nBits long
 int magicMap(uint64_t masked, uint64_t magic, int nBits) {
     return (int) ((masked * magic) >> (64 - nBits));
 }
 
+/**
+ * @brief Finds a magic number for the given square using trial and error.
+ * @param sq The square to find the magic for.
+ * @param iBits The length of the desired index, in bits
+ * @param isBishop True for bishop magics, false for rook magics
+ * @param magicRNG A random number generator to get magic candidates
+ */
 uint64_t find_magic(int sq, int iBits, bool isBishop, mt19937_64 &magicRNG) {
     uint64_t mask, maskedBits[4096], attSet[4096], used[4096], magic;
     bool failed;
 
     mask = isBishop ? BISHOP_MASK[sq] : ROOK_MASK[sq];
     int nBits = count(mask);
-
+    // For each possible masked occupancy, get the attack set corresponding to
+    // that square and occupancy
     for (int i = 0; i < (1 << nBits); i++) {
         maskedBits[i] = index_to_uint64(i, nBits, mask);
         attSet[i] = isBishop ? batt(sq, maskedBits[i]) : ratt(sq, maskedBits[i]);
@@ -2107,13 +2092,17 @@ uint64_t find_magic(int sq, int iBits, bool isBishop, mt19937_64 &magicRNG) {
         failed = false;
         for (int i = 0; !failed && i < (1 << nBits); i++) {
             int mappedIndex = magicMap(maskedBits[i], magic, iBits);
-            // No collision
+            // No collision, mark the index as used for the given attack set
             if (!used[mappedIndex])
                 used[mappedIndex] = attSet[i];
-            // If not constructive collsion, then we failed
+            // Otherwise, check for a constructive collsion, where a different
+            // occupancy has the same attack set.
+            // If the collision is not constructive, then we failed.
             else if (used[mappedIndex] != attSet[i])
                 failed = true;
         }
+        // If there were no collisions in all 2^nBits mappings, we have found
+        // a valid magic
         if (!failed)
             return magic;
     }

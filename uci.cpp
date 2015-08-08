@@ -26,9 +26,13 @@ Board fenToBoard(string s);
 volatile bool isStop = true;
 
 int main() {
+    auto init_start = std::chrono::high_resolution_clock::now();
     initMagicTables();
-    initKindergartenTables();
     initZobristTable();
+    auto init_end = std::chrono::high_resolution_clock::now();
+    double init_time = std::chrono::duration_cast<std::chrono::duration<double>>(
+        init_end-init_start).count();
+    cerr << "Init took: " << init_time << endl;
 
     string input;
     vector<string> inputVector;

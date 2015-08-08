@@ -37,19 +37,8 @@ const uint16_t NO_EP_POSSIBLE = 0x8;
 const uint64_t RESET_TWOFOLD = 0x8080808080808080;
 
 void initMagicTables();
-void initKindergartenTables();
 void initZobristTable();
 int epVictimSquare(int victimColor, uint16_t file);
-
-// Dumb7fill methods
-uint64_t southAttacks(uint64_t rooks, uint64_t empty);
-uint64_t northAttacks(uint64_t rooks, uint64_t empty);
-uint64_t eastAttacks(uint64_t rooks, uint64_t empty);
-uint64_t neAttacks(uint64_t bishops, uint64_t empty);
-uint64_t seAttacks(uint64_t bishops, uint64_t empty);
-uint64_t westAttacks(uint64_t rooks, uint64_t empty);
-uint64_t swAttacks(uint64_t bishops, uint64_t empty);
-uint64_t nwAttacks(uint64_t bishops, uint64_t empty);
 
 /**
  * @brief A chess board and its associated functionality, including get legal
