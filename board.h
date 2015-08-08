@@ -36,7 +36,7 @@ const uint64_t BLACK_QSIDE_PASSTHROUGH_SQS = MOVEMASK[57] | MOVEMASK[58] | MOVEM
 const uint16_t NO_EP_POSSIBLE = 0x8;
 const uint64_t RESET_TWOFOLD = 0x8080808080808080;
 
-void initMagicTables();
+void initMagicTables(uint64_t seed);
 void initZobristTable();
 int epVictimSquare(int victimColor, uint16_t file);
 

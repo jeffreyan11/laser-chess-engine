@@ -49,12 +49,12 @@ uint64_t find_magic(int sq, int m, bool isBishop, mt19937_64 &magicRNG);
  * We use the "fancy" approach.
  * https://chessprogramming.wikispaces.com/Magic+Bitboards
  */
-void initMagicTables() {
+void initMagicTables(uint64_t seed) {
     // An arbitrarily chosen random number generator and seed
     // The constant seed allows this process to be deterministic for optimization
     // and debugging.
     // 218091209
-    mt19937_64 magicRNG (218091209);
+    mt19937_64 magicRNG (seed);
     // The attack table has 107648 entries, found by summing the 2^(# relevant bits)
     // for all squares of both bishops and rooks
     attackTable = new uint64_t[107648];

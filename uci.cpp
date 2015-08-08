@@ -4,6 +4,7 @@
 #include <sstream>
 #include <vector>
 #include <thread>
+#include <random>
 
 #include "uci.h"
 using namespace std;
@@ -26,13 +27,8 @@ Board fenToBoard(string s);
 volatile bool isStop = true;
 
 int main() {
-    auto init_start = std::chrono::high_resolution_clock::now();
-    initMagicTables();
+    initMagicTables(218091209);
     initZobristTable();
-    auto init_end = std::chrono::high_resolution_clock::now();
-    double init_time = std::chrono::duration_cast<std::chrono::duration<double>>(
-        init_end-init_start).count();
-    cerr << "Init took: " << init_time << endl;
 
     string input;
     vector<string> inputVector;
@@ -174,6 +170,30 @@ int main() {
             cerr << "Nodes: " << totalNodes << endl;
             cerr << "Time: " << (int)(time * ONE_SECOND) << endl;
             cerr << "Nodes/second: " << (uint64_t)(totalNodes / time) << endl;
+        }
+
+        if (input.substr(0, 9) == "tunemagic" && inputVector.size() == 3) {
+            int iters = stoi(inputVector.at(1));
+            uint64_t seed = stoull(inputVector.at(2));
+            mt19937_64 rng (seed);
+            double min = 999;
+            uint64_t bestSeed = 0;
+            for (int i = 0; i < iters; i++) {
+                cerr << "Trial " << i+1 << endl;
+                auto init_start = std::chrono::high_resolution_clock::now();
+                uint64_t test = rng();
+                initMagicTables(test);
+                auto init_end = std::chrono::high_resolution_clock::now();
+                double init_time = std::chrono::duration_cast<std::chrono::duration<double>>(
+                    init_end-init_start).count();
+                if (init_time < min) {
+                    bestSeed = test;
+                    min = init_time;
+                    cerr << "New best! Seed: " << bestSeed << " Time: " << init_time << endl;
+                }
+            }
+            cerr << "Best seed: " << bestSeed << endl;
+            cerr << "Time: " << min << endl;
         }
         
         // According to UCI protocol, inputs that do not make sense are ignored
