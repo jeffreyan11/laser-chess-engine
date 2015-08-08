@@ -3,18 +3,20 @@
 #include "board.h"
 #include "btables.h"
 
+
+// Shift amounts for Dumb7fill
+const int NORTH_SOUTH_FILL = 8;
+const int EAST_WEST_FILL = 1;
+const int NE_SW_FILL = 9;
+const int NW_SE_FILL = 7;
+
+// Dumb7fill methods, only used to initialize magic bitboard tables
+uint64_t fillRayRight(uint64_t rayPieces, uint64_t empty, int shift);
+uint64_t fillRayLeft(uint64_t rayPieces, uint64_t empty, int shift);
+
+// Zobrist hashing table and the start position key, both initialized at startup
 static uint64_t zobristTable[794];
 static uint64_t startPosZobristKey = 0;
-
-// Dumb7fill methods
-uint64_t southAttacks(uint64_t rooks, uint64_t empty);
-uint64_t northAttacks(uint64_t rooks, uint64_t empty);
-uint64_t eastAttacks(uint64_t rooks, uint64_t empty);
-uint64_t neAttacks(uint64_t bishops, uint64_t empty);
-uint64_t seAttacks(uint64_t bishops, uint64_t empty);
-uint64_t westAttacks(uint64_t rooks, uint64_t empty);
-uint64_t swAttacks(uint64_t bishops, uint64_t empty);
-uint64_t nwAttacks(uint64_t bishops, uint64_t empty);
 
 /**
  * @brief Stores the 4 values necessary to get a magic ray attack from a
@@ -1923,98 +1925,39 @@ void Board::initZobristKey(int *mailbox) {
 }
 
 // Dumb7Fill
-uint64_t southAttacks(uint64_t rooks, uint64_t empty) {
-    uint64_t flood = rooks;
-    flood |= rooks = (rooks >> 8) & empty;
-    flood |= rooks = (rooks >> 8) & empty;
-    flood |= rooks = (rooks >> 8) & empty;
-    flood |= rooks = (rooks >> 8) & empty;
-    flood |= rooks = (rooks >> 8) & empty;
-    flood |=         (rooks >> 8) & empty;
-    return           (flood >> 8);
+uint64_t fillRayRight(uint64_t rayPieces, uint64_t empty, int shift) {
+    uint64_t flood = rayPieces;
+    uint64_t borderMask = 0xFFFFFFFFFFFFFFFF;
+    if (shift == 1 || shift == 9)
+        borderMask = NOTH;
+    else if (shift == 7)
+        borderMask = NOTA;
+    empty &= borderMask;
+    flood |= rayPieces = (rayPieces >> shift) & empty;
+    flood |= rayPieces = (rayPieces >> shift) & empty;
+    flood |= rayPieces = (rayPieces >> shift) & empty;
+    flood |= rayPieces = (rayPieces >> shift) & empty;
+    flood |= rayPieces = (rayPieces >> shift) & empty;
+    flood |=         (rayPieces >> shift) & empty;
+    return           (flood >> shift) & borderMask;
 }
 
-uint64_t northAttacks(uint64_t rooks, uint64_t empty) {
-    uint64_t flood = rooks;
-    flood |= rooks = (rooks << 8) & empty;
-    flood |= rooks = (rooks << 8) & empty;
-    flood |= rooks = (rooks << 8) & empty;
-    flood |= rooks = (rooks << 8) & empty;
-    flood |= rooks = (rooks << 8) & empty;
-    flood |=         (rooks << 8) & empty;
-    return           (flood << 8);
-}
-
-uint64_t eastAttacks(uint64_t rooks, uint64_t empty) {
-    uint64_t flood = rooks;
-    empty &= NOTA;
-    flood |= rooks = (rooks << 1) & empty;
-    flood |= rooks = (rooks << 1) & empty;
-    flood |= rooks = (rooks << 1) & empty;
-    flood |= rooks = (rooks << 1) & empty;
-    flood |= rooks = (rooks << 1) & empty;
-    flood |=         (rooks << 1) & empty;
-    return           (flood << 1) & NOTA ;
-}
-
-uint64_t neAttacks(uint64_t bishops, uint64_t empty) {
-    uint64_t flood = bishops;
-    empty &= NOTA;
-    flood |= bishops = (bishops << 9) & empty;
-    flood |= bishops = (bishops << 9) & empty;
-    flood |= bishops = (bishops << 9) & empty;
-    flood |= bishops = (bishops << 9) & empty;
-    flood |= bishops = (bishops << 9) & empty;
-    flood |=         (bishops << 9) & empty;
-    return           (flood << 9) & NOTA ;
-}
-
-uint64_t seAttacks(uint64_t bishops, uint64_t empty) {
-    uint64_t flood = bishops;
-    empty &= NOTA;
-    flood |= bishops = (bishops >> 7) & empty;
-    flood |= bishops = (bishops >> 7) & empty;
-    flood |= bishops = (bishops >> 7) & empty;
-    flood |= bishops = (bishops >> 7) & empty;
-    flood |= bishops = (bishops >> 7) & empty;
-    flood |=         (bishops >> 7) & empty;
-    return           (flood >> 7) & NOTA ;
-}
-
-uint64_t westAttacks(uint64_t rooks, uint64_t empty) {
-    uint64_t flood = rooks;
-    empty &= NOTH;
-    flood |= rooks = (rooks >> 1) & empty;
-    flood |= rooks = (rooks >> 1) & empty;
-    flood |= rooks = (rooks >> 1) & empty;
-    flood |= rooks = (rooks >> 1) & empty;
-    flood |= rooks = (rooks >> 1) & empty;
-    flood |=         (rooks >> 1) & empty;
-    return           (flood >> 1) & NOTH ;
-}
-
-uint64_t swAttacks(uint64_t bishops, uint64_t empty) {
-    uint64_t flood = bishops;
-    empty &= NOTH;
-    flood |= bishops = (bishops >> 9) & empty;
-    flood |= bishops = (bishops >> 9) & empty;
-    flood |= bishops = (bishops >> 9) & empty;
-    flood |= bishops = (bishops >> 9) & empty;
-    flood |= bishops = (bishops >> 9) & empty;
-    flood |=         (bishops >> 9) & empty;
-    return           (flood >> 9) & NOTH ;
-}
-
-uint64_t nwAttacks(uint64_t bishops, uint64_t empty) {
-    uint64_t flood = bishops;
-    empty &= NOTH;
-    flood |= bishops = (bishops << 7) & empty;
-    flood |= bishops = (bishops << 7) & empty;
-    flood |= bishops = (bishops << 7) & empty;
-    flood |= bishops = (bishops << 7) & empty;
-    flood |= bishops = (bishops << 7) & empty;
-    flood |=         (bishops << 7) & empty;
-    return           (flood << 7) & NOTH ;
+uint64_t fillRayLeft(uint64_t rayPieces, uint64_t empty, int shift) {
+    uint64_t flood = rayPieces;
+    // To prevent overflow across the sides of the board on east/west fills
+    uint64_t borderMask = 0xFFFFFFFFFFFFFFFF;
+    if (shift == 1 || shift == 9)
+        borderMask = NOTA;
+    else if (shift == 7)
+        borderMask = NOTH;
+    empty &= borderMask;
+    flood |= rayPieces = (rayPieces << shift) & empty;
+    flood |= rayPieces = (rayPieces << shift) & empty;
+    flood |= rayPieces = (rayPieces << shift) & empty;
+    flood |= rayPieces = (rayPieces << shift) & empty;
+    flood |= rayPieces = (rayPieces << shift) & empty;
+    flood |=         (rayPieces << shift) & empty;
+    return           (flood << shift) & borderMask;
 }
 
 
@@ -2042,14 +1985,18 @@ uint64_t index_to_uint64(int index, int nBits, uint64_t mask) {
 
 // Gets rook attacks using Dumb7Fill methods
 uint64_t ratt(int sq, uint64_t block) {
-    return southAttacks(MOVEMASK[sq], ~block) | northAttacks(MOVEMASK[sq], ~block)
-         | eastAttacks(MOVEMASK[sq], ~block) | westAttacks(MOVEMASK[sq], ~block);
+    return fillRayRight(MOVEMASK[sq], ~block, NORTH_SOUTH_FILL) // south
+         | fillRayLeft(MOVEMASK[sq], ~block, NORTH_SOUTH_FILL)  // north
+         | fillRayLeft(MOVEMASK[sq], ~block, EAST_WEST_FILL)    // east
+         | fillRayRight(MOVEMASK[sq], ~block, EAST_WEST_FILL);  // west
 }
 
 // Gets bishop attacks using Dumb7Fill methods
 uint64_t batt(int sq, uint64_t block) {
-    return neAttacks(MOVEMASK[sq], ~block) | nwAttacks(MOVEMASK[sq], ~block)
-         | swAttacks(MOVEMASK[sq], ~block) | seAttacks(MOVEMASK[sq], ~block);
+    return fillRayLeft(MOVEMASK[sq], ~block, NE_SW_FILL)   // northeast
+         | fillRayLeft(MOVEMASK[sq], ~block, NW_SE_FILL)   // northwest
+         | fillRayRight(MOVEMASK[sq], ~block, NE_SW_FILL)  // southwest
+         | fillRayRight(MOVEMASK[sq], ~block, NW_SE_FILL); // southeast
 }
 
 // Maps a mask using a candidate magic into an index nBits long

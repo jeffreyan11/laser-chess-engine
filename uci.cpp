@@ -27,7 +27,7 @@ Board fenToBoard(string s);
 volatile bool isStop = true;
 
 int main() {
-    initMagicTables(9322166348684363710);
+    initMagicTables(9322166348684363710ULL);
     initZobristTable();
 
     string input;
