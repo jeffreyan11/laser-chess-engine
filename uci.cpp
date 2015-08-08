@@ -27,7 +27,7 @@ Board fenToBoard(string s);
 volatile bool isStop = true;
 
 int main() {
-    initMagicTables(218091209);
+    initMagicTables(9322166348684363710);
     initZobristTable();
 
     string input;
@@ -179,7 +179,7 @@ int main() {
             double min = 999;
             uint64_t bestSeed = 0;
             for (int i = 0; i < iters; i++) {
-                cerr << "Trial " << i+1 << endl;
+                if ((i & 0xFF) == 0xFF) cerr << "Trial " << i+1 << endl;
                 auto init_start = std::chrono::high_resolution_clock::now();
                 uint64_t test = rng();
                 initMagicTables(test);
