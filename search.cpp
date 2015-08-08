@@ -296,8 +296,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             return score;
     }
 
-    // A static evaluation, currently only used for null move pruning
-    // May in the future be used for futility pruning/razoring/etc.
+    // A static evaluation, used to activate null move pruning and futility
+    // pruning
     int staticEval = (color == WHITE) ? b.evaluate() : -b.evaluate();
     
     // null move pruning
@@ -349,15 +349,15 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // Internal iterative deepening, SEE, and MVV/LVA move ordering
     // The scoring relies partially on the fact that our selection sort is stable
     // Do a full sort on PV nodes since good move ordering is the most important here
-    if (depth >= 8 && isPVNode) {
+    if (depth >= 9 && isPVNode) {
         sortSearch(b, legalMoves, scores, 2);
     }
-    else if (depth >= 4 && isPVNode) {
+    else if (depth >= 5 && isPVNode) {
         sortSearch(b, legalMoves, scores, 1);
     }
     // Otherwise, get a best move (hoping for a first move cutoff) if we don't have
     // a hash move available
-    else if (depth >= 4 && hashed == NULL_MOVE) {
+    else if (depth >= 5 && hashed == NULL_MOVE) {
         int bestIndex = getBestMoveForSort(b, legalMoves, (depth >= 9) ? 2 : 1);
         // Mate check to prevent crashes
         if (bestIndex == -1)
@@ -424,13 +424,13 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     searchStats.searchSpaces++;
     for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
               m = nextMove(legalMoves, scores, ++i)) {
-        //if (m == hashed)
-        //    continue;
         // Stop condition to help break out as quickly as possible
         if (isStop)
             return -INFTY;
 
         // Futility pruning
+        // If we are already at least 2 pawns below alpha, a quiet move probably
+        // won't raise our prospects much, so don't bother q-searching it.
         if(!isPVNode && ((depth == 1 && staticEval <= alpha - MAX_POS_SCORE)/* || (depth == 2 && staticEval <= alpha - 3*MAX_POS_SCORE)*/)
         && !isInCheck && !isCapture(m) && abs(alpha) < QUEEN_VALUE && !b.isCheckMove(m, color)) {
             score = alpha;
@@ -441,18 +441,12 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(m, color))
             continue;
-
-        // Futility pruning
-        // Needs better check detection
-        //if(!isPVNode && ((depth == 1 && staticEval <= alpha - MAX_POS_SCORE)/* || (depth == 2 && staticEval <= alpha - 3*MAX_POS_SCORE)*/)
-        //&& !isInCheck && !isCapture(m) && abs(alpha) < QUEEN_VALUE && !copy.isInCheck(color^1)) {
-        //    score = alpha;
-        //    continue;
-        //}
-
         searchStats.nodes++;
 
         // Late move reduction
+        // If we have not raised alpha in the first few moves, we are probably
+        // at an all-node. The later moves are likely worse so we search them
+        // to a shallower depth.
         if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && j > 2 && alpha <= prevAlpha
         && m != searchParams.killers[depth][0] && m != searchParams.killers[depth][1]
         && !copy.isInCheck(color^1)) {
@@ -463,13 +457,13 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             if (depth >= 8)
                 reduction = (j > 12) ? 3 : 2;
             else if (depth >= 7)
-                reduction = (j > 4) ? 2 : 1;
-            else if (depth >= 6)
                 reduction = (j > 5) ? 2 : 1;
-            else if (depth >= 5)
+            else if (depth >= 6)
                 reduction = (j > 6) ? 2 : 1;
-            //else if (depth >= 4)
-            //    reduction = (j > legalMoves.size() / 2) ? 2 : 1;
+            else if (depth >= 5)
+                reduction = (j > 8) ? 2 : 1;
+            else if (depth >= 4)
+                reduction = (j > 15) ? 2 : 1;
             else
                 reduction = 1;
         }
@@ -559,6 +553,7 @@ int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta) 
                 }
             }
             Board copy = b.staticCopy();
+            // Sanity check in case of Type-1 hash error
             if (copy.doHashMove(hashed, color)) {
                 // If the hash score is unusable and node is not a predicted
                 // all-node, we can search the hash move first.
