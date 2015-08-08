@@ -651,7 +651,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
     for (Move m = nextMove(legalCaptures, scores, i); m != NULL_MOVE;
               m = nextMove(legalCaptures, scores, ++i)) {
         // Delta prune
-        if (standPat + b.valueOfPiece(b.getCapturedPiece(color^1, getEndSq(m))) < alpha - MAX_POS_SCORE)
+        if (standPat + b.valueOfPiece(b.getPieceOnSquare(color^1, getEndSq(m))) < alpha - MAX_POS_SCORE)
             continue;
         // Static exchange evaluation pruning
         if (b.getExchangeScore(color, m) < 0 && b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)

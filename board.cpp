@@ -299,7 +299,7 @@ void Board::doMove(Move m, int color) {
 
     if (getPromotion(m)) {
         if (isCapture(m)) {
-            int captureType = getCapturedPiece(color^1, endSq);
+            int captureType = getPieceOnSquare(color^1, endSq);
             pieces[color][PAWNS] &= ~MOVEMASK[startSq];
             pieces[color][getPromotion(m)] |= MOVEMASK[endSq];
             pieces[color^1][captureType] &= ~MOVEMASK[endSq];
@@ -326,7 +326,7 @@ void Board::doMove(Move m, int color) {
         fiftyMoveCounter = 0;
     } // end promotion
     else if (isCapture(m)) {
-        int captureType = getCapturedPiece(color^1, endSq);
+        int captureType = getPieceOnSquare(color^1, endSq);
         if (captureType == -1) {
             pieces[color][PAWNS] &= ~MOVEMASK[startSq];
             pieces[color][PAWNS] |= MOVEMASK[endSq];
@@ -784,7 +784,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
     // Square parity for knight and bishop moves
     uint64_t kingParity = (pieces[color^1][KINGS] & LIGHT) ? LIGHT : DARK;
     uint64_t otherPieces = allPieces[color^1];
-    uint64_t invAttackMap = ~(getInitXRays(color, kingSq));
+    uint64_t potentialXRay = pieces[color][BISHOPS] | pieces[color][ROOKS] | pieces[color][QUEENS];
 
     // We can do pawns in parallel, since the start square of a pawn move is
     // determined by its end square.
@@ -889,10 +889,10 @@ MoveList Board::getPseudoLegalChecks(int color) {
         uint64_t nSq = getKnightSquares(stsq);
         // Get any bishops, rooks, queens attacking king after knight has moved
         uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
-        // If none of these xray-ers are new, no discovered check.
-        // Otherwise, we have an xray-er, and any move by this piece will
-        // give discovered check
-        if (!(xrays & invAttackMap))
+        // If still no xrayers are giving check, then we have no discovered
+        // check. Otherwise, every move by this piece is a (discovered) checking
+        // move
+        if (!(xrays & potentialXRay))
             nSq &= nAttackMap;
 
         addMovesToList(checks, KNIGHTS, stsq, nSq, false);
@@ -906,7 +906,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
         bishops &= bishops-1;
         uint64_t bSq = getBishopSquares(stsq);
         uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
-        if (!(xrays & invAttackMap))
+        if (!(xrays & potentialXRay))
             bSq &= bAttackMap;
 
         addMovesToList(checks, BISHOPS, stsq, bSq, false);
@@ -920,7 +920,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
         rooks &= rooks-1;
         uint64_t rSq = getRookSquares(stsq);
         uint64_t xrays = getXRays(color, kingSq, color, MOVEMASK[stsq]);
-        if (!(xrays & invAttackMap))
+        if (!(xrays & potentialXRay))
             rSq &= rAttackMap;
 
         addMovesToList(checks, ROOKS, stsq, rSq, false);
@@ -975,7 +975,7 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
     // can intersect with legal moves to get legal block moves
     uint64_t xraySqs = 0;
     int attackerSq = bitScanForward(otherPieces);
-    int attackerType = getCapturedPiece(color^1, attackerSq);
+    int attackerType = getPieceOnSquare(color^1, attackerSq);
     if (attackerType == BISHOPS)
         xraySqs = getBishopSquares(attackerSq);
     else if (attackerType == ROOKS)
@@ -1268,14 +1268,14 @@ uint64_t Board::getXRays(int color, int sq, int blockerColor, uint64_t blocker) 
 // Get the attack map of all potential x-ray pieces (bishops, rooks, queens)
 // with no blockers removed. Used to compare with the results of the function
 // above to find pins/discovered checks
-uint64_t Board::getInitXRays(int color, int sq) {
+/*uint64_t Board::getInitXRays(int color, int sq) {
     uint64_t bishops = pieces[color][BISHOPS];
     uint64_t rooks = pieces[color][ROOKS];
     uint64_t queens = pieces[color][QUEENS];
 
     return (getBishopSquares(sq) & (bishops | queens))
          | (getRookSquares(sq) & (rooks | queens));
-}
+}*/
 
 // Given a color and a square, returns all pieces of the color that attack the
 // square. Useful for checks, captures
@@ -1290,15 +1290,16 @@ uint64_t Board::getAttackMap(int color, int sq) {
          | (getKingSquares(sq) & pieces[color][KINGS]);
 }
 
-// Given the end square of a capture, find the opposing piece that is captured.
-int Board::getCapturedPiece(int colorCaptured, int endSq) {
-    uint64_t endSingle = MOVEMASK[endSq];
+// Given the on a given square, used to get either the piece moving or the
+// captured piece.
+int Board::getPieceOnSquare(int color, int sq) {
+    uint64_t endSingle = MOVEMASK[sq];
     for (int pieceID = 0; pieceID < 5; pieceID++) {
-        if (pieces[colorCaptured][pieceID] & endSingle)
+        if (pieces[color][pieceID] & endSingle)
             return pieceID;
     }
-    // The default is when the capture destination is an empty square.
-    // This indicates an en passant (and hopefully not an error).
+    // If used for captures, the default of an empty square indicates an
+    // en passant (and hopefully not an error).
     return -1;
 }
 
@@ -1621,7 +1622,7 @@ int Board::getSEE(int color, int sq) {
     uint64_t single = getLeastValuableAttacker(attackers, color, piece);
     // Get value of piece initially being captured. If the destination square is
     // empty, then the capture is an en passant.
-    gain[d] = valueOfPiece(getCapturedPiece(color^1, sq));
+    gain[d] = valueOfPiece(getPieceOnSquare(color^1, sq));
 
     do {
         d++; // next depth
@@ -1666,7 +1667,7 @@ int Board::valueOfPiece(int piece) {
 int Board::getMVVLVAScore(int color, Move m) {
     int endSq = getEndSq(m);
     int attacker = getPiece(m);
-    int victim = getCapturedPiece(color^1, endSq);
+    int victim = getPieceOnSquare(color^1, endSq);
     if (attacker == KINGS)
         attacker = -1;
 
@@ -1680,7 +1681,7 @@ int Board::getMVVLVAScore(int color, Move m) {
 int Board::getExchangeScore(int color, Move m) {
     int endSq = getEndSq(m);
     int attacker = getPiece(m);
-    int victim = getCapturedPiece(color^1, endSq);
+    int victim = getPieceOnSquare(color^1, endSq);
     return victim - attacker;
 }
 

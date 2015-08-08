@@ -17,6 +17,5 @@ A special thanks to the Chess Programming Wiki, which was consulted frequently f
 Estimated ELO is currently 2100-2200, tested using Stockfish 280615 64 BMI2 (https://stockfishchess.org/) (Commit 112607b on https://github.com/official-stockfish/Stockfish) and cutechess-cli (http://cutechess.com/). The tests were performed on one core of a i5-5200u processor with 15 sec + 0.05 sec/move time controls. The code was compiled with MinGW, GCC version 4.9.2.
 
 Known issues:
-getPseudoLegalChecks() does not handle any discovered checks properly
-isCheckMove() ignores en passant and castling and needs debugging
+isCheckMove() ignores en passant and castling and does not handle pawn/king moves to give discovered check correctly
 tunemagic command leaks a large amount of memory

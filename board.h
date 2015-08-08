@@ -71,10 +71,10 @@ public:
     // Get a bitboard of all xray-ers attacking a square if a blocker has been removed
     uint64_t getXRays(int color, int sq, int blockerColor, uint64_t blocker);
     // Get a bitboard of all xray-ers attacking a square with no blocker removed
-    uint64_t getInitXRays(int color, int sq);
+    //uint64_t getInitXRays(int color, int sq);
     // Get all pieces of that color attacking the square
     uint64_t getAttackMap(int color, int sq);
-    int getCapturedPiece(int colorCaptured, int endSq);
+    int getPieceOnSquare(int color, int sq);
     bool isCheckMove(Move m, int color);
 
     bool isInCheck(int color);
