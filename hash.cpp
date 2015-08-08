@@ -1,8 +1,11 @@
 #include "hash.h"
 
 Hash::Hash(uint64_t MB) {
+    // Convert to bytes
     uint64_t arrSize = MB << 20;
+    // Calculate how many array slots we can use
     arrSize /= 2 * sizeof(HashEntry);
+    // Create the array
     table = new HashNode *[arrSize];
     size = arrSize;
     for(uint64_t i = 0; i < size; i++) {
@@ -12,7 +15,6 @@ Hash::Hash(uint64_t MB) {
     #if HASH_DEBUG_OUTPUT
     replacements = 0;
     collisions = 0;
-    cerr << "Hash size: " << 2*size << endl;
     #endif
 }
 
@@ -27,6 +29,7 @@ Hash::~Hash() {
 // Adds key and move into the hashtable. This function assumes that the key has
 // been checked with get and is not in the table.
 void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t searchGen) {
+    // Use the lower 32 bits of the hash key to index the array
     uint32_t h = (uint32_t) (b.getZobristKey() & 0xFFFFFFFF);
     uint32_t index = h % size;
     HashNode *node = table[index];
@@ -54,7 +57,11 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
             node->slot2.setEntry(b, depth, m, score, nodeType, searchGen);
         }
         // Replace cut/all nodes with PV nodes
-        else if (nodeType == PV_NODE) {
+        // Replace older PV nodes with newer ones
+        // Keep PV nodes whenever possible
+        // Otherwise, replace an entry from a previous search space, or the lowest
+        // depth entry with the new entry if the new entry's depth is higher
+        else {
             HashEntry *toReplace = NULL;
             int score1 = 4*(searchGen - node->slot1.getAge())
                        - 4*(node->slot1.getNodeType() == PV_NODE) + depth - node->slot1.depth;
@@ -64,29 +71,10 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
                 toReplace = &(node->slot1);
             else
                 toReplace = &(node->slot2);
-
-            toReplace->clearEntry();
-            toReplace->setEntry(b, depth, m, score, nodeType, searchGen);
-        }
-        // Always keep PV nodes if possible
-        else if (node->slot1.getAge() == searchGen && node->slot1.getNodeType() == PV_NODE
-              && node->slot2.getAge() == searchGen && node->slot2.getNodeType() == PV_NODE) {
-            return;
-        }
-        // Otherwise, replace an entry from a previous search space, or otherwise the lowest
-        // depth entry with the new entry if the new entry's depth is higher
-        else {
-            HashEntry *toReplace = NULL;
-            //int score1 = 4*(node->slot1.age != searchGen) + depth - node->slot1.depth;
-            //int score2 = 4*(node->slot2.age != searchGen) + depth - node->slot2.depth;
-            // This should underflow correctly according to the C++11 standards?
-            int score1 = 4*(searchGen - node->slot1.getAge()) + depth - node->slot1.depth;
-            int score2 = 4*(searchGen - node->slot2.getAge()) + depth - node->slot2.depth;
-            if (score1 >= score2)
-                toReplace = &(node->slot1);
-            else
-                toReplace = &(node->slot2);
-            if (score1 <= 0 && score2 <= 0)
+            // If new node is PV, almost always put it in
+            // Otherwise, the node must be from a newer search space or be a
+            // higher depth. Each move in the search space is worth 4 depth.
+            if (score1 <= -8*(nodeType == PV_NODE) && score2 <= -8*(nodeType == PV_NODE))
                 toReplace = NULL;
 
             if (toReplace != NULL) {
@@ -104,6 +92,7 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
 
 // Get the hash entry, if any, associated with a board b.
 HashEntry *Hash::get(Board &b) {
+    // Use the lower 32 bits of the hash key to index the array
     uint32_t h = (uint32_t) (b.getZobristKey() & 0xFFFFFFFF);
     uint32_t index = h % size;
     HashNode *node = table[index];
@@ -120,43 +109,9 @@ HashEntry *Hash::get(Board &b) {
 }
 
 uint64_t Hash::getSize() {
-    return 2 * size;
+    return (2 * size);
 }
 
-/*
-void Hash::clean(uint16_t moveNumber) {
-    for(uint64_t i = 0; i < size; i++) {
-        HashNode *node = table[i];
-        // TODO choose aging policy
-        if (node != NULL) {
-            // If slot 2 is aged out, delete it and set slot to NULL
-            if (node->slot2 != NULL && moveNumber >= node->slot2->age) {
-                keys--;
-                delete node->slot2;
-                node->slot2 = NULL;
-            }
-            // If slot 1 is aged out, shift over slot 2 or delete node if both
-            // slots are empty
-            if (moveNumber >= node->slot1->age) {
-                keys--;
-                if (node->slot2 != NULL) {
-                    delete node->slot1;
-                    node->slot1 = node->slot2;
-                    node->slot2 = NULL;
-                }
-                else {
-                    delete node;
-                    table[i] = NULL;
-                }
-            }
-        }
-    }
-    #if HASH_DEBUG_OUTPUT
-    replacements = 0;
-    collisions = 0;
-    #endif
-}
-*/
 void Hash::clear() {
     for(uint64_t i = 0; i < size; i++) {
         if (table[i] != NULL)

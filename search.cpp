@@ -26,6 +26,7 @@ static SearchStatistics searchStats;
 
 extern bool isStop;
 
+// Search functions
 unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int &bestScore, bool &isMate);
 int getBestMoveForSort(Board &b, MoveList &legalMoves, int depth);
@@ -34,9 +35,11 @@ int PVS(Board &b, int color, int depth, int alpha, int beta);
 int quiescence(Board &b, int color, int plies, int alpha, int beta);
 int checkQuiescence(Board &b, int color, int plies, int alpha, int beta);
 
+// Search helpers
 int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta);
 int scoreMate(bool isInCheck, int depth, int alpha, int beta);
 
+// Other utility functions
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 string retrievePV(Board *b, Move bestMove, int plies);
 
@@ -49,12 +52,6 @@ void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *b
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
     *bestMove = legalMoves.get(0);
-
-    /*if (legalMoves.size() == 1) {
-        isStop = true;
-        cout << "bestmove " << moveToString(*bestMove) << endl;
-        return;
-    }*/
     
     auto start_time = high_resolution_clock::now();
     double timeSoFar = duration_cast<duration<double>>(
@@ -106,7 +103,6 @@ void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *b
             cout << "info depth " << rootDepth << " score cp " << bestScore << " time "
                  << (int)(timeSoFar * ONE_SECOND) << " nodes " << searchStats.nodes
                  << " nps " << nps << " pv " << pvStr << endl;
-            // transpositionTable.test();
 
             if (isMate)
                 break;
@@ -117,7 +113,6 @@ void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *b
     cerr << "collisions: " << transpositionTable.collisions << endl;
     cerr << "replacements: " << transpositionTable.replacements << endl;
     #endif
-    //transpositionTable.clean(b->getMoveNumber());
     cerr << "TT occupancy: " << transpositionTable.keys << "/" << transpositionTable.getSize() << endl;
     cerr << "Hash scorecut/hit/probe: " << searchStats.hashScoreCuts << "/"
          << searchStats.hashHits << "/" << searchStats.hashProbes << endl;
