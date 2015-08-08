@@ -128,7 +128,7 @@ public:
     int *getMailbox();
     uint64_t getZobristKey();
 
-    string toString();
+    std::string toString();
     void initZobristKey(int *mailbox);
 
 private:

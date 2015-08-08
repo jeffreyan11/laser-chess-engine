@@ -51,12 +51,12 @@ int count(uint64_t bb) {
     #endif
 }
 
-string moveToString(Move m) {
+std::string moveToString(Move m) {
     char startFile = 'a' + (getStartSq(m) & 7);
     char startRank = '1' + (getStartSq(m) >> 3);
 	char endFile = 'a' + (getEndSq(m) & 7);
 	char endRank = '1' + (getEndSq(m) >> 3);
-    string moveStr = {startFile, startRank, endFile, endRank};
+    std::string moveStr = {startFile, startRank, endFile, endRank};
     if (getPromotion(m)) moveStr += " nbrq"[getPromotion(m)];
     return moveStr;
 }

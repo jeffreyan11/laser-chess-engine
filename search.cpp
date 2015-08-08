@@ -1,5 +1,9 @@
 #include <chrono>
+#include <iomanip>
+#include <iostream>
 #include "search.h"
+
+using namespace std;
 
 struct SearchParameters {
     int nullMoveCount;
@@ -38,6 +42,8 @@ int checkQuiescence(Board &b, int color, int plies, int alpha, int beta);
 // Search helpers
 int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta);
 int scoreMate(bool isInCheck, int depth, int alpha, int beta);
+double getPercentage(uint64_t numerator, uint64_t denominator);
+void printStatistics();
 
 // Other utility functions
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
@@ -113,16 +119,8 @@ void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *b
     cerr << "collisions: " << transpositionTable.collisions << endl;
     cerr << "replacements: " << transpositionTable.replacements << endl;
     #endif
-    cerr << "TT occupancy: " << transpositionTable.keys << "/" << transpositionTable.getSize() << endl;
-    cerr << "Hash scorecut/hit/probe: " << searchStats.hashScoreCuts << "/"
-         << searchStats.hashHits << "/" << searchStats.hashProbes << endl;
-    cerr << "Hash movecut rate: " << searchStats.hashMoveCuts << "/"
-         << searchStats.hashMoveAttempts << endl;
-    cerr << "First fail-high/fail-high rate: " << searchStats.firstFailHighs << "/"
-         << searchStats.failHighs << "/" << searchStats.searchSpaces << endl;
-    cerr << "QS Nodes: " << searchStats.qsNodes << endl;
-    cerr << "QS FFH/FH rate: " << searchStats.qsFirstFailHighs << "/"
-         << searchStats.qsFailHighs << "/" << searchStats.qsSearchSpaces << endl;
+
+    printStatistics();
     
     isStop = true;
     cout << "bestmove " << moveToString(*bestMove) << endl;
@@ -826,4 +824,33 @@ string retrievePV(Board *b, Move bestMove, int plies) {
     }
 
     return pvStr;
+}
+
+// Formats a fraction into a percentage value (0 to 100) for printing
+double getPercentage(uint64_t numerator, uint64_t denominator) {
+    uint64_t tenThousandths = (numerator * 10000) / denominator;
+    double percent = ((double) tenThousandths) / 100.0;
+    return percent;
+}
+
+// Prints the statistics gathered during search
+void printStatistics() {
+    cerr << setw(22) << "TT occupancy: " << transpositionTable.keys << " / "
+         << transpositionTable.getSize() << endl;
+    cerr << setw(22) << "Hash hitrate: " << getPercentage(searchStats.hashHits, searchStats.hashProbes)
+         << '%' << " of " << searchStats.hashProbes << " probes" << endl;
+    cerr << setw(22) << "Hash score cut rate: " << getPercentage(searchStats.hashScoreCuts, searchStats.hashHits)
+         << '%' << " of " << searchStats.hashHits << " hash hits" << endl;
+    cerr << setw(22) << "Hash move cut rate: " << getPercentage(searchStats.hashMoveCuts, searchStats.hashMoveAttempts)
+         << '%' << " of " << searchStats.hashMoveAttempts << " hash moves" << endl;
+    cerr << setw(22) << "First fail high rate: " << getPercentage(searchStats.firstFailHighs, searchStats.failHighs)
+         << '%' << " of " << searchStats.failHighs << " fail highs" << endl;
+    cerr << setw(22) << "Fail high rate: " << getPercentage(searchStats.failHighs, searchStats.searchSpaces)
+         << '%' << " of " << searchStats.searchSpaces << " search spaces" << endl;
+    cerr << setw(22) << "QS Nodes: " << searchStats.qsNodes << " ("
+         << getPercentage(searchStats.qsNodes, searchStats.nodes) << '%' << ")" << endl;
+    cerr << setw(22) << "QS FFH rate: " << getPercentage(searchStats.qsFirstFailHighs, searchStats.qsFailHighs)
+         << '%' << " of " << searchStats.qsFailHighs << " qs fail highs" << endl;
+    cerr << setw(22) << "QS fail high rate: " << getPercentage(searchStats.qsFailHighs, searchStats.qsSearchSpaces)
+         << '%' << " of " << searchStats.qsSearchSpaces << " qs search spaces" << endl;
 }

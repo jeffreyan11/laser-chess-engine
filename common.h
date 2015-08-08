@@ -2,10 +2,7 @@
 #define __COMMON_H__
 
 #include <cstdint>
-#include <iostream>
 #include <string>
-
-using namespace std;
 
 #define USE_INLINE_ASM true
 
@@ -35,6 +32,7 @@ const int EG_FACTOR_RES = 1000;
 
 // Other values
 const int MAX_DEPTH = 127;
+const int MAX_MOVES = 256;
 
 int bitScanForward(uint64_t bb);
 int bitScanReverse(uint64_t bb);
@@ -98,7 +96,7 @@ inline bool isCastle(Move m) {
     return (m >> 21) & 1;
 }
 
-string moveToString(Move m);
+std::string moveToString(Move m);
 
 class MoveList {
 public:
@@ -106,7 +104,7 @@ public:
     unsigned int length;
 
     MoveList() {
-        moves = new Move[128];
+        moves = new Move[MAX_MOVES];
         length = 0;
     }
     ~MoveList() { delete[] moves; }
@@ -150,14 +148,13 @@ public:
     unsigned int length;
 
     ScoreList() {
-        scores = new int[128];
+        scores = new int[MAX_MOVES];
         length = 0;
     }
     ~ScoreList() { delete[] scores; }
 
     unsigned int size() { return length; }
 
-    // Adds to the end of the list.
     void add(int s) {
         scores[length] = s;
         length++;
@@ -173,7 +170,6 @@ public:
         scores[j] = temp;
     }
 
-    // Reset the MoveList
     void clear() {
         length = 0;
     }

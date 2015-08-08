@@ -3,6 +3,7 @@
 #include "board.h"
 #include "btables.h"
 
+using namespace std;
 
 // Shift amounts for Dumb7fill
 const int NORTH_SOUTH_FILL = 8;
