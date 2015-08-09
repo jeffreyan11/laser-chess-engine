@@ -1,6 +1,8 @@
 # uci-chess-engine
 A UCI-compliant chess engine.
 
+After being compiled, the executable can be run with any UCI chess GUI.
+
 The code and Makefile support gcc on Linux and MinGW on Windows for Intel Nehalem (2008-2010) and later processors only (due to popcnt instruction support).
 
 The implementation uses fancy magic bitboards for a fairly fast getLegalMoves and doMove (~6.2 sec PERFT 6).
@@ -16,6 +18,11 @@ A special thanks to the Chess Programming Wiki, which was consulted frequently f
 
 Estimated ELO is currently 2100-2200, tested using Stockfish 280615 64 BMI2 (https://stockfishchess.org/) (Commit 112607b on https://github.com/official-stockfish/Stockfish) and cutechess-cli (http://cutechess.com/). The tests were performed on one core of a i5-5200u processor with 15 sec + 0.05 sec/move time controls. The code was compiled with MinGW, GCC version 4.9.2.
 
+
 Known issues:
+
 isCheckMove() ignores en passant and castling
+
 tunemagic command leaks a large amount of memory
+
+Futility pruning can fail low even if the position is a stalemate

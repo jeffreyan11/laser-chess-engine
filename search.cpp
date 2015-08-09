@@ -24,7 +24,7 @@ struct SearchParameters {
 
 static Hash transpositionTable(16);
 static int rootDepth;
-static uint8_t searchGen;
+static uint8_t rootMoveNumber;
 static SearchParameters searchParams;
 static SearchStatistics searchStats;
 
@@ -53,7 +53,7 @@ void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *b
     using namespace std::chrono;
     searchParams.reset();
     searchStats.reset();
-    searchGen = (uint8_t) (b->getMoveNumber());
+    rootMoveNumber = (uint8_t) (b->getMoveNumber());
 
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
@@ -115,11 +115,6 @@ void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *b
         }
     }
     
-    #if HASH_DEBUG_OUTPUT
-    cerr << "collisions: " << transpositionTable.collisions << endl;
-    cerr << "replacements: " << transpositionTable.replacements << endl;
-    #endif
-
     printStatistics();
     
     isStop = true;
@@ -138,15 +133,6 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int score = -MATE_SCORE;
     int alpha = -MATE_SCORE;
     int beta = MATE_SCORE;
-
-    // root move ordering
-    /*if (depth == 1) {
-        ScoreList scores;
-        sortSearch(b, legalMoves, scores, 1);
-        unsigned int i = 0;
-        for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
-                m = nextMove(legalMoves, scores, ++i));
-    }*/
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         // Stop condition. If stopping, return search results from incomplete
@@ -158,25 +144,6 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
         copy.doMove(legalMoves.get(i), color);
         searchStats.nodes++;
         
-        if (copy.isWInMate()) {
-            isMate = true;
-            bestScore = MATE_SCORE - 1;
-            return i;
-        }
-        else if (copy.isBInMate()) {
-            isMate = true;
-            bestScore = MATE_SCORE - 1;
-            return i;
-        }
-        else if (copy.isStalemate(color^1) || copy.isDraw()) {
-            score = 0;
-            if (score > alpha) {
-                alpha = score;
-                tempMove = i;
-            }
-            continue;
-        }
-        
         if (i != 0) {
             score = -PVS(copy, color^1, depth-1, -alpha-1, -alpha);
             if (alpha < score && score < beta) {
@@ -186,7 +153,7 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
         else {
             score = -PVS(copy, color^1, depth-1, -beta, -alpha);
         }
-        
+
         if (score > alpha) {
             alpha = score;
             tempMove = i;
@@ -293,9 +260,12 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // pruning
     int staticEval = (color == WHITE) ? b.evaluate() : -b.evaluate();
     
-    // null move pruning
-    // only if doing a null move does not leave player in check
+    // Null move pruning: if we are in a position good enough that even after
+    // passing and giving our opponent a free turn, we still exceed beta, then
+    // simply return beta
+    // Only if doing a null move does not leave player in check
     // Possibly remove staticEval >= beta condition?
+    // Do not do more than 2 null moves in a row
     if (depth >= 3 && !isPVNode && searchParams.nullMoveCount < 2 && staticEval >= beta && !isInCheck) {
         int reduction;
         if (depth >= 8)
@@ -341,6 +311,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     ScoreList scores;
     // Internal iterative deepening, SEE, and MVV/LVA move ordering
     // The scoring relies partially on the fact that our selection sort is stable
+    // TODO make this cleaner, probably when captures and moves become generated separately
     // Do a full sort on PV nodes since good move ordering is the most important here
     if (depth >= 9 && isPVNode) {
         sortSearch(b, legalMoves, scores, 2);
@@ -412,7 +383,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     Move toHash = NULL_MOVE;
     int reduction = 0;
     unsigned int i = 0;
-    unsigned int j = (hashed == NULL_MOVE) ? 0 : 1; // separate counter only incremented when valid move is searched
+    // separate counter only incremented when valid move is searched
+    unsigned int j = (hashed == NULL_MOVE) ? 0 : 1;
     score = -INFTY;
     searchStats.searchSpaces++;
     for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
@@ -424,6 +396,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         // Futility pruning
         // If we are already at least 2 pawns below alpha, a quiet move probably
         // won't raise our prospects much, so don't bother q-searching it.
+        // TODO may fail low in some stalemate cases
         if(!isPVNode && ((depth == 1 && staticEval <= alpha - MAX_POS_SCORE)/* || (depth == 2 && staticEval <= alpha - 3*MAX_POS_SCORE)*/)
         && !isInCheck && !isCapture(m) && abs(alpha) < QUEEN_VALUE && !b.isCheckMove(m, color)) {
             score = alpha;
@@ -440,6 +413,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         // If we have not raised alpha in the first few moves, we are probably
         // at an all-node. The later moves are likely worse so we search them
         // to a shallower depth.
+        // TODO set up an array for reduction values
         if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && j > 2 && alpha <= prevAlpha
         && m != searchParams.killers[depth][0] && m != searchParams.killers[depth][1]
         && !copy.isInCheck(color^1)) {
@@ -478,9 +452,10 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             if (j == 0)
                 searchStats.firstFailHighs++;
             // Hash moves that caused a beta cutoff
-            transpositionTable.add(b, depth, m, beta, CUT_NODE, searchGen);
+            transpositionTable.add(b, depth, m, beta, CUT_NODE, rootMoveNumber);
             // Record killer if applicable
             if (!isCapture(m)) {
+                // Ensure the same killer does not fill both slots
                 if (m != searchParams.killers[depth][0]) {
                     searchParams.killers[depth][1] = searchParams.killers[depth][0];
                     searchParams.killers[depth][0] = m;
@@ -501,12 +476,12 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     
     // Exact scores indicate a principal variation and should always be hashed
     if (toHash != NULL_MOVE && prevAlpha < alpha && alpha < beta) {
-        transpositionTable.add(b, depth, toHash, alpha, PV_NODE, searchGen);
+        transpositionTable.add(b, depth, toHash, alpha, PV_NODE, rootMoveNumber);
     }
     // Record all-nodes. The upper bound score can save a lot of search time.
     // No best move can be recorded in a fail-hard framework.
     else if (alpha <= prevAlpha) {
-        transpositionTable.add(b, depth, NULL_MOVE, alpha, ALL_NODE, searchGen);
+        transpositionTable.add(b, depth, NULL_MOVE, alpha, ALL_NODE, rootMoveNumber);
     }
 
     return alpha;
@@ -828,6 +803,8 @@ string retrievePV(Board *b, Move bestMove, int plies) {
 
 // Formats a fraction into a percentage value (0 to 100) for printing
 double getPercentage(uint64_t numerator, uint64_t denominator) {
+    if (denominator == 0)
+        return 0;
     uint64_t tenThousandths = (numerator * 10000) / denominator;
     double percent = ((double) tenThousandths) / 100.0;
     return percent;

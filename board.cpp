@@ -1734,23 +1734,23 @@ uint64_t Board::getBPawnDoubleMoves(uint64_t pawns) {
     return pawns;
 }
 
-uint64_t Board::getWPawnLeftCaptures(uint64_t pawns) {
+inline uint64_t Board::getWPawnLeftCaptures(uint64_t pawns) {
     return (pawns << 7) & NOTH;
 }
 
-uint64_t Board::getBPawnLeftCaptures(uint64_t pawns) {
+inline uint64_t Board::getBPawnLeftCaptures(uint64_t pawns) {
     return (pawns >> 9) & NOTH;
 }
 
-uint64_t Board::getWPawnRightCaptures(uint64_t pawns) {
+inline uint64_t Board::getWPawnRightCaptures(uint64_t pawns) {
     return (pawns << 9) & NOTA;
 }
 
-uint64_t Board::getBPawnRightCaptures(uint64_t pawns) {
+inline uint64_t Board::getBPawnRightCaptures(uint64_t pawns) {
     return (pawns >> 7) & NOTA;
 }
 
-uint64_t Board::getKnightSquares(int single) {
+inline uint64_t Board::getKnightSquares(int single) {
     return KNIGHTMOVES[single];
 }
 
@@ -1779,7 +1779,7 @@ uint64_t Board::getQueenSquares(int single) {
     return getBishopSquares(single) | getRookSquares(single);
 }
 
-uint64_t Board::getKingSquares(int single) {
+inline uint64_t Board::getKingSquares(int single) {
     return KINGMOVES[single];
 }
 
@@ -1920,6 +1920,7 @@ void Board::initZobristKey(int *mailbox) {
 // Dumb7Fill
 uint64_t fillRayRight(uint64_t rayPieces, uint64_t empty, int shift) {
     uint64_t flood = rayPieces;
+    // To prevent overflow across the sides of the board on east/west fills
     uint64_t borderMask = 0xFFFFFFFFFFFFFFFF;
     if (shift == 1 || shift == 9)
         borderMask = NOTH;
