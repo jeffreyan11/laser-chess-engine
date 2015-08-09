@@ -52,12 +52,10 @@ typedef uint32_t Move;
 
 const Move NULL_MOVE = 0;
 
-inline Move encodeMove(int startSq, int endSq, int piece, bool isCapture) {
+inline Move encodeMove(int startSq, int endSq, bool isCapture) {
     Move result = 0;
     result |= isCapture;
-    result <<= 8;
-    result |= piece;
-    result <<= 6;
+    result <<= 10;
     result |= endSq;
     result <<= 6;
     result |= startSq;
@@ -65,11 +63,11 @@ inline Move encodeMove(int startSq, int endSq, int piece, bool isCapture) {
 }
 
 inline Move setPromotion(Move m, int promotion) {
-    return m | (promotion << 16);
+    return m | (promotion << 12);
 }
 
 inline Move setCastle(Move m, bool isCastle) {
-    return m | (isCastle << 21);
+    return m | (isCastle << 17);
 }
 
 inline int getStartSq(Move m) {
@@ -80,20 +78,16 @@ inline int getEndSq(Move m) {
     return (int) ((m >> 6) & 0x3F);
 }
 
-inline int getPiece(Move m) {
+inline int getPromotion(Move m) {
     return (int) ((m >> 12) & 0xF);
 }
 
-inline int getPromotion(Move m) {
-    return (int) ((m >> 16) & 0xF);
-}
-
 inline bool isCapture(Move m) {
-    return (m >> 20) & 1;
+    return (m >> 16) & 1;
 }
 
 inline bool isCastle(Move m) {
-    return (m >> 21) & 1;
+    return (m >> 17) & 1;
 }
 
 std::string moveToString(Move m);
