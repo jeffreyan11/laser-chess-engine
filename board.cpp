@@ -634,10 +634,10 @@ MoveList Board::getPseudoLegalCaptures(int color, bool includePromotions) {
     uint64_t otherPieces = allPieces[color^1];
 
     uint64_t kings = pieces[color][KINGS];
-    int stsq = bitScanForward(kings);
-    uint64_t kingSqs = getKingSquares(stsq);
+    int kingStSq = bitScanForward(kings);
+    uint64_t kingSqs = getKingSquares(kingStSq);
 
-    addMovesToList(captures, stsq, kingSqs, true, otherPieces);
+    addMovesToList(captures, kingStSq, kingSqs, true, otherPieces);
 
     addPawnCapturesToList(captures, color, otherPieces, includePromotions);
 

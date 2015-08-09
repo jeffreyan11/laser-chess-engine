@@ -34,7 +34,6 @@ extern bool isStop;
 unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int &bestScore, bool &isMate);
 int getBestMoveForSort(Board &b, MoveList &legalMoves, int depth);
-void sortSearch(Board &b, MoveList &pseudoLegalMoves, ScoreList &scores, int depth);
 int PVS(Board &b, int color, int depth, int alpha, int beta);
 int quiescence(Board &b, int color, int plies, int alpha, int beta);
 int checkQuiescence(Board &b, int color, int plies, int alpha, int beta);
@@ -168,22 +167,6 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     return tempMove;
 }
 
-// Gets a sorting score for every move by searching each with a full window PVS.
-void sortSearch(Board &b, MoveList &legalMoves, ScoreList &scores, int depth) {
-    int color = b.getPlayerToMove();
-    
-    for (unsigned int i = 0; i < legalMoves.size(); i++) {
-        Board copy = b.staticCopy();
-        if(!copy.doPseudoLegalMove(legalMoves.get(i), color)) {
-            legalMoves.remove(i);
-            i--;
-            continue;
-        }
-        
-        scores.add(-PVS(copy, color^1, depth-1, -MATE_SCORE, MATE_SCORE));
-    }
-}
-
 // Gets a best move to try first when a hash move is not available.
 int getBestMoveForSort(Board &b, MoveList &legalMoves, int depth) {
     int color = b.getPlayerToMove();
@@ -314,14 +297,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // Internal iterative deepening, SEE, and MVV/LVA move ordering
     // The scoring relies partially on the fact that our selection sort is stable
     // TODO make this cleaner, probably when captures and moves become generated separately
-    // Do a full sort on PV nodes since good move ordering is the most important here
-    if (depth >= 9 && isPVNode) {
-        sortSearch(b, legalMoves, scores, 2);
-    }
-    else if (depth >= 5 && isPVNode) {
-        sortSearch(b, legalMoves, scores, 1);
-    }
-    else if (depth >= 2) { // sort by SEE
+    if (depth >= 2) { // sort by SEE
         unsigned int index = 0;
         for (index = 0; index < legalMoves.size(); index++) {
             Move m = legalMoves.get(index);
