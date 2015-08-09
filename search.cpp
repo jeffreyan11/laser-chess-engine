@@ -248,6 +248,10 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
     Move hashed = NULL_MOVE;
     // Probe the hash table for a match/cutoff
+    // If a cutoff or exact score hit occurred, probeTT will return a value
+    // other than -INFTY
+    // alpha is passed by reference in case a hash move raises alpha but does
+    // not cause a cutoff
     searchStats.hashProbes++;
     int hashScore = probeTT(b, color, hashed, depth, alpha, beta);
     if (hashScore != -INFTY)
@@ -263,7 +267,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // Only if doing a null move does not leave player in check
     // Possibly remove staticEval >= beta condition?
     // Do not do more than 2 null moves in a row
-    if (depth >= 3 && !isPVNode && searchParams.nullMoveCount < 2 && staticEval >= beta && !isInCheck) {
+    if (depth >= 3 && !isPVNode && searchParams.nullMoveCount < 2
+                   && staticEval >= beta && !isInCheck) {
         int reduction;
         if (depth >= 8)
             reduction = 3;
