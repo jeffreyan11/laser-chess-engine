@@ -239,7 +239,6 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             return alpha;
     }
     
-    int score;
     int prevAlpha = alpha;
     // For PVS, the node is a PV node if beta - alpha > 1 (i.e. not a null window)
     // We do not want to do most pruning techniques on PV nodes
@@ -250,9 +249,9 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     Move hashed = NULL_MOVE;
     // Probe the hash table for a match/cutoff
     searchStats.hashProbes++;
-    score = probeTT(b, color, hashed, depth, alpha, beta);
-    if (score != -INFTY)
-        return score;
+    int hashScore = probeTT(b, color, hashed, depth, alpha, beta);
+    if (hashScore != -INFTY)
+        return hashScore;
 
     // A static evaluation, used to activate null move pruning and futility
     // pruning
@@ -317,20 +316,12 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     else if (depth >= 5 && isPVNode) {
         sortSearch(b, legalMoves, scores, 1);
     }
-    // Otherwise, get a best move (hoping for a first move cutoff) if we don't have
-    // a hash move available
-    else if (depth >= 5 && hashed == NULL_MOVE) {
-        int bestIndex = getBestMoveForSort(b, legalMoves, (depth >= 9) ? 2 : 1);
-        // Mate check to prevent crashes
-        if (bestIndex == -1)
-            return scoreMate(isInCheck, depth, alpha, beta);
-
-        unsigned int index;
-        for (index = 0; index < legalMoves.size(); index++)
+    else if (depth >= 2) { // sort by SEE
+        unsigned int index = 0;
+        for (index = 0; index < legalMoves.size(); index++) {
             if (!isCapture(legalMoves.get(index)))
                 break;
-        for (unsigned int i = 0; i < index; i++) {
-            scores.add(b.getSEE(color, getEndSq(legalMoves.get(i))));
+            scores.add(b.getSEE(color, getEndSq(legalMoves.get(index))));
         }
         // Score killers below even captures but above losing captures
         for (unsigned int i = index; i < legalMoves.size(); i++) {
@@ -340,31 +331,23 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             else
                 scores.add(-MATE_SCORE);
         }
-        scores.set(bestIndex, (1 << 15));
-    }
-    else if (depth >= 2) { // sort by SEE
-        unsigned int index;
-        for (index = 0; index < legalMoves.size(); index++)
-            if (!isCapture(legalMoves.get(index)))
-                break;
-        for (unsigned int i = 0; i < index; i++) {
-            scores.add(b.getSEE(color, getEndSq(legalMoves.get(i))));
-        }
-        for (unsigned int i = index; i < legalMoves.size(); i++) {
-            if (legalMoves.get(i) == searchParams.killers[depth][0]
-             || legalMoves.get(i) == searchParams.killers[depth][1])
-                scores.add(0);
-            else
-                scores.add(-MATE_SCORE);
+
+        // Get a best move (hoping for a first move cutoff) if we don't have
+        // a hash move available
+        if (depth >= 5 && hashed == NULL_MOVE) {
+            int bestIndex = getBestMoveForSort(b, legalMoves, (depth >= 9) ? 2 : 1);
+            // Mate check to prevent crashes
+            if (bestIndex == -1)
+                return scoreMate(isInCheck, depth, alpha, beta);
+            scores.set(bestIndex, (1 << 15));
         }
     }
     else { // MVV/LVA
-        unsigned int index;
-        for (index = 0; index < legalMoves.size(); index++)
+        unsigned int index = 0;
+        for (index = 0; index < legalMoves.size(); index++) {
             if (!isCapture(legalMoves.get(index)))
                 break;
-        for (unsigned int i = 0; i < index; i++) {
-            scores.add(b.getMVVLVAScore(color, legalMoves.get(i)));
+            scores.add(b.getMVVLVAScore(color, legalMoves.get(index)));
         }
         // For MVV/LVA, order killers above capturing a pawn with a minor piece
         // or greater
@@ -382,7 +365,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     unsigned int i = 0;
     // separate counter only incremented when valid move is searched
     unsigned int j = (hashed == NULL_MOVE) ? 0 : 1;
-    score = -INFTY;
+    int score = -INFTY;
     searchStats.searchSpaces++;
     for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
               m = nextMove(legalMoves, scores, ++i)) {
