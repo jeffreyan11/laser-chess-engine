@@ -42,21 +42,17 @@ int count(uint64_t bb);
  * Moves are represented as an unsigned 32-bit integer.
  * Bits 0-5: start square
  * Bits 6-11: end square
- * Bits 12-15: piece
- * Bits 16-19: promotion, 0 is no promotion
- * Bit 20: isCapture
- * Bit 21: isCastle
- * Bits 22-31: junk or 0s
+ * Bits 12-15: promotion, 0 is no promotion
+ * Bit 16: isCapture
+ * Bit 17: isCastle
+ * Bits 18-31: junk or 0s
  */
 typedef uint32_t Move;
 
 const Move NULL_MOVE = 0;
 
-inline Move encodeMove(int startSq, int endSq, bool isCapture) {
-    Move result = 0;
-    result |= isCapture;
-    result <<= 10;
-    result |= endSq;
+inline Move encodeMove(int startSq, int endSq) {
+    Move result = endSq;
     result <<= 6;
     result |= startSq;
     return result;
@@ -64,6 +60,10 @@ inline Move encodeMove(int startSq, int endSq, bool isCapture) {
 
 inline Move setPromotion(Move m, int promotion) {
     return m | (promotion << 12);
+}
+
+inline Move setCapture(Move m, bool isCapture) {
+    return m | (isCapture << 16);
 }
 
 inline Move setCastle(Move m, bool isCastle) {

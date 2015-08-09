@@ -241,7 +241,8 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
             int promotion = (moveStr.length() == 5)
                 ? promotionString.find(moveStr.at(4)) : 0;
             
-            Move m = encodeMove(startSq, endSq, isCapture);
+            Move m = encodeMove(startSq, endSq);
+            m = setCapture(m, isCapture);
             m = setCastle(m, isCastle);
             m = setPromotion(m, promotion);
             

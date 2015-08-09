@@ -734,7 +734,8 @@ MoveList Board::getPseudoLegalPromotions(int color) {
         int endSq = bitScanForward(promotions);
         promotions &= promotions-1;
 
-        Move mq = encodeMove(endSq+leftDiff, endSq, true);
+        Move mq = encodeMove(endSq+leftDiff, endSq);
+        mq = setCapture(mq, true);
         mq = setPromotion(mq, QUEENS);
         moves.add(mq);
     }
@@ -748,7 +749,8 @@ MoveList Board::getPseudoLegalPromotions(int color) {
         int endSq = bitScanForward(promotions);
         promotions &= promotions-1;
 
-        Move mq = encodeMove(endSq+rightDiff, endSq, true);
+        Move mq = encodeMove(endSq+rightDiff, endSq);
+        mq = setCapture(mq, true);
         mq = setPromotion(mq, QUEENS);
         moves.add(mq);
     }
@@ -764,7 +766,7 @@ MoveList Board::getPseudoLegalPromotions(int color) {
         promotions &= promotions - 1;
         int stSq = endSq + sqDiff;
 
-        Move mq = encodeMove(stSq, endSq, false);
+        Move mq = encodeMove(stSq, endSq);
         mq = setPromotion(mq, QUEENS);
         moves.add(mq);
     }
@@ -841,7 +843,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
     while (pLegal) {
         int endsq = bitScanForward(pLegal);
         pLegal &= pLegal - 1;
-        checks.add(encodeMove(endsq+sqDiff, endsq, false));
+        checks.add(encodeMove(endsq+sqDiff, endsq));
     }
 
     pLegal = (color == WHITE) ? getWPawnDoubleMoves(pawns)
@@ -850,7 +852,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
     while (pLegal) {
         int endsq = bitScanForward(pLegal);
         pLegal &= pLegal - 1;
-        checks.add(encodeMove(endsq+2*sqDiff, endsq, false));
+        checks.add(encodeMove(endsq+2*sqDiff, endsq));
     }
 
     // For pawn captures, we can use a similar approach, but we must consider
@@ -869,7 +871,9 @@ MoveList Board::getPseudoLegalChecks(int color) {
     while (pLegal) {
         int endsq = bitScanForward(pLegal);
         pLegal &= pLegal-1;
-        checkCaptures.add(encodeMove(endsq+leftDiff, endsq, true));
+        Move m = encodeMove(endsq+leftDiff, endsq);
+        m = setCapture(m, true);
+        checkCaptures.add(m);
     }
 
     pLegal = (color == WHITE) ? getWPawnRightCaptures(pawns)
@@ -882,7 +886,9 @@ MoveList Board::getPseudoLegalChecks(int color) {
     while (pLegal) {
         int endsq = bitScanForward(pLegal);
         pLegal &= pLegal-1;
-        checkCaptures.add(encodeMove(endsq+rightDiff, endsq, true));
+        Move m = encodeMove(endsq+rightDiff, endsq);
+        m = setCapture(m, true);
+        checkCaptures.add(m);
     }
 
     uint64_t knights = pieces[color][KNIGHTS] & kingParity;
@@ -966,8 +972,7 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
     if (count(otherPieces) >= 2) {
         uint64_t kingSqs = getKingSquares(kingSq);
 
-        addMovesToList(captures, kingSq, kingSqs, true,
-            allPieces[color^1]);
+        addMovesToList(captures, kingSq, kingSqs, true, allPieces[color^1]);
         addMovesToList(captures, kingSq, kingSqs, false);
         return captures;
     }
@@ -994,13 +999,7 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
         uint64_t nSq = getKnightSquares(stsq);
 
         addMovesToList(blocks, stsq, nSq & xraySqs, false);
-
-        uint64_t legal = nSq & otherPieces;
-        while (legal) {
-            int endsq = bitScanForward(legal);
-            legal &= legal-1;
-            captures.add(encodeMove(stsq, endsq, true));
-        }
+        addMovesToList(captures, stsq, nSq, true, otherPieces);
     }
 
     uint64_t bishops = pieces[color][BISHOPS];
@@ -1010,13 +1009,7 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
         uint64_t bSq = getBishopSquares(stsq);
 
         addMovesToList(blocks, stsq, bSq & xraySqs, false);
-
-        uint64_t legal = bSq & otherPieces;
-        while (legal) {
-            int endsq = bitScanForward(legal);
-            legal &= legal-1;
-            captures.add(encodeMove(stsq, endsq, true));
-        }
+        addMovesToList(captures, stsq, bSq, true, otherPieces);
     }
 
     uint64_t rooks = pieces[color][ROOKS];
@@ -1026,13 +1019,7 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
         uint64_t rSq = getRookSquares(stsq);
 
         addMovesToList(blocks, stsq, rSq & xraySqs, false);
-
-        uint64_t legal = rSq & otherPieces;
-        while (legal) {
-            int endsq = bitScanForward(legal);
-            legal &= legal-1;
-            captures.add(encodeMove(stsq, endsq, true));
-        }
+        addMovesToList(captures, stsq, rSq, true, otherPieces);
     }
 
     uint64_t queens = pieces[color][QUEENS];
@@ -1042,13 +1029,7 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
         uint64_t qSq = getQueenSquares(stsq);
 
         addMovesToList(blocks, stsq, qSq & xraySqs, false);
-
-        uint64_t legal = qSq & otherPieces;
-        while (legal) {
-            int endsq = bitScanForward(legal);
-            legal &= legal-1;
-            captures.add(encodeMove(stsq, endsq, true));
-        }
+        addMovesToList(captures, stsq, qSq, true, otherPieces);
     }
 
     uint64_t kings = pieces[color][KINGS];
@@ -1092,7 +1073,7 @@ void Board::addPawnMovesToList(MoveList &quiets, int color) {
     while (pLegal) {
         int endsq = bitScanForward(pLegal);
         pLegal &= pLegal - 1;
-        quiets.add(encodeMove(endsq+sqDiff, endsq, false));
+        quiets.add(encodeMove(endsq+sqDiff, endsq));
     }
 
     pLegal = (color == WHITE) ? getWPawnDoubleMoves(pawns)
@@ -1100,7 +1081,7 @@ void Board::addPawnMovesToList(MoveList &quiets, int color) {
     while (pLegal) {
         int endsq = bitScanForward(pLegal);
         pLegal &= pLegal - 1;
-        quiets.add(encodeMove(endsq+2*sqDiff, endsq, false));
+        quiets.add(encodeMove(endsq+2*sqDiff, endsq));
     }
 }
 
@@ -1130,7 +1111,9 @@ void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherP
     while (legal) {
         int endsq = bitScanForward(legal);
         legal &= legal-1;
-        captures.add(encodeMove(endsq+leftDiff, endsq, true));
+        Move m = encodeMove(endsq+leftDiff, endsq);
+        m = setCapture(m, true);
+        captures.add(m);
     }
 
     legal = (color == WHITE) ? getWPawnRightCaptures(pawns)
@@ -1150,7 +1133,9 @@ void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherP
     while (legal) {
         int endsq = bitScanForward(legal);
         legal &= legal-1;
-        captures.add(encodeMove(endsq+rightDiff, endsq, true));
+        Move m = encodeMove(endsq+rightDiff, endsq);
+        m = setCapture(m, true);
+        captures.add(m);
     }
 
     // If there are en passants possible...
@@ -1161,39 +1146,63 @@ void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherP
         int rankDiff = (color == WHITE) ? 8 : -8;
         // The capturer's start square is either 1 to the left or right of victim
         uint64_t taker = (INDEX_TO_BIT[victimSq] << 1) & NOTA & pieces[color][PAWNS];
-        if (taker)
-            captures.add(encodeMove(victimSq+1, victimSq+rankDiff, true));
+        if (taker) {
+            Move m = encodeMove(victimSq+1, victimSq+rankDiff);
+            m = setCapture(m, true);
+            captures.add(m);
+        }
         else {
             taker = (INDEX_TO_BIT[victimSq] >> 1) & NOTH & pieces[color][PAWNS];
-            if (taker)
-                captures.add(encodeMove(victimSq-1, victimSq+rankDiff, true));
+            if (taker) {
+                Move m = encodeMove(victimSq-1, victimSq+rankDiff);
+                m = setCapture(m, true);
+                captures.add(m);
+            }
         }
     }
 }
 
 // Helper function that processes a bitboard of legal moves and adds all
 // moves into a list.
-void Board::addMovesToList(MoveList &moves, int stSq,
-    uint64_t allEndSqs, bool isCapture, uint64_t otherPieces) {
+void Board::addMovesToList(MoveList &moves, int stSq, uint64_t allEndSqs,
+    bool isCapture, uint64_t otherPieces) {
 
     uint64_t intersect = (isCapture) ? otherPieces : ~getOccupancy();
     uint64_t legal = allEndSqs & intersect;
-    while (legal) {
-        int endSq = bitScanForward(legal);
-        legal &= legal-1;
-        moves.add(encodeMove(stSq, endSq, isCapture));
+    if (isCapture) {
+        while (legal) {
+            int endSq = bitScanForward(legal);
+            legal &= legal-1;
+            Move m = encodeMove(stSq, endSq);
+            m = setCapture(m, true);
+            moves.add(m);
+        }
+    }
+    else {
+        while (legal) {
+            int endSq = bitScanForward(legal);
+            legal &= legal-1;
+            Move m = encodeMove(stSq, endSq);
+            moves.add(m);
+        }
     }
 }
 
 void Board::addPromotionsToList(MoveList &moves, int stSq, int endSq, bool isCapture) {
-    Move mk = encodeMove(stSq, endSq, isCapture);
+    Move mk = encodeMove(stSq, endSq);
     mk = setPromotion(mk, KNIGHTS);
-    Move mb = encodeMove(stSq, endSq, isCapture);
+    Move mb = encodeMove(stSq, endSq);
     mb = setPromotion(mb, BISHOPS);
-    Move mr = encodeMove(stSq, endSq, isCapture);
+    Move mr = encodeMove(stSq, endSq);
     mr = setPromotion(mr, ROOKS);
-    Move mq = encodeMove(stSq, endSq, isCapture);
+    Move mq = encodeMove(stSq, endSq);
     mq = setPromotion(mq, QUEENS);
+    if (isCapture) {
+        mk = setCapture(mk, true);
+        mb = setCapture(mb, true);
+        mr = setCapture(mr, true);
+        mq = setCapture(mq, true);
+    }
     // Order promotions queen, knight, rook, bishop
     moves.add(mq);
     moves.add(mk);
@@ -1211,7 +1220,7 @@ void Board::addCastlesToList(MoveList &moves, int color) {
          && !isInCheck(WHITE)) {
             // Check for castling through check
             if (getAttackMap(BLACK, 5) == 0) {
-                Move m = encodeMove(4, 6, false);
+                Move m = encodeMove(4, 6);
                 m = setCastle(m, true);
                 moves.add(m);
             }
@@ -1220,7 +1229,7 @@ void Board::addCastlesToList(MoveList &moves, int color) {
          && (getOccupancy() & WHITE_QSIDE_PASSTHROUGH_SQS) == 0
          && !isInCheck(WHITE)) {
             if (getAttackMap(BLACK, 3) == 0) {
-                Move m = encodeMove(4, 2, false);
+                Move m = encodeMove(4, 2);
                 m = setCastle(m, true);
                 moves.add(m);
             }
@@ -1231,7 +1240,7 @@ void Board::addCastlesToList(MoveList &moves, int color) {
          && (getOccupancy() & BLACK_KSIDE_PASSTHROUGH_SQS) == 0
          && !isInCheck(BLACK)) {
             if (getAttackMap(WHITE, 61) == 0) {
-                Move m = encodeMove(60, 62, false);
+                Move m = encodeMove(60, 62);
                 m = setCastle(m, true);
                 moves.add(m);
             }
@@ -1240,7 +1249,7 @@ void Board::addCastlesToList(MoveList &moves, int color) {
          && (getOccupancy() & BLACK_QSIDE_PASSTHROUGH_SQS) == 0
          && !isInCheck(BLACK)) {
             if (getAttackMap(WHITE, 59) == 0) {
-                Move m = encodeMove(60, 58, false);
+                Move m = encodeMove(60, 58);
                 m = setCastle(m, true);
                 moves.add(m);
             }
