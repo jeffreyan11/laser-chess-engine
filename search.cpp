@@ -249,12 +249,10 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
     Move hashed = NULL_MOVE;
     // Probe the hash table for a match/cutoff
-    if (!isPVNode) {
-        searchStats.hashProbes++;
-        score = probeTT(b, color, hashed, depth, alpha, beta);
-        if (score != -INFTY)
-            return score;
-    }
+    searchStats.hashProbes++;
+    score = probeTT(b, color, hashed, depth, alpha, beta);
+    if (score != -INFTY)
+        return score;
 
     // A static evaluation, used to activate null move pruning and futility
     // pruning
@@ -368,10 +366,12 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         for (unsigned int i = 0; i < index; i++) {
             scores.add(b.getMVVLVAScore(color, legalMoves.get(i)));
         }
+        // For MVV/LVA, order killers above capturing a pawn with a minor piece
+        // or greater
         for (unsigned int i = index; i < legalMoves.size(); i++) {
             if (legalMoves.get(i) == searchParams.killers[depth][0]
              || legalMoves.get(i) == searchParams.killers[depth][1])
-                scores.add(-64);
+                scores.add(PAWNS - KNIGHTS);
             else
                 scores.add(-MATE_SCORE);
         }
@@ -509,6 +509,9 @@ int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta) 
                 // score is a lower bound.
                 if (nodeType == CUT_NODE && hashScore >= beta) {
                     searchStats.hashScoreCuts++;
+                    searchStats.failHighs++;
+                    searchStats.firstFailHighs++;
+                    searchStats.searchSpaces++;
                     return beta;
                 }
                 // At PV nodes we can simply return the exact score
