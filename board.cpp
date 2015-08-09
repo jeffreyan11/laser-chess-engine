@@ -546,61 +546,8 @@ MoveList Board::getAllLegalMoves(int color) {
  * square and store as a Move object.
  */
 MoveList Board::getAllPseudoLegalMoves(int color) {
-    MoveList quiets, captures;
-
-    uint64_t otherPieces = allPieces[color^1];
-
-    addPawnMovesToList(quiets, color);
-    addPawnCapturesToList(captures, color, otherPieces, true);
-
-    uint64_t knights = pieces[color][KNIGHTS];
-    while (knights) {
-        int stsq = bitScanForward(knights);
-        knights &= knights-1;
-        uint64_t nSq = getKnightSquares(stsq);
-
-        addMovesToList(quiets, stsq, nSq, false);
-        addMovesToList(captures, stsq, nSq, true, otherPieces);
-    }
-
-    uint64_t bishops = pieces[color][BISHOPS];
-    while (bishops) {
-        int stsq = bitScanForward(bishops);
-        bishops &= bishops-1;
-        uint64_t bSq = getBishopSquares(stsq);
-
-        addMovesToList(quiets, stsq, bSq, false);
-        addMovesToList(captures, stsq, bSq, true, otherPieces);
-    }
-
-    uint64_t rooks = pieces[color][ROOKS];
-    while (rooks) {
-        int stsq = bitScanForward(rooks);
-        rooks &= rooks-1;
-        uint64_t rSq = getRookSquares(stsq);
-
-        addMovesToList(quiets, stsq, rSq, false);
-        addMovesToList(captures, stsq, rSq, true, otherPieces);
-    }
-
-    uint64_t queens = pieces[color][QUEENS];
-    while (queens) {
-        int stsq = bitScanForward(queens);
-        queens &= queens-1;
-        uint64_t qSq = getQueenSquares(stsq);
-
-        addMovesToList(quiets, stsq, qSq, false);
-        addMovesToList(captures, stsq, qSq, true, otherPieces);
-    }
-
-    uint64_t kings = pieces[color][KINGS];
-    int stsqK = bitScanForward(kings);
-    uint64_t kingSqs = getKingSquares(stsqK);
-
-    addMovesToList(quiets, stsqK, kingSqs, false);
-    addMovesToList(captures, stsqK, kingSqs, true, otherPieces);
-
-    addCastlesToList(quiets, color);
+    MoveList quiets = getPseudoLegalQuiets(color);
+    MoveList captures = getPseudoLegalCaptures(color, true);
 
     // Put captures before quiet moves
     for (unsigned int i = 0; i < quiets.size(); i++) {
@@ -609,10 +556,20 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
     return captures;
 }
 
+/*
+ * Quiet moves are generated in the following order:
+ * Castling
+ * Knight moves
+ * Bishop moves
+ * Rook moves
+ * Queen moves
+ * Pawn moves
+ * King moves
+ */
 MoveList Board::getPseudoLegalQuiets(int color) {
     MoveList quiets;
 
-    addPawnMovesToList(quiets, color);
+    addCastlesToList(quiets, color);
 
     uint64_t knights = pieces[color][KNIGHTS];
     while (knights) {
@@ -650,22 +607,37 @@ MoveList Board::getPseudoLegalQuiets(int color) {
         addMovesToList(quiets, stsq, qSq, false);
     }
 
+    addPawnMovesToList(quiets, color);
+
     uint64_t kings = pieces[color][KINGS];
     int stsqK = bitScanForward(kings);
     uint64_t kingSqs = getKingSquares(stsqK);
 
     addMovesToList(quiets, stsqK, kingSqs, false);
 
-    addCastlesToList(quiets, color);
-
     return quiets;
 }
 
-// Do not include promotions for quiescence search, include promotions in normal search.
+/*
+ * Do not include promotions for quiescence search, include promotions in normal search.
+ * Captures are generated in the following order:
+ * King captures
+ * Pawn captures
+ * Knight captures
+ * Bishop captures
+ * Rook captures
+ * Queen captures
+ */
 MoveList Board::getPseudoLegalCaptures(int color, bool includePromotions) {
     MoveList captures;
 
     uint64_t otherPieces = allPieces[color^1];
+
+    uint64_t kings = pieces[color][KINGS];
+    int stsq = bitScanForward(kings);
+    uint64_t kingSqs = getKingSquares(stsq);
+
+    addMovesToList(captures, stsq, kingSqs, true, otherPieces);
 
     addPawnCapturesToList(captures, color, otherPieces, includePromotions);
 
@@ -704,12 +676,6 @@ MoveList Board::getPseudoLegalCaptures(int color, bool includePromotions) {
 
         addMovesToList(captures, stsq, qSq, true, otherPieces);
     }
-
-    uint64_t kings = pieces[color][KINGS];
-    int stsq = bitScanForward(kings);
-    uint64_t kingSqs = getKingSquares(stsq);
-
-    addMovesToList(captures, stsq, kingSqs, true, otherPieces);
 
     return captures;
 }

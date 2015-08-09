@@ -319,9 +319,13 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     else if (depth >= 2) { // sort by SEE
         unsigned int index = 0;
         for (index = 0; index < legalMoves.size(); index++) {
-            if (!isCapture(legalMoves.get(index)))
+            Move m = legalMoves.get(index);
+            if (!isCapture(m))
                 break;
-            scores.add(b.getSEE(color, getEndSq(legalMoves.get(index))));
+            if (b.getExchangeScore(color, m) > 0)
+                scores.add(QUEEN_VALUE + b.getMVVLVAScore(color, legalMoves.get(index)));
+            else
+                scores.add(b.getSEE(color, getEndSq(m)));
         }
         // Score killers below even captures but above losing captures
         for (unsigned int i = index; i < legalMoves.size(); i++) {
