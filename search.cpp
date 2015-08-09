@@ -336,10 +336,9 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         }
         // Score killers below even captures but above losing captures
         for (unsigned int i = index; i < legalMoves.size(); i++) {
-            if (legalMoves.get(i) == searchParams.killers[depth][0])
+            if (legalMoves.get(i) == searchParams.killers[depth][0]
+             || legalMoves.get(i) == searchParams.killers[depth][1])
                 scores.add(0);
-            else if (legalMoves.get(i) == searchParams.killers[depth][1])
-                scores.add(-1);
             else
                 scores.add(-MATE_SCORE);
         }
@@ -354,10 +353,9 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             scores.add(b.getSEE(color, getEndSq(legalMoves.get(i))));
         }
         for (unsigned int i = index; i < legalMoves.size(); i++) {
-            if (legalMoves.get(i) == searchParams.killers[depth][0])
+            if (legalMoves.get(i) == searchParams.killers[depth][0]
+             || legalMoves.get(i) == searchParams.killers[depth][1])
                 scores.add(0);
-            else if (legalMoves.get(i) == searchParams.killers[depth][1])
-                scores.add(-1);
             else
                 scores.add(-MATE_SCORE);
         }
@@ -371,10 +369,9 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             scores.add(b.getMVVLVAScore(color, legalMoves.get(i)));
         }
         for (unsigned int i = index; i < legalMoves.size(); i++) {
-            if (legalMoves.get(i) == searchParams.killers[depth][0])
+            if (legalMoves.get(i) == searchParams.killers[depth][0]
+             || legalMoves.get(i) == searchParams.killers[depth][1])
                 scores.add(-64);
-            else if (legalMoves.get(i) == searchParams.killers[depth][1])
-                scores.add(-65);
             else
                 scores.add(-MATE_SCORE);
         }
@@ -398,7 +395,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         // won't raise our prospects much, so don't bother q-searching it.
         // TODO may fail low in some stalemate cases
         if(!isPVNode && ((depth == 1 && staticEval <= alpha - MAX_POS_SCORE)/* || (depth == 2 && staticEval <= alpha - 3*MAX_POS_SCORE)*/)
-        && !isInCheck && !isCapture(m) && abs(alpha) < QUEEN_VALUE && !b.isCheckMove(m, color)) {
+        && !isInCheck && !isCapture(m) && abs(alpha) < QUEEN_VALUE && getPromotion(m) == 0 && !b.isCheckMove(m, color)) {
             score = alpha;
             continue;
         }
@@ -416,7 +413,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         // TODO set up an array for reduction values
         if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && j > 2 && alpha <= prevAlpha
         && m != searchParams.killers[depth][0] && m != searchParams.killers[depth][1]
-        && !copy.isInCheck(color^1)) {
+        && getPromotion(m) == 0 && !copy.isInCheck(color^1)) {
             /*if (depth >= 9)
                 reduction = 3;
             else if (depth >= 6)

@@ -52,10 +52,7 @@ typedef uint32_t Move;
 const Move NULL_MOVE = 0;
 
 inline Move encodeMove(int startSq, int endSq) {
-    Move result = endSq;
-    result <<= 6;
-    result |= startSq;
-    return result;
+    return (endSq << 6) | startSq;
 }
 
 inline Move setPromotion(Move m, int promotion) {
