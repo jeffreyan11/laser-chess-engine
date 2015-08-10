@@ -43,7 +43,6 @@ struct SearchParameters {
 };
 
 static Hash transpositionTable(16);
-static int rootDepth;
 static uint8_t rootMoveNumber;
 static SearchParameters searchParams;
 static SearchStatistics searchStats;
@@ -86,7 +85,7 @@ void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *b
     
     if (mode == TIME) {
         double timeFactor = 0.4; // timeFactor = log b / (b - 1) where b is branch factor
-        rootDepth = 1;
+        int rootDepth = 1;
         do {
             bestMoveIndex = getBestMoveAtDepth(b, legalMoves, rootDepth, bestScore, isMate);
             if (bestMoveIndex == -1)
@@ -112,7 +111,7 @@ void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *b
     }
     
     else if (mode == DEPTH) {
-        for (rootDepth = 1; rootDepth <= min(value, MAX_DEPTH); rootDepth++) {
+        for (int rootDepth = 1; rootDepth <= min(value, MAX_DEPTH); rootDepth++) {
             bestMoveIndex = getBestMoveAtDepth(b, legalMoves, rootDepth, bestScore, isMate);
             if (bestMoveIndex == -1)
                 break;
@@ -409,7 +408,6 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // separate counter only incremented when valid move is searched
     unsigned int movesSearched = (hashed == NULL_MOVE) ? 0 : 1;
     int score = -INFTY;
-    searchStats.searchSpaces++;
     for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
               m = nextMove(legalMoves, scores, ++i)) {
         // Stop condition to help break out as quickly as possible
@@ -544,7 +542,6 @@ int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta) 
                     searchStats.hashScoreCuts++;
                     searchStats.failHighs++;
                     searchStats.firstFailHighs++;
-                    searchStats.searchSpaces++;
                     return beta;
                 }
                 // At PV nodes we can simply return the exact score
@@ -586,7 +583,7 @@ int scoreMate(bool isInCheck, int depth, int alpha, int beta) {
     // If we are in check, then checkmate
     if (isInCheck) {
         // Adjust score so that quicker mates are better
-        score = (-MATE_SCORE + rootDepth - depth);
+        score = (-MATE_SCORE + searchParams.ply);
     }
     else { // else, it is a stalemate
         score = 0;
@@ -638,7 +635,6 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
     int score = -INFTY;
     unsigned int i = 0;
     unsigned int j = 0; // separate counter only incremented when valid move is searched
-    searchStats.qsSearchSpaces++;
     for (Move m = nextMove(legalCaptures, scores, i); m != NULL_MOVE;
               m = nextMove(legalCaptures, scores, ++i)) {
         // Delta prune
@@ -740,7 +736,6 @@ int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
 
     int score = -INFTY;
 
-    searchStats.qsSearchSpaces++;
     unsigned int j = 0; // separate counter only incremented when valid move is searched
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
@@ -768,7 +763,7 @@ int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
     if (score == -INFTY) {
         // We already know we are in check, so it must be a checkmate
         // Adjust score so that quicker mates are better
-        score = (-MATE_SCORE + rootDepth + plies);
+        score = (-MATE_SCORE + searchParams.ply + plies);
         if (score >= beta)
             return beta;
         if (score > alpha)
@@ -850,12 +845,8 @@ void printStatistics() {
          << '%' << " of " << searchStats.hashMoveAttempts << " hash moves" << endl;
     cerr << setw(22) << "First fail high rate: " << getPercentage(searchStats.firstFailHighs, searchStats.failHighs)
          << '%' << " of " << searchStats.failHighs << " fail highs" << endl;
-    cerr << setw(22) << "Fail high rate: " << getPercentage(searchStats.failHighs, searchStats.searchSpaces)
-         << '%' << " of " << searchStats.searchSpaces << " search spaces" << endl;
     cerr << setw(22) << "QS Nodes: " << searchStats.qsNodes << " ("
          << getPercentage(searchStats.qsNodes, searchStats.nodes) << '%' << ")" << endl;
     cerr << setw(22) << "QS FFH rate: " << getPercentage(searchStats.qsFirstFailHighs, searchStats.qsFailHighs)
          << '%' << " of " << searchStats.qsFailHighs << " qs fail highs" << endl;
-    cerr << setw(22) << "QS fail high rate: " << getPercentage(searchStats.qsFailHighs, searchStats.qsSearchSpaces)
-         << '%' << " of " << searchStats.qsSearchSpaces << " qs search spaces" << endl;
 }

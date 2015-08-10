@@ -16,11 +16,9 @@ struct SearchStatistics {
     uint64_t hashScoreCuts;
     uint64_t hashMoveAttempts;
     uint64_t hashMoveCuts;
-    uint64_t searchSpaces;
     uint64_t failHighs;
     uint64_t firstFailHighs;
     uint64_t qsNodes;
-    uint64_t qsSearchSpaces;
     uint64_t qsFailHighs;
     uint64_t qsFirstFailHighs;
 
@@ -35,11 +33,9 @@ struct SearchStatistics {
         hashScoreCuts = 0;
         hashMoveAttempts = 0;
         hashMoveCuts = 0;
-        searchSpaces = 0;
         failHighs = 0;
         firstFailHighs = 0;
         qsNodes = 0;
-        qsSearchSpaces = 0;
         qsFailHighs = 0;
         qsFirstFailHighs = 0;
     }
