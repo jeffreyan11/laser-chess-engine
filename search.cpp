@@ -253,12 +253,15 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     if (depth >= 3 && !isPVNode && searchParams.nullMoveCount < 2
                    && staticEval >= beta && !isInCheck) {
         int reduction;
-        if (depth >= 8)
+        if (depth >= 11)
+            reduction = 4;
+        else if (depth >= 6)
             reduction = 3;
-        else if (depth >= 5)
-            reduction = 2;
         else
-            reduction = 1;
+            reduction = 2;
+        // Reduce more if we are further ahead, but do not let NMP descend
+        // directly into q-search
+        reduction = min(depth - 2, reduction + (staticEval - beta) / MAX_POS_SCORE);
 
         b.doMove(NULL_MOVE, color);
         searchParams.nullMoveCount++;
@@ -298,6 +301,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // The scoring relies partially on the fact that our selection sort is stable
     // TODO make this cleaner, probably when captures and moves become generated separately
     if (depth >= 2) { // sort by SEE
+        // ---------------Captures----------------
         unsigned int index = 0;
         for (index = 0; index < legalMoves.size(); index++) {
             Move m = legalMoves.get(index);
@@ -308,17 +312,21 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             else
                 scores.add(b.getSEE(color, getEndSq(m)));
         }
+        // ---------------Non-captures----------------
         // Score killers below even captures but above losing captures
         for (unsigned int i = index; i < legalMoves.size(); i++) {
             if (legalMoves.get(i) == searchParams.killers[depth][0]
              || legalMoves.get(i) == searchParams.killers[depth][1])
                 scores.add(0);
+            // Order queen promotions somewhat high
+            else if (getPromotion(legalMoves.get(i)) == QUEENS)
+                scores.add(MAX_POS_SCORE);
             else
                 scores.add(-MATE_SCORE);
         }
 
-        // Get a best move (hoping for a first move cutoff) if we don't have
-        // a hash move available
+        // IID: get a best move (hoping for a first move cutoff) if we don't
+        // have a hash move available
         if (depth >= 5 && hashed == NULL_MOVE) {
             int bestIndex = getBestMoveForSort(b, legalMoves, (depth >= 9) ? 2 : 1);
             // Mate check to prevent crashes
@@ -340,6 +348,9 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             if (legalMoves.get(i) == searchParams.killers[depth][0]
              || legalMoves.get(i) == searchParams.killers[depth][1])
                 scores.add(PAWNS - KNIGHTS);
+            // Order queen promotions above capturing pawns and minor pieces
+            else if (getPromotion(legalMoves.get(i)) == QUEENS)
+                scores.add(8*ROOKS);
             else
                 scores.add(-MATE_SCORE);
         }
@@ -359,14 +370,25 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             return -INFTY;
 
         // Futility pruning
-        // If we are already at least 2 pawns below alpha, a quiet move probably
-        // won't raise our prospects much, so don't bother q-searching it.
+        // If we are already a decent amount of material below alpha, a quiet
+        // move probably won't raise our prospects much, so don't bother
+        // q-searching it.
         // TODO may fail low in some stalemate cases
-        if(!isPVNode && ((depth == 1 && staticEval <= alpha - MAX_POS_SCORE)/* || (depth == 2 && staticEval <= alpha - 3*MAX_POS_SCORE)*/)
+        if(!isPVNode && ((depth == 1 && staticEval <= alpha - MAX_POS_SCORE)
+                      || (depth == 2 && staticEval <= alpha - ROOK_VALUE)
+                      || (depth == 3 && staticEval <= alpha - QUEEN_VALUE - MAX_POS_SCORE))
         && !isInCheck && !isCapture(m) && abs(alpha) < QUEEN_VALUE && getPromotion(m) == 0 && !b.isCheckMove(m, color)) {
             score = alpha;
             continue;
         }
+
+        // Futility pruning using SEE
+        /*if(!isPVNode && depth == 1 && staticEval <= alpha - MAX_POS_SCORE
+        && !isInCheck && abs(alpha) < QUEEN_VALUE && getPromotion(m) == 0
+        && !b.isCheckMove(m, color) && b.getExchangeScore(color, m) < 0 && b.getSEE(color, getEndSq(m)) < 0) {
+            score = alpha;
+            continue;
+        }*/
 
         reduction = 0;
         Board copy = b.staticCopy();
