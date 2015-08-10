@@ -9,9 +9,16 @@ struct SearchParameters {
     int ply;
     int nullMoveCount;
     Move killers[MAX_DEPTH][2];
+    int historyTable[2][6][64];
 
     SearchParameters() {
         reset();
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 6; j++) {
+                for (int k = 0; k < 64; k++)
+                    historyTable[i][j][k] = 0;
+            }
+        }
     }
 
     void reset() {
@@ -20,6 +27,16 @@ struct SearchParameters {
         for (int i = 0; i < MAX_DEPTH; i++) {
             killers[i][0] = NULL_MOVE;
             killers[i][1] = NULL_MOVE;
+        }
+    }
+
+    // TODO tune this
+    void ageHistory() {
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 6; j++) {
+                for (int k = 0; k < 64; k++)
+                    historyTable[i][j][k] /= 2;
+            }
         }
     }
 };
@@ -117,6 +134,8 @@ void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *b
     }
     
     printStatistics();
+    // Aging for the history heuristic table
+    searchParams.ageHistory();
     
     isStop = true;
     cout << "bestmove " << moveToString(*bestMove) << endl;
@@ -348,7 +367,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             else if (getPromotion(legalMoves.get(i)) == QUEENS)
                 scores.add(MAX_POS_SCORE);
             else
-                scores.add(-MATE_SCORE);
+                scores.add(-MATE_SCORE + searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(legalMoves.get(i)))][getEndSq(legalMoves.get(i))]);
         }
 
         // IID: get a best move (hoping for a first move cutoff) if we don't
@@ -379,7 +398,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             else if (getPromotion(legalMoves.get(i)) == QUEENS)
                 scores.add(8*ROOKS);
             else
-                scores.add(-MATE_SCORE);
+                scores.add(-MATE_SCORE + searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(legalMoves.get(i)))][getEndSq(legalMoves.get(i))]);
         }
     }
 
@@ -483,6 +502,9 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
                     searchParams.killers[searchParams.ply][1] = searchParams.killers[searchParams.ply][0];
                     searchParams.killers[searchParams.ply][0] = m;
                 }
+                // Update the history table
+                searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)]
+                    += depth * depth;
             }
             return beta;
         }
