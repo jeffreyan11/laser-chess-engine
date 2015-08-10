@@ -1442,10 +1442,10 @@ int Board::evaluate() {
     // White pieces
     for (int pieceID = 0; pieceID < 6; pieceID++) {
         uint64_t bitboard = pieces[0][pieceID];
+        // Invert the board for white side
+        bitboard = flipAcrossRanks(bitboard);
         while (bitboard) {
             int i = bitScanForward(bitboard);
-            // Invert the board for white side
-            i = ((7 - (i >> 3)) << 3) + (i & 7);
             bitboard &= bitboard - 1;
             midgamePSTVal += midgamePieceValues[pieceID][i];
             endgamePSTVal += endgamePieceValues[pieceID][i];

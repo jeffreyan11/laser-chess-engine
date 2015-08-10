@@ -37,6 +37,7 @@ const int MAX_MOVES = 256;
 int bitScanForward(uint64_t bb);
 int bitScanReverse(uint64_t bb);
 int count(uint64_t bb);
+uint64_t flipAcrossRanks(uint64_t bb);
 
 /*
  * Moves are represented as an unsigned 32-bit integer.

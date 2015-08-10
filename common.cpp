@@ -12,9 +12,11 @@ const int index64[64] = {
 13, 18,  8, 12,  7,  6,  5, 63 };
 
 // BSF and BSR algorithms from https://chessprogramming.wikispaces.com/BitScan
+// GCC compiler intrinsics seem to be slower in some cases, even the compiled
+// with optimization / intrinsic flags...
 int bitScanForward(uint64_t bb) {
     #if USE_INLINE_ASM
-        asm ("bsf %1, %0" : "=r" (bb) : "r" (bb));
+        asm ("bsfq %1, %0" : "=r" (bb) : "r" (bb));
         return (int) bb;
     #else
         uint64_t debruijn64 = 0x03f79d71b4cb0a89;
@@ -25,7 +27,7 @@ int bitScanForward(uint64_t bb) {
 
 int bitScanReverse(uint64_t bb) {
     #if USE_INLINE_ASM
-        asm ("bsr %1, %0" : "=r" (bb) : "r" (bb));
+        asm ("bsrq %1, %0" : "=r" (bb) : "r" (bb));
         return (int) bb;
     #else
         uint64_t debruijn64 = 0x03f79d71b4cb0a89;
@@ -41,13 +43,29 @@ int bitScanReverse(uint64_t bb) {
 
 int count(uint64_t bb) {
     #if USE_INLINE_ASM
-        asm ("popcnt %1, %0" : "=r" (bb) : "r" (bb));
+        asm ("popcntq %1, %0" : "=r" (bb) : "r" (bb));
         return (int) bb;
     #else
         bb = bb - ((bb >> 1) & 0x5555555555555555);
         bb = (bb & 0x3333333333333333) + ((bb >> 2) & 0x3333333333333333);
         bb = (((bb + (bb >> 4)) & 0x0F0F0F0F0F0F0F0F) * 0x0101010101010101) >> 56;
         return (int) bb;
+    #endif
+}
+
+// Flips a board across the middle ranks, the way perspective is
+// flipped from white to black and vice versa
+// Parallel-prefix algorithm from
+// http://chessprogramming.wikispaces.com/Flipping+Mirroring+and+Rotating
+uint64_t flipAcrossRanks(uint64_t bb) {
+    #if USE_INLINE_ASM
+        asm ("bswapq %0" : "=r" (bb) : "0" (bb));
+        return bb;
+    #else
+        bb = ((bb >>  8) & 0x00FF00FF00FF00FF) | ((bb & 0x00FF00FF00FF00FF) <<  8);
+        bb = ((bb >> 16) & 0x0000FFFF0000FFFF) | ((bb & 0x0000FFFF0000FFFF) << 16);
+        bb =  (bb >> 32) | (bb << 32);
+        return bb;
     #endif
 }
 
