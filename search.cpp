@@ -324,24 +324,26 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // Internal iterative deepening, SEE, and MVV/LVA move ordering
     // The scoring relies partially on the fact that our selection sort is stable
     // TODO make this cleaner, probably when captures and moves become generated separately
-    if (depth >= 2) { // sort by SEE
+    if (depth >= 3 || isPVNode) { // sort by SEE
         // ---------------Captures----------------
         unsigned int index = 0;
         for (index = 0; index < legalMoves.size(); index++) {
             Move m = legalMoves.get(index);
             if (!isCapture(m))
                 break;
+            // If anything wins at least a rook, it should go above this anyways
             if (b.getExchangeScore(color, m) > 0)
-                scores.add(QUEEN_VALUE + b.getMVVLVAScore(color, legalMoves.get(index)));
+                scores.add(ROOK_VALUE + b.getMVVLVAScore(color, legalMoves.get(index)));
             else
                 scores.add(b.getSEE(color, getEndSq(m)));
         }
         // ---------------Non-captures----------------
         // Score killers below even captures but above losing captures
         for (unsigned int i = index; i < legalMoves.size(); i++) {
-            if (legalMoves.get(i) == searchParams.killers[searchParams.ply][0]
-             || legalMoves.get(i) == searchParams.killers[searchParams.ply][1])
+            if (legalMoves.get(i) == searchParams.killers[searchParams.ply][0])
                 scores.add(0);
+            else if (legalMoves.get(i) == searchParams.killers[searchParams.ply][1])
+                scores.add(-1);
             // Order queen promotions somewhat high
             else if (getPromotion(legalMoves.get(i)) == QUEENS)
                 scores.add(MAX_POS_SCORE);
@@ -369,9 +371,10 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         // For MVV/LVA, order killers above capturing a pawn with a minor piece
         // or greater
         for (unsigned int i = index; i < legalMoves.size(); i++) {
-            if (legalMoves.get(i) == searchParams.killers[searchParams.ply][0]
-             || legalMoves.get(i) == searchParams.killers[searchParams.ply][1])
+            if (legalMoves.get(i) == searchParams.killers[searchParams.ply][0])
                 scores.add(PAWNS - KNIGHTS);
+            else if (legalMoves.get(i) == searchParams.killers[searchParams.ply][1])
+                scores.add(PAWNS - KNIGHTS - 1);
             // Order queen promotions above capturing pawns and minor pieces
             else if (getPromotion(legalMoves.get(i)) == QUEENS)
                 scores.add(8*ROOKS);
@@ -401,7 +404,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         if(!isPVNode && ((depth == 1 && staticEval <= alpha - MAX_POS_SCORE)
                       || (depth == 2 && staticEval <= alpha - ROOK_VALUE)
                       || (depth == 3 && staticEval <= alpha - QUEEN_VALUE - MAX_POS_SCORE))
-        && !isInCheck && !isCapture(m) && abs(alpha) < QUEEN_VALUE && getPromotion(m) == 0 && !b.isCheckMove(m, color)) {
+        && !isInCheck && !isCapture(m) && abs(alpha) < QUEEN_VALUE
+        && getPromotion(m) == 0 && !b.isCheckMove(m, color)) {
             score = alpha;
             continue;
         }
@@ -547,23 +551,18 @@ int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta) 
             if (copy.doHashMove(hashed, color)) {
                 // If the hash score is unusable and node is not a predicted
                 // all-node, we can search the hash move first.
-                if ((/*entry->depth >= 2 && */entry->depth + 2 >= depth) || nodeType == PV_NODE) {
-                    searchStats.hashMoveAttempts++;
-                    searchStats.nodes++;
-                    searchParams.ply++;
-                    int score = -PVS(copy, color^1, depth-1, -beta, -alpha);
-                    searchParams.ply--;
+                searchStats.hashMoveAttempts++;
+                searchStats.nodes++;
+                searchParams.ply++;
+                int score = -PVS(copy, color^1, depth-1, -beta, -alpha);
+                searchParams.ply--;
 
-                    if (score >= beta) {
-                        searchStats.hashMoveCuts++;
-                        return beta;
-                    }
-                    if (score > alpha)
-                        alpha = score;
+                if (score >= beta) {
+                    searchStats.hashMoveCuts++;
+                    return beta;
                 }
-                // Otherwise, we aren't using the hash move
-                else
-                    hashed = NULL_MOVE;
+                if (score > alpha)
+                    alpha = score;
             }
             else {
                 cerr << "Type-1 TT error on " << moveToString(hashed) << endl;
