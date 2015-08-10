@@ -105,7 +105,7 @@ public:
 
     // Evaluation
     int evaluate();
-    int getPseudoMobility(int color);
+    int getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor);
     int getEGFactor();
     // Static exchange evaluation code: for checking material trades on a single square
     uint64_t getLeastValuableAttacker(uint64_t attackers, int color, int &piece);
