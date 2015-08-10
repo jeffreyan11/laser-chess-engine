@@ -259,7 +259,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             reduction = 3;
         else
             reduction = 2;
-        // Reduce more if we are further ahead, but do not let NMP descend
+        // Reduce more if we are further ahead, but do not let NMR descend
         // directly into q-search
         reduction = min(depth - 2, reduction + (staticEval - beta) / MAX_POS_SCORE);
 
@@ -276,6 +276,14 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         b.doMove(NULL_MOVE, color^1);
         searchParams.nullMoveCount--;
     }
+
+    // Reverse futility pruning
+    // If we are already doing really well and it's our turn, our opponent
+    // probably wouldn't have let us get here (a form of the null-move observation
+    // adapted to low depths)
+    if (!isPVNode && !isInCheck && ((depth == 1 && staticEval - MAX_POS_SCORE >= beta)
+                                 || (depth == 2 && staticEval - 3*MAX_POS_SCORE >= beta)))
+        return beta;
 
     MoveList legalMoves = isInCheck ? b.getPseudoLegalCheckEscapes(color)
                                     : b.getAllPseudoLegalMoves(color);
@@ -360,7 +368,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     int reduction = 0;
     unsigned int i = 0;
     // separate counter only incremented when valid move is searched
-    unsigned int j = (hashed == NULL_MOVE) ? 0 : 1;
+    unsigned int movesSearched = (hashed == NULL_MOVE) ? 0 : 1;
     int score = -INFTY;
     searchStats.searchSpaces++;
     for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
@@ -383,8 +391,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         }
 
         // Futility pruning using SEE
-        /*if(!isPVNode && depth == 1 && staticEval <= alpha - MAX_POS_SCORE
-        && !isInCheck && abs(alpha) < QUEEN_VALUE && getPromotion(m) == 0
+        /*if(!isPVNode && depth == 1 //&& staticEval <= alpha - MAX_POS_SCORE
+        && !isInCheck && abs(alpha) < QUEEN_VALUE && !isCapture(m) && getPromotion(m) == 0
         && !b.isCheckMove(m, color) && b.getExchangeScore(color, m) < 0 && b.getSEE(color, getEndSq(m)) < 0) {
             score = alpha;
             continue;
@@ -401,28 +409,30 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         // at an all-node. The later moves are likely worse so we search them
         // to a shallower depth.
         // TODO set up an array for reduction values
-        if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && j > 2 && alpha <= prevAlpha
+        if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && movesSearched > 2 && alpha <= prevAlpha
         && m != searchParams.killers[depth][0] && m != searchParams.killers[depth][1]
         && getPromotion(m) == 0 && !copy.isInCheck(color^1)) {
             /*if (depth >= 9)
                 reduction = 3;
             else if (depth >= 6)
                 reduction = 2;*/
-            if (depth >= 8)
-                reduction = (j > 12) ? 3 : 2;
+            if (depth >= 9)
+                reduction = (movesSearched > 8) ? 3 : 2;
+            else if (depth >= 8)
+                reduction = (movesSearched > 12) ? 3 : 2;
             else if (depth >= 7)
-                reduction = (j > 5) ? 2 : 1;
+                reduction = (movesSearched > 5) ? 2 : 1;
             else if (depth >= 6)
-                reduction = (j > 6) ? 2 : 1;
+                reduction = (movesSearched > 7) ? 2 : 1;
             else if (depth >= 5)
-                reduction = (j > 8) ? 2 : 1;
+                reduction = (movesSearched > 10) ? 2 : 1;
             else if (depth >= 4)
-                reduction = (j > 15) ? 2 : 1;
+                reduction = (movesSearched > 15) ? 2 : 1;
             else
                 reduction = 1;
         }
 
-        if (j != 0) {
+        if (movesSearched != 0) {
             score = -PVS(copy, color^1, depth-1-reduction, -alpha-1, -alpha);
             // The re-search is always done at normal depth
             if (alpha < score && score < beta) {
@@ -436,7 +446,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         
         if (score >= beta) {
             searchStats.failHighs++;
-            if (j == 0)
+            if (movesSearched == 0)
                 searchStats.firstFailHighs++;
             // Hash moves that caused a beta cutoff
             transpositionTable.add(b, depth, m, beta, CUT_NODE, rootMoveNumber);
@@ -454,7 +464,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             alpha = score;
             toHash = m;
         }
-        j++;
+        movesSearched++;
     }
 
     // If there were no legal moves
@@ -580,8 +590,6 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
     // Stand pat: if our current position is already way too good or way too bad
     // we can simply stop the search here
     int standPat = (color == WHITE) ? b.evaluate() : -b.evaluate();
-    // if (b.getEGFactor() >= EG_FACTOR_RES)
-    //     return standPat;
     if (standPat >= beta)
         return beta;
     if (alpha < standPat)
