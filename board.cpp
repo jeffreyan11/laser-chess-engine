@@ -1607,6 +1607,11 @@ int Board::getEGFactor() {
     return max(0, min(EG_FACTOR_RES, egFactor));
 }
 
+uint64_t Board::getNonPawnMaterial(int color) {
+    return pieces[color][KNIGHTS] | pieces[color][BISHOPS]
+         | pieces[color][ROOKS]   | pieces[color][QUEENS];
+}
+
 // Given a bitboard of attackers, finds the least valuable attacker of color and
 // returns a single occupancy bitboard of that piece
 uint64_t Board::getLeastValuableAttacker(uint64_t attackers, int color, int &piece) {

@@ -107,6 +107,8 @@ public:
     int evaluate();
     int getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor);
     int getEGFactor();
+    // Useful for turning off some pruning late endgame
+    uint64_t getNonPawnMaterial(int color);
     // Static exchange evaluation code: for checking material trades on a single square
     uint64_t getLeastValuableAttacker(uint64_t attackers, int color, int &piece);
     int getSEE(int color, int sq);

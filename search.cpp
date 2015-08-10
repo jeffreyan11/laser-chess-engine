@@ -244,14 +244,14 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // pruning
     int staticEval = (color == WHITE) ? b.evaluate() : -b.evaluate();
     
-    // Null move pruning: if we are in a position good enough that even after
-    // passing and giving our opponent a free turn, we still exceed beta, then
-    // simply return beta
+    // Null move reduction/pruning: if we are in a position good enough that
+    // even after passing and giving our opponent a free turn, we still exceed
+    // beta, then simply return beta
     // Only if doing a null move does not leave player in check
-    // Possibly remove staticEval >= beta condition?
+    // Do not do NMR if the side to move has only pawns
     // Do not do more than 2 null moves in a row
     if (depth >= 3 && !isPVNode && searchParams.nullMoveCount < 2
-                   && staticEval >= beta && !isInCheck) {
+                   && staticEval >= beta && !isInCheck && b.getNonPawnMaterial(color)) {
         int reduction;
         if (depth >= 11)
             reduction = 4;
