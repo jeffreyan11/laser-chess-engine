@@ -6,6 +6,7 @@
 using namespace std;
 
 struct SearchParameters {
+    int ply;
     int nullMoveCount;
     Move killers[MAX_DEPTH][2];
 
@@ -14,6 +15,7 @@ struct SearchParameters {
     }
 
     void reset() {
+        ply = 0;
         nullMoveCount = 0;
         for (int i = 0; i < MAX_DEPTH; i++) {
             killers[i][0] = NULL_MOVE;
@@ -144,13 +146,19 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
         searchStats.nodes++;
         
         if (i != 0) {
+            searchParams.ply++;
             score = -PVS(copy, color^1, depth-1, -alpha-1, -alpha);
+            searchParams.ply--;
             if (alpha < score && score < beta) {
+                searchParams.ply++;
                 score = -PVS(copy, color^1, depth-1, -beta, -alpha);
+                searchParams.ply--;
             }
         }
         else {
+            searchParams.ply++;
             score = -PVS(copy, color^1, depth-1, -beta, -alpha);
+            searchParams.ply--;
         }
 
         if (score > alpha) {
@@ -182,13 +190,19 @@ int getBestMoveForSort(Board &b, MoveList &legalMoves, int depth) {
             continue;
         
         if (i != 0) {
+            searchParams.ply++;
             score = -PVS(copy, color^1, depth-1, -alpha-1, -alpha);
+            searchParams.ply--;
             if (alpha < score && score < beta) {
+                searchParams.ply++;
                 score = -PVS(copy, color^1, depth-1, -beta, -alpha);
+                searchParams.ply--;
             }
         }
         else {
+            searchParams.ply++;
             score = -PVS(copy, color^1, depth-1, -beta, -alpha);
+            searchParams.ply--;
         }
         
         if (score > alpha) {
@@ -265,7 +279,9 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
 
         b.doMove(NULL_MOVE, color);
         searchParams.nullMoveCount++;
+        searchParams.ply++;
         int nullScore = -PVS(b, color^1, depth-1-reduction, -beta, -alpha);
+        searchParams.ply--;
         if (nullScore >= beta) {
             b.doMove(NULL_MOVE, color^1);
             searchParams.nullMoveCount--;
@@ -323,8 +339,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         // ---------------Non-captures----------------
         // Score killers below even captures but above losing captures
         for (unsigned int i = index; i < legalMoves.size(); i++) {
-            if (legalMoves.get(i) == searchParams.killers[depth][0]
-             || legalMoves.get(i) == searchParams.killers[depth][1])
+            if (legalMoves.get(i) == searchParams.killers[searchParams.ply][0]
+             || legalMoves.get(i) == searchParams.killers[searchParams.ply][1])
                 scores.add(0);
             // Order queen promotions somewhat high
             else if (getPromotion(legalMoves.get(i)) == QUEENS)
@@ -353,8 +369,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         // For MVV/LVA, order killers above capturing a pawn with a minor piece
         // or greater
         for (unsigned int i = index; i < legalMoves.size(); i++) {
-            if (legalMoves.get(i) == searchParams.killers[depth][0]
-             || legalMoves.get(i) == searchParams.killers[depth][1])
+            if (legalMoves.get(i) == searchParams.killers[searchParams.ply][0]
+             || legalMoves.get(i) == searchParams.killers[searchParams.ply][1])
                 scores.add(PAWNS - KNIGHTS);
             // Order queen promotions above capturing pawns and minor pieces
             else if (getPromotion(legalMoves.get(i)) == QUEENS)
@@ -410,7 +426,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         // to a shallower depth.
         // TODO set up an array for reduction values
         if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && movesSearched > 2 && alpha <= prevAlpha
-        && m != searchParams.killers[depth][0] && m != searchParams.killers[depth][1]
+        && m != searchParams.killers[searchParams.ply][0] && m != searchParams.killers[searchParams.ply][1]
         && getPromotion(m) == 0 && !copy.isInCheck(color^1)) {
             /*if (depth >= 9)
                 reduction = 3;
@@ -433,15 +449,21 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         }
 
         if (movesSearched != 0) {
+            searchParams.ply++;
             score = -PVS(copy, color^1, depth-1-reduction, -alpha-1, -alpha);
+            searchParams.ply--;
             // The re-search is always done at normal depth
             if (alpha < score && score < beta) {
+                searchParams.ply++;
                 score = -PVS(copy, color^1, depth-1, -beta, -alpha);
+                searchParams.ply--;
             }
         }
         else {
+            searchParams.ply++;
             // The first move is always searched at a normal depth
             score = -PVS(copy, color^1, depth-1, -beta, -alpha);
+            searchParams.ply--;
         }
         
         if (score >= beta) {
@@ -453,9 +475,9 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             // Record killer if applicable
             if (!isCapture(m)) {
                 // Ensure the same killer does not fill both slots
-                if (m != searchParams.killers[depth][0]) {
-                    searchParams.killers[depth][1] = searchParams.killers[depth][0];
-                    searchParams.killers[depth][0] = m;
+                if (m != searchParams.killers[searchParams.ply][0]) {
+                    searchParams.killers[searchParams.ply][1] = searchParams.killers[searchParams.ply][0];
+                    searchParams.killers[searchParams.ply][0] = m;
                 }
             }
             return beta;
@@ -528,7 +550,9 @@ int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta) 
                 if ((/*entry->depth >= 2 && */entry->depth + 2 >= depth) || nodeType == PV_NODE) {
                     searchStats.hashMoveAttempts++;
                     searchStats.nodes++;
+                    searchParams.ply++;
                     int score = -PVS(copy, color^1, depth-1, -beta, -alpha);
+                    searchParams.ply--;
 
                     if (score >= beta) {
                         searchStats.hashMoveCuts++;
