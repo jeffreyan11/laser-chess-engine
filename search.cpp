@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <iomanip>
 #include <iostream>
@@ -451,24 +452,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && movesSearched > 2 && alpha <= prevAlpha
         && m != searchParams.killers[searchParams.ply][0] && m != searchParams.killers[searchParams.ply][1]
         && getPromotion(m) == 0 && !copy.isInCheck(color^1)) {
-            /*if (depth >= 9)
-                reduction = 3;
-            else if (depth >= 6)
-                reduction = 2;*/
-            if (depth >= 9)
-                reduction = (movesSearched > 8) ? 3 : 2;
-            else if (depth >= 8)
-                reduction = (movesSearched > 12) ? 3 : 2;
-            else if (depth >= 7)
-                reduction = (movesSearched > 5) ? 2 : 1;
-            else if (depth >= 6)
-                reduction = (movesSearched > 7) ? 2 : 1;
-            else if (depth >= 5)
-                reduction = (movesSearched > 10) ? 2 : 1;
-            else if (depth >= 4)
-                reduction = (movesSearched > 15) ? 2 : 1;
-            else
-                reduction = 1;
+            reduction = min(depth - 2,
+                (int) (((double) depth - 3.0) / 4 + ((double) movesSearched) / 9.5));
         }
 
         if (movesSearched != 0) {

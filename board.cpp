@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream> // for testing magic seeds, remove eventually
 #include <random>
 #include "board.h"
