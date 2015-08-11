@@ -98,14 +98,13 @@ std::string moveToString(Move m);
  */
 template <class T> class SearchArrayList {
 public:
-    T *arrayList;
+    T arrayList[MAX_MOVES];
     unsigned int length;
 
     SearchArrayList() {
-        arrayList = new T[MAX_MOVES];
         length = 0;
     }
-    ~SearchArrayList() { delete[] arrayList; }
+    ~SearchArrayList() {}
 
     unsigned int size() { return length; }
 

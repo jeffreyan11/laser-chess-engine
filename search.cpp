@@ -450,6 +450,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && movesSearched > 2 && alpha <= prevAlpha
         && m != searchParams.killers[searchParams.ply][0] && m != searchParams.killers[searchParams.ply][1]
         && getPromotion(m) == 0 && !copy.isInCheck(color^1)) {
+            // Increase reduction with higher depth and later moves, but do
+            // not let search descend directly into q-search
             reduction = min(depth - 2,
                 (int) (((double) depth - 3.0) / 4 + ((double) movesSearched) / 9.5));
         }
@@ -502,9 +504,14 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     if (score == -INFTY)
         return scoreMate(isInCheck, depth, alpha, beta);
     
-    // Exact scores indicate a principal variation and should always be hashed
     if (toHash != NULL_MOVE && prevAlpha < alpha && alpha < beta) {
+        // Exact scores indicate a principal variation and should always be hashed
         transpositionTable.add(b, depth, toHash, alpha, PV_NODE, rootMoveNumber);
+        // Update the history table
+        /*if (!isCapture(toHash)) {
+            searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(toHash))][getEndSq(toHash)]
+                += depth * depth;
+        }*/
     }
     // Record all-nodes. The upper bound score can save a lot of search time.
     // No best move can be recorded in a fail-hard framework.
