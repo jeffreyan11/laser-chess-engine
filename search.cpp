@@ -7,8 +7,11 @@
 using namespace std;
 
 struct SearchParameters {
+    int mode;
     int ply;
     int nullMoveCount;
+    chrono::high_resolution_clock::time_point startTime;
+    int timeLimit;
     Move killers[MAX_DEPTH][2];
     int historyTable[2][6][64];
 
@@ -71,19 +74,20 @@ void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *b
     using namespace std::chrono;
     searchParams.reset();
     searchStats.reset();
+    searchParams.mode = mode;
     rootMoveNumber = (uint8_t) (b->getMoveNumber());
 
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
     *bestMove = legalMoves.get(0);
     
-    auto start_time = high_resolution_clock::now();
+    searchParams.timeLimit = (int) (MAX_TIME_FACTOR * value);
+    searchParams.startTime = chrono::high_resolution_clock::now();
     double timeSoFar = duration_cast<duration<double>>(
-            high_resolution_clock::now() - start_time).count();
+            high_resolution_clock::now() - searchParams.startTime).count();
     bool isMate = false;
     int bestScore, bestMoveIndex;
     
-    double timeFactor = 0.4; // timeFactor = log b / (b - 1) where b is branch factor
     int rootDepth = 1;
     do {
         bestMoveIndex = getBestMoveAtDepth(b, legalMoves, rootDepth, bestScore, isMate);
@@ -93,7 +97,7 @@ void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *b
         *bestMove = legalMoves.get(0);
         
         timeSoFar = duration_cast<duration<double>>(
-                high_resolution_clock::now() - start_time).count();
+                high_resolution_clock::now() - searchParams.startTime).count();
         uint64_t nps = (uint64_t) ((double) searchStats.nodes / timeSoFar);
         string pvStr = retrievePV(b, *bestMove, rootDepth);
         
@@ -105,9 +109,10 @@ void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *b
             break;
         rootDepth++;
     }
-    while ((mode == TIME && (timeSoFar * ONE_SECOND < value * timeFactor)
+    while ((searchParams.mode == TIME
+        && (timeSoFar * ONE_SECOND < value * TIME_FACTOR)
         && (rootDepth <= MAX_DEPTH))
-        || (mode == DEPTH && rootDepth <= value));
+        || (searchParams.mode == DEPTH && rootDepth <= value));
     
     printStatistics();
     // Aging for the history heuristic table
@@ -386,6 +391,11 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     int score = -INFTY;
     for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
               m = nextMove(legalMoves, scores, ++i)) {
+        using namespace std::chrono;
+        double timeSoFar = duration_cast<duration<double>>(
+                high_resolution_clock::now() - searchParams.startTime).count();
+        if ((searchParams.mode == TIME) && (timeSoFar * ONE_SECOND > searchParams.timeLimit))
+            isStop = true;
         // Stop condition to help break out as quickly as possible
         if (isStop)
             return -INFTY;
