@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <iostream> // for testing magic seeds, remove eventually
 #include <random>
 #include "board.h"
 #include "btables.h"
@@ -7,12 +6,13 @@
 /**
  * @brief Our implementation of a xorshift generator as discovered by George
  * Marsaglia.
- * This specific implementation is not actually pseudorandom, but simply attempts
- * to create good magic number candidates by artifically increasing the number
+ * This specific implementation is not fully pseudorandom, but attempts to
+ * create good magic number candidates by artifically increasing the number
  * of high bits.
  */
 static uint64_t mseed = 0, mstate = 0;
 uint64_t magicRNG() {
+    // Use "y" to achieve a larger number of high bits
     uint64_t y = ((mstate << 57) | (mseed << 57)) >> 1;
     mstate ^= mseed >> 17;
     mstate ^= mstate << 3;
@@ -21,6 +21,7 @@ uint64_t magicRNG() {
     mseed = mstate;
     mstate = temp;
 
+    // But not too high, or they will overflow out once multiplied by the mask
     return (y | (mseed ^ mstate)) >> 1;
 }
 
@@ -89,6 +90,7 @@ void initMagicTables(uint64_t seed) {
         magicBishops[i].mask = BISHOP_MASK[i];
         magicBishops[i].magic = findMagic(i, NUM_BISHOP_BITS[i], true);
         magicBishops[i].shift = 64 - NUM_BISHOP_BITS[i];
+        // We need 2^n array slots for a mask of n bits
         runningPtrLoc += 1 << NUM_BISHOP_BITS[i];
     }
     // Initialize rook magic values
@@ -106,9 +108,14 @@ void initMagicTables(uint64_t seed) {
         uint64_t mask = BISHOP_MASK[sq];
         // For each possible mask result
         for (int i = 0; i < (1 << nBits); i++) {
+            // Find the pointer of where to store the attack sets
             uint64_t *attTableLoc = magicBishops[sq].table;
+            // Find the actual masked bits from the mask index
             uint64_t occ = indexToMask64(i, nBits, mask);
+            // Get the attack set for this masked occupancy
             uint64_t attSet = batt(sq, occ);
+            // Do the mapping to get the location in the attack table where we
+            // store the attack set
             int magicIndex = magicMap(occ, magicBishops[sq].magic, nBits);
             attTableLoc[magicIndex] = attSet;
         }
@@ -1955,10 +1962,18 @@ uint64_t findMagic(int sq, int iBits, bool isBishop) {
     for (int k = 0; k < 100000000; k++) {
         // Get a random magic candidate
         // We make this random 64-bit integer sparse by &-ing 3 random numbers
+        // Sparse numbers are beneficial to keep the multiplied bits from
+        // bleeding together and becoming garbage
         magic = magicRNG() & magicRNG() & magicRNG();
-        // We want a large number of high bits to get a higher success rate
+        // We want a large number of high bits to get a higher success rate,
+        // since mask * magic is shifted by 64 - n bits, leaving n bits at the
+        // end. Thus, anything but the top 12 bits (for rooks in the corners) or
+        // less (for bishops) is garbage. Having a large number of high bits
+        // when multiplying by the full mask gives a better spread of values
+        // with different partial masks.
         if (count((mask * magic) & 0xFFF0000000000000ULL) < 10)
             continue;
+
         // Clear the used table
         for (int i = 0; i < 4096; i++)
             used[i] = 0;
@@ -1982,8 +1997,6 @@ uint64_t findMagic(int sq, int iBits, bool isBishop) {
             return magic;
     }
 
-    // TODO testing seeds
-    std::cerr << "uh oh" << std::endl;
     // Otherwise we failed :(
     // (this should never happen)
     return 0;
