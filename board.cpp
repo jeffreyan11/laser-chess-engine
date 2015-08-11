@@ -11,7 +11,7 @@
  * to create good magic number candidates by artifically increasing the number
  * of high bits.
  */
-static uint64_t mseed = 0, mstate = 74036198046ULL;
+static uint64_t mseed = 0, mstate = 0;
 uint64_t magicRNG() {
     uint64_t y = ((mstate << 57) | (mseed << 57)) >> 1;
     mstate ^= mseed >> 17;
@@ -75,6 +75,7 @@ void initMagicTables(uint64_t seed) {
     // An arbitrarily chosen random number generator and seed
     // The constant seed allows this process to be deterministic for optimization
     // and debugging.
+    mstate = 74036198046ULL;
     mseed = seed;
     // The attack table has 107648 entries, found by summing the 2^(# relevant bits)
     // for all squares of both bishops and rooks

@@ -30,7 +30,7 @@ void clearAll(Board &board);
 volatile bool isStop = true;
 
 int main() {
-    initMagicTables(9322166348684363710ULL);
+    initMagicTables(2563762638929852183ULL);
     initZobristTable();
 
     string input;
