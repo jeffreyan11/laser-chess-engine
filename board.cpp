@@ -4,7 +4,9 @@
 #include "board.h"
 #include "btables.h"
 
-using namespace std;
+// Zobrist hashing table and the start position key, both initialized at startup
+static uint64_t zobristTable[794];
+static uint64_t startPosZobristKey = 0;
 
 // Shift amounts for Dumb7fill
 const int NORTH_SOUTH_FILL = 8;
@@ -15,10 +17,6 @@ const int NW_SE_FILL = 7;
 // Dumb7fill methods, only used to initialize magic bitboard tables
 uint64_t fillRayRight(uint64_t rayPieces, uint64_t empty, int shift);
 uint64_t fillRayLeft(uint64_t rayPieces, uint64_t empty, int shift);
-
-// Zobrist hashing table and the start position key, both initialized at startup
-static uint64_t zobristTable[794];
-static uint64_t startPosZobristKey = 0;
 
 /**
  * @brief Stores the 4 values necessary to get a magic ray attack from a
@@ -46,7 +44,7 @@ uint64_t index_to_uint64(int index, int nBits, uint64_t mask);
 uint64_t ratt(int sq, uint64_t block);
 uint64_t batt(int sq, uint64_t block);
 int magicMap(uint64_t masked, uint64_t magic, int nBits);
-uint64_t find_magic(int sq, int m, bool isBishop, mt19937_64 &magicRNG);
+uint64_t find_magic(int sq, int m, bool isBishop, std::mt19937_64 &magicRNG);
 
 /**
  * @brief Initializes the tables and values necessary for magic bitboards.
@@ -57,8 +55,7 @@ void initMagicTables(uint64_t seed) {
     // An arbitrarily chosen random number generator and seed
     // The constant seed allows this process to be deterministic for optimization
     // and debugging.
-    // 218091209
-    mt19937_64 magicRNG (seed);
+    std::mt19937_64 magicRNG (seed);
     // The attack table has 107648 entries, found by summing the 2^(# relevant bits)
     // for all squares of both bishops and rooks
     attackTable = new uint64_t[107648];
@@ -110,7 +107,7 @@ void initMagicTables(uint64_t seed) {
 }
 
 void initZobristTable() {
-    mt19937_64 rng (61280152908);
+    std::mt19937_64 rng (61280152908);
     for (int i = 0; i < 794; i++)
         zobristTable[i] = rng();
 
@@ -162,19 +159,6 @@ uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
         captures++;
         nodes += perft(copy, color^1, depth-1, captures);
     }
-/*    
-    MoveList pl = b.getAllPseudoLegalMoves(color);
-    for (unsigned int i = 0; i < pl.size(); i++) {
-        Board copy = b.staticCopy();
-        if (!copy.doPseudoLegalMove(pl.get(i), color))
-            continue;
-
-        if (isCapture(pl.get(i)))
-            captures++;
-        
-        nodes += perft(copy, color^1, depth-1, captures);
-    }
-*/
     return nodes;
 }
 
@@ -216,8 +200,6 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
         if (0 <= mailboxBoard[i] && mailboxBoard[i] <= 11) {
             pieces[mailboxBoard[i]/6][mailboxBoard[i]%6] |= INDEX_TO_BIT[i];
         }
-        else if (mailboxBoard[i] > 11)
-            cerr << "Error in constructor." << endl;
     }
     allPieces[WHITE] = 0;
     for (int i = 0; i < 6; i++)
@@ -498,10 +480,8 @@ void Board::doMove(Move m, int color) {
 
 bool Board::doPseudoLegalMove(Move m, int color) {
     doMove(m, color);
-
-    if (isInCheck(color))
-        return false;
-    else return true;
+    // Pseudo-legal moves require a check for legality
+    return !(isInCheck(color));
 }
 
 // Do a hash move, which requires a few more checks in case of a Type-1 error.
@@ -610,10 +590,8 @@ MoveList Board::getPseudoLegalQuiets(int color) {
 
     addPawnMovesToList(quiets, color);
 
-    uint64_t kings = pieces[color][KINGS];
-    int stsqK = bitScanForward(kings);
+    int stsqK = bitScanForward(pieces[color][KINGS]);
     uint64_t kingSqs = getKingSquares(stsqK);
-
     addMovesToList(quiets, stsqK, kingSqs, false);
 
     return quiets;
@@ -634,10 +612,8 @@ MoveList Board::getPseudoLegalCaptures(int color, bool includePromotions) {
 
     uint64_t otherPieces = allPieces[color^1];
 
-    uint64_t kings = pieces[color][KINGS];
-    int kingStSq = bitScanForward(kings);
+    int kingStSq = bitScanForward(pieces[color][KINGS]);
     uint64_t kingSqs = getKingSquares(kingStSq);
-
     addMovesToList(captures, kingStSq, kingSqs, true, otherPieces);
 
     addPawnCapturesToList(captures, color, otherPieces, includePromotions);
@@ -999,10 +975,8 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
         addMovesToList(captures, stsq, qSq, true, otherPieces);
     }
 
-    uint64_t kings = pieces[color][KINGS];
-    int stsqK = bitScanForward(kings);
+    int stsqK = bitScanForward(pieces[color][KINGS]);
     uint64_t kingSqs = getKingSquares(stsqK);
-
     addMovesToList(blocks, stsqK, kingSqs, false);
     addMovesToList(captures, stsqK, kingSqs, true, allPieces[color^1]);
 
@@ -1343,33 +1317,29 @@ bool Board::isInCheck(int color) {
 
 // Checks for mate: white is in check and has no legal moves
 bool Board::isWInMate() {
+    if (!isInCheck(WHITE))
+        return false;
+
     MoveList moves = getAllLegalMoves(WHITE);
-    bool isInMate = false;
-    if (moves.size() == 0 && isInCheck(WHITE))
-        isInMate = true;
-    
-    return isInMate;
+    return (moves.size() == 0);
 }
 
 // Checks for mate: black is in check and has no legal moves
 bool Board::isBInMate() {
-    MoveList moves = getAllLegalMoves(BLACK);
-    bool isInMate = false;
-    if (moves.size() == 0 && isInCheck(BLACK))
-        isInMate = true;
+    if (!isInCheck(BLACK))
+        return false;
 
-    return isInMate;
+    MoveList moves = getAllLegalMoves(BLACK);
+    return (moves.size() == 0);
 }
 
 // Checks for stalemate: side to move is not in check, but has no legal moves
 bool Board::isStalemate(int sideToMove) {
+    if (isInCheck(sideToMove))
+        return false;
+
     MoveList moves = getAllLegalMoves(sideToMove);
-    bool isInStalemate = false;
-
-    if (moves.size() == 0 && !isInCheck(sideToMove))
-        isInStalemate = true;
-
-    return isInStalemate;
+    return (moves.size() == 0);
 }
 
 bool Board::isDraw() {
@@ -1403,7 +1373,9 @@ bool Board::isDraw() {
     return false;
 }
 
+//------------------------------------------------------------------------------
 //------------------------Evaluation and Move Ordering--------------------------
+//------------------------------------------------------------------------------
 /*
  * Evaluates the current board position in hundredths of pawns. White is
  * positive and black is negative in traditional negamax format.
@@ -1426,7 +1398,7 @@ int Board::evaluate() {
     
     // compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
     int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
-    egFactor = max(0, min(EG_FACTOR_RES, egFactor));
+    egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
     
     value += whiteMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[WHITE][PAWNS]) * egFactor / EG_FACTOR_RES;
     value -= blackMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[BLACK][PAWNS]) * egFactor / EG_FACTOR_RES;
@@ -1605,7 +1577,7 @@ int Board::getEGFactor() {
             + ROOK_VALUE * count(pieces[BLACK][ROOKS])
             + QUEEN_VALUE * count(pieces[BLACK][QUEENS]);
     int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
-    return max(0, min(EG_FACTOR_RES, egFactor));
+    return std::max(0, std::min(EG_FACTOR_RES, egFactor));
 }
 
 uint64_t Board::getNonPawnMaterial(int color) {
@@ -1672,7 +1644,7 @@ int Board::valueOfPiece(int piece) {
         case KINGS:
             return MATE_SCORE;
     }
-    cerr << "Error in Board::valueOfPiece() " << piece << endl;
+
     return -1;
 }
 
@@ -1700,15 +1672,15 @@ int Board::getExchangeScore(int color, Move m) {
 }
 
 
+//------------------------------------------------------------------------------
 //-----------------------------MOVE GENERATION----------------------------------
-uint64_t Board::getWPawnSingleMoves(uint64_t pawns) {
-    uint64_t open = ~getOccupancy();
-    return (pawns << 8) & open;
+//------------------------------------------------------------------------------
+inline uint64_t Board::getWPawnSingleMoves(uint64_t pawns) {
+    return (pawns << 8) & ~getOccupancy();
 }
 
-uint64_t Board::getBPawnSingleMoves(uint64_t pawns) {
-    uint64_t open = ~getOccupancy();
-    return (pawns >> 8) & open;
+inline uint64_t Board::getBPawnSingleMoves(uint64_t pawns) {
+    return (pawns >> 8) & ~getOccupancy();
 }
 
 uint64_t Board::getWPawnDoubleMoves(uint64_t pawns) {
@@ -1778,7 +1750,10 @@ inline uint64_t Board::getOccupancy() {
     return allPieces[WHITE] | allPieces[BLACK];
 }
 
-// Getter methods
+
+//------------------------------------------------------------------------------
+//---------------------------PUBLIC GETTER METHODS------------------------------
+//------------------------------------------------------------------------------
 bool Board::getWhiteCanKCastle() {
     return castlingRights & WHITEKSIDE;
 }
@@ -1841,9 +1816,9 @@ uint64_t Board::getZobristKey() {
     return zobristKey;
 }
 
-string Board::toString() {
+std::string Board::toString() {
     int *mailbox = getMailbox();
-    string result = "";
+    std::string result = "";
     for (int i = 56; i >= 0; i++) {
         switch (mailbox[i]) {
             case -1: // empty
@@ -1996,7 +1971,7 @@ int magicMap(uint64_t masked, uint64_t magic, int nBits) {
  * @param isBishop True for bishop magics, false for rook magics
  * @param magicRNG A random number generator to get magic candidates
  */
-uint64_t find_magic(int sq, int iBits, bool isBishop, mt19937_64 &magicRNG) {
+uint64_t find_magic(int sq, int iBits, bool isBishop, std::mt19937_64 &magicRNG) {
     uint64_t mask, maskedBits[4096], attSet[4096], used[4096], magic;
     bool failed;
 
@@ -2040,7 +2015,7 @@ uint64_t find_magic(int sq, int iBits, bool isBishop, mt19937_64 &magicRNG) {
     }
 
     // TODO testing seeds
-    cerr << "uh oh" << endl;
+    std::cerr << "uh oh" << std::endl;
     // Otherwise we failed :(
     // (this should never happen)
     return 0;
