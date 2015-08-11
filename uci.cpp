@@ -24,6 +24,7 @@ const vector<string> positions = {
 void setPosition(string &input, vector<string> &inputVector, Board &board);
 vector<string> split(const string &s, char d);
 Board fenToBoard(string s);
+string boardToString(Board &board);
 void clearAll(Board &board);
 
 volatile bool isStop = true;
@@ -111,19 +112,7 @@ int main() {
             isStop = true;
         }
         
-        if (input == "board") {
-            int *mailbox = board.getMailbox();
-            string pieceString = " PNBRQKpnbrqk";
-            for (int i = 7; i >= 0; i--) {
-                cerr << (char)(i + '1') << '|';
-                for (int j = 0; j < 8; j++) {
-                    cerr << pieceString[mailbox[8 * i + j] + 1];
-                }
-                cerr << '|' << endl;
-            }
-            cerr << "  abcdefgh" << endl;
-            delete[] mailbox;
-        }
+        if (input == "board") cerr << boardToString(board);
 
         if (input.substr(0, 5) == "perft" && inputVector.size() == 2) {
             int depth = stoi(inputVector.at(1));
@@ -296,6 +285,23 @@ Board fenToBoard(string s) {
     return Board(mailbox, whiteCanKCastle, blackCanKCastle, whiteCanQCastle,
             blackCanQCastle, epCaptureFile, fiftyMoveCounter, moveNumber,
             playerToMove);
+}
+
+string boardToString(Board &board) {
+    int *mailbox = board.getMailbox();
+    string pieceString = " PNBRQKpnbrqk";
+    string boardString;
+    for (int i = 7; i >= 0; i--) {
+        boardString += (char)(i + '1');
+        boardString += '|';
+        for (int j = 0; j < 8; j++) {
+            boardString += pieceString[mailbox[8 * i + j] + 1];
+        }
+        boardString += "|\n";
+    }
+    boardString += "  abcdefgh\n";
+    delete[] mailbox;
+    return boardString;
 }
 
 void clearAll(Board &board) {

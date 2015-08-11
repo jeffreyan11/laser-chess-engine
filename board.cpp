@@ -1817,60 +1817,6 @@ uint64_t Board::getZobristKey() {
     return zobristKey;
 }
 
-std::string Board::toString() {
-    int *mailbox = getMailbox();
-    std::string result = "";
-    for (int i = 56; i >= 0; i++) {
-        switch (mailbox[i]) {
-            case -1: // empty
-                result += "-";
-                break;
-            case 0: // white pawn
-                result += "P";
-                break;
-            case 6: // black pawn
-                result += "p";
-                break;
-            case 1: // white knight
-                result += "N";
-                break;
-            case 7: // black knight
-                result += "n";
-                break;
-            case 2: // white bishop
-                result += "B";
-                break;
-            case 8: // black bishop
-                result += "b";
-                break;
-            case 3: // white rook
-                result += "R";
-                break;
-            case 9: // black rook
-                result += "r";
-                break;
-            case 4: // white queen
-                result += "Q";
-                break;
-            case 10: // black queen
-                result += "q";
-                break;
-            case 5: // white king
-                result += "K";
-                break;
-            case 11: // black king
-                result += "k";
-                break;
-        }
-        if (i % 8 == 7) {
-            result += "\n";
-            i -= 16;
-        }
-    }
-    delete[] mailbox;
-    return result;
-}
-
 void Board::initZobristKey(int *mailbox) {
     zobristKey = 0;
     for (int i = 0; i < 64; i++) {
