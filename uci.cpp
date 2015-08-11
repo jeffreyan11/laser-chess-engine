@@ -40,7 +40,6 @@ int main() {
     string author = "Jeffrey An and Michael An";
     thread searchThread;
     Move bestMove = NULL_MOVE;
-    SearchStatistics stats;
     
     Board board = fenToBoard(STARTPOS);
     
@@ -103,7 +102,7 @@ int main() {
             
             bestMove = NULL_MOVE;
             isStop = false;
-            searchThread = thread(getBestMove, &board, mode, value, &stats, &bestMove);
+            searchThread = thread(getBestMove, &board, mode, value, &bestMove);
             searchThread.detach();
         }
         
@@ -145,9 +144,9 @@ int main() {
                 bestMove = NULL_MOVE;
                 isStop = false;
                 
-                searchThread = thread(getBestMove, &board, DEPTH, 8, &stats, &bestMove);
+                searchThread = thread(getBestMove, &board, DEPTH, 8, &bestMove);
                 searchThread.join();
-                totalNodes += stats.nodes;
+                totalNodes += getNodes();
             }
             
             auto end_time = high_resolution_clock::now();

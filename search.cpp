@@ -49,6 +49,43 @@ struct SearchParameters {
     }
 };
 
+/*
+ * @brief Records a bunch of useful statistics from the search,
+ * which are printed to std error at the end of the search.
+ */
+
+struct SearchStatistics {
+    uint64_t nodes;
+    uint64_t hashProbes;
+    uint64_t hashHits;
+    uint64_t hashScoreCuts;
+    uint64_t hashMoveAttempts;
+    uint64_t hashMoveCuts;
+    uint64_t failHighs;
+    uint64_t firstFailHighs;
+    uint64_t qsNodes;
+    uint64_t qsFailHighs;
+    uint64_t qsFirstFailHighs;
+
+    SearchStatistics() {
+        reset();
+    }
+
+    void reset() {
+        nodes = 0;
+        hashProbes = 0;
+        hashHits = 0;
+        hashScoreCuts = 0;
+        hashMoveAttempts = 0;
+        hashMoveCuts = 0;
+        failHighs = 0;
+        firstFailHighs = 0;
+        qsNodes = 0;
+        qsFailHighs = 0;
+        qsFirstFailHighs = 0;
+    }
+};
+
 static Hash transpositionTable(16);
 static uint8_t rootMoveNumber;
 static SearchParameters searchParams;
@@ -78,7 +115,7 @@ string retrievePV(Board *b, Move bestMove, int plies);
 const double TIME_FACTOR = 0.4; // timeFactor = log b / (b - 1) where b is branch factor
 const double MAX_TIME_FACTOR = 2.5; // do not spend more than this multiple of time over the limit
 
-void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *bestMove) {
+void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     using namespace std::chrono;
     searchParams.reset();
     searchStats.reset();
@@ -128,7 +165,6 @@ void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *b
     
     isStop = true;
     cout << "bestmove " << moveToString(*bestMove) << endl;
-    *stats = searchStats;
     return;
 }
 
@@ -784,6 +820,10 @@ void clearTranspositionTable() {
 
 void clearHistoryTable() {
     searchParams.resetHistoryTable();
+}
+
+uint64_t getNodes() {
+    return searchStats.nodes;
 }
 
 // Retrieves the next move with the highest score, starting from index using a
