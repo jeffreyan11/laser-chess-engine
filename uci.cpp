@@ -76,7 +76,7 @@ int main() {
             
             if (input.find("depth") != string::npos && inputVector.size() > 2) {
                 mode = DEPTH;
-                value = stoi(inputVector.at(2));
+                value = min(MAX_DEPTH, stoi(inputVector.at(2)));
             }
             
             if (input.find("infinite") != string::npos) {

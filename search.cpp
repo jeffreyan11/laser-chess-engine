@@ -83,55 +83,31 @@ void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *b
     bool isMate = false;
     int bestScore, bestMoveIndex;
     
-    if (mode == TIME) {
-        double timeFactor = 0.4; // timeFactor = log b / (b - 1) where b is branch factor
-        int rootDepth = 1;
-        do {
-            bestMoveIndex = getBestMoveAtDepth(b, legalMoves, rootDepth, bestScore, isMate);
-            if (bestMoveIndex == -1)
-                break;
-            legalMoves.swap(0, bestMoveIndex);
-            *bestMove = legalMoves.get(0);
-
-            timeSoFar = duration_cast<duration<double>>(
-                    high_resolution_clock::now() - start_time).count();
-            uint64_t nps = (uint64_t) ((double) searchStats.nodes / timeSoFar);
-
-            string pvStr = retrievePV(b, *bestMove, rootDepth);
-
-            cout << "info depth " << rootDepth << " score cp " << bestScore << " time "
-                << (int)(timeSoFar * ONE_SECOND) << " nodes " << searchStats.nodes
-                << " nps " << nps << " pv " << pvStr << endl;
-
-            if (isMate)
-                break;
-            rootDepth++;
-        }
-        while ((timeSoFar * ONE_SECOND < value * timeFactor) && (rootDepth <= MAX_DEPTH));
+    double timeFactor = 0.4; // timeFactor = log b / (b - 1) where b is branch factor
+    int rootDepth = 1;
+    do {
+        bestMoveIndex = getBestMoveAtDepth(b, legalMoves, rootDepth, bestScore, isMate);
+        if (bestMoveIndex == -1)
+            break;
+        legalMoves.swap(0, bestMoveIndex);
+        *bestMove = legalMoves.get(0);
+        
+        timeSoFar = duration_cast<duration<double>>(
+                high_resolution_clock::now() - start_time).count();
+        uint64_t nps = (uint64_t) ((double) searchStats.nodes / timeSoFar);
+        string pvStr = retrievePV(b, *bestMove, rootDepth);
+        
+        cout << "info depth " << rootDepth << " score cp " << bestScore << " time "
+            << (int)(timeSoFar * ONE_SECOND) << " nodes " << searchStats.nodes
+            << " nps " << nps << " pv " << pvStr << endl;
+        
+        if (isMate)
+            break;
+        rootDepth++;
     }
-    
-    else if (mode == DEPTH) {
-        for (int rootDepth = 1; rootDepth <= min(value, MAX_DEPTH); rootDepth++) {
-            bestMoveIndex = getBestMoveAtDepth(b, legalMoves, rootDepth, bestScore, isMate);
-            if (bestMoveIndex == -1)
-                break;
-            legalMoves.swap(0, bestMoveIndex);
-            *bestMove = legalMoves.get(0);
-
-            timeSoFar = duration_cast<duration<double>>(
-                    high_resolution_clock::now() - start_time).count();
-            uint64_t nps = (uint64_t) ((double) searchStats.nodes / timeSoFar);
-
-            string pvStr = retrievePV(b, *bestMove, rootDepth);
-
-            cout << "info depth " << rootDepth << " score cp " << bestScore << " time "
-                 << (int)(timeSoFar * ONE_SECOND) << " nodes " << searchStats.nodes
-                 << " nps " << nps << " pv " << pvStr << endl;
-
-            if (isMate)
-                break;
-        }
-    }
+    while ((mode == TIME && (timeSoFar * ONE_SECOND < value * timeFactor)
+        && (rootDepth <= MAX_DEPTH))
+        || (mode == DEPTH && rootDepth <= value));
     
     printStatistics();
     // Aging for the history heuristic table
