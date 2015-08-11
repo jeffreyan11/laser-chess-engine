@@ -90,81 +90,55 @@ inline bool isCastle(Move m) {
 
 std::string moveToString(Move m);
 
-class MoveList {
+/**
+ * @brief A simple implementation of an ArrayList, used for storing
+ * lists of moves and search parameters. We have the luxury of using
+ * an array because the number of legal moves in any given position
+ * has a hard limit of about 218 (we use an array of 256).
+ */
+template <class T> class SearchArrayList {
 public:
-    Move *moves;
+    T *arrayList;
     unsigned int length;
 
-    MoveList() {
-        moves = new Move[MAX_MOVES];
+    SearchArrayList() {
+        arrayList = new T[MAX_MOVES];
         length = 0;
     }
-    ~MoveList() { delete[] moves; }
+    ~SearchArrayList() { delete[] arrayList; }
 
     unsigned int size() { return length; }
 
-    // Adds to the end of the list.
-    void add(Move m) {
-        moves[length] = m;
+    void add(T o) {
+        arrayList[length] = o;
         length++;
     }
 
-    Move get(int i) { return moves[i]; }
+    T get(int i) { return arrayList[i]; }
 
-    void set(int i, Move m) { moves[i] = m; }
+    void set(int i, T o) { arrayList[i] = o; }
 
-    Move remove(int i) {
-        Move deleted = moves[i];
+    T remove(int i) {
+        T deleted = arrayList[i];
         for(unsigned int j = i; j < length-1; j++) {
-            moves[j] = moves[j+1];
+            arrayList[j] = arrayList[j+1];
         }
         length--;
         return deleted;
     }
 
     void swap(int i, int j) {
-        Move temp = moves[i];
-        moves[i] = moves[j];
-        moves[j] = temp;
-    }
-
-    // Reset the MoveList
-    void clear() {
-        length = 0;
-    }
-};
-
-class ScoreList {
-public:
-    int *scores;
-    unsigned int length;
-
-    ScoreList() {
-        scores = new int[MAX_MOVES];
-        length = 0;
-    }
-    ~ScoreList() { delete[] scores; }
-
-    unsigned int size() { return length; }
-
-    void add(int s) {
-        scores[length] = s;
-        length++;
-    }
-
-    int get(int i) { return scores[i]; }
-
-    void set(int i, int s) { scores[i] = s; }
-
-    void swap(int i, int j) {
-        int temp = scores[i];
-        scores[i] = scores[j];
-        scores[j] = temp;
+        T temp = arrayList[i];
+        arrayList[i] = arrayList[j];
+        arrayList[j] = temp;
     }
 
     void clear() {
         length = 0;
     }
 };
+
+typedef SearchArrayList<Move> MoveList;
+typedef SearchArrayList<int> ScoreList;
 
 #endif

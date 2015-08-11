@@ -71,6 +71,10 @@ private:
     HashNode **table;
     uint64_t size;
 
+    // Prevent direct copying and assignment
+    Hash(const Hash &other);
+    Hash& operator=(const Hash &other);
+
 public:
     int keys;
 
