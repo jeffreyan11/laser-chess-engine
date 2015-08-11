@@ -27,5 +27,3 @@ isCheckMove() ignores en passant and castling
 tunemagic command leaks a large amount of memory
 
 Futility pruning can fail low even if the position is a stalemate
-
-Search is non-deterministic

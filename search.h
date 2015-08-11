@@ -9,6 +9,7 @@
  * @brief Records a bunch of useful statistics from the search,
  * which are printed to std error at the end of the search.
  */
+
 struct SearchStatistics {
     uint64_t nodes;
     uint64_t hashProbes;
@@ -43,6 +44,7 @@ struct SearchStatistics {
 
 void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *bestMove);
 void clearTranspositionTable();
+void clearHistoryTable();
 
 // Search modes:
 const int TIME = 1;
@@ -53,9 +55,5 @@ const int ONE_SECOND = 1000;
 
 // Search parameters
 const int MAX_POS_SCORE = 200;
-
-// Time management
-const double TIME_FACTOR = 0.4; // timeFactor = log b / (b - 1) where b is branch factor
-const double MAX_TIME_FACTOR = 2.5; // do not spend more than this multiple of time over the limit
 
 #endif

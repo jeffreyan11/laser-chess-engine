@@ -17,12 +17,7 @@ struct SearchParameters {
 
     SearchParameters() {
         reset();
-        for (int i = 0; i < 2; i++) {
-            for (int j = 0; j < 6; j++) {
-                for (int k = 0; k < 64; k++)
-                    historyTable[i][j][k] = 0;
-            }
-        }
+        resetHistoryTable();
     }
 
     void reset() {
@@ -31,6 +26,15 @@ struct SearchParameters {
         for (int i = 0; i < MAX_DEPTH; i++) {
             killers[i][0] = NULL_MOVE;
             killers[i][1] = NULL_MOVE;
+        }
+    }
+    
+    void resetHistoryTable() {
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 6; j++) {
+                for (int k = 0; k < 64; k++)
+                    historyTable[i][j][k] = 0;
+            }
         }
     }
 
@@ -69,6 +73,10 @@ void printStatistics();
 // Other utility functions
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 string retrievePV(Board *b, Move bestMove, int plies);
+
+// Time management constants
+const double TIME_FACTOR = 0.4; // timeFactor = log b / (b - 1) where b is branch factor
+const double MAX_TIME_FACTOR = 2.5; // do not spend more than this multiple of time over the limit
 
 void getBestMove(Board *b, int mode, int value, SearchStatistics *stats, Move *bestMove) {
     using namespace std::chrono;
@@ -772,6 +780,10 @@ int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
 
 void clearTranspositionTable() {
     transpositionTable.clear();
+}
+
+void clearHistoryTable() {
+    searchParams.resetHistoryTable();
 }
 
 // Retrieves the next move with the highest score, starting from index using a

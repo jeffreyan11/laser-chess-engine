@@ -24,6 +24,7 @@ const vector<string> positions = {
 void setPosition(string &input, vector<string> &inputVector, Board &board);
 vector<string> split(const string &s, char d);
 Board fenToBoard(string s);
+void clearAll(Board &board);
 
 volatile bool isStop = true;
 
@@ -60,8 +61,7 @@ int main() {
         if (input == "isready") cout << "readyok" << endl;
         
         if (input == "ucinewgame") {
-            board = fenToBoard(STARTPOS);
-            clearTranspositionTable();
+            clearAll(board);
         }
         
         if (input.substr(0, 8) == "position") setPosition(input, inputVector, board);
@@ -151,7 +151,7 @@ int main() {
             uint64_t totalNodes = 0;
             
             for (unsigned int i = 0; i < positions.size(); i++) {
-                clearTranspositionTable();
+                clearAll(board);
                 board = fenToBoard(positions.at(i));
                 bestMove = NULL_MOVE;
                 isStop = false;
@@ -165,8 +165,7 @@ int main() {
             double time = duration_cast<duration<double>>(
                 end_time-start_time).count();
                 
-            board = fenToBoard(STARTPOS);
-            clearTranspositionTable();
+            clearAll(board);
             
             cerr << "Nodes: " << totalNodes << endl;
             cerr << "Time: " << (int)(time * ONE_SECOND) << endl;
@@ -297,4 +296,10 @@ Board fenToBoard(string s) {
     return Board(mailbox, whiteCanKCastle, blackCanKCastle, whiteCanQCastle,
             blackCanQCastle, epCaptureFile, fiftyMoveCounter, moveNumber,
             playerToMove);
+}
+
+void clearAll(Board &board) {
+    clearTranspositionTable();
+    clearHistoryTable();
+    board = fenToBoard(STARTPOS);
 }
