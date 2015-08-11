@@ -4,6 +4,26 @@
 #include "board.h"
 #include "btables.h"
 
+/**
+ * @brief Our implementation of a xorshift generator as discovered by George
+ * Marsaglia.
+ * This specific implementation is not actually pseudorandom, but simply attempts
+ * to create good magic number candidates by artifically increasing the number
+ * of high bits.
+ */
+static uint64_t mseed = 0, mstate = 74036198046ULL;
+uint64_t magicRNG() {
+    uint64_t y = ((mstate << 57) | (mseed << 57)) >> 1;
+    mstate ^= mseed >> 17;
+    mstate ^= mstate << 3;
+
+    uint64_t temp = mseed;
+    mseed = mstate;
+    mstate = temp;
+
+    return (y | (mseed ^ mstate)) >> 1;
+}
+
 // Zobrist hashing table and the start position key, both initialized at startup
 static uint64_t zobristTable[794];
 static uint64_t startPosZobristKey = 0;
@@ -40,11 +60,11 @@ static MagicInfo magicBishops[64];
 // The magic values for rooks, one for each square
 static MagicInfo magicRooks[64];
 
-uint64_t index_to_uint64(int index, int nBits, uint64_t mask);
+uint64_t indexToMask64(int index, int nBits, uint64_t mask);
 uint64_t ratt(int sq, uint64_t block);
 uint64_t batt(int sq, uint64_t block);
 int magicMap(uint64_t masked, uint64_t magic, int nBits);
-uint64_t find_magic(int sq, int m, bool isBishop, std::mt19937_64 &magicRNG);
+uint64_t findMagic(int sq, int m, bool isBishop);
 
 /**
  * @brief Initializes the tables and values necessary for magic bitboards.
@@ -55,7 +75,7 @@ void initMagicTables(uint64_t seed) {
     // An arbitrarily chosen random number generator and seed
     // The constant seed allows this process to be deterministic for optimization
     // and debugging.
-    std::mt19937_64 magicRNG (seed);
+    mseed = seed;
     // The attack table has 107648 entries, found by summing the 2^(# relevant bits)
     // for all squares of both bishops and rooks
     attackTable = new uint64_t[107648];
@@ -66,7 +86,7 @@ void initMagicTables(uint64_t seed) {
         uint64_t *tableStart = attackTable;
         magicBishops[i].table = tableStart + runningPtrLoc;
         magicBishops[i].mask = BISHOP_MASK[i];
-        magicBishops[i].magic = find_magic(i, NUM_BISHOP_BITS[i], true, magicRNG);
+        magicBishops[i].magic = findMagic(i, NUM_BISHOP_BITS[i], true);
         magicBishops[i].shift = 64 - NUM_BISHOP_BITS[i];
         runningPtrLoc += 1 << NUM_BISHOP_BITS[i];
     }
@@ -75,7 +95,7 @@ void initMagicTables(uint64_t seed) {
         uint64_t *tableStart = attackTable;
         magicRooks[i].table = tableStart + runningPtrLoc;
         magicRooks[i].mask = ROOK_MASK[i];
-        magicRooks[i].magic = find_magic(i, NUM_ROOK_BITS[i], false, magicRNG);
+        magicRooks[i].magic = findMagic(i, NUM_ROOK_BITS[i], false);
         magicRooks[i].shift = 64 - NUM_ROOK_BITS[i];
         runningPtrLoc += 1 << NUM_ROOK_BITS[i];
     }
@@ -86,7 +106,7 @@ void initMagicTables(uint64_t seed) {
         // For each possible mask result
         for (int i = 0; i < (1 << nBits); i++) {
             uint64_t *attTableLoc = magicBishops[sq].table;
-            uint64_t occ = index_to_uint64(i, nBits, mask);
+            uint64_t occ = indexToMask64(i, nBits, mask);
             uint64_t attSet = batt(sq, occ);
             int magicIndex = magicMap(occ, magicBishops[sq].magic, nBits);
             attTableLoc[magicIndex] = attSet;
@@ -98,7 +118,7 @@ void initMagicTables(uint64_t seed) {
         uint64_t mask = ROOK_MASK[sq];
         for (int i = 0; i < (1 << nBits); i++) {
             uint64_t *attTableLoc = magicRooks[sq].table;
-            uint64_t occ = index_to_uint64(i, nBits, mask);
+            uint64_t occ = indexToMask64(i, nBits, mask);
             uint64_t attSet = ratt(sq, occ);
             int magicIndex = magicMap(occ, magicRooks[sq].magic, nBits);
             attTableLoc[magicIndex] = attSet;
@@ -1876,7 +1896,7 @@ uint64_t fillRayLeft(uint64_t rayPieces, uint64_t empty, int shift) {
 
 // Maps an index from 0 from 2^nBits - 1 into one of the
 // 2^nBits possible masks
-uint64_t index_to_uint64(int index, int nBits, uint64_t mask) {
+uint64_t indexToMask64(int index, int nBits, uint64_t mask) {
     uint64_t result = 0;
     // For each bit in the mask
     for (int i = 0; i < nBits; i++) {
@@ -1918,7 +1938,7 @@ int magicMap(uint64_t masked, uint64_t magic, int nBits) {
  * @param isBishop True for bishop magics, false for rook magics
  * @param magicRNG A random number generator to get magic candidates
  */
-uint64_t find_magic(int sq, int iBits, bool isBishop, std::mt19937_64 &magicRNG) {
+uint64_t findMagic(int sq, int iBits, bool isBishop) {
     uint64_t mask, maskedBits[4096], attSet[4096], used[4096], magic;
     bool failed;
 
@@ -1927,16 +1947,16 @@ uint64_t find_magic(int sq, int iBits, bool isBishop, std::mt19937_64 &magicRNG)
     // For each possible masked occupancy, get the attack set corresponding to
     // that square and occupancy
     for (int i = 0; i < (1 << nBits); i++) {
-        maskedBits[i] = index_to_uint64(i, nBits, mask);
+        maskedBits[i] = indexToMask64(i, nBits, mask);
         attSet[i] = isBishop ? batt(sq, maskedBits[i]) : ratt(sq, maskedBits[i]);
     }
-    // Try 10 mill iterations before giving up
-    for (int k = 0; k < 10000000; k++) {
+    // Try 100 mill iterations before giving up
+    for (int k = 0; k < 100000000; k++) {
         // Get a random magic candidate
         // We make this random 64-bit integer sparse by &-ing 3 random numbers
         magic = magicRNG() & magicRNG() & magicRNG();
         // We want a large number of high bits to get a higher success rate
-        if (count((mask * magic) & 0xFF00000000000000ULL) < 6)
+        if (count((mask * magic) & 0xFFF0000000000000ULL) < 10)
             continue;
         // Clear the used table
         for (int i = 0; i < 4096; i++)

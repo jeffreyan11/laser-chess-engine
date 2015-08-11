@@ -49,11 +49,10 @@ struct SearchParameters {
     }
 };
 
-/*
+/**
  * @brief Records a bunch of useful statistics from the search,
  * which are printed to std error at the end of the search.
  */
-
 struct SearchStatistics {
     uint64_t nodes;
     uint64_t hashProbes;
