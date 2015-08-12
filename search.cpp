@@ -316,19 +316,19 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         // directly into q-search
         reduction = min(depth - 2, reduction + (staticEval - beta) / MAX_POS_SCORE);
 
-        b.doMove(NULL_MOVE, color);
+        b.doNullMove();
         searchParams.nullMoveCount++;
         searchParams.ply++;
         int nullScore = -PVS(b, color^1, depth-1-reduction, -beta, -alpha);
         searchParams.ply--;
         if (nullScore >= beta) {
-            b.doMove(NULL_MOVE, color^1);
+            b.doNullMove();
             searchParams.nullMoveCount--;
             return beta;
         }
         
         // Undo the null move
-        b.doMove(NULL_MOVE, color^1);
+        b.doNullMove();
         searchParams.nullMoveCount--;
     }
 

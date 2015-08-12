@@ -305,13 +305,6 @@ void Board::doMove(Move m, int color) {
     int endSq = getEndSq(m);
     int pieceID = getPieceOnSquare(color, startSq);
 
-    // Handle null moves for null move pruning
-    if (m == NULL_MOVE) {
-        playerToMove = color ^ 1;
-        zobristKey ^= zobristTable[768];
-        return;
-    }
-
     // Update flag based elements of Zobrist key
     zobristKey ^= zobristTable[769 + castlingRights];
     zobristKey ^= zobristTable[785 + epCaptureFile];
@@ -542,6 +535,12 @@ bool Board::doHashMove(Move m, int color) {
         return false;
 
     return doPseudoLegalMove(m, color);
+}
+
+// Handle null moves for null move pruning by switching the player to move.
+void Board::doNullMove() {
+    playerToMove = playerToMove ^ 1;
+    zobristKey ^= zobristTable[768];
 }
 
 // Get all legal moves and captures
