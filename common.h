@@ -2,6 +2,7 @@
 #define __COMMON_H__
 
 #include <cstdint>
+#include <chrono>
 #include <string>
 
 #define USE_INLINE_ASM true
@@ -24,16 +25,17 @@ const int QUEEN_VALUE = 1000;
 const int MATE_SCORE = (1 << 15) - 1;
 const int INFTY = (1 << 15) - 1;
 
-const int BISHOP_PAIR_VALUE = 40;
-const int TEMPO_VALUE = 10;
-
-const int START_VALUE = 8 * PAWN_VALUE + 2 * KNIGHT_VALUE + 2 * BISHOP_VALUE + 2 * ROOK_VALUE + QUEEN_VALUE;
-const int EG_FACTOR_RES = 1000;
-
 // Other values
 const int MAX_DEPTH = 127;
 const int MAX_MOVES = 256;
 
+// Stuff for timing
+typedef std::chrono::high_resolution_clock ChessClock;
+typedef std::chrono::high_resolution_clock::time_point ChessTime;
+
+double getTimeElapsed(ChessTime startTime);
+
+// Bitboard methods
 int bitScanForward(uint64_t bb);
 int bitScanReverse(uint64_t bb);
 int count(uint64_t bb);

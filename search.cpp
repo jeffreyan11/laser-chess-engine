@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <chrono>
 #include <iomanip>
 #include <iostream>
 #include "search.h"
@@ -9,7 +8,7 @@ using namespace std;
 struct SearchParameters {
     int ply;
     int nullMoveCount;
-    chrono::high_resolution_clock::time_point startTime;
+    ChessTime startTime;
     uint64_t timeLimit;
     Move killers[MAX_DEPTH][2];
     int historyTable[2][6][64];
@@ -100,7 +99,6 @@ Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 string retrievePV(Board *b, Move bestMove, int plies);
 
 void getBestMove(Board *b, int mode, int value, Move *bestMove) {
-    using namespace std::chrono;
     searchParams.reset();
     searchStats.reset();
     searchParams.rootMoveNumber = (uint8_t) (b->getMoveNumber());
@@ -111,9 +109,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     
     searchParams.timeLimit = (mode == TIME)
         ? (uint64_t)(MAX_TIME_FACTOR * value) : MAX_TIME;
-    searchParams.startTime = chrono::high_resolution_clock::now();
-    double timeSoFar = duration_cast<duration<double>>(
-            high_resolution_clock::now() - searchParams.startTime).count();
+    searchParams.startTime = ChessClock::now();
+    double timeSoFar = getTimeElapsed(searchParams.startTime);
     bool isMate = false;
     int bestScore, bestMoveIndex;
     
@@ -125,8 +122,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         legalMoves.swap(0, bestMoveIndex);
         *bestMove = legalMoves.get(0);
         
-        timeSoFar = duration_cast<duration<double>>(
-                high_resolution_clock::now() - searchParams.startTime).count();
+        timeSoFar = getTimeElapsed(searchParams.startTime);
         uint64_t nps = (uint64_t) ((double) searchStats.nodes / timeSoFar);
         string pvStr = retrievePV(b, *bestMove, rootDepth);
         
@@ -418,9 +414,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     int score = -INFTY;
     for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
               m = nextMove(legalMoves, scores, ++i)) {
-        using namespace std::chrono;
-        double timeSoFar = duration_cast<duration<double>>(
-                high_resolution_clock::now() - searchParams.startTime).count();
+        // Check for a timeout
+        double timeSoFar = getTimeElapsed(searchParams.startTime);
         if (timeSoFar * ONE_SECOND > searchParams.timeLimit)
             isStop = true;
         // Stop condition to help break out as quickly as possible

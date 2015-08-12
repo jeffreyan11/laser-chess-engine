@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <chrono>
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -111,14 +110,11 @@ int main() {
 
             Board b;
             uint64_t captures = 0;
-            using namespace std::chrono;
-            auto start_time = high_resolution_clock::now();
+            auto startTime = ChessClock::now();
             
             uint64_t nodes = perft(b, WHITE, depth, captures);
             
-            auto end_time = high_resolution_clock::now();
-            double time = duration_cast<duration<double>>(
-                end_time-start_time).count();
+            double time = getTimeElapsed(startTime);
             
             cerr << "Nodes: " << nodes << endl;
             cerr << "Captures: " << captures << endl;
@@ -126,8 +122,7 @@ int main() {
             cerr << "Nodes/second: " << (uint64_t)(nodes / time) << endl;
         }
         else if (input == "bench") {
-            using namespace std::chrono;
-            auto start_time = high_resolution_clock::now();
+            auto startTime = ChessClock::now();
             uint64_t totalNodes = 0;
             
             for (unsigned int i = 0; i < positions.size(); i++) {
@@ -141,9 +136,7 @@ int main() {
                 totalNodes += getNodes();
             }
             
-            auto end_time = high_resolution_clock::now();
-            double time = duration_cast<duration<double>>(
-                end_time-start_time).count();
+            double time = getTimeElapsed(startTime);
                 
             clearAll(board);
             
@@ -159,16 +152,14 @@ int main() {
             uint64_t bestSeed = 0;
             for (int i = 0; i < iters; i++) {
                 if ((i & 0xFF) == 0xFF) cerr << "Trial " << i+1 << endl;
-                auto init_start = std::chrono::high_resolution_clock::now();
+                auto initStart = ChessClock::now();
                 uint64_t test = rng();
                 initMagicTables(test);
-                auto init_end = std::chrono::high_resolution_clock::now();
-                double init_time = std::chrono::duration_cast<std::chrono::duration<double>>(
-                    init_end-init_start).count();
-                if (init_time < minTime) {
+                double initTime = getTimeElapsed(initStart);
+                if (initTime < minTime) {
                     bestSeed = test;
-                    minTime = init_time;
-                    cerr << "New best! Seed: " << bestSeed << " Time: " << init_time << endl;
+                    minTime = initTime;
+                    cerr << "New best! Seed: " << bestSeed << " Time: " << initTime << endl;
                 }
             }
             cerr << "Best seed: " << bestSeed << endl;

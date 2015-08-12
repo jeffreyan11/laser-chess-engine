@@ -8,6 +8,9 @@
  * code clean.
  */
 
+const int BISHOP_PAIR_VALUE = 40;
+const int TEMPO_VALUE = 10;
+
 //------------------------------Piece tables--------------------------------
 const int midgamePieceValues[6][64] = {
 { // Pawns
