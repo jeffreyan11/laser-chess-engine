@@ -337,7 +337,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // probably wouldn't have let us get here (a form of the null-move observation
     // adapted to low depths)
     if (!isPVNode && !isInCheck && ((depth == 1 && staticEval - MAX_POS_SCORE >= beta)
-                                 || (depth == 2 && staticEval - 3*MAX_POS_SCORE >= beta)))
+                                 || (depth == 2 && staticEval - 3*MAX_POS_SCORE >= beta))
+     && b.getNonPawnMaterial(color))
         return beta;
 
     MoveList legalMoves = isInCheck ? b.getPseudoLegalCheckEscapes(color)
@@ -371,9 +372,9 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             if (!isCapture(m))
                 break;
             // If anything wins at least a rook, it should go above this anyways
-            if (b.getExchangeScore(color, m) > 0)
+            /*if (b.getExchangeScore(color, m) > 0)
                 scores.add(ROOK_VALUE + b.getMVVLVAScore(color, legalMoves.get(index)));
-            else
+            else*/
                 scores.add(b.getSEE(color, getEndSq(m)));
         }
         // ---------------Non-captures----------------
@@ -477,7 +478,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             // Increase reduction with higher depth and later moves, but do
             // not let search descend directly into q-search
             reduction = min(depth - 2,
-                (int) (((double) depth - 3.0) / 4 + ((double) movesSearched) / 9.5));
+                (int) (((double) depth - 3.0) / 4.0 + ((double) movesSearched) / 9.5));
         }
 
         if (movesSearched != 0) {
