@@ -10,12 +10,14 @@ void clearTranspositionTable();
 void clearHistoryTable();
 uint64_t getNodes();
 
-// Search modes:
+// Search modes
 const int TIME = 1;
 const int DEPTH = 2;
 // const int NODES = 3;
 
+// Time constants
 const int ONE_SECOND = 1000;
+const uint64_t MAX_TIME = (1ULL << 63) - 1;
 
 // Search parameters
 const int MAX_POS_SCORE = 200;

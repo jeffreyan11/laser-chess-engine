@@ -7,11 +7,10 @@
 using namespace std;
 
 struct SearchParameters {
-    int mode;
     int ply;
     int nullMoveCount;
     chrono::high_resolution_clock::time_point startTime;
-    int timeLimit;
+    uint64_t timeLimit;
     Move killers[MAX_DEPTH][2];
     int historyTable[2][6][64];
     uint8_t rootMoveNumber;
@@ -104,14 +103,14 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     using namespace std::chrono;
     searchParams.reset();
     searchStats.reset();
-    searchParams.mode = mode;
     searchParams.rootMoveNumber = (uint8_t) (b->getMoveNumber());
 
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
     *bestMove = legalMoves.get(0);
     
-    searchParams.timeLimit = (int) (MAX_TIME_FACTOR * value);
+    searchParams.timeLimit = (mode == TIME)
+        ? (uint64_t)(MAX_TIME_FACTOR * value) : MAX_TIME;
     searchParams.startTime = chrono::high_resolution_clock::now();
     double timeSoFar = duration_cast<duration<double>>(
             high_resolution_clock::now() - searchParams.startTime).count();
@@ -139,10 +138,9 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
             break;
         rootDepth++;
     }
-    while ((searchParams.mode == TIME
-        && (timeSoFar * ONE_SECOND < value * TIME_FACTOR)
+    while ((mode == TIME && (timeSoFar * ONE_SECOND < value * TIME_FACTOR)
         && (rootDepth <= MAX_DEPTH))
-        || (searchParams.mode == DEPTH && rootDepth <= value));
+        || (mode == DEPTH && rootDepth <= value));
     
     printStatistics();
     // Aging for the history heuristic table
@@ -423,7 +421,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         using namespace std::chrono;
         double timeSoFar = duration_cast<duration<double>>(
                 high_resolution_clock::now() - searchParams.startTime).count();
-        if ((searchParams.mode == TIME) && (timeSoFar * ONE_SECOND > searchParams.timeLimit))
+        if (timeSoFar * ONE_SECOND > searchParams.timeLimit)
             isStop = true;
         // Stop condition to help break out as quickly as possible
         if (isStop)
