@@ -131,7 +131,7 @@ int main() {
                 bestMove = NULL_MOVE;
                 isStop = false;
                 
-                searchThread = thread(getBestMove, &board, DEPTH, 8, &bestMove);
+                searchThread = thread(getBestMove, &board, DEPTH, 9, &bestMove);
                 searchThread.join();
                 totalNodes += getNodes();
             }
