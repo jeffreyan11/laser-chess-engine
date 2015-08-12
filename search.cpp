@@ -14,6 +14,7 @@ struct SearchParameters {
     int timeLimit;
     Move killers[MAX_DEPTH][2];
     int historyTable[2][6][64];
+    uint8_t rootMoveNumber;
 
     SearchParameters() {
         reset();
@@ -55,16 +56,11 @@ struct SearchParameters {
  */
 struct SearchStatistics {
     uint64_t nodes;
-    uint64_t hashProbes;
-    uint64_t hashHits;
-    uint64_t hashScoreCuts;
-    uint64_t hashMoveAttempts;
-    uint64_t hashMoveCuts;
-    uint64_t failHighs;
-    uint64_t firstFailHighs;
+    uint64_t hashProbes, hashHits, hashScoreCuts;
+    uint64_t hashMoveAttempts, hashMoveCuts;
+    uint64_t failHighs, firstFailHighs;
     uint64_t qsNodes;
-    uint64_t qsFailHighs;
-    uint64_t qsFirstFailHighs;
+    uint64_t qsFailHighs, qsFirstFailHighs;
 
     SearchStatistics() {
         reset();
@@ -72,21 +68,15 @@ struct SearchStatistics {
 
     void reset() {
         nodes = 0;
-        hashProbes = 0;
-        hashHits = 0;
-        hashScoreCuts = 0;
-        hashMoveAttempts = 0;
-        hashMoveCuts = 0;
-        failHighs = 0;
-        firstFailHighs = 0;
+        hashProbes = hashHits = hashScoreCuts = 0;
+        hashMoveAttempts = hashMoveCuts = 0;
+        failHighs = firstFailHighs = 0;
         qsNodes = 0;
-        qsFailHighs = 0;
-        qsFirstFailHighs = 0;
+        qsFailHighs = qsFirstFailHighs = 0;
     }
 };
 
 static Hash transpositionTable(16);
-static uint8_t rootMoveNumber;
 static SearchParameters searchParams;
 static SearchStatistics searchStats;
 
@@ -115,7 +105,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     searchParams.reset();
     searchStats.reset();
     searchParams.mode = mode;
-    rootMoveNumber = (uint8_t) (b->getMoveNumber());
+    searchParams.rootMoveNumber = (uint8_t) (b->getMoveNumber());
 
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
@@ -142,8 +132,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         string pvStr = retrievePV(b, *bestMove, rootDepth);
         
         cout << "info depth " << rootDepth << " score cp " << bestScore << " time "
-            << (int)(timeSoFar * ONE_SECOND) << " nodes " << searchStats.nodes
-            << " nps " << nps << " pv " << pvStr << endl;
+             << (int)(timeSoFar * ONE_SECOND) << " nodes " << searchStats.nodes
+             << " nps " << nps << " pv " << pvStr << endl;
         
         if (isMate)
             break;
@@ -177,9 +167,9 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         // Stop condition. If stopping, return search results from incomplete
         // search, if any.
-        if (isStop) {
+        if (isStop)
             return tempMove;
-        }
+
         Board copy = b->staticCopy();
         copy.doMove(legalMoves.get(i), color);
         searchStats.nodes++;
@@ -504,7 +494,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             if (movesSearched == 0)
                 searchStats.firstFailHighs++;
             // Hash moves that caused a beta cutoff
-            transpositionTable.add(b, depth, m, beta, CUT_NODE, rootMoveNumber);
+            transpositionTable.add(b, depth, m, beta, CUT_NODE, searchParams.rootMoveNumber);
             // Record killer if applicable
             if (!isCapture(m)) {
                 // Ensure the same killer does not fill both slots
@@ -531,7 +521,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     
     if (toHash != NULL_MOVE && prevAlpha < alpha && alpha < beta) {
         // Exact scores indicate a principal variation and should always be hashed
-        transpositionTable.add(b, depth, toHash, alpha, PV_NODE, rootMoveNumber);
+        transpositionTable.add(b, depth, toHash, alpha, PV_NODE, searchParams.rootMoveNumber);
         // Update the history table
         /*if (!isCapture(toHash)) {
             searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(toHash))][getEndSq(toHash)]
@@ -541,7 +531,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // Record all-nodes. The upper bound score can save a lot of search time.
     // No best move can be recorded in a fail-hard framework.
     else if (alpha <= prevAlpha) {
-        transpositionTable.add(b, depth, NULL_MOVE, alpha, ALL_NODE, rootMoveNumber);
+        transpositionTable.add(b, depth, NULL_MOVE, alpha, ALL_NODE, searchParams.rootMoveNumber);
     }
 
     return alpha;
@@ -637,14 +627,6 @@ int scoreMate(bool isInCheck, int depth, int alpha, int beta) {
 int quiescence(Board &b, int color, int plies, int alpha, int beta) {
     if (b.isInCheck(color))
         return checkQuiescence(b, color, plies, alpha, beta);
-    if (b.isDraw()) {
-        if (0 >= beta)
-            return beta;
-        if (0 > alpha)
-            return 0;
-        else
-            return alpha;
-    }
 
     // Stand pat: if our current position is already way too good or way too bad
     // we can simply stop the search here
@@ -809,6 +791,7 @@ int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
 //------------------------------Other functions---------------------------------
 //------------------------------------------------------------------------------
 
+// These functions help to communicate with uci.cpp
 void clearTranspositionTable() {
     transpositionTable.clear();
 }
