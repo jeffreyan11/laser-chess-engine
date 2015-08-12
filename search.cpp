@@ -523,10 +523,10 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         // Exact scores indicate a principal variation and should always be hashed
         transpositionTable.add(b, depth, toHash, alpha, PV_NODE, searchParams.rootMoveNumber);
         // Update the history table
-        /*if (!isCapture(toHash)) {
+        if (!isCapture(toHash)) {
             searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(toHash))][getEndSq(toHash)]
                 += depth * depth;
-        }*/
+        }
     }
     // Record all-nodes. The upper bound score can save a lot of search time.
     // No best move can be recorded in a fail-hard framework.

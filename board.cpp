@@ -54,6 +54,9 @@ struct MagicInfo {
     int shift;
 };
 
+// Masks the relevant rook or bishop occupancy bits for magic bitboards
+static uint64_t ROOK_MASK[64];
+static uint64_t BISHOP_MASK[64];
 // The full attack table containing all attack sets of bishops and rooks
 static uint64_t *attackTable;
 // The magic values for bishops, one for each square
@@ -78,6 +81,16 @@ void initMagicTables(uint64_t seed) {
     // and debugging.
     mstate = 74036198046ULL;
     mseed = seed;
+    // Initialize the rook and bishop masks
+    for (int i = 0; i < 64; i++) {
+        // The relevant bits are everything except the edges
+        // However, we don't want to remove the edge that we are on
+        uint64_t relevantBits = ((~FILES[0] & ~FILES[7]) | FILES[i&7])
+                              & ((~RANKS[0] & ~RANKS[7]) | RANKS[i>>3]);
+        // The masks are rook and bishop attacks on an empty board
+        ROOK_MASK[i] = ratt(i, 0) & relevantBits;
+        BISHOP_MASK[i] = batt(i, 0) & relevantBits;
+    }
     // The attack table has 107648 entries, found by summing the 2^(# relevant bits)
     // for all squares of both bishops and rooks
     attackTable = new uint64_t[107648];
