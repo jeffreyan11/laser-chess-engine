@@ -110,10 +110,6 @@ void printStatistics();
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 string retrievePV(Board *b, Move bestMove, int plies);
 
-// Time management constants
-const double TIME_FACTOR = 0.4; // timeFactor = log b / (b - 1) where b is branch factor
-const double MAX_TIME_FACTOR = 2.5; // do not spend more than this multiple of time over the limit
-
 void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     using namespace std::chrono;
     searchParams.reset();

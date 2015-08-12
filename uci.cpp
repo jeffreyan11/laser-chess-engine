@@ -57,47 +57,45 @@ int main() {
             cout << "option name Hash type spin default " << 16 << " min " << 1 << " max " << 1024 << endl;
             cout << "uciok" << endl;
         }
-        
-        if (input == "isready") cout << "readyok" << endl;
-        
-        if (input == "ucinewgame") {
-            clearAll(board);
-        }
-        
-        if (input.substr(0, 8) == "position") setPosition(input, inputVector, board);
-        
-        if (input.substr(0, 2) == "go" && isStop) {
+        else if (input == "isready") cout << "readyok" << endl;
+        else if (input == "ucinewgame") clearAll(board);
+        else if (input.substr(0, 8) == "position") setPosition(input, inputVector, board);
+        else if (input.substr(0, 2) == "go" && isStop) {
             int mode = DEPTH, value = 1;
             
             if (input.find("movetime") != string::npos && inputVector.size() > 2) {
                 mode = TIME;
                 value = stoi(inputVector.at(2));
             }
-            
-            if (input.find("depth") != string::npos && inputVector.size() > 2) {
+            else if (input.find("depth") != string::npos && inputVector.size() > 2) {
                 mode = DEPTH;
                 value = min(MAX_DEPTH, stoi(inputVector.at(2)));
             }
-            
-            if (input.find("infinite") != string::npos) {
+            else if (input.find("infinite") != string::npos) {
                 mode = DEPTH;
                 value = MAX_DEPTH;
             }
-            
-            if (input.find("wtime") != string::npos) {
+            else if (input.find("wtime") != string::npos) {
                 mode = TIME;
                 int color = board.getPlayerToMove();
+                int len = inputVector.size();
+                bool isInc = (len == 9) || (len == 11);
+                bool isRecur = (len == 7) || (len == 11);
                 
-                if (inputVector.size() == 5) {
-                    if (color == WHITE) value = stoi(inputVector.at(2));
-                    else value = stoi(inputVector.at(4));
+                value = (color == WHITE) ? stoi(inputVector.at(2))
+                    : stoi(inputVector.at(4));
+                value -= BUFFER_TIME;
+                
+                if (isInc) value += (int)(MOVE_HORIZON / MAX_TIME_FACTOR)
+                    * ((color == WHITE) ? stoi(inputVector.at(6))
+                    : stoi(inputVector.at(8)));
+                
+                if (isRecur) {
+                    int movesToGo = (len == 7) ? stoi(inputVector.at(6))
+                        : stoi(inputVector.at(10));
+                    value = (int)(value / (movesToGo * MAX_TIME_FACTOR));
                 }
-                if (inputVector.size() == 9) {
-                    if (color == WHITE) value = stoi(inputVector.at(2)) + 40 * stoi(inputVector.at(6));
-                    else value = stoi(inputVector.at(4)) + 40 * stoi(inputVector.at(8));
-                }
-                // Primitive time management: use on average 1/40 of remaining time with a 200 ms buffer zone
-                value = (value - 200) / 40;
+                else value /= MOVE_HORIZON;
             }
             
             bestMove = NULL_MOVE;
@@ -106,14 +104,9 @@ int main() {
             searchThread.detach();
         }
         
-        if (input == "stop") {
-            // TODO make this block until search stops
-            isStop = true;
-        }
-        
-        if (input == "board") cerr << boardToString(board);
-
-        if (input.substr(0, 5) == "perft" && inputVector.size() == 2) {
+        else if (input == "stop") isStop = true;
+        else if (input == "board") cerr << boardToString(board);
+        else if (input.substr(0, 5) == "perft" && inputVector.size() == 2) {
             int depth = stoi(inputVector.at(1));
 
             Board b;
@@ -132,8 +125,7 @@ int main() {
             cerr << "Time: " << (int)(time * ONE_SECOND) << endl;
             cerr << "Nodes/second: " << (uint64_t)(nodes / time) << endl;
         }
-        
-        if (input == "bench") {
+        else if (input == "bench") {
             using namespace std::chrono;
             auto start_time = high_resolution_clock::now();
             uint64_t totalNodes = 0;
@@ -159,8 +151,7 @@ int main() {
             cerr << "Time: " << (int)(time * ONE_SECOND) << endl;
             cerr << "Nodes/second: " << (uint64_t)(totalNodes / time) << endl;
         }
-
-        if (input.substr(0, 9) == "tunemagic" && inputVector.size() == 3) {
+        else if (input.substr(0, 9) == "tunemagic" && inputVector.size() == 3) {
             int iters = stoi(inputVector.at(1));
             uint64_t seed = stoull(inputVector.at(2));
             mt19937_64 rng (seed);
