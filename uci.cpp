@@ -31,6 +31,7 @@ volatile bool isStop = true;
 int main() {
     initMagicTables(2563762638929852183ULL);
     initZobristTable();
+    initInBetweenTable();
 
     string input;
     vector<string> inputVector;

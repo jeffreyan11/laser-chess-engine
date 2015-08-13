@@ -61,6 +61,7 @@ const int EG_FACTOR_RES = 1000;
 
 void initMagicTables(uint64_t seed);
 void initZobristTable();
+void initInBetweenTable();
 int epVictimSquare(int victimColor, uint16_t file);
 
 /**
@@ -93,13 +94,17 @@ public:
     MoveList getPseudoLegalCheckEscapes(int color);
 
     // Get a bitboard of all xray-ers attacking a square if a blocker has been moved or removed
-    uint64_t getXRays(int color, int sq, int blockerColor, uint64_t blockerStart, uint64_t blockerEnd);
+    uint64_t getXRayPieceMap(int color, int sq, int blockerColor,
+        uint64_t blockerStart, uint64_t blockerEnd);
     // Get a bitboard of all xray-ers attacking a square with no blocker removed
     //uint64_t getInitXRays(int color, int sq);
     // Get all pieces of that color attacking the square
     uint64_t getAttackMap(int color, int sq);
     int getPieceOnSquare(int color, int sq);
     bool isCheckMove(Move m, int color);
+    uint64_t getRookXRays(int sq, uint64_t occ, uint64_t blockers);
+    uint64_t getBishopXRays(int sq, uint64_t occ, uint64_t blockers);
+    uint64_t getPinnedMap(int color);
 
     bool isInCheck(int color);
     bool isWInMate();
@@ -186,9 +191,9 @@ private:
     uint64_t getWPawnRightCaptures(uint64_t pawns);
     uint64_t getBPawnRightCaptures(uint64_t pawns);
     uint64_t getKnightSquares(int single);
-    uint64_t getBishopSquares(int single);
-    uint64_t getRookSquares(int single);
-    uint64_t getQueenSquares(int single);
+    uint64_t getBishopSquares(int single, uint64_t occ);
+    uint64_t getRookSquares(int single, uint64_t occ);
+    uint64_t getQueenSquares(int single, uint64_t occ);
     uint64_t getKingSquares(int single);
     uint64_t getOccupancy();
 
