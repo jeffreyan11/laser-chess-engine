@@ -20,7 +20,7 @@ const int ONE_SECOND = 1000;
 const uint64_t MAX_TIME = (1ULL << 63) - 1;
 
 // Search parameters
-const int MAX_POS_SCORE = 200;
+const int MAX_POS_SCORE = 100;
 
 // Time management constants
 const int MOVE_HORIZON = 40; // expect this many moves left in the game
