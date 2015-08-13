@@ -74,7 +74,7 @@ struct SearchStatistics {
     }
 };
 
-const int IIDDepths[MAX_DEPTH+1] = {0,
+const int IID_DEPTHS[MAX_DEPTH+1] = {0,
      0,  0,  0,  0,  1,  1,  1,  2,  2,  2,
      3,  3,  3,  4,  4,  4,  5,  5,  5,  6,
      6,  6,  7,  7,  7,  8,  8,  8,  9,  9,
@@ -88,6 +88,17 @@ const int IIDDepths[MAX_DEPTH+1] = {0,
     30, 30, 30, 30, 30, 30, 30, 30, 30, 30,
     30, 30, 30, 30, 30, 30, 30, 30, 30, 30,
     30, 30, 30, 30, 30, 30, 30
+};
+
+const int FUTILITY_MARGIN[4] = {0,
+    MAX_POS_SCORE,
+    MAX_POS_SCORE + KNIGHT_VALUE,
+    MAX_POS_SCORE + QUEEN_VALUE
+};
+
+const int REVERSE_FUTILITY_MARGIN[3] = {0,
+    MAX_POS_SCORE,
+    MAX_POS_SCORE + 2*PAWN_VALUE
 };
 
 static Hash transpositionTable(16);
@@ -314,7 +325,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             reduction = 2;
         // Reduce more if we are further ahead, but do not let NMR descend
         // directly into q-search
-        reduction = min(depth - 2, reduction + (staticEval - beta) / MAX_POS_SCORE);
+        reduction = min(depth - 2, reduction + (staticEval - beta) / PAWN_VALUE);
 
         b.doNullMove();
         searchParams.nullMoveCount++;
@@ -336,8 +347,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
     // If we are already doing really well and it's our turn, our opponent
     // probably wouldn't have let us get here (a form of the null-move observation
     // adapted to low depths)
-    if (!isPVNode && !isInCheck && ((depth == 1 && staticEval - MAX_POS_SCORE >= beta)
-                                 || (depth == 2 && staticEval - 3*MAX_POS_SCORE >= beta))
+    if (!isPVNode && !isInCheck && (depth <= 2 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
      && b.getNonPawnMaterial(color))
         return beta;
 
@@ -394,7 +404,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         // IID: get a best move (hoping for a first move cutoff) if we don't
         // have a hash move available
         if (depth >= 5 && hashed == NULL_MOVE) {
-            int bestIndex = getBestMoveForSort(b, legalMoves, IIDDepths[depth]);
+            int bestIndex = getBestMoveForSort(b, legalMoves, IID_DEPTHS[depth]);
             // Mate check to prevent crashes
             if (bestIndex == -1)
                 return scoreMate(isInCheck, depth, alpha, beta);
@@ -444,9 +454,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
         // move probably won't raise our prospects much, so don't bother
         // q-searching it.
         // TODO may fail low in some stalemate cases
-        if(!isPVNode && ((depth == 1 && staticEval <= alpha - MAX_POS_SCORE)
-                      || (depth == 2 && staticEval <= alpha - ROOK_VALUE)
-                      || (depth == 3 && staticEval <= alpha - QUEEN_VALUE - MAX_POS_SCORE))
+        if(!isPVNode && (depth <= 3 && staticEval <= alpha - FUTILITY_MARGIN[depth])
         && !isInCheck && !isCapture(m) && abs(alpha) < QUEEN_VALUE
         && getPromotion(m) == 0 && !b.isCheckMove(m, color)) {
             score = alpha;
