@@ -49,25 +49,19 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
             node->slot2.clearEntry();
             node->slot2.setEntry(b, depth, m, score, nodeType, age);
         }
-        // Replace cut/all nodes with PV nodes
-        // Replace older PV nodes with newer ones
-        // Keep PV nodes whenever possible
-        // Otherwise, replace an entry from a previous search space, or the lowest
+        // Replace an entry from a previous search space, or the lowest
         // depth entry with the new entry if the new entry's depth is higher
         else {
             HashEntry *toReplace = NULL;
-            int score1 = 4*(age - node->slot1.getAge())
-                       - 4*(node->slot1.getNodeType() == PV_NODE) + depth - node->slot1.depth;
-            int score2 = 4*(age - node->slot2.getAge())
-                       - 4*(node->slot2.getNodeType() == PV_NODE) + depth - node->slot2.depth;
+            int score1 = 4*(age - node->slot1.getAge()) + depth - node->slot1.depth;
+            int score2 = 4*(age - node->slot2.getAge()) + depth - node->slot2.depth;
             if (score1 >= score2)
                 toReplace = &(node->slot1);
             else
                 toReplace = &(node->slot2);
-            // If new node is PV, almost always put it in
-            // Otherwise, the node must be from a newer search space or be a
+            // The node must be from a newer search space or be a
             // higher depth. Each move forward in the search space is worth 4 depth.
-            if (score1 <= -8*(nodeType == PV_NODE) && score2 <= -8*(nodeType == PV_NODE))
+            if (score1 < 0 && score2 < 0)
                 toReplace = NULL;
 
             if (toReplace != NULL) {
