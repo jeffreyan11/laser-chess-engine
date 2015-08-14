@@ -288,6 +288,5 @@ string boardToString(Board &board) {
 
 void clearAll(Board &board) {
     clearTranspositionTable();
-    clearHistoryTable();
     board = fenToBoard(STARTPOS);
 }

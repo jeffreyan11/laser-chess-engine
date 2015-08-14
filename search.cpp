@@ -16,7 +16,6 @@ struct SearchParameters {
 
     SearchParameters() {
         reset();
-        resetHistoryTable();
     }
 
     void reset() {
@@ -26,6 +25,7 @@ struct SearchParameters {
             killers[i][0] = NULL_MOVE;
             killers[i][1] = NULL_MOVE;
         }
+        resetHistoryTable();
     }
     
     void resetHistoryTable() {
@@ -33,16 +33,6 @@ struct SearchParameters {
             for (int j = 0; j < 6; j++) {
                 for (int k = 0; k < 64; k++)
                     historyTable[i][j][k] = 0;
-            }
-        }
-    }
-
-    // TODO tune this
-    void ageHistory() {
-        for (int i = 0; i < 2; i++) {
-            for (int j = 0; j < 6; j++) {
-                for (int k = 0; k < 64; k++)
-                    historyTable[i][j][k] /= 2;
             }
         }
     }
@@ -167,7 +157,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     
     printStatistics();
     // Aging for the history heuristic table
-    searchParams.ageHistory();
+    searchParams.resetHistoryTable();
     
     isStop = true;
     cout << "bestmove " << moveToString(*bestMove) << endl;
@@ -812,10 +802,6 @@ int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
 // These functions help to communicate with uci.cpp
 void clearTranspositionTable() {
     transpositionTable.clear();
-}
-
-void clearHistoryTable() {
-    searchParams.resetHistoryTable();
 }
 
 uint64_t getNodes() {

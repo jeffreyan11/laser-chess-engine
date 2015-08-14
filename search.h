@@ -7,7 +7,6 @@
 
 void getBestMove(Board *b, int mode, int value, Move *bestMove);
 void clearTranspositionTable();
-void clearHistoryTable();
 uint64_t getNodes();
 
 // Search modes
