@@ -153,7 +153,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         uint64_t nps = (uint64_t) ((double) searchStats.nodes / timeSoFar);
         string pvStr = retrievePV(b, *bestMove, rootDepth);
         
-        cout << "info depth " << rootDepth << " score cp " << bestScore << " time "
+        cout << "info depth " << rootDepth << " score cp " << bestScore * 100 / PAWN_VALUE_EG << " time "
              << (int)(timeSoFar * ONE_SECOND) << " nodes " << searchStats.nodes
              << " nps " << nps << " pv " << pvStr << endl;
         
@@ -408,7 +408,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta) {
             // Mate check to prevent crashes
             if (bestIndex == -1)
                 return scoreMate(isInCheck, depth, alpha, beta);
-            scores.set(bestIndex, (1 << 15));
+            scores.set(bestIndex, INFTY);
         }
     }
     else { // MVV/LVA
