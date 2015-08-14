@@ -8,7 +8,7 @@
  * code clean.
  */
 
-const int BISHOP_PAIR_VALUE = 50;
+const int BISHOP_PAIR_VALUE = 55;
 const int TEMPO_VALUE = 10;
 
 //------------------------------Piece tables--------------------------------
