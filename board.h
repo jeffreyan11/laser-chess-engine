@@ -114,8 +114,11 @@ public:
 
     // Evaluation
     int evaluate();
+    int evaluateMaterial();
+    int evaluatePositional();
     int getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor);
     int getEGFactor();
+    int getMaterial(int color);
     // Useful for turning off some pruning late endgame
     uint64_t getNonPawnMaterial(int color);
     // Static exchange evaluation code: for checking material trades on a single square

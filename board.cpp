@@ -1495,26 +1495,23 @@ bool Board::isDraw() {
  * positive and black is negative in traditional negamax format.
  */
 int Board::evaluate() {
+    return evaluateMaterial() + evaluatePositional();
+}
+
+// Helper functions for lazy evaluation
+int Board::evaluateMaterial() {
     // Tempo bonus
     int value = (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
 
     // material
-    int whiteMaterial = PAWN_VALUE * count(pieces[WHITE][PAWNS])
-            + KNIGHT_VALUE * count(pieces[WHITE][KNIGHTS])
-            + BISHOP_VALUE * count(pieces[WHITE][BISHOPS])
-            + ROOK_VALUE * count(pieces[WHITE][ROOKS])
-            + QUEEN_VALUE * count(pieces[WHITE][QUEENS]);
-    int blackMaterial = PAWN_VALUE * count(pieces[BLACK][PAWNS])
-            + KNIGHT_VALUE * count(pieces[BLACK][KNIGHTS])
-            + BISHOP_VALUE * count(pieces[BLACK][BISHOPS])
-            + ROOK_VALUE * count(pieces[BLACK][ROOKS])
-            + QUEEN_VALUE * count(pieces[BLACK][QUEENS]);
+    int whiteMaterial = getMaterial(WHITE);
+    int blackMaterial = getMaterial(BLACK);
     
     // compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
     int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
     egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
     
-    value += whiteMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[WHITE][PAWNS]) * egFactor / EG_FACTOR_RES;
+     value += whiteMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[WHITE][PAWNS]) * egFactor / EG_FACTOR_RES;
     value -= blackMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[BLACK][PAWNS]) * egFactor / EG_FACTOR_RES;
     
     // bishop pair bonus
@@ -1551,7 +1548,21 @@ int Board::evaluate() {
     // Adjust values according to material left on board
     value += midgamePSTVal * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
     value += endgamePSTVal * egFactor / EG_FACTOR_RES;
+    
+    return value;
+}
 
+int Board::evaluatePositional() {
+    int value = 0;
+    
+    // material
+    int whiteMaterial = getMaterial(WHITE);
+    int blackMaterial = getMaterial(BLACK);
+    
+    // compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
+    int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
+    egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
+    
     // Consider attacked squares near king
     uint64_t wksq = getKingSquares(bitScanForward(pieces[WHITE][KINGS]));
     uint64_t bksq = getKingSquares(bitScanForward(pieces[BLACK][KINGS]));
@@ -1681,18 +1692,18 @@ int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
 // Gets the endgame factor, which adjusts the evaluation based on how much
 // material is left on the board.
 int Board::getEGFactor() {
-    int whiteMaterial = PAWN_VALUE * count(pieces[WHITE][PAWNS])
-            + KNIGHT_VALUE * count(pieces[WHITE][KNIGHTS])
-            + BISHOP_VALUE * count(pieces[WHITE][BISHOPS])
-            + ROOK_VALUE * count(pieces[WHITE][ROOKS])
-            + QUEEN_VALUE * count(pieces[WHITE][QUEENS]);
-    int blackMaterial = PAWN_VALUE * count(pieces[BLACK][PAWNS])
-            + KNIGHT_VALUE * count(pieces[BLACK][KNIGHTS])
-            + BISHOP_VALUE * count(pieces[BLACK][BISHOPS])
-            + ROOK_VALUE * count(pieces[BLACK][ROOKS])
-            + QUEEN_VALUE * count(pieces[BLACK][QUEENS]);
+    int whiteMaterial = getMaterial(WHITE);
+    int blackMaterial = getMaterial(BLACK);
     int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
     return std::max(0, std::min(EG_FACTOR_RES, egFactor));
+}
+
+int Board::getMaterial(int color) {
+    return PAWN_VALUE   * count(pieces[color][PAWNS])
+         + KNIGHT_VALUE * count(pieces[color][KNIGHTS])
+         + BISHOP_VALUE * count(pieces[color][BISHOPS])
+         + ROOK_VALUE   * count(pieces[color][ROOKS])
+         + QUEEN_VALUE  * count(pieces[color][QUEENS]);
 }
 
 uint64_t Board::getNonPawnMaterial(int color) {
