@@ -64,10 +64,6 @@ inline Move encodeMove(int startSq, int endSq) {
     return (endSq << 6) | startSq;
 }
 
-inline Move setPromotion(Move m, int promotion) {
-    return m | ((promotion + 7) << 12);
-}
-
 inline Move setCapture(Move m, bool isCapture) {
     return m | (isCapture << 14);
 }
@@ -88,12 +84,12 @@ inline int getEndSq(Move m) {
     return (int) ((m >> 6) & 0x3F);
 }
 
-inline bool isPromotion(Move m) {
-    return (bool) (m >> 15);
-}
-
 inline int getPromotion(Move m) {
     return (int) ((m >> 15) * (((m >> 12) & 0x3) + 1));
+}
+
+inline bool isPromotion(Move m) {
+    return (bool) (m >> 15);
 }
 
 inline bool isCapture(Move m) {

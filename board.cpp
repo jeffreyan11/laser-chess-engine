@@ -343,11 +343,12 @@ void Board::doMove(Move m, int color) {
         twoFoldSqs |= (startSq << 8) | endSq;
     }
 
-    if (getPromotion(m)) {
+    if (isPromotion(m)) {
+        int promotionType = getPromotion(m);
         if (isCapture(m)) {
             int captureType = getPieceOnSquare(color^1, endSq);
             pieces[color][PAWNS] &= ~INDEX_TO_BIT[startSq];
-            pieces[color][getPromotion(m)] |= INDEX_TO_BIT[endSq];
+            pieces[color][promotionType] |= INDEX_TO_BIT[endSq];
             pieces[color^1][captureType] &= ~INDEX_TO_BIT[endSq];
 
             allPieces[color] &= ~INDEX_TO_BIT[startSq];
@@ -355,18 +356,18 @@ void Board::doMove(Move m, int color) {
             allPieces[color^1] &= ~INDEX_TO_BIT[endSq];
 
             zobristKey ^= zobristTable[384*color + startSq];
-            zobristKey ^= zobristTable[384*color + 64*getPromotion(m) + endSq];
+            zobristKey ^= zobristTable[384*color + 64*promotionType + endSq];
             zobristKey ^= zobristTable[384*(color^1) + 64*captureType + endSq];
         }
         else {
             pieces[color][PAWNS] &= ~INDEX_TO_BIT[startSq];
-            pieces[color][getPromotion(m)] |= INDEX_TO_BIT[endSq];
+            pieces[color][promotionType] |= INDEX_TO_BIT[endSq];
 
             allPieces[color] &= ~INDEX_TO_BIT[startSq];
             allPieces[color] |= INDEX_TO_BIT[endSq];
 
             zobristKey ^= zobristTable[384*color + startSq];
-            zobristKey ^= zobristTable[384*color + 64*getPromotion(m) + endSq];
+            zobristKey ^= zobristTable[384*color + 64*promotionType + endSq];
         }
         epCaptureFile = NO_EP_POSSIBLE;
         fiftyMoveCounter = 0;
@@ -509,7 +510,7 @@ void Board::doMove(Move m, int color) {
     // Castling rights change because of the rook only when the rook moves or
     // is captured
     else if (isCapture(m) || pieceID == ROOKS) {
-        // No sense in remove the rights if they're already gone
+        // No sense in removing the rights if they're already gone
         if (castlingRights & WHITECASTLE) {
             if ((pieces[WHITE][ROOKS] & 0x80) == 0)
                 castlingRights &= ~WHITEKSIDE;
@@ -743,7 +744,7 @@ MoveList Board::getPseudoLegalPromotions(int color) {
 
         Move mq = encodeMove(endSq+leftDiff, endSq);
         mq = setCapture(mq, true);
-        mq = setPromotion(mq, QUEENS);
+        mq = setFlags(mq, MOVE_PROMO_Q);
         moves.add(mq);
     }
 
@@ -758,7 +759,7 @@ MoveList Board::getPseudoLegalPromotions(int color) {
 
         Move mq = encodeMove(endSq+rightDiff, endSq);
         mq = setCapture(mq, true);
-        mq = setPromotion(mq, QUEENS);
+        mq = setFlags(mq, MOVE_PROMO_Q);
         moves.add(mq);
     }
 
@@ -774,7 +775,7 @@ MoveList Board::getPseudoLegalPromotions(int color) {
         int stSq = endSq + sqDiff;
 
         Move mq = encodeMove(stSq, endSq);
-        mq = setPromotion(mq, QUEENS);
+        mq = setFlags(mq, MOVE_PROMO_Q);
         moves.add(mq);
     }
 
@@ -1201,13 +1202,13 @@ void Board::addMovesToList(MoveList &moves, int stSq, uint64_t allEndSqs,
 
 void Board::addPromotionsToList(MoveList &moves, int stSq, int endSq, bool isCapture) {
     Move mk = encodeMove(stSq, endSq);
-    mk = setPromotion(mk, KNIGHTS);
+    mk = setFlags(mk, MOVE_PROMO_N);
     Move mb = encodeMove(stSq, endSq);
-    mb = setPromotion(mb, BISHOPS);
+    mb = setFlags(mb, MOVE_PROMO_B);
     Move mr = encodeMove(stSq, endSq);
-    mr = setPromotion(mr, ROOKS);
+    mr = setFlags(mr, MOVE_PROMO_R);
     Move mq = encodeMove(stSq, endSq);
-    mq = setPromotion(mq, QUEENS);
+    mq = setFlags(mq, MOVE_PROMO_Q);
     if (isCapture) {
         mk = setCapture(mk, true);
         mb = setCapture(mb, true);
