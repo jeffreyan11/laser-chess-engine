@@ -108,7 +108,7 @@ extern bool isStop;
 
 // Search functions
 unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
-    int &bestScore, bool &isMate, SearchPV *pvLine);
+    int &bestScore, SearchPV *pvLine);
 int getBestMoveForSort(Board &b, MoveList &legalMoves, int depth);
 int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine);
 int quiescence(Board &b, int color, int plies, int alpha, int beta);
@@ -138,13 +138,12 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         ? (uint64_t)(MAX_TIME_FACTOR * value) : MAX_TIME;
     searchParams.startTime = ChessClock::now();
     double timeSoFar = getTimeElapsed(searchParams.startTime);
-    bool isMate = false;
     int bestScore, bestMoveIndex;
     
     int rootDepth = 1;
     do {
         SearchPV pvLine;
-        bestMoveIndex = getBestMoveAtDepth(b, legalMoves, rootDepth, bestScore, isMate, &pvLine);
+        bestMoveIndex = getBestMoveAtDepth(b, legalMoves, rootDepth, bestScore, &pvLine);
         if (bestMoveIndex == -1)
             break;
         legalMoves.swap(0, bestMoveIndex);
@@ -154,12 +153,27 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         uint64_t nps = (uint64_t) ((double) searchStats.nodes / timeSoFar);
         string pvStr = retrievePV(&pvLine);
         
-        cout << "info depth " << rootDepth << " score cp " << bestScore * 100 / PAWN_VALUE_EG << " time "
-             << (int)(timeSoFar * ONE_SECOND) << " nodes " << searchStats.nodes
-             << " nps " << nps << " pv " << pvStr << endl;
+        // Output info using UCI protocol
+        cout << "info depth " << rootDepth << " score";
+
+        // Print score in mate or centipawns
+        if (bestScore >= MATE_SCORE - MAX_DEPTH)
+            // If it is our mate, it takes plies / 2 + 1 moves to mate since
+            // our move ends the game
+            cout << " mate " << (MATE_SCORE - bestScore) / 2 + 1;
+        else if (bestScore <= -MATE_SCORE + MAX_DEPTH)
+            // If we are being mated, it takes plies / 2 moves since our
+            // opponent's move ends the game
+            cout << " mate " << (-MATE_SCORE - bestScore) / 2;
+        else
+            // Scale score into centipawns using our internal pawn value
+            cout << " cp " << bestScore * 100 / PAWN_VALUE_EG;
+
+        cout << " time " << (int)(timeSoFar * ONE_SECOND)
+             << " nodes " << searchStats.nodes << " nps " << nps
+             << " hashfull " << 1000 * transpositionTable.keys / transpositionTable.getSize()
+             << " pv " << pvStr << endl;
         
-        if (isMate)
-            break;
         rootDepth++;
     }
     while ((mode == TIME && (timeSoFar * ONE_SECOND < value * TIME_FACTOR)
@@ -177,7 +191,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
 // returns index of best move in legalMoves
 unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
-        int &bestScore, bool &isMate, SearchPV *pvLine) {
+        int &bestScore, SearchPV *pvLine) {
     int color = b->getPlayerToMove();
     searchParams.reset();
     
@@ -220,9 +234,6 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
         }
     }
 
-    // If a mate has been found, indicate so
-    if(alpha >= MATE_SCORE - MAX_DEPTH)
-        isMate = true;
     bestScore = alpha;
 
     return tempMove;
@@ -888,8 +899,6 @@ double getPercentage(uint64_t numerator, uint64_t denominator) {
 
 // Prints the statistics gathered during search
 void printStatistics() {
-    cerr << setw(22) << "TT occupancy: " << transpositionTable.keys << " / "
-         << transpositionTable.getSize() << endl;
     cerr << setw(22) << "Hash hitrate: " << getPercentage(searchStats.hashHits, searchStats.hashProbes)
          << '%' << " of " << searchStats.hashProbes << " probes" << endl;
     cerr << setw(22) << "Hash score cut rate: " << getPercentage(searchStats.hashScoreCuts, searchStats.hashHits)
