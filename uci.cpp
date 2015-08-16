@@ -205,6 +205,7 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
             int piece = mailbox[startSq] % 6;
             bool isCapture = (mailbox[endSq] != -1);
             bool isEP = (piece == PAWNS && (mailbox[endSq] == -1) && ((endSq - startSq) & 1));
+            bool isDoublePawn = (piece == PAWNS && abs(endSq - startSq) == 16);
             delete[] mailbox;
             
             bool isCastle = (piece == KINGS && abs(endSq - startSq) == 2);
@@ -217,9 +218,10 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
             m = setCastle(m, isCastle);
             if (isEP)
                 m = setEP(m);
-            // TODO temporary bugfix
-            if (promotion)
+            else if (promotion)
                 m = setPromotion(m, promotion);
+            else if (isDoublePawn)
+                m = setFlags(m, MOVE_DOUBLE_PAWN);
             
             board.doMove(m, board.getPlayerToMove());
         }

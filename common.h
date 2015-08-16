@@ -53,6 +53,7 @@ uint64_t flipAcrossRanks(uint64_t bb);
 typedef uint16_t Move;
 
 const Move NULL_MOVE = 0;
+const uint16_t MOVE_DOUBLE_PAWN = 0x1;
 const uint16_t MOVE_EP = 0x5;
 
 inline Move encodeMove(int startSq, int endSq) {
@@ -73,6 +74,10 @@ inline Move setCastle(Move m, bool isCastle) {
 
 inline Move setEP(Move m) {
     return m | (MOVE_EP << 12);
+}
+
+inline Move setFlags(Move m, uint16_t f) {
+    return m | (f << 12);
 }
 
 inline int getStartSq(Move m) {
@@ -97,6 +102,10 @@ inline bool isCastle(Move m) {
 
 inline bool isEP(Move m) {
     return ((m >> 12) == MOVE_EP);
+}
+
+inline uint16_t getFlags(Move m) {
+    return (m >> 12);
 }
 
 std::string moveToString(Move m);

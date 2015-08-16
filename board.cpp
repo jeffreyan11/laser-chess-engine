@@ -485,15 +485,11 @@ void Board::doMove(Move m, int color) {
 
             // check for en passant
             if (pieceID == PAWNS) {
-                if (color == WHITE && startSq/8 == 1 && endSq/8 == 3) {
+                if (getFlags(m) == MOVE_DOUBLE_PAWN)
                     epCaptureFile = startSq & 7;
-                }
-                else if (startSq/8 == 6 && endSq/8 == 4) {
-                    epCaptureFile = startSq & 7;
-                }
-                else {
+                else
                     epCaptureFile = NO_EP_POSSIBLE;
-                }
+
                 fiftyMoveCounter = 0;
             }
             else {
@@ -863,7 +859,9 @@ MoveList Board::getPseudoLegalChecks(int color) {
     while (pLegal) {
         int endsq = bitScanForward(pLegal);
         pLegal &= pLegal - 1;
-        checks.add(encodeMove(endsq+2*sqDiff, endsq));
+        Move m = encodeMove(endsq+2*sqDiff, endsq);
+        m = setFlags(m, MOVE_DOUBLE_PAWN);
+        checks.add(m);
     }
 
     // For pawn captures, we can use a similar approach, but we must consider
@@ -1092,7 +1090,9 @@ void Board::addPawnMovesToList(MoveList &quiets, int color) {
     while (pLegal) {
         int endsq = bitScanForward(pLegal);
         pLegal &= pLegal - 1;
-        quiets.add(encodeMove(endsq+2*sqDiff, endsq));
+        Move m = encodeMove(endsq+2*sqDiff, endsq);
+        m = setFlags(m, MOVE_DOUBLE_PAWN);
+        quiets.add(m);
     }
 }
 
