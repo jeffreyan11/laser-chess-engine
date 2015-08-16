@@ -4,7 +4,7 @@ Hash::Hash(uint64_t MB) {
     // Convert to bytes
     uint64_t arrSize = MB << 20;
     // Calculate how many array slots we can use
-    arrSize /= 2 * sizeof(HashEntry);
+    arrSize /= sizeof(HashNode);
     // Create the array
     table = new HashNode *[arrSize];
     size = arrSize;

@@ -11,7 +11,7 @@ const uint8_t NO_NODE_INFO = 3;
 
 /*
  * @brief Struct storing hashed search information
- * Size: 12 bytes
+ * Size: 10 bytes
  */
 struct HashEntry {
     uint32_t zobristKey;

@@ -215,7 +215,9 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
             Move m = encodeMove(startSq, endSq);
             m = setCapture(m, isCapture);
             m = setCastle(m, isCastle);
-            m = setPromotion(m, promotion);
+            // TODO temporary bugfix
+            if (promotion)
+                m = setPromotion(m, promotion);
             
             board.doMove(m, board.getPlayerToMove());
         }

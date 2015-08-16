@@ -42,15 +42,15 @@ int count(uint64_t bb);
 uint64_t flipAcrossRanks(uint64_t bb);
 
 /*
- * Moves are represented as an unsigned 32-bit integer.
+ * Moves are represented as an unsigned 16-bit integer.
  * Bits 0-5: start square
  * Bits 6-11: end square
- * Bits 12-15: promotion, 0 is no promotion
- * Bit 16: isCapture
- * Bit 17: isCastle
- * Bits 18-31: junk or 0s
+ * Bits 12-15: flags for special move types
+ *   Bit 14: capture
+ *   Bit 15: promotion
+ * Based on the butterfly index from http://chessprogramming.wikispaces.com/Encoding+Moves
  */
-typedef uint32_t Move;
+typedef uint16_t Move;
 
 const Move NULL_MOVE = 0;
 
@@ -59,15 +59,15 @@ inline Move encodeMove(int startSq, int endSq) {
 }
 
 inline Move setPromotion(Move m, int promotion) {
-    return m | (promotion << 12);
+    return m | ((promotion + 7) << 12);
 }
 
 inline Move setCapture(Move m, bool isCapture) {
-    return m | (isCapture << 16);
+    return m | (isCapture << 14);
 }
 
 inline Move setCastle(Move m, bool isCastle) {
-    return m | (isCastle << 17);
+    return m | (isCastle << 13);
 }
 
 inline int getStartSq(Move m) {
@@ -79,15 +79,15 @@ inline int getEndSq(Move m) {
 }
 
 inline int getPromotion(Move m) {
-    return (int) ((m >> 12) & 0xF);
+    return (int) ((m >> 15) * (((m >> 12) & 0x3) + 1));
 }
 
 inline bool isCapture(Move m) {
-    return (m >> 16) & 1;
+    return (bool) ((m >> 14) & 1);
 }
 
 inline bool isCastle(Move m) {
-    return (m >> 17) & 1;
+    return ((m >> 13) == 1);
 }
 
 std::string moveToString(Move m);
