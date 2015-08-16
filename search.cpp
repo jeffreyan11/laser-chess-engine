@@ -461,14 +461,14 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
         // TODO may fail low in some stalemate cases
         if(!isPVNode && (depth <= 3 && staticEval <= alpha - FUTILITY_MARGIN[depth])
         && !isInCheck && !isCapture(m) && abs(alpha) < QUEEN_VALUE
-        && getPromotion(m) == 0 && !b.isCheckMove(m, color)) {
+        && !isPromotion(m) && !b.isCheckMove(m, color)) {
             score = alpha;
             continue;
         }
 
         // Futility pruning using SEE
         /*if(!isPVNode && depth == 1 //&& staticEval <= alpha - MAX_POS_SCORE
-        && !isInCheck && abs(alpha) < QUEEN_VALUE && !isCapture(m) && getPromotion(m) == 0
+        && !isInCheck && abs(alpha) < QUEEN_VALUE && !isCapture(m) && !isPromotion(m)
         && !b.isCheckMove(m, color) && b.getExchangeScore(color, m) < 0 && b.getSEE(color, getEndSq(m)) < 0) {
             score = alpha;
             continue;
@@ -487,7 +487,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
         // TODO set up an array for reduction values
         if(!isPVNode && !isInCheck && !isCapture(m) && depth >= 3 && movesSearched > 2 && alpha <= prevAlpha
         && m != searchParams.killers[searchParams.ply][0] && m != searchParams.killers[searchParams.ply][1]
-        && getPromotion(m) == 0 && !copy.isInCheck(color^1)) {
+        && !isPromotion(m) && !copy.isInCheck(color^1)) {
             // Increase reduction with higher depth and later moves, but do
             // not let search descend directly into q-search
             reduction = min(depth - 2,

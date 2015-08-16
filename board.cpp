@@ -1159,14 +1159,14 @@ void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherP
         uint64_t taker = (INDEX_TO_BIT[victimSq] << 1) & NOTA & pieces[color][PAWNS];
         if (taker) {
             Move m = encodeMove(victimSq+1, victimSq+rankDiff);
-            m = setEP(m);
+            m = setFlags(m, MOVE_EP);
             captures.add(m);
         }
         else {
             taker = (INDEX_TO_BIT[victimSq] >> 1) & NOTH & pieces[color][PAWNS];
             if (taker) {
                 Move m = encodeMove(victimSq-1, victimSq+rankDiff);
-                m = setEP(m);
+                m = setFlags(m, MOVE_EP);
                 captures.add(m);
             }
         }

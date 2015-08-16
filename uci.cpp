@@ -217,7 +217,7 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
             m = setCapture(m, isCapture);
             m = setCastle(m, isCastle);
             if (isEP)
-                m = setEP(m);
+                m = setFlags(m, MOVE_EP);
             else if (promotion)
                 m = setPromotion(m, promotion);
             else if (isDoublePawn)

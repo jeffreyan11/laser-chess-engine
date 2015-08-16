@@ -55,6 +55,10 @@ typedef uint16_t Move;
 const Move NULL_MOVE = 0;
 const uint16_t MOVE_DOUBLE_PAWN = 0x1;
 const uint16_t MOVE_EP = 0x5;
+const uint16_t MOVE_PROMO_N = 0x8;
+const uint16_t MOVE_PROMO_B = 0x9;
+const uint16_t MOVE_PROMO_R = 0xA;
+const uint16_t MOVE_PROMO_Q = 0xB;
 
 inline Move encodeMove(int startSq, int endSq) {
     return (endSq << 6) | startSq;
@@ -72,10 +76,6 @@ inline Move setCastle(Move m, bool isCastle) {
     return m | (isCastle << 13);
 }
 
-inline Move setEP(Move m) {
-    return m | (MOVE_EP << 12);
-}
-
 inline Move setFlags(Move m, uint16_t f) {
     return m | (f << 12);
 }
@@ -86,6 +86,10 @@ inline int getStartSq(Move m) {
 
 inline int getEndSq(Move m) {
     return (int) ((m >> 6) & 0x3F);
+}
+
+inline bool isPromotion(Move m) {
+    return (bool) (m >> 15);
 }
 
 inline int getPromotion(Move m) {
