@@ -203,8 +203,8 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
             
             int *mailbox = board.getMailbox();
             int piece = mailbox[startSq] % 6;
-            bool isCapture = ((mailbox[endSq] != -1)
-                    || (piece == PAWNS && ((endSq - startSq) & 1)));
+            bool isCapture = (mailbox[endSq] != -1);
+            bool isEP = (piece == PAWNS && (mailbox[endSq] == -1) && ((endSq - startSq) & 1));
             delete[] mailbox;
             
             bool isCastle = (piece == KINGS && abs(endSq - startSq) == 2);
@@ -215,6 +215,8 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
             Move m = encodeMove(startSq, endSq);
             m = setCapture(m, isCapture);
             m = setCastle(m, isCastle);
+            if (isEP)
+                m = setEP(m);
             // TODO temporary bugfix
             if (promotion)
                 m = setPromotion(m, promotion);
