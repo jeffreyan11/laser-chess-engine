@@ -372,8 +372,7 @@ void Board::doMove(Move m, int color) {
         fiftyMoveCounter = 0;
     } // end promotion
     else if (isCapture(m)) {
-        int captureType = getPieceOnSquare(color^1, endSq);
-        if (captureType == -1) {
+        if (isEP(m)) {
             pieces[color][PAWNS] &= ~INDEX_TO_BIT[startSq];
             pieces[color][PAWNS] |= INDEX_TO_BIT[endSq];
             uint64_t epCaptureSq = INDEX_TO_BIT[epVictimSquare(color^1, epCaptureFile)];
@@ -389,6 +388,7 @@ void Board::doMove(Move m, int color) {
             zobristKey ^= zobristTable[384*(color^1) + capSq];
         }
         else {
+            int captureType = getPieceOnSquare(color^1, endSq);
             pieces[color][pieceID] &= ~INDEX_TO_BIT[startSq];
             pieces[color][pieceID] |= INDEX_TO_BIT[endSq];
             pieces[color^1][captureType] &= ~INDEX_TO_BIT[endSq];
@@ -1159,14 +1159,14 @@ void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherP
         uint64_t taker = (INDEX_TO_BIT[victimSq] << 1) & NOTA & pieces[color][PAWNS];
         if (taker) {
             Move m = encodeMove(victimSq+1, victimSq+rankDiff);
-            m = setCapture(m, true);
+            m = setEP(m);
             captures.add(m);
         }
         else {
             taker = (INDEX_TO_BIT[victimSq] >> 1) & NOTH & pieces[color][PAWNS];
             if (taker) {
                 Move m = encodeMove(victimSq-1, victimSq+rankDiff);
-                m = setCapture(m, true);
+                m = setEP(m);
                 captures.add(m);
             }
         }
@@ -1721,8 +1721,8 @@ int Board::getSEE(int color, int sq) {
     // used attackers that may act as blockers for x-ray pieces
     uint64_t used = 0;
     uint64_t single = getLeastValuableAttacker(attackers, color, piece);
-    // Get value of piece initially being captured. If the destination square is
-    // empty, then the capture is an en passant.
+    // Get value of piece initially being captured, or 0 if the square is
+    // empty
     gain[d] = valueOfPiece(getPieceOnSquare(color^1, sq));
 
     do {
@@ -1745,7 +1745,8 @@ int Board::getSEE(int color, int sq) {
 
 int Board::valueOfPiece(int piece) {
     switch(piece) {
-        case -1: // en passant
+        case -1:
+            return 0;
         case PAWNS:
             return PAWN_VALUE;
         case KNIGHTS:

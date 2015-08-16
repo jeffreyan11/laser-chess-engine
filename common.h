@@ -53,6 +53,7 @@ uint64_t flipAcrossRanks(uint64_t bb);
 typedef uint16_t Move;
 
 const Move NULL_MOVE = 0;
+const uint16_t MOVE_EP = 0x5;
 
 inline Move encodeMove(int startSq, int endSq) {
     return (endSq << 6) | startSq;
@@ -68,6 +69,10 @@ inline Move setCapture(Move m, bool isCapture) {
 
 inline Move setCastle(Move m, bool isCastle) {
     return m | (isCastle << 13);
+}
+
+inline Move setEP(Move m) {
+    return m | (MOVE_EP << 12);
 }
 
 inline int getStartSq(Move m) {
@@ -88,6 +93,10 @@ inline bool isCapture(Move m) {
 
 inline bool isCastle(Move m) {
     return ((m >> 13) == 1);
+}
+
+inline bool isEP(Move m) {
+    return ((m >> 12) == MOVE_EP);
 }
 
 std::string moveToString(Move m);
