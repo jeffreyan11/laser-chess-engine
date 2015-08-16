@@ -656,14 +656,25 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
         return checkQuiescence(b, color, plies, alpha, beta);
 
     // Stand pat: if our current position is already way too good or way too bad
-    // we can simply stop the search here
-    int standPat = (color == WHITE) ? b.evaluate() : -b.evaluate();
-    if (standPat >= beta)
+    // we can simply stop the search here. We first obtain an approximate
+    // evaluation for standPat to save time.
+    int standPat = (color == WHITE) ? b.evaluateMaterial() : -b.evaluateMaterial();
+    if (standPat >= beta + MAX_POS_SCORE)
         return beta;
+    
+    // delta prune
+    if (standPat < alpha - 2 * MAX_POS_SCORE - QUEEN_VALUE)
+        return alpha;
+    
+    // If we do not cut off, we get a more accurate evaluation.
+    standPat += (color == WHITE) ? b.evaluatePositional() : -b.evaluatePositional();
+    
     if (alpha < standPat)
         alpha = standPat;
     
-    // delta prune
+    if (standPat >= beta)
+        return beta;
+    
     if (standPat < alpha - MAX_POS_SCORE - QUEEN_VALUE)
         return alpha;
     
