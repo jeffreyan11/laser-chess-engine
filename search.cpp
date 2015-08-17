@@ -6,39 +6,6 @@
 
 using namespace std;
 
-struct SearchParameters {
-    int ply;
-    int nullMoveCount;
-    ChessTime startTime;
-    uint64_t timeLimit;
-    Move killers[MAX_DEPTH][2];
-    int historyTable[2][6][64];
-    uint8_t rootMoveNumber;
-
-    SearchParameters() {
-        reset();
-    }
-
-    void reset() {
-        ply = 0;
-        nullMoveCount = 0;
-        for (int i = 0; i < MAX_DEPTH; i++) {
-            killers[i][0] = NULL_MOVE;
-            killers[i][1] = NULL_MOVE;
-        }
-        resetHistoryTable();
-    }
-    
-    void resetHistoryTable() {
-        for (int i = 0; i < 2; i++) {
-            for (int j = 0; j < 6; j++) {
-                for (int k = 0; k < 64; k++)
-                    historyTable[i][j][k] = 0;
-            }
-        }
-    }
-};
-
 /**
  * @brief Records a bunch of useful statistics from the search,
  * which are printed to std error at the end of the search.
@@ -74,22 +41,6 @@ struct SearchPV {
     }
 };
 
-const int IID_DEPTHS[MAX_DEPTH+1] = {0,
-     0,  0,  0,  0,  1,  1,  1,  2,  2,  2,
-     3,  3,  3,  4,  4,  4,  5,  5,  5,  6,
-     6,  6,  7,  7,  7,  8,  8,  8,  9,  9,
-     9, 10, 10, 10, 11, 11, 11, 12, 12, 12,
-    13, 13, 13, 14, 14, 14, 15, 15, 15, 16,
-    16, 16, 17, 17, 17, 18, 18, 18, 19, 19,
-    19, 20, 20, 20, 21, 21, 21, 22, 22, 22,
-    23, 23, 23, 24, 24, 24, 25, 25, 25, 26,
-    26, 26, 27, 27, 27, 28, 28, 28, 29, 29,
-    29, 30, 30, 30, 30, 30, 30, 30, 30, 30,
-    30, 30, 30, 30, 30, 30, 30, 30, 30, 30,
-    30, 30, 30, 30, 30, 30, 30, 30, 30, 30,
-    30, 30, 30, 30, 30, 30, 30
-};
-
 const int FUTILITY_MARGIN[4] = {0,
     MAX_POS_SCORE,
     MAX_POS_SCORE + KNIGHT_VALUE,
@@ -110,7 +61,6 @@ extern bool isStop;
 // Search functions
 unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int &bestScore, SearchPV *pvLine);
-int getBestMoveForSort(Board &b, MoveList &legalMoves, int depth);
 int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine);
 int quiescence(Board &b, int color, int plies, int alpha, int beta);
 int checkQuiescence(Board &b, int color, int plies, int alpha, int beta);
@@ -241,16 +191,16 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
 }
 
 // Gets a best move to try first when a hash move is not available.
-int getBestMoveForSort(Board &b, MoveList &legalMoves, int depth) {
+int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth) {
     SearchPV line;
-    int color = b.getPlayerToMove();
+    int color = b->getPlayerToMove();
     int tempMove = -1;
     int score = -MATE_SCORE;
     int alpha = -MATE_SCORE;
     int beta = MATE_SCORE;
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
-        Board copy = b.staticCopy();
+        Board copy = b->staticCopy();
         if(!copy.doPseudoLegalMove(legalMoves.get(i), color))
             continue;
         
@@ -304,31 +254,34 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
     
     int prevAlpha = alpha;
 
-    Move hashed = NULL_MOVE;
+
     // Probe the hash table for a match/cutoff
     // If a cutoff or exact score hit occurred, probeTT will return a value
     // other than -INFTY
     // alpha is passed by reference in case a hash move raises alpha but does
     // not cause a cutoff
+    Move hashed = NULL_MOVE;
     searchStats.hashProbes++;
     int hashScore = probeTT(b, color, hashed, depth, alpha, beta, pvLine);
     if (hashScore != -INFTY)
         return hashScore;
 
-    SearchSpace ss(&b, color, depth, alpha, beta);
+
+    SearchSpace ss(&b, color, depth, alpha, beta, &searchParams);
     SearchPV line;
     // A static evaluation, used to activate null move pruning and futility
     // pruning
     int staticEval = (color == WHITE) ? b.evaluate() : -b.evaluate();
     
+
     // Null move reduction/pruning: if we are in a position good enough that
     // even after passing and giving our opponent a free turn, we still exceed
     // beta, then simply return beta
     // Only if doing a null move does not leave player in check
     // Do not do NMR if the side to move has only pawns
     // Do not do more than 2 null moves in a row
-    if (depth >= 3 && !(ss.isPVNode) && searchParams.nullMoveCount < 2
-                   && staticEval >= beta && !(ss.isInCheck) && b.getNonPawnMaterial(color)) {
+    if (depth >= 3 && ss.nodeIsReducible() && searchParams.nullMoveCount < 2
+                   && staticEval >= beta && b.getNonPawnMaterial(color)) {
         int reduction;
         if (depth >= 11)
             reduction = 4;
@@ -356,95 +309,19 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
         searchParams.nullMoveCount--;
     }
 
+
     // Reverse futility pruning
     // If we are already doing really well and it's our turn, our opponent
     // probably wouldn't have let us get here (a form of the null-move observation
     // adapted to low depths)
-    if (!(ss.isPVNode) && !(ss.isInCheck) && (depth <= 2 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
+    if (ss.nodeIsReducible() && (depth <= 2 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
      && b.getNonPawnMaterial(color))
         return beta;
 
-    MoveList legalMoves = ss.isInCheck ? b.getPseudoLegalCheckEscapes(color)
-                                       : b.getAllPseudoLegalMoves(color);
 
-    // If there were no pseudo-legal moves
-    // This is an early check to prevent sorting from crashing
-    if (legalMoves.size() == 0)
-        return scoreMate(ss.isInCheck, depth, alpha, beta);
+    // Generate and sort all pseudo-legal moves
+    ss.generateMoves(hashed);
 
-    // Remove the hash move from the list, since it has already been tried
-    // TODO make this nicer
-    if (hashed != NULL_MOVE) {
-        for (unsigned int i = 0; i < legalMoves.size(); i++) {
-            if (legalMoves.get(i) == hashed) {
-                legalMoves.remove(i);
-                break;
-            }
-        }
-    }
-
-    ScoreList scores;
-    // Internal iterative deepening, SEE, and MVV/LVA move ordering
-    // The scoring relies partially on the fact that our selection sort is stable
-    // TODO make this cleaner, probably when captures and moves become generated separately
-    if (depth >= 3 || ss.isPVNode) { // sort by SEE
-        // ---------------Captures----------------
-        unsigned int index = 0;
-        for (index = 0; index < legalMoves.size(); index++) {
-            Move m = legalMoves.get(index);
-            if (!isCapture(m))
-                break;
-            // If anything wins at least a rook, it should go above this anyways
-            /*if (b.getExchangeScore(color, m) > 0)
-                scores.add(ROOK_VALUE + b.getMVVLVAScore(color, legalMoves.get(index)));
-            else*/
-                scores.add(b.getSEE(color, getEndSq(m)));
-        }
-        // ---------------Non-captures----------------
-        // Score killers below even captures but above losing captures
-        for (unsigned int i = index; i < legalMoves.size(); i++) {
-            if (legalMoves.get(i) == searchParams.killers[searchParams.ply][0])
-                scores.add(0);
-            else if (legalMoves.get(i) == searchParams.killers[searchParams.ply][1])
-                scores.add(-1);
-            // Order queen promotions somewhat high
-            else if (getPromotion(legalMoves.get(i)) == QUEENS)
-                scores.add(MAX_POS_SCORE);
-            else
-                scores.add(-MATE_SCORE + searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(legalMoves.get(i)))][getEndSq(legalMoves.get(i))]);
-        }
-
-        // IID: get a best move (hoping for a first move cutoff) if we don't
-        // have a hash move available
-        if (depth >= 5 && hashed == NULL_MOVE) {
-            int bestIndex = getBestMoveForSort(b, legalMoves, IID_DEPTHS[depth]);
-            // Mate check to prevent crashes
-            if (bestIndex == -1)
-                return scoreMate(ss.isInCheck, depth, alpha, beta);
-            scores.set(bestIndex, INFTY);
-        }
-    }
-    else { // MVV/LVA
-        unsigned int index = 0;
-        for (index = 0; index < legalMoves.size(); index++) {
-            if (!isCapture(legalMoves.get(index)))
-                break;
-            scores.add(b.getMVVLVAScore(color, legalMoves.get(index)));
-        }
-        // For MVV/LVA, order killers above capturing a pawn with a minor piece
-        // or greater
-        for (unsigned int i = index; i < legalMoves.size(); i++) {
-            if (legalMoves.get(i) == searchParams.killers[searchParams.ply][0])
-                scores.add(PAWNS - KNIGHTS);
-            else if (legalMoves.get(i) == searchParams.killers[searchParams.ply][1])
-                scores.add(PAWNS - KNIGHTS - 1);
-            // Order queen promotions above capturing pawns and minor pieces
-            else if (getPromotion(legalMoves.get(i)) == QUEENS)
-                scores.add(8*ROOKS);
-            else
-                scores.add(-MATE_SCORE + searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(legalMoves.get(i)))][getEndSq(legalMoves.get(i))]);
-        }
-    }
 
     Move toHash = NULL_MOVE;
     int reduction = 0;
@@ -452,8 +329,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
     // separate counter only incremented when valid move is searched
     unsigned int movesSearched = (hashed == NULL_MOVE) ? 0 : 1;
     int score = -INFTY;
-    for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
-              m = nextMove(legalMoves, scores, ++i)) {
+    for (Move m = nextMove(ss.legalMoves, ss.scores, i); m != NULL_MOVE;
+              m = nextMove(ss.legalMoves, ss.scores, ++i)) {
         // Check for a timeout
         double timeSoFar = getTimeElapsed(searchParams.startTime);
         if (timeSoFar * ONE_SECOND > searchParams.timeLimit)
@@ -467,8 +344,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
         // move probably won't raise our prospects much, so don't bother
         // q-searching it.
         // TODO may fail low in some stalemate cases
-        if(!(ss.isPVNode) && (depth <= 3 && staticEval <= alpha - FUTILITY_MARGIN[depth])
-        && !(ss.isInCheck) && !isCapture(m) && abs(alpha) < QUEEN_VALUE
+        if(depth <= 3 && staticEval <= alpha - FUTILITY_MARGIN[depth]
+        && ss.nodeIsReducible() && !isCapture(m) && abs(alpha) < QUEEN_VALUE
         && !isPromotion(m) && !b.isCheckMove(m, color)) {
             score = alpha;
             continue;
@@ -493,7 +370,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
         // at an all-node. The later moves are likely worse so we search them
         // to a shallower depth.
         // TODO set up an array for reduction values
-        if(!(ss.isPVNode) && !(ss.isInCheck) && !isCapture(m) && depth >= 3 && movesSearched > 2 && alpha <= prevAlpha
+        if(ss.nodeIsReducible() && !isCapture(m) && depth >= 3 && movesSearched > 2 && alpha <= prevAlpha
         && m != searchParams.killers[searchParams.ply][0] && m != searchParams.killers[searchParams.ply][1]
         && !isPromotion(m) && !copy.isInCheck(color^1)) {
             // Increase reduction with higher depth and later moves, but do

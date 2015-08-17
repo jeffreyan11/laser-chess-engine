@@ -9,6 +9,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove);
 void clearTranspositionTable();
 uint64_t getNodes();
 
+int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth);
+
 // Search modes
 const int TIME = 1;
 const int DEPTH = 2;
