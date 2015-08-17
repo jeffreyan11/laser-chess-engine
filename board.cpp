@@ -1157,19 +1157,15 @@ void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherP
         // below (black) the victim square
         int rankDiff = (color == WHITE) ? 8 : -8;
         // The capturer's start square is either 1 to the left or right of victim
-        uint64_t taker = (INDEX_TO_BIT[victimSq] << 1) & NOTA & pieces[color][PAWNS];
-        if (taker) {
+        if ((INDEX_TO_BIT[victimSq] << 1) & NOTA & pieces[color][PAWNS]) {
             Move m = encodeMove(victimSq+1, victimSq+rankDiff);
             m = setFlags(m, MOVE_EP);
             captures.add(m);
         }
-        else {
-            taker = (INDEX_TO_BIT[victimSq] >> 1) & NOTH & pieces[color][PAWNS];
-            if (taker) {
-                Move m = encodeMove(victimSq-1, victimSq+rankDiff);
-                m = setFlags(m, MOVE_EP);
-                captures.add(m);
-            }
+        if ((INDEX_TO_BIT[victimSq] >> 1) & NOTH & pieces[color][PAWNS]) {
+            Move m = encodeMove(victimSq-1, victimSq+rankDiff);
+            m = setFlags(m, MOVE_EP);
+            captures.add(m);
         }
     }
 }
