@@ -208,7 +208,7 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
             bool isDoublePawn = (piece == PAWNS && abs(endSq - startSq) == 16);
             
             bool isCastle = (piece == KINGS && abs(endSq - startSq) == 2);
-            string promotionString = "nbrq";
+            string promotionString = " nbrq";
             int promotion = (moveStr.length() == 5)
                 ? promotionString.find(moveStr.at(4)) : 0;
             
@@ -218,7 +218,7 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
             if (isEP)
                 m = setFlags(m, MOVE_EP);
             else if (promotion) {
-                m = setFlags(m, MOVE_PROMO_N + promotion);
+                m = setFlags(m, MOVE_PROMO_N + promotion - 1);
             }
             else if (isDoublePawn)
                 m = setFlags(m, MOVE_DOUBLE_PAWN);
@@ -294,6 +294,6 @@ string boardToString(Board &board) {
 }
 
 void clearAll(Board &board) {
-    clearTranspositionTable();
+    clearTables();
     board = fenToBoard(STARTPOS);
 }

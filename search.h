@@ -6,7 +6,7 @@
 #include "hash.h"
 
 void getBestMove(Board *b, int mode, int value, Move *bestMove);
-void clearTranspositionTable();
+void clearTables();
 uint64_t getNodes();
 
 int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth);

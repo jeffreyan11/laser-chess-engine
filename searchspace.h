@@ -15,6 +15,7 @@ struct SearchParameters {
 
     SearchParameters() {
         reset();
+        resetHistoryTable();
     }
 
     void reset() {
@@ -24,7 +25,7 @@ struct SearchParameters {
             killers[i][0] = NULL_MOVE;
             killers[i][1] = NULL_MOVE;
         }
-        resetHistoryTable();
+        //resetHistoryTable();
     }
     
     void resetHistoryTable() {
@@ -32,6 +33,15 @@ struct SearchParameters {
             for (int j = 0; j < 6; j++) {
                 for (int k = 0; k < 64; k++)
                     historyTable[i][j][k] = 0;
+            }
+        }
+    }
+
+    void ageHistoryTable() {
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 6; j++) {
+                for (int k = 0; k < 64; k++)
+                    historyTable[i][j][k] /= 2;
             }
         }
     }
@@ -56,6 +66,7 @@ struct SearchSpace {
 
 	void generateMoves(Move hashed);
 	Move nextMove();
+    void reduceBadHistories(Move bestMove);
 };
 
 #endif

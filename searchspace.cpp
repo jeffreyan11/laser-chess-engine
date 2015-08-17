@@ -131,3 +131,13 @@ Move SearchSpace::nextMove() {
     scores.swap(bestIndex, index);
     return legalMoves.get(index++);
 }
+
+void SearchSpace::reduceBadHistories(Move bestMove) {
+    for (unsigned int i = 0; i < index-1; i++) {
+        if (legalMoves.get(i) == bestMove)
+            break;
+        if (isCapture(legalMoves.get(i)))
+            continue;
+        searchParams->historyTable[color][b->getPieceOnSquare(color, getStartSq(legalMoves.get(i)))][getEndSq(legalMoves.get(i))] -= depth;
+    }
+}

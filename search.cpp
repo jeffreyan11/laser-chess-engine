@@ -140,7 +140,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     
     printStatistics();
     // Aging for the history heuristic table
-    searchParams.resetHistoryTable();
+    searchParams.ageHistoryTable();
     
     isStop = true;
     cout << "bestmove " << moveToString(*bestMove) << endl;
@@ -427,6 +427,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
                 // Update the history table
                 searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)]
                     += depth * depth;
+                ss.reduceBadHistories(m);
             }
             return beta;
         }
@@ -450,6 +451,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         if (!isCapture(toHash)) {
             searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(toHash))][getEndSq(toHash)]
                 += depth * depth;
+            ss.reduceBadHistories(toHash);
         }
     }
     // Record all-nodes. The upper bound score can save a lot of search time.
@@ -732,8 +734,9 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta) {
 //------------------------------------------------------------------------------
 
 // These functions help to communicate with uci.cpp
-void clearTranspositionTable() {
+void clearTables() {
     transpositionTable.clear();
+    searchParams.resetHistoryTable();
 }
 
 uint64_t getNodes() {
