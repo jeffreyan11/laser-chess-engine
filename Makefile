@@ -1,7 +1,7 @@
 CC          = g++
 CFLAGS      = -Wall -ansi -pedantic -ggdb -std=c++0x -g -O3
 LDFLAGS     = -lpthread
-OBJS        = board.o common.o hash.o search.o
+OBJS        = board.o common.o hash.o search.o searchspace.o
 ENGINENAME  = uci
 
 all: uci
