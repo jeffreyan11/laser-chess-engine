@@ -17,13 +17,13 @@ const int IID_DEPTHS[MAX_DEPTH+1] = {0,
     30, 30, 30, 30, 30, 30, 30
 };
 
-SearchSpace::SearchSpace(Board *_b, int _color, int _depth, int _alpha, int _beta,
+SearchSpace::SearchSpace(Board *_b, int _color, int _depth, bool _isPVNode, bool _isInCheck,
 	SearchParameters *_searchParams) {
 	b = _b;
 	color = _color;
 	depth = _depth;
-	isPVNode = (_beta - _alpha != 1);
-	isInCheck = b->isInCheck(color);
+	isPVNode = _isPVNode;
+	isInCheck = _isInCheck;
 	searchParams = _searchParams;
 }
 
@@ -32,6 +32,7 @@ bool SearchSpace::nodeIsReducible() {
 }
 
 void SearchSpace::generateMoves(Move hashed) {
+	index = 0;
     legalMoves = isInCheck ? b->getPseudoLegalCheckEscapes(color)
                            : b->getAllPseudoLegalMoves(color);
 
@@ -108,4 +109,25 @@ void SearchSpace::generateMoves(Move hashed) {
                 scores.add(-MATE_SCORE + searchParams->historyTable[color][b->getPieceOnSquare(color, getStartSq(legalMoves.get(i)))][getEndSq(legalMoves.get(i))]);
         }
     }
+}
+
+// Retrieves the next move with the highest score, starting from index using a
+// partial selection sort. This way, the entire list does not have to be sorted
+// if an early cutoff occurs.
+Move SearchSpace::nextMove() {
+    if (index >= legalMoves.size())
+        return NULL_MOVE;
+    // Find the index of the next best move
+    int bestIndex = index;
+    int bestScore = scores.get(index);
+    for (unsigned int i = index + 1; i < legalMoves.size(); i++) {
+        if (scores.get(i) > bestScore) {
+            bestIndex = i;
+            bestScore = scores.get(bestIndex);
+        }
+    }
+    // Swap the best move to the correct position
+    legalMoves.swap(bestIndex, index);
+    scores.swap(bestIndex, index);
+    return legalMoves.get(index++);
 }

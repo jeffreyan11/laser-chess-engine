@@ -49,14 +49,16 @@ struct SearchSpace {
 	SearchParameters *searchParams;
 	MoveList legalMoves;
 	ScoreList scores;
+	unsigned int index;
 
-	SearchSpace(Board *_b, int _color, int _depth, int _alpha, int _beta,
+	SearchSpace(Board *_b, int _color, int _depth, bool _isPVNode, bool _isInCheck,
 		SearchParameters *_searchParams);
 
 	// Node is reducible if not PV node and not in check
 	bool nodeIsReducible();
 
 	void generateMoves(Move hashed);
+	Move nextMove();
 };
 
 #endif

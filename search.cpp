@@ -267,7 +267,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
         return hashScore;
 
 
-    SearchSpace ss(&b, color, depth, alpha, beta, &searchParams);
+    bool isPVNode = (beta - alpha != 1);
+    bool isInCheck = b.isInCheck(color);
     SearchPV line;
     // A static evaluation, used to activate null move pruning and futility
     // pruning
@@ -280,7 +281,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
     // Only if doing a null move does not leave player in check
     // Do not do NMR if the side to move has only pawns
     // Do not do more than 2 null moves in a row
-    if (depth >= 3 && ss.nodeIsReducible() && searchParams.nullMoveCount < 2
+    if (depth >= 3 && !isPVNode && !isInCheck && searchParams.nullMoveCount < 2
                    && staticEval >= beta && b.getNonPawnMaterial(color)) {
         int reduction;
         if (depth >= 11)
@@ -314,23 +315,22 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
     // If we are already doing really well and it's our turn, our opponent
     // probably wouldn't have let us get here (a form of the null-move observation
     // adapted to low depths)
-    if (ss.nodeIsReducible() && (depth <= 2 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
+    if (!isPVNode && !isInCheck && (depth <= 2 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
      && b.getNonPawnMaterial(color))
         return beta;
 
 
+    SearchSpace ss(&b, color, depth, isPVNode, isInCheck, &searchParams);
     // Generate and sort all pseudo-legal moves
     ss.generateMoves(hashed);
 
 
     Move toHash = NULL_MOVE;
-    int reduction = 0;
-    unsigned int i = 0;
     // separate counter only incremented when valid move is searched
     unsigned int movesSearched = (hashed == NULL_MOVE) ? 0 : 1;
     int score = -INFTY;
-    for (Move m = nextMove(ss.legalMoves, ss.scores, i); m != NULL_MOVE;
-              m = nextMove(ss.legalMoves, ss.scores, ++i)) {
+    for (Move m = ss.nextMove(); m != NULL_MOVE;
+              m = ss.nextMove()) {
         // Check for a timeout
         double timeSoFar = getTimeElapsed(searchParams.startTime);
         if (timeSoFar * ONE_SECOND > searchParams.timeLimit)
@@ -338,6 +338,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
         // Stop condition to help break out as quickly as possible
         if (isStop)
             return -INFTY;
+
 
         // Futility pruning
         // If we are already a decent amount of material below alpha, a quiet
@@ -351,6 +352,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
             continue;
         }
 
+
         // Futility pruning using SEE
         /*if(!isPVNode && depth == 1 //&& staticEval <= alpha - MAX_POS_SCORE
         && !isInCheck && abs(alpha) < QUEEN_VALUE && !isCapture(m) && !isPromotion(m)
@@ -359,11 +361,13 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
             continue;
         }*/
 
-        reduction = 0;
+
+        int reduction = 0;
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(m, color))
             continue;
         searchStats.nodes++;
+
 
         // Late move reduction
         // If we have not raised alpha in the first few moves, we are probably
@@ -379,6 +383,8 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
                 (int) (((double) depth - 3.0) / 4.0 + ((double) movesSearched) / 9.5));
         }
 
+
+        // Null-window search, with re-search if applicable
         if (movesSearched != 0) {
             searchParams.ply++;
             score = -PVS(copy, color^1, depth-1-reduction, -alpha-1, -alpha, &line);
@@ -421,6 +427,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
             toHash = m;
             changePV(m, pvLine, &line);
         }
+
         movesSearched++;
     }
 
