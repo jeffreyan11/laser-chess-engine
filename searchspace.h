@@ -41,10 +41,7 @@ struct SearchSpace {
 	Board *b;
 	int color;
 	int depth;
-    // For PVS, the node is a PV node if beta - alpha > 1 (i.e. not a null window)
-    // We do not want to do most pruning techniques on PV nodes
 	bool isPVNode;
-    // Similarly, we do not want to prune if we are in check
 	bool isInCheck;
 	SearchParameters *searchParams;
 	MoveList legalMoves;

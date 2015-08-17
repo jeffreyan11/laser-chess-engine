@@ -61,12 +61,12 @@ extern bool isStop;
 // Search functions
 unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int &bestScore, SearchPV *pvLine);
-int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine);
-int quiescence(Board &b, int color, int plies, int alpha, int beta);
-int checkQuiescence(Board &b, int color, int plies, int alpha, int beta);
+int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine);
+int quiescence(Board &b, int plies, int alpha, int beta);
+int checkQuiescence(Board &b, int plies, int alpha, int beta);
 
 // Search helpers
-int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta, SearchPV *pvLine);
+int probeTT(Board &b, Move &hashed, int depth, int &alpha, int beta, SearchPV *pvLine);
 int scoreMate(bool isInCheck, int depth, int alpha, int beta);
 double getPercentage(uint64_t numerator, uint64_t denominator);
 void printStatistics();
@@ -93,13 +93,20 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     
     int rootDepth = 1;
     do {
+        // Reset all search parameters (killers, plies, etc)
+        searchParams.reset();
+        // For recording the PV
         SearchPV pvLine;
+        // Get the index of the best move
         bestMoveIndex = getBestMoveAtDepth(b, legalMoves, rootDepth, bestScore, &pvLine);
         if (bestMoveIndex == -1)
             break;
+        // Swap the PV to be searched first next iteration
         legalMoves.swap(0, bestMoveIndex);
         *bestMove = legalMoves.get(0);
         
+
+        // Calculate values for printing
         timeSoFar = getTimeElapsed(searchParams.startTime);
         uint64_t nps = (uint64_t) ((double) searchStats.nodes / timeSoFar);
         string pvStr = retrievePV(&pvLine);
@@ -127,8 +134,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         
         rootDepth++;
     }
-    while ((mode == TIME && (timeSoFar * ONE_SECOND < value * TIME_FACTOR)
-                         && (rootDepth <= MAX_DEPTH))
+    while ((mode == TIME  && (timeSoFar * ONE_SECOND < value * TIME_FACTOR)
+                          && (rootDepth <= MAX_DEPTH))
         || (mode == DEPTH && rootDepth <= value));
     
     printStatistics();
@@ -143,10 +150,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 // returns index of best move in legalMoves
 unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
         int &bestScore, SearchPV *pvLine) {
-    int color = b->getPlayerToMove();
-    searchParams.reset();
-    
     SearchPV line;
+    int color = b->getPlayerToMove();
     unsigned int tempMove = -1;
     int score = -MATE_SCORE;
     int alpha = -MATE_SCORE;
@@ -164,17 +169,17 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
         
         if (i != 0) {
             searchParams.ply++;
-            score = -PVS(copy, color^1, depth-1, -alpha-1, -alpha, &line);
+            score = -PVS(copy, depth-1, -alpha-1, -alpha, &line);
             searchParams.ply--;
             if (alpha < score && score < beta) {
                 searchParams.ply++;
-                score = -PVS(copy, color^1, depth-1, -beta, -alpha, &line);
+                score = -PVS(copy, depth-1, -beta, -alpha, &line);
                 searchParams.ply--;
             }
         }
         else {
             searchParams.ply++;
-            score = -PVS(copy, color^1, depth-1, -beta, -alpha, &line);
+            score = -PVS(copy, depth-1, -beta, -alpha, &line);
             searchParams.ply--;
         }
 
@@ -206,17 +211,17 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth) {
         
         if (i != 0) {
             searchParams.ply++;
-            score = -PVS(copy, color^1, depth-1, -alpha-1, -alpha, &line);
+            score = -PVS(copy, depth-1, -alpha-1, -alpha, &line);
             searchParams.ply--;
             if (alpha < score && score < beta) {
                 searchParams.ply++;
-                score = -PVS(copy, color^1, depth-1, -beta, -alpha, &line);
+                score = -PVS(copy, depth-1, -beta, -alpha, &line);
                 searchParams.ply--;
             }
         }
         else {
             searchParams.ply++;
-            score = -PVS(copy, color^1, depth-1, -beta, -alpha, &line);
+            score = -PVS(copy, depth-1, -beta, -alpha, &line);
             searchParams.ply--;
         }
         
@@ -235,12 +240,12 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth) {
 
 // The standard implementation of a null-window PVS search.
 // The implementation is fail-hard (score returned must be within [alpha, beta])
-int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
+int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     // When the standard search is done, enter quiescence search.
     // Static board evaluation is done there.
     if (depth <= 0) {
         pvLine->pvLength = 0;
-        return quiescence(b, color, 0, alpha, beta);
+        return quiescence(b, 0, alpha, beta);
     }
 
     if (b.isDraw()) {
@@ -253,6 +258,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
     }
     
     int prevAlpha = alpha;
+    int color = b.getPlayerToMove();
 
 
     // Probe the hash table for a match/cutoff
@@ -262,14 +268,16 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
     // not cause a cutoff
     Move hashed = NULL_MOVE;
     searchStats.hashProbes++;
-    int hashScore = probeTT(b, color, hashed, depth, alpha, beta, pvLine);
+    int hashScore = probeTT(b, hashed, depth, alpha, beta, pvLine);
     if (hashScore != -INFTY)
         return hashScore;
 
-
-    bool isPVNode = (beta - alpha != 1);
-    bool isInCheck = b.isInCheck(color);
     SearchPV line;
+    // For PVS, the node is a PV node if beta - alpha > 1 (i.e. not a null window)
+    // We do not want to do most pruning techniques on PV nodes
+    bool isPVNode = (beta - alpha != 1);
+    // Similarly, we do not want to prune if we are in check
+    bool isInCheck = b.isInCheck(color);
     // A static evaluation, used to activate null move pruning and futility
     // pruning
     int staticEval = (color == WHITE) ? b.evaluate() : -b.evaluate();
@@ -297,7 +305,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
         b.doNullMove();
         searchParams.nullMoveCount++;
         searchParams.ply++;
-        int nullScore = -PVS(b, color^1, depth-1-reduction, -beta, -alpha, &line);
+        int nullScore = -PVS(b, depth-1-reduction, -beta, -alpha, &line);
         searchParams.ply--;
         if (nullScore >= beta) {
             b.doNullMove();
@@ -387,19 +395,19 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
         // Null-window search, with re-search if applicable
         if (movesSearched != 0) {
             searchParams.ply++;
-            score = -PVS(copy, color^1, depth-1-reduction, -alpha-1, -alpha, &line);
+            score = -PVS(copy, depth-1-reduction, -alpha-1, -alpha, &line);
             searchParams.ply--;
             // The re-search is always done at normal depth
             if (alpha < score && score < beta) {
                 searchParams.ply++;
-                score = -PVS(copy, color^1, depth-1, -beta, -alpha, &line);
+                score = -PVS(copy, depth-1, -beta, -alpha, &line);
                 searchParams.ply--;
             }
         }
         else {
             searchParams.ply++;
             // The first move is always searched at a normal depth
-            score = -PVS(copy, color^1, depth-1, -beta, -alpha, &line);
+            score = -PVS(copy, depth-1, -beta, -alpha, &line);
             searchParams.ply--;
         }
         
@@ -454,7 +462,7 @@ int PVS(Board &b, int color, int depth, int alpha, int beta, SearchPV *pvLine) {
 }
 
 // See if a hash move exists.
-int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta, SearchPV *pvLine) {
+int probeTT(Board &b, Move &hashed, int depth, int &alpha, int beta, SearchPV *pvLine) {
     HashEntry *entry = transpositionTable.get(b);
     if (entry != NULL) {
         searchStats.hashHits++;
@@ -490,14 +498,14 @@ int probeTT(Board &b, int color, Move &hashed, int depth, int &alpha, int beta, 
             }
             Board copy = b.staticCopy();
             // Sanity check in case of Type-1 hash error
-            if (copy.doHashMove(hashed, color)) {
+            if (copy.doHashMove(hashed, b.getPlayerToMove())) {
                 SearchPV line;
                 // If the hash score is unusable and node is not a predicted
                 // all-node, we can search the hash move first.
                 searchStats.hashMoveAttempts++;
                 searchStats.nodes++;
                 searchParams.ply++;
-                int score = -PVS(copy, color^1, depth-1, -beta, -alpha, &line);
+                int score = -PVS(copy, depth-1, -beta, -alpha, &line);
                 searchParams.ply--;
 
                 if (score >= beta) {
@@ -543,9 +551,10 @@ int scoreMate(bool isInCheck, int depth, int alpha, int beta) {
  * spent here.
  * The search is done within a fail-hard framework (alpha <= score <= beta)
  */
-int quiescence(Board &b, int color, int plies, int alpha, int beta) {
+int quiescence(Board &b, int plies, int alpha, int beta) {
+    int color = b.getPlayerToMove();
     if (b.isInCheck(color))
-        return checkQuiescence(b, color, plies, alpha, beta);
+        return checkQuiescence(b, plies, alpha, beta);
 
     // Stand pat: if our current position is already way too good or way too bad
     // we can simply stop the search here. We first obtain an approximate
@@ -594,7 +603,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
         
         searchStats.nodes++;
         searchStats.qsNodes++;
-        score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
+        score = -quiescence(copy, plies+1, -beta, -alpha);
         
         if (score >= beta) {
             searchStats.qsFailHighs++;
@@ -621,7 +630,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
         
         searchStats.nodes++;
         searchStats.qsNodes++;
-        score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
+        score = -quiescence(copy, plies+1, -beta, -alpha);
         
         if (score >= beta) {
             searchStats.qsFailHighs++;
@@ -647,7 +656,7 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
             
             searchStats.nodes++;
             searchStats.qsNodes++;
-            int score = -checkQuiescence(copy, color^1, plies+1, -beta, -alpha);
+            int score = -checkQuiescence(copy, plies+1, -beta, -alpha);
             
             if (score >= beta) {
                 searchStats.qsFailHighs++;
@@ -675,7 +684,8 @@ int quiescence(Board &b, int color, int plies, int alpha, int beta) {
  * When checks are considered in quiescence, the responses must include all moves,
  * not just captures, necessitating this function.
  */
-int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
+int checkQuiescence(Board &b, int plies, int alpha, int beta) {
+    int color = b.getPlayerToMove();
     MoveList legalMoves = b.getPseudoLegalCheckEscapes(color);
 
     int score = -INFTY;
@@ -690,7 +700,7 @@ int checkQuiescence(Board &b, int color, int plies, int alpha, int beta) {
         
         searchStats.nodes++;
         searchStats.qsNodes++;
-        score = -quiescence(copy, color^1, plies+1, -beta, -alpha);
+        score = -quiescence(copy, plies+1, -beta, -alpha);
         
         if (score >= beta) {
             searchStats.qsFailHighs++;
