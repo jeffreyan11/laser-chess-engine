@@ -7,7 +7,7 @@ The code and Makefile support gcc on Linux and MinGW on Windows for Intel Nehale
 
 The implementation uses fancy magic bitboards for a fairly fast getLegalMoves and doMove (~5.2 sec PERFT 6).
 
-The search is a fail-hard principal variation, null window search (PVS, NWS). A transposition table, null move pruning, futility pruning, and late move reduction are used in the main search. Internal iterative deepening is used when a hash move is not available. Static exchange evaluation (SEE) and Most Valuable Victim / Least Valuable Attacker (MVV/LVA) are used to order captures, and the killer and history heuristics are used to order quiet moves.
+The search is a fail-hard principal variation search. A transposition table, null move pruning, futility pruning, and late move reduction are used in the main search. Internal iterative deepening is used when a hash move is not available. Static exchange evaluation (SEE) and Most Valuable Victim / Least Valuable Attacker (MVV/LVA) are used to order captures, and the killer and history heuristics are used to order quiet moves.
 
 A basic quiescence search with captures, queen promotions, and checks on the first ply is implemented. Pruning in quiescence is done with delta pruning and SEE. Move ordering is done purely with MVV/LVA.
 

@@ -7,10 +7,10 @@ ENGINENAME  = uci
 all: uci
 
 uci: $(OBJS) uci.o
-	$(CC) -o $(ENGINENAME) $^ $(LDFLAGS)
+	$(CC) -o $(ENGINENAME)$(EXT) $^ $(LDFLAGS)
 
 %.o: %.cpp
 	$(CC) -c $(CFLAGS) -x c++ $< -o $@
 
 clean:
-	rm -f *.o *.exe $(ENGINENAME)
+	rm -f *.o $(ENGINENAME)$(EXT).exe $(ENGINENAME)$(EXT)
