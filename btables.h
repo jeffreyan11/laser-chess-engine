@@ -1,3 +1,21 @@
+/*
+    Laser, a UCI chess engine written in C++11.
+    Copyright 2015 Jeffrey An and Michael An
+
+    Laser is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Laser is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Laser.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #ifndef __BTABLES_H__
 #define __BTABLES_H__
 
@@ -64,14 +82,14 @@ const int midgamePieceValues[6][64] = {
 -10, -5, -5, -5, -5, -5, -5,-10
 },
 { // Kings
- -75, -75, -75, -75, -75, -75, -75, -75,
- -60, -60, -60, -60, -60, -60, -60, -60,
- -45, -45, -45, -45, -45, -45, -45, -45,
- -30, -30, -30, -30, -30, -30, -30, -30,
- -15, -15, -15, -15, -15, -15, -15, -15,
-   0,   5,  -5, -10, -10,  -5,   5,   0,
-  10,  15,   0,  -5,  -5,   0,  15,  10,
-  20,  35,  15,   0,   5,  10,  40,  20 
+-75, -75, -75, -75, -75, -75, -75, -75,
+-60, -60, -60, -60, -60, -60, -60, -60,
+-45, -45, -45, -45, -45, -45, -45, -45,
+-30, -30, -30, -30, -30, -30, -30, -30,
+-15, -15, -15, -15, -15, -15, -15, -15,
+  0,   5,  -5, -10, -10,  -5,   5,   0,
+ 10,  15,   0,  -5,  -5,   0,  15,  10,
+ 20,  35,  15,   0,   5,  10,  40,  20 
 }
 };
 

@@ -1,5 +1,5 @@
-# uci-chess-engine
-A UCI-compliant chess engine written in C++11.
+# Laser
+Laser is a UCI-compliant chess engine written in C++11.
 
 After being compiled, the executable can be run with any UCI chess GUI.
 
@@ -16,7 +16,7 @@ The hash table uses Zobrist hashing and a two bucket system and has a default 16
 
 A special thanks to the Chess Programming Wiki, which was consulted frequently for this project: https://chessprogramming.wikispaces.com
 
-Estimated ELO is currently 2100-2200, tested using Stockfish 280615 64 BMI2 (https://stockfishchess.org/) (Commit 112607b on https://github.com/official-stockfish/Stockfish) and cutechess-cli (http://cutechess.com/). The tests were performed on one core of a i5-5200U processor with 15 sec + 0.05 sec/move time controls. The code was compiled with MinGW, GCC version 4.9.2.
+Estimated ELO is currently 2200-2300, tested using Stockfish 280615 64 BMI2 (https://stockfishchess.org/) (Commit 112607b on https://github.com/official-stockfish/Stockfish) and cutechess-cli (http://cutechess.com/). The tests were performed on one core of a i5-5200U processor with 15 sec + 0.05 sec/move time controls. The code was compiled with MinGW, GCC version 4.9.2.
 
 
 
