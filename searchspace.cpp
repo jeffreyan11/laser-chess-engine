@@ -68,30 +68,43 @@ void SearchSpace::generateMoves(Move hashed) {
     // Internal iterative deepening and SEE move ordering
     // The scoring relies partially on the fact that our selection sort is stable
     // TODO make this cleaner, probably when captures and moves become generated separately
+
     // ---------------Captures----------------
     unsigned int index = 0;
     for (index = 0; index < legalMoves.size(); index++) {
         Move m = legalMoves.get(index);
         if (!isCapture(m))
             break;
-        // If anything wins at least a rook, it should go above this anyways
-        /*if (b.getExchangeScore(color, m) > 0)
-            scores.add(ROOK_VALUE + b.getMVVLVAScore(color, legalMoves.get(index)));
-        else*/
+        // We want the best move first for PV nodes
+        if (isPVNode)
             scores.add(b->getSEE(color, getEndSq(m)));
+        // Otherwise, MVV/LVA for cheaper cutoffs might help
+        else {
+            // If anything wins more than a knight, it should go above this anyways
+            if (b->getExchangeScore(color, m) > 0)
+                scores.add(KNIGHT_VALUE + b->getMVVLVAScore(color, legalMoves.get(index)));
+            else
+                scores.add(b->getSEE(color, getEndSq(m)));
+        }
     }
+
     // ---------------Non-captures----------------
     // Score killers below even captures but above losing captures
     for (unsigned int i = index; i < legalMoves.size(); i++) {
-        if (legalMoves.get(i) == searchParams->killers[searchParams->ply][0])
+        Move m = legalMoves.get(i);
+        if (m == searchParams->killers[searchParams->ply][0])
             scores.add(0);
-        else if (legalMoves.get(i) == searchParams->killers[searchParams->ply][1])
+        else if (m == searchParams->killers[searchParams->ply][1])
             scores.add(-1);
         // Order queen promotions somewhat high
-        else if (getPromotion(legalMoves.get(i)) == QUEENS)
+        else if (getPromotion(m) == QUEENS)
             scores.add(MAX_POS_SCORE);
-        else
-            scores.add(-MATE_SCORE + searchParams->historyTable[color][b->getPieceOnSquare(color, getStartSq(legalMoves.get(i)))][getEndSq(legalMoves.get(i))]);
+        else {
+            int startSq = getStartSq(m);
+            int endSq = getEndSq(m);
+            int pieceID = b->getPieceOnSquare(color, startSq);
+            scores.add(-MATE_SCORE + searchParams->historyTable[color][pieceID][endSq]);
+        }
     }
 
     // IID: get a best move (hoping for a first move cutoff) if we don't
