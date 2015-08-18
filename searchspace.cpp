@@ -132,6 +132,8 @@ Move SearchSpace::nextMove() {
     return legalMoves.get(index++);
 }
 
+// When a PV or cut move is found, the histories of all
+// quiet moves searched prior to the best move are reduced
 void SearchSpace::reduceBadHistories(Move bestMove) {
     for (unsigned int i = 0; i < index-1; i++) {
         if (legalMoves.get(i) == bestMove)

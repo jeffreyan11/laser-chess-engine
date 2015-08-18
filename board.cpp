@@ -167,20 +167,27 @@ int epVictimSquare(int victimColor, uint16_t file) {
     return 8 * (3 + victimColor) + file;
 }
 
+// Initializes the 64x64 table, indexed by from and to square, of all
+// squares in a line between from and to
 void initInBetweenTable() {
     for (int sq1 = 0; sq1 < 64; sq1++) {
         for (int sq2 = 0; sq2 < 64; sq2++) {
+            // Check horizontal/vertical lines
             uint64_t imaginaryRook = ratt(sq1, INDEX_TO_BIT[sq2]);
+            // If the two squares are on a line
             if (imaginaryRook & INDEX_TO_BIT[sq2]) {
                 uint64_t imaginaryRook2 = ratt(sq2, INDEX_TO_BIT[sq1]);
+                // Set the bitboard of squares in between
                 inBetweenSqs[sq1][sq2] = imaginaryRook & imaginaryRook2;
             }
             else {
+                // Check diagonal lines
                 uint64_t imaginaryBishop = batt(sq1, INDEX_TO_BIT[sq2]);
                 if (imaginaryBishop & INDEX_TO_BIT[sq2]) {
                     uint64_t imaginaryBishop2 = batt(sq2, INDEX_TO_BIT[sq1]);
                     inBetweenSqs[sq1][sq2] = imaginaryBishop & imaginaryBishop2;
                 }
+                // If the squares are not on a line, the bitboard is empty
                 else
                     inBetweenSqs[sq1][sq2] = 0;
             }
@@ -228,6 +235,11 @@ uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
     }
     return nodes;
 }
+
+
+//------------------------------------------------------------------------------
+//--------------------------------Constructors----------------------------------
+//------------------------------------------------------------------------------
 
 // Create a board object initialized to the start position.
 Board::Board() {
@@ -325,6 +337,14 @@ Board *Board::dynamicCopy() {
 }
 */
 
+
+//------------------------------------------------------------------------------
+//---------------------------------Do Move--------------------------------------
+//------------------------------------------------------------------------------
+
+/**
+ * @brief Updates the board and Zobrist keys with Move m.
+ */
 void Board::doMove(Move m, int color) {
     int startSq = getStartSq(m);
     int endSq = getEndSq(m);
@@ -564,6 +584,11 @@ void Board::doNullMove() {
     playerToMove = playerToMove ^ 1;
     zobristKey ^= zobristTable[768];
 }
+
+
+//------------------------------------------------------------------------------
+//-------------------------------Move Generation--------------------------------
+//------------------------------------------------------------------------------
 
 // Get all legal moves and captures
 MoveList Board::getAllLegalMoves(int color) {
@@ -1266,8 +1291,10 @@ void Board::addCastlesToList(MoveList &moves, int color) {
 }
 
 
+//------------------------------------------------------------------------------
 //-----------------------Useful bitboard info generators:-----------------------
 //------------------------------attack maps, etc.-------------------------------
+//------------------------------------------------------------------------------
 
 // Get the attack map of all potential x-ray pieces (bishops, rooks, queens)
 // after a blocker has been removed.
@@ -1419,7 +1446,11 @@ uint64_t Board::getPinnedMap(int color) {
     return pinned;
 }
 
+
+//------------------------------------------------------------------------------
 //----------------------King: check, checkmate, stalemate-----------------------
+//------------------------------------------------------------------------------
+
 bool Board::isInCheck(int color) {
     int sq = bitScanForward(pieces[color][KINGS]);
 
@@ -1484,9 +1515,11 @@ bool Board::isDraw() {
     return false;
 }
 
+
 //------------------------------------------------------------------------------
 //------------------------Evaluation and Move Ordering--------------------------
 //------------------------------------------------------------------------------
+
 /*
  * Evaluates the current board position in hundredths of pawns. White is
  * positive and black is negative in traditional negamax format.
@@ -1799,6 +1832,7 @@ int Board::getExchangeScore(int color, Move m) {
 //------------------------------------------------------------------------------
 //-----------------------------MOVE GENERATION----------------------------------
 //------------------------------------------------------------------------------
+
 inline uint64_t Board::getWPawnSingleMoves(uint64_t pawns) {
     return (pawns << 8) & ~getOccupancy();
 }
@@ -1873,6 +1907,7 @@ inline uint64_t Board::getOccupancy() {
 //------------------------------------------------------------------------------
 //---------------------------PUBLIC GETTER METHODS------------------------------
 //------------------------------------------------------------------------------
+
 bool Board::getWhiteCanKCastle() {
     return castlingRights & WHITEKSIDE;
 }

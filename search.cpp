@@ -32,6 +32,9 @@ struct SearchStatistics {
     }
 };
 
+/**
+ * @brief Records the PV found by the search.
+ */
 struct SearchPV {
     int pvLength;
     Move pv[MAX_DEPTH+1];
@@ -41,12 +44,16 @@ struct SearchPV {
     }
 };
 
+// Futility pruning margins indexed by depth. If static eval is at least this
+// amount below alpha, we skip quiet moves for this position.
 const int FUTILITY_MARGIN[4] = {0,
     MAX_POS_SCORE,
     MAX_POS_SCORE + KNIGHT_VALUE,
     MAX_POS_SCORE + QUEEN_VALUE
 };
 
+// Reverse futility pruning margins indexed by depth. If static eval is at least
+// this amount above beta, we skip searching the position entirely.
 const int REVERSE_FUTILITY_MARGIN[3] = {0,
     MAX_POS_SCORE,
     MAX_POS_SCORE + 2*PAWN_VALUE
@@ -56,6 +63,7 @@ static Hash transpositionTable(16);
 static SearchParameters searchParams;
 static SearchStatistics searchStats;
 
+// Used to break out of the search thread if the stop command is given
 extern bool isStop;
 
 // Search functions
@@ -76,6 +84,12 @@ Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 void changePV(Move best, SearchPV *parent, SearchPV *child);
 string retrievePV(SearchPV *pvLine);
 
+
+/**
+ * @brief Finds a best move for a position according to the given search parameters.
+ * @param mode The search mode: time or depth
+ * @param value The time limit if in time mode, or the depth to search
+ */
 void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     searchParams.reset();
     searchStats.reset();
@@ -85,6 +99,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     MoveList legalMoves = b->getAllLegalMoves(color);
     *bestMove = legalMoves.get(0);
     
+    // Set up timing
     searchParams.timeLimit = (mode == TIME)
         ? (uint64_t)(MAX_TIME_FACTOR * value) : MAX_TIME;
     searchParams.startTime = ChessClock::now();
@@ -142,12 +157,15 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     // Aging for the history heuristic table
     searchParams.ageHistoryTable();
     
+    // Output best move to UCI interface
     isStop = true;
     cout << "bestmove " << moveToString(*bestMove) << endl;
     return;
 }
 
-// returns index of best move in legalMoves
+/**
+ * @brief Returns the index of the best move in legalMoves.
+ */
 unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
         int &bestScore, SearchPV *pvLine) {
     SearchPV line;
@@ -283,11 +301,11 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     int staticEval = (color == WHITE) ? b.evaluate() : -b.evaluate();
     
 
-    // Null move reduction/pruning: if we are in a position good enough that
-    // even after passing and giving our opponent a free turn, we still exceed
-    // beta, then simply return beta
+    // Null move pruning
+    // If we are in a position good enough that even after passing and giving
+    // our opponent a free turn, we still exceed beta, then simply return beta
     // Only if doing a null move does not leave player in check
-    // Do not do NMR if the side to move has only pawns
+    // Do not do if the side to move has only pawns
     // Do not do more than 2 null moves in a row
     if (depth >= 3 && !isPVNode && !isInCheck && searchParams.nullMoveCount < 2
                    && staticEval >= beta && b.getNonPawnMaterial(color)) {
@@ -333,6 +351,8 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     ss.generateMoves(hashed);
 
 
+    // Main search loop
+    // Keeps track of the best move for storing into the TT
     Move toHash = NULL_MOVE;
     // separate counter only incremented when valid move is searched
     unsigned int movesSearched = (hashed == NULL_MOVE) ? 0 : 1;
@@ -370,18 +390,17 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         }*/
 
 
-        int reduction = 0;
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(m, color))
             continue;
         searchStats.nodes++;
 
 
+        int reduction = 0;
         // Late move reduction
         // If we have not raised alpha in the first few moves, we are probably
         // at an all-node. The later moves are likely worse so we search them
         // to a shallower depth.
-        // TODO set up an array for reduction values
         if(ss.nodeIsReducible() && !isCapture(m) && depth >= 3 && movesSearched > 2 && alpha <= prevAlpha
         && m != searchParams.killers[searchParams.ply][0] && m != searchParams.killers[searchParams.ply][1]
         && !isPromotion(m) && !copy.isInCheck(color^1)) {
@@ -407,13 +426,14 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
                 searchParams.ply--;
             }
         }
+        // The first move is always searched at a normal depth
         else {
             searchParams.ply++;
-            // The first move is always searched at a normal depth
             score = -PVS(copy, depth-1, -beta, -alpha, &line);
             searchParams.ply--;
         }
         
+        // Beta cutoff
         if (score >= beta) {
             searchStats.failHighs++;
             if (movesSearched == 0)
@@ -434,6 +454,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             }
             return beta;
         }
+        // If alpha was raised, we have a new PV
         if (score > alpha) {
             alpha = score;
             toHash = m;
@@ -448,7 +469,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         return scoreMate(ss.isInCheck, depth, alpha, beta);
     
     if (toHash != NULL_MOVE && prevAlpha < alpha && alpha < beta) {
-        // Exact scores indicate a principal variation and should always be hashed
+        // Exact scores indicate a principal variation
         transpositionTable.add(b, depth, toHash, alpha, PV_NODE, searchParams.rootMoveNumber);
         // Update the history table
         if (!isCapture(toHash)) {
@@ -457,8 +478,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             ss.reduceBadHistories(toHash);
         }
     }
-    // Record all-nodes. The upper bound score can save a lot of search time.
-    // No best move can be recorded in a fail-hard framework.
+    // Record all-nodes. No best move can be recorded in a fail-hard framework.
     else if (alpha <= prevAlpha) {
         transpositionTable.add(b, depth, NULL_MOVE, alpha, ALL_NODE, searchParams.rootMoveNumber);
     }
@@ -554,10 +574,11 @@ int scoreMate(bool isInCheck, int depth, int alpha, int beta) {
  * This diminishes the horizon effect and greatly improves playing strength.
  * Delta pruning and static-exchange evaluation are used to reduce the time
  * spent here.
- * The search is done within a fail-hard framework (alpha <= score <= beta)
+ * The search is done within a fail-hard framework.
  */
 int quiescence(Board &b, int plies, int alpha, int beta) {
     int color = b.getPlayerToMove();
+    // If in check, we must consider all legal check evasions
     if (b.isInCheck(color))
         return checkQuiescence(b, plies, alpha, beta);
 
@@ -565,6 +586,7 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
     // we can simply stop the search here. We first obtain an approximate
     // evaluation for standPat to save time.
     int standPat = (color == WHITE) ? b.evaluateMaterial() : -b.evaluateMaterial();
+
     if (standPat >= beta + MAX_POS_SCORE)
         return beta;
     
@@ -575,15 +597,17 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
     // If we do not cut off, we get a more accurate evaluation.
     standPat += (color == WHITE) ? b.evaluatePositional() : -b.evaluatePositional();
     
+    if (standPat >= beta)
+        return beta;
+
     if (alpha < standPat)
         alpha = standPat;
     
-    if (standPat >= beta)
-        return beta;
-    
     if (standPat < alpha - MAX_POS_SCORE - QUEEN_VALUE)
         return alpha;
-    
+
+
+    // Generate captures and order by MVV/LVA
     MoveList legalCaptures = b.getPseudoLegalCaptures(color, false);
     ScoreList scores;
     for (unsigned int i = 0; i < legalCaptures.size(); i++) {
@@ -621,6 +645,7 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
         j++;
     }
 
+    // Generate and search promotions
     MoveList legalPromotions = b.getPseudoLegalPromotions(color);
     for (unsigned int i = 0; i < legalPromotions.size(); i++) {
         Move m = legalPromotions.get(i);
@@ -648,7 +673,7 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
         j++;
     }
 
-    // Checks
+    // Checks: only on the first ply of q-search
     if(plies <= 0) {
         MoveList legalMoves = b.getPseudoLegalChecks(color);
 
@@ -694,7 +719,6 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta) {
     MoveList legalMoves = b.getPseudoLegalCheckEscapes(color);
 
     int score = -INFTY;
-
     unsigned int j = 0; // separate counter only incremented when valid move is searched
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
@@ -767,6 +791,7 @@ Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index) {
     return moves.get(index);
 }
 
+// Copies the new PV line when alpha is raised
 void changePV(Move best, SearchPV *parent, SearchPV *child) {
     parent->pv[0] = best;
     for (int i = 0; i < child->pvLength; i++) {
