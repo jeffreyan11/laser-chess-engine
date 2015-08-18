@@ -388,7 +388,10 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             // Increase reduction with higher depth and later moves, but do
             // not let search descend directly into q-search
             reduction = min(depth - 2,
-                (int) (((double) depth - 3.0) / 4.0 + ((double) movesSearched) / 9.5));
+                1 + (int) (((double) depth - 4) / 5 + ((double) movesSearched) / 16));
+            // Always start from a reduction of 1 and increase at most 1 depth
+            // every 2 moves
+            reduction = min(reduction, (int) (movesSearched - 2) / 2);
         }
 
 
