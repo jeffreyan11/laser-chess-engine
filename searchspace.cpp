@@ -124,7 +124,7 @@ void SearchSpace::generateMoves(Move hashed) {
         if (bestIndex == -1)
             legalMoves.clear();
         else
-        	scores.set(bestIndex, INFTY);
+        	scores.set(bestIndex, (1 << 20));
     }
 }
 
