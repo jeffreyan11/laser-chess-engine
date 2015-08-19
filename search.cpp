@@ -328,15 +328,10 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     if (depth >= 3 && !isPVNode && !isInCheck && searchParams.nullMoveCount < 2
                    && staticEval >= beta && b.getNonPawnMaterial(color)) {
         int reduction;
-        if (depth >= 11)
-            reduction = 4;
-        else if (depth >= 6)
-            reduction = 3;
-        else
-            reduction = 2;
         // Reduce more if we are further ahead, but do not let NMR descend
         // directly into q-search
-        reduction = min(depth - 2, reduction + (staticEval - beta) / PAWN_VALUE);
+        reduction = min(depth - 2,
+            1 + (int) ((depth + 1.0) / 5.0 + (double) (staticEval - beta) / PAWN_VALUE));
 
         b.doNullMove();
         searchParams.nullMoveCount++;
