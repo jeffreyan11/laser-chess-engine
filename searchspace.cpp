@@ -20,7 +20,7 @@
 #include "searchspace.h"
 
 const int IID_DEPTHS[MAX_DEPTH+1] = {0,
-     0,  0,  0,  0,  1,  1,  1,  2,  2,  2,
+     0,  0,  0,  1,  1,  1,  1,  2,  2,  2,
      3,  3,  3,  4,  4,  4,  5,  5,  5,  6,
      6,  6,  7,  7,  7,  8,  8,  8,  9,  9,
      9, 10, 10, 10, 11, 11, 11, 12, 12, 12,
@@ -66,13 +66,12 @@ void SearchSpace::generateMoves(Move hashed) {
     }
 
     // Internal iterative deepening and SEE move ordering
-    // The scoring relies partially on the fact that our selection sort is stable
     // TODO make this cleaner, probably when captures and moves become generated separately
 
     // ---------------Captures----------------
-    unsigned int index = 0;
-    for (index = 0; index < legalMoves.size(); index++) {
-        Move m = legalMoves.get(index);
+    unsigned int quietStart = 0;
+    for (quietStart = 0; quietStart < legalMoves.size(); quietStart++) {
+        Move m = legalMoves.get(quietStart);
         if (!isCapture(m))
             break;
 
@@ -99,7 +98,7 @@ void SearchSpace::generateMoves(Move hashed) {
 
     // ---------------Non-captures----------------
     // Score killers below even captures but above losing captures
-    for (unsigned int i = index; i < legalMoves.size(); i++) {
+    for (unsigned int i = quietStart; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
         if (m == searchParams->killers[searchParams->ply][0])
             scores.add(1 << 16);
@@ -119,6 +118,11 @@ void SearchSpace::generateMoves(Move hashed) {
     // IID: get a best move (hoping for a first move cutoff) if we don't
     // have a hash move available
     if (depth >= 5 && hashed == NULL_MOVE) {
+        // Sort the moves with what we have so far
+        /*for (Move m = nextMove(); m != NULL_MOVE;
+                  m = nextMove());
+        index = 0;*/
+
         int bestIndex = getBestMoveForSort(b, legalMoves, IID_DEPTHS[depth]);
         // Mate check to prevent crashes
         if (bestIndex == -1)
