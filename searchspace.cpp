@@ -75,16 +75,25 @@ void SearchSpace::generateMoves(Move hashed) {
         Move m = legalMoves.get(index);
         if (!isCapture(m))
             break;
+
+        int see = b->getSEE(color, getEndSq(m));
         // We want the best move first for PV nodes
-        if (isPVNode)
-            scores.add(b->getSEE(color, getEndSq(m)));
+        if (isPVNode) {
+            if (see > 0)
+                scores.add((1 << 18) + see);
+            else if (see == 0)
+                scores.add((1 << 16) + 1);
+            else
+                scores.add(see);
+        }
         // Otherwise, MVV/LVA for cheaper cutoffs might help
         else {
-            // If anything wins more than a knight, it should go above this anyways
-            if (b->getExchangeScore(color, m) > 0)
-                scores.add(KNIGHT_VALUE + b->getMVVLVAScore(color, legalMoves.get(index)));
+            if (see > 0)
+                scores.add((1 << 18) + b->getMVVLVAScore(color, m));
+            else if (see == 0)
+                scores.add((1 << 16) + b->getMVVLVAScore(color, m));
             else
-                scores.add(b->getSEE(color, getEndSq(m)));
+                scores.add(see);
         }
     }
 
@@ -93,12 +102,12 @@ void SearchSpace::generateMoves(Move hashed) {
     for (unsigned int i = index; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
         if (m == searchParams->killers[searchParams->ply][0])
-            scores.add(0);
+            scores.add(1 << 16);
         else if (m == searchParams->killers[searchParams->ply][1])
-            scores.add(-1);
+            scores.add((1 << 16) - 1);
         // Order queen promotions somewhat high
         else if (getPromotion(m) == QUEENS)
-            scores.add(MAX_POS_SCORE);
+            scores.add(1 << 17);
         else {
             int startSq = getStartSq(m);
             int endSq = getEndSq(m);
