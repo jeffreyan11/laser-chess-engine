@@ -111,7 +111,7 @@ void SearchSpace::generateMoves(Move hashed) {
             int startSq = getStartSq(m);
             int endSq = getEndSq(m);
             int pieceID = b->getPieceOnSquare(color, startSq);
-            scores.add(-MATE_SCORE + searchParams->historyTable[color][pieceID][endSq]);
+            scores.add(-(MATE_SCORE << 5) + searchParams->historyTable[color][pieceID][endSq]);
         }
     }
 
