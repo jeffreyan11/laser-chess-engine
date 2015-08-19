@@ -20,8 +20,8 @@
 #include "searchspace.h"
 
 const int IID_DEPTHS[MAX_DEPTH+1] = {0,
-     0,  0,  0,  1,  1,  1,  1,  2,  2,  2,
-     3,  3,  3,  4,  4,  4,  5,  5,  5,  6,
+     0,  0,  0,  1,  1,  1,  1,  1,  2,  2,
+     2,  3,  3,  3,  4,  4,  4,  5,  5,  6,
      6,  6,  7,  7,  7,  8,  8,  8,  9,  9,
      9, 10, 10, 10, 11, 11, 11, 12, 12, 12,
     13, 13, 13, 14, 14, 14, 15, 15, 15, 16,
@@ -117,13 +117,14 @@ void SearchSpace::generateMoves(Move hashed) {
 
     // IID: get a best move (hoping for a first move cutoff) if we don't
     // have a hash move available
-    if (depth >= 5 && hashed == NULL_MOVE) {
+    if (depth >= (isPVNode ? 5 : 6) && hashed == NULL_MOVE) {
         // Sort the moves with what we have so far
         /*for (Move m = nextMove(); m != NULL_MOVE;
                   m = nextMove());
         index = 0;*/
 
-        int bestIndex = getBestMoveForSort(b, legalMoves, IID_DEPTHS[depth]);
+        int iidDepth = isPVNode ? depth-2 : IID_DEPTHS[depth];
+        int bestIndex = getBestMoveForSort(b, legalMoves, iidDepth);
         // Mate check to prevent crashes
         if (bestIndex == -1)
             legalMoves.clear();
