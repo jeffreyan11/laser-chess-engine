@@ -1686,21 +1686,26 @@ int Board::evaluatePositional() {
 int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
     int result = 0;
     int kingSafety = 0;
+    int kingAttackPieces = 0;
     uint64_t knights = pieces[color][KNIGHTS];
     uint64_t bishops = pieces[color][BISHOPS];
     uint64_t rooks = pieces[color][ROOKS];
     uint64_t queens = pieces[color][QUEENS];
     uint64_t pieces = allPieces[color];
-    const int KING_THREAT_MOBILITY = 15;
+    const int KING_THREAT_MOBILITY = 5;
 
     while (knights != 0) {
         int single = bitScanForward(knights);
         knights &= knights-1;
 
         uint64_t legal = getKnightSquares(single) & ~pieces;
-
         result += knightMobility[count(legal)];
-        kingSafety += KING_THREAT_MOBILITY * count(legal & oppKingSqs);
+
+        int kingSqCount = count(legal & oppKingSqs);
+        if (kingSqCount) {
+            kingAttackPieces++;
+            kingSafety += 2 * KING_THREAT_MOBILITY * kingSqCount;
+        }
     }
 
     uint64_t occ = getOccupancy();
@@ -1709,9 +1714,13 @@ int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
         bishops &= bishops-1;
 
         uint64_t legal = getBishopSquares(single, occ) & ~pieces;
-
         result += bishopMobility[count(legal)];
-        kingSafety += KING_THREAT_MOBILITY * count(legal & oppKingSqs);
+
+        int kingSqCount = count(legal & oppKingSqs);
+        if (kingSqCount) {
+            kingAttackPieces++;
+            kingSafety += 3 * KING_THREAT_MOBILITY * kingSqCount;
+        }
     }
 
     while (rooks != 0) {
@@ -1719,9 +1728,13 @@ int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
         rooks &= rooks-1;
 
         uint64_t legal = getRookSquares(single, occ) & ~pieces;
-
         result += rookMobility[count(legal)];
-        kingSafety += KING_THREAT_MOBILITY * count(legal & oppKingSqs);
+
+        int kingSqCount = count(legal & oppKingSqs);
+        if (kingSqCount) {
+            kingAttackPieces++;
+            kingSafety += 3 * KING_THREAT_MOBILITY * kingSqCount;
+        }
     }
 
     while (queens != 0) {
@@ -1729,12 +1742,23 @@ int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
         queens &= queens-1;
 
         uint64_t legal = getQueenSquares(single, occ) & ~pieces;
-
         result += queenMobility[count(legal)];
-        kingSafety += KING_THREAT_MOBILITY * count(legal & oppKingSqs);
+
+        int kingSqCount = count(legal & oppKingSqs);
+        if (kingSqCount) {
+            kingAttackPieces++;
+            kingSafety += 4 * KING_THREAT_MOBILITY * kingSqCount;
+        }
     }
 
-    return result + kingSafety * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
+    if (kingAttackPieces >= 2) {
+        kingSafety += 5 * KING_THREAT_MOBILITY * (kingAttackPieces - 2);
+        result += kingSafety * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
+    }
+    else
+        result += (kingSafety / 2) * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
+
+    return result;
 }
 
 // Gets the endgame factor, which adjusts the evaluation based on how much
