@@ -403,6 +403,21 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         }*/
 
 
+        // Move count based pruning / Late move pruning
+        // At low depths, moves late in the list with poor history are pruned
+        // As used in Fruit/Stockfish:
+        // https://chessprogramming.wikispaces.com/Futility+Pruning#MoveCountBasedPruning
+        if(depth <= 2 && ss.nodeIsReducible() && !isCapture(m) && !isPromotion(m)
+        && movesSearched > 20 && alpha <= prevAlpha
+        && m != searchParams.killers[searchParams.ply][0]
+        && m != searchParams.killers[searchParams.ply][1]
+        && searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)] < 0
+        && !b.isCheckMove(m, color)) {
+            score = alpha;
+            continue;
+        }
+
+
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(m, color))
             continue;
@@ -686,7 +701,7 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
         j++;
     }
 
-    // Checks: only on the three plies of q-search
+    // Checks: only on the first three plies of q-search
     if(plies <= 2) {
         MoveList legalMoves = b.getPseudoLegalChecks(color);
 
