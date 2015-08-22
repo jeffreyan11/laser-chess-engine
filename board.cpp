@@ -1618,8 +1618,8 @@ int Board::evaluatePositional() {
     uint64_t bksq = getKingSquares(bitScanForward(pieces[BLACK][KINGS]));
     
     // Pawn shield bonus (files ABC, FGH)
-    valueEg += 25 * count(wksq & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-    valueEg -= 25 * count(bksq & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    valueMg += 12 * count(wksq & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    valueMg -= 12 * count(bksq & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
     
     // compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
     int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
