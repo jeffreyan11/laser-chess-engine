@@ -1548,29 +1548,33 @@ int Board::evaluate() {
 
 // Helper functions for lazy evaluation
 int Board::evaluateMaterial() {
+    int valueMg = 0;
+    int valueEg = 0;
+    
     // Tempo bonus
-    int value = (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
+    valueMg += (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
+    valueEg += (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
 
     // material
     int whiteMaterial = getMaterial(WHITE);
     int blackMaterial = getMaterial(BLACK);
     
-    // compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
-    int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
-    egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
-    
-    value += whiteMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[WHITE][PAWNS]) * egFactor / EG_FACTOR_RES;
-    value -= blackMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[BLACK][PAWNS]) * egFactor / EG_FACTOR_RES;
+    valueMg += whiteMaterial;
+    valueMg -= blackMaterial;
+    valueEg += whiteMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[WHITE][PAWNS]);
+    valueEg -= blackMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[BLACK][PAWNS]);
     
     // bishop pair bonus
-    if ((pieces[WHITE][BISHOPS] & LIGHT) && (pieces[WHITE][BISHOPS] & DARK))
-        value += BISHOP_PAIR_VALUE;
-    if ((pieces[BLACK][BISHOPS] & LIGHT) && (pieces[BLACK][BISHOPS] & DARK))
-        value -= BISHOP_PAIR_VALUE;
+    if ((pieces[WHITE][BISHOPS] & LIGHT) && (pieces[WHITE][BISHOPS] & DARK)) {
+        valueMg += BISHOP_PAIR_VALUE;
+        valueEg += BISHOP_PAIR_VALUE;
+    }
+    if ((pieces[BLACK][BISHOPS] & LIGHT) && (pieces[BLACK][BISHOPS] & DARK)) {
+        valueMg -= BISHOP_PAIR_VALUE;
+        valueEg -= BISHOP_PAIR_VALUE;
+    }
     
     // piece square tables
-    int midgamePSTVal = 0;
-    int endgamePSTVal = 0;
     // White pieces
     for (int pieceID = 0; pieceID < 6; pieceID++) {
         uint64_t bitboard = pieces[0][pieceID];
@@ -1579,8 +1583,8 @@ int Board::evaluateMaterial() {
         while (bitboard) {
             int i = bitScanForward(bitboard);
             bitboard &= bitboard - 1;
-            midgamePSTVal += midgamePieceValues[pieceID][i];
-            endgamePSTVal += endgamePieceValues[pieceID][i];
+            valueMg += midgamePieceValues[pieceID][i];
+            valueEg += endgamePieceValues[pieceID][i];
         }
     }
     // Black pieces
@@ -1589,40 +1593,43 @@ int Board::evaluateMaterial() {
         while (bitboard) {
             int i = bitScanForward(bitboard);
             bitboard &= bitboard - 1;
-            midgamePSTVal -= midgamePieceValues[pieceID][i];
-            endgamePSTVal -= endgamePieceValues[pieceID][i];
+            valueMg -= midgamePieceValues[pieceID][i];
+            valueEg -= endgamePieceValues[pieceID][i];
         }
     }
-    // Adjust values according to material left on board
-    value += midgamePSTVal * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
-    value += endgamePSTVal * egFactor / EG_FACTOR_RES;
-    
-    return value;
-}
-
-int Board::evaluatePositional() {
-    int value = 0;
-    
-    // material
-    int whiteMaterial = getMaterial(WHITE);
-    int blackMaterial = getMaterial(BLACK);
     
     // compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
     int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
     egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
+    
+    return (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES;
+}
+
+int Board::evaluatePositional() {
+    int valueMg = 0;
+    int valueEg = 0;
+    
+    // material
+    int whiteMaterial = getMaterial(WHITE);
+    int blackMaterial = getMaterial(BLACK);
     
     // Consider attacked squares near king
     uint64_t wksq = getKingSquares(bitScanForward(pieces[WHITE][KINGS]));
     uint64_t bksq = getKingSquares(bitScanForward(pieces[BLACK][KINGS]));
     
     // Pawn shield bonus (files ABC, FGH)
-    value += (25 * egFactor / EG_FACTOR_RES) * count(wksq & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-    value -= (25 * egFactor / EG_FACTOR_RES) * count(bksq & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    valueEg += 25 * count(wksq & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    valueEg -= 25 * count(bksq & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
     
+    // compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
+    int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
+    egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
+    
+    int mobilityValue = 0;
     // Scores based on mobility and basic king safety (which is turned off in
     // the endgame)
-    value += getPseudoMobility(WHITE, bksq, egFactor);
-    value -= getPseudoMobility(BLACK, wksq, egFactor);
+    mobilityValue += getPseudoMobility(WHITE, bksq, egFactor);
+    mobilityValue -= getPseudoMobility(BLACK, wksq, egFactor);
 
     // Pawn structure
     // Passed pawns
@@ -1642,8 +1649,13 @@ int Board::evaluatePositional() {
         tempbp |= (tempbp >> 8) & notwp;
     }
     // Pawns that made it without being blocked are passed
-    value += (10 + 50 * egFactor / EG_FACTOR_RES) * count(tempwp & RANKS[7]);
-    value -= (10 + 50 * egFactor / EG_FACTOR_RES) * count(tempbp & RANKS[0]);
+    int whitePassed = count(tempwp & RANKS[7]);
+    int blackPassed = count(tempbp & RANKS[0]);
+    
+    valueMg += 10 * whitePassed;
+    valueEg += 60 * whitePassed;
+    valueMg -= 10 * blackPassed;
+    valueEg -= 60 * blackPassed;
 
     int wPawnCtByFile[8];
     int bPawnCtByFile[8];
@@ -1659,8 +1671,12 @@ int Board::evaluatePositional() {
     // 3 pawns on file: -48 cp (each pawn worth 84 cp)
     // 4 pawns on file: -144 cp (each pawn worth 64 cp)
     for (int i = 0; i < 8; i++) {
-        value -= 24 * (wPawnCtByFile[i] - 1) * (wPawnCtByFile[i] / 2);
-        value += 24 * (bPawnCtByFile[i] - 1) * (bPawnCtByFile[i] / 2);
+        int whiteDoubled = (wPawnCtByFile[i] - 1) * (wPawnCtByFile[i] / 2);
+        int blackDoubled = (bPawnCtByFile[i] - 1) * (bPawnCtByFile[i] / 2);
+        valueMg -= 24 * whiteDoubled;
+        valueEg -= 24 * whiteDoubled;
+        valueMg += 24 * blackDoubled;
+        valueEg += 24 * blackDoubled;
     }
 
     // Isolated pawns
@@ -1674,10 +1690,14 @@ int Board::evaluatePositional() {
     // If there are pawns on either adjacent file, we remove this pawn
     wp &= ~((wp >> 1) | (wp << 1));
     bp &= ~((bp >> 1) | (bp << 1));
-    value -= 20 * count(wp);
-    value += 20 * count(bp);
-
-    return value;
+    int whiteIsolated = count(wp);
+    int blackIsolated = count(bp);
+    valueMg -= 20 * whiteIsolated;
+    valueEg -= 20 * whiteIsolated;
+    valueMg += 20 * blackIsolated;
+    valueEg += 20 * blackIsolated;
+    
+    return (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES + mobilityValue;
 }
 
 // Scores the board for a player based on estimates of mobility
