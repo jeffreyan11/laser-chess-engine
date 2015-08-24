@@ -1620,14 +1620,18 @@ int Board::evaluatePositional() {
     egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
     
 
-    //---------------------------------King Safety------------------------------
-    // Consider attacked squares near king
+    //-----------------------King Safety and Mobility---------------------------
+    // Consider squares near king
     uint64_t wksq = getKingSquares(bitScanForward(pieces[WHITE][KINGS]));
     uint64_t bksq = getKingSquares(bitScanForward(pieces[BLACK][KINGS]));
     
     // Pawn shield bonus (files ABC, FGH)
-    valueMg += 12 * count(wksq & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-    valueMg -= 12 * count(bksq & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    // Pawns on the second and third ranks are considered part of the shield
+    valueMg += 6 * count((wksq | (wksq << 8)) & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    valueMg -= 6 * count((bksq | (bksq >> 8)) & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    // An extra bonus for pawns on the second rank
+    valueMg += 6 * count(wksq & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    valueMg -= 6 * count(bksq & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
     
     int mobilityValue = 0;
     // Scores based on mobility and basic king safety (which is turned off in
@@ -1638,7 +1642,7 @@ int Board::evaluatePositional() {
     // Open files next to king
     // To find open files we flood fill the king and its adjacent files up the board
     // The inverse of the pawn bitboards act as blockers
-/*
+
     uint64_t notwp = ~pieces[WHITE][PAWNS];
     uint64_t notbp = ~pieces[BLACK][PAWNS];
     // Get king and its adjacent files
@@ -1669,14 +1673,14 @@ int Board::evaluatePositional() {
     int wkNoBlackOpen = count(tempwk2 & RANKS[7]);
     int bkNoBlackOpen = count(tempbk2 & RANKS[0]);
 
-    valueMg -= 10*wkNoWhiteOpen;
-    valueMg -= 10*wkNoBlackOpen;
-    valueMg += 10*bkNoWhiteOpen;
-    valueMg += 10*bkNoBlackOpen;
-    // Fully open files require an additional bonus
-    valueMg -= 5*count(tempwk & tempwk2 & RANKS[7]);
-    valueMg += 5*count(tempbk & tempbk2 & RANKS[0]);
-*/
+    valueMg -= 6*wkNoWhiteOpen;
+    valueMg -= 6*wkNoBlackOpen;
+    valueMg += 6*bkNoWhiteOpen;
+    valueMg += 6*bkNoBlackOpen;
+    // Fully open files get an additional bonus
+    //valueMg -= 3*count(tempwk & tempwk2 & RANKS[7]);
+    //valueMg += 3*count(tempbk & tempbk2 & RANKS[0]);
+
 
     //----------------------------Pawn structure--------------------------------
     // Passed pawns
