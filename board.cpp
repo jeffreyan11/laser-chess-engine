@@ -1674,12 +1674,12 @@ int Board::evaluatePositional() {
     int bkNoBlackOpen = count(tempbk2 & RANKS[0]);
 
     valueMg -= 6*wkNoWhiteOpen;
-    valueMg -= 6*wkNoBlackOpen;
-    valueMg += 6*bkNoWhiteOpen;
+    valueMg -= 4*wkNoBlackOpen;
+    valueMg += 4*bkNoWhiteOpen;
     valueMg += 6*bkNoBlackOpen;
     // Fully open files get an additional bonus
-    //valueMg -= 3*count(tempwk & tempwk2 & RANKS[7]);
-    //valueMg += 3*count(tempbk & tempbk2 & RANKS[0]);
+    valueMg -= 3*count(tempwk & tempwk2 & RANKS[7]);
+    valueMg += 3*count(tempbk & tempbk2 & RANKS[0]);
 
 
     //----------------------------Pawn structure--------------------------------
