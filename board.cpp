@@ -1621,17 +1621,23 @@ int Board::evaluatePositional() {
     
 
     //-----------------------King Safety and Mobility---------------------------
+    // Castling rights
+    valueMg += 6 * (bool) (castlingRights & WHITECASTLE);
+    valueMg -= 6 * (bool) (castlingRights & BLACKCASTLE);
+    valueMg += 17 * count(castlingRights & WHITECASTLE);
+    valueMg -= 17 * count(castlingRights & BLACKCASTLE);
+
     // Consider squares near king
     uint64_t wksq = getKingSquares(bitScanForward(pieces[WHITE][KINGS]));
     uint64_t bksq = getKingSquares(bitScanForward(pieces[BLACK][KINGS]));
     
     // Pawn shield bonus (files ABC, FGH)
     // Pawns on the second and third ranks are considered part of the shield
-    valueMg += 6 * count((wksq | (wksq << 8)) & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-    valueMg -= 6 * count((bksq | (bksq >> 8)) & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    valueMg += 12 * count((wksq | (wksq << 8)) & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    valueMg -= 12 * count((bksq | (bksq >> 8)) & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
     // An extra bonus for pawns on the second rank
-    valueMg += 6 * count(wksq & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-    valueMg -= 6 * count(bksq & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    valueMg += 9 * count(wksq & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    valueMg -= 9 * count(bksq & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
     
     int mobilityValue = 0;
     // Scores based on mobility and basic king safety (which is turned off in
