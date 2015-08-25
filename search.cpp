@@ -173,7 +173,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     
     printStatistics();
     // Aging for the history heuristic table
-    searchParams.ageHistoryTable();
+    searchParams.ageHistoryTable(rootDepth-1);
     
     // Output best move to UCI interface
     isStop = true;

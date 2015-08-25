@@ -19,6 +19,7 @@
 #ifndef __SEARCHSPACE_H__
 #define __SEARCHSPACE_H__
 
+#include <cmath>
 #include "board.h"
 #include "common.h"
 
@@ -55,11 +56,15 @@ struct SearchParameters {
         }
     }
 
-    void ageHistoryTable() {
+    void ageHistoryTable(int depth) {
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 6; j++) {
-                for (int k = 0; k < 64; k++)
-                    historyTable[i][j][k] /= 2;
+                for (int k = 0; k < 64; k++) {
+                    if (historyTable[i][j][k] > 0)
+                        historyTable[i][j][k] /= depth;
+                    else
+                        historyTable[i][j][k] /= (int) std::sqrt(depth);
+                }
             }
         }
     }
