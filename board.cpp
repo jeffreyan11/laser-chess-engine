@@ -1757,27 +1757,57 @@ int Board::evaluatePositional() {
     return (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES + mobilityValue;
 }
 
-// Scores the board for a player based on estimates of mobility
-// This function also provides a bonus for having mobile pieces near the
-// opponent's king
+/* Scores the board for a player based on estimates of mobility
+ * This function also provides a bonus for having mobile pieces near the
+ * opponent's king, and deals with control of center.
+ */
 int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
-    int result = 0;
-    int kingSafety = 0;
-    int kingAttackPieces = 0;
-    uint64_t knights = pieces[color][KNIGHTS];
-    uint64_t bishops = pieces[color][BISHOPS];
-    uint64_t rooks = pieces[color][ROOKS];
-    uint64_t queens = pieces[color][QUEENS];
-    uint64_t pieces = allPieces[color];
+    // Scale factor for pieces attacking opposing king
     const int KING_THREAT_MOBILITY = 5;
+    // Bitboard of center 4 squares: d4, e4, d5, e5
+    const uint64_t CENTER_SQS = 0x0000001818000000;
+    // Value of each square in the extended center in cp
+    const int EXTENDED_CENTER_VAL = 2;
+    // Additional bonus for squares in the center four squares in cp, in addition
+    // to EXTENDED_CENTER_VAL
+    const int CENTER_BONUS = 2;
+    // Holds the mobility values and the final result
+    int result = 0;
+    // Holds the center control score
+    int centerControl = 0;
+    // Holds the king safety score
+    int kingSafety = 0;
+    // Counts the number of pieces participating in the king attack
+    int kingAttackPieces = 0;
+    // All squares the side to move could possibly move to
+    uint64_t openSqs = ~allPieces[color];
+    // Extended center: center, plus c4, f4, c5, f5, and d6/d3, e6/e3
+    uint64_t EXTENDED_CENTER_SQS = (color == WHITE) ? 0x0000183C3C000000
+                                                    : 0x0000003C3C180000;
 
+    // Calculate center control only for pawns
+    uint64_t pawns = pieces[color][PAWNS];
+    uint64_t pawnAttackMap = (color == WHITE) ? getWPawnLeftCaptures(pawns) | getWPawnRightCaptures(pawns)
+                                              : getBPawnLeftCaptures(pawns) | getBPawnRightCaptures(pawns);
+    centerControl += EXTENDED_CENTER_VAL * count(pawnAttackMap & EXTENDED_CENTER_SQS);
+    centerControl += CENTER_BONUS * count(pawnAttackMap & CENTER_SQS);
+
+    // Knights
+    uint64_t knights = pieces[color][KNIGHTS];
     while (knights != 0) {
         int single = bitScanForward(knights);
         knights &= knights-1;
 
+        // Get all potential legal moves
         uint64_t legal = getKnightSquares(single);
-        result += knightMobility[count(legal & ~pieces)];
+        // Get knight mobility score
+        result += knightMobility[count(legal & openSqs)];
 
+        // Get center control score
+        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
+        centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
+
+        // Get king safety score
         int kingSqCount = count(legal & oppKingSqs);
         if (kingSqCount) {
             kingAttackPieces++;
@@ -1785,13 +1815,18 @@ int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
         }
     }
 
+    // Occupancy is required for ray pieces
     uint64_t occ = getOccupancy();
+    uint64_t bishops = pieces[color][BISHOPS];
     while (bishops != 0) {
         int single = bitScanForward(bishops);
         bishops &= bishops-1;
 
         uint64_t legal = getBishopSquares(single, occ);
-        result += bishopMobility[count(legal & ~pieces)];
+        result += bishopMobility[count(legal & openSqs)];
+
+        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
+        centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
 
         int kingSqCount = count(legal & oppKingSqs);
         if (kingSqCount) {
@@ -1800,12 +1835,16 @@ int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
         }
     }
 
+    uint64_t rooks = pieces[color][ROOKS];
     while (rooks != 0) {
         int single = bitScanForward(rooks);
         rooks &= rooks-1;
 
         uint64_t legal = getRookSquares(single, occ);
-        result += rookMobility[count(legal & ~pieces)];
+        result += rookMobility[count(legal & openSqs)];
+
+        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
+        centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
 
         int kingSqCount = count(legal & oppKingSqs);
         if (kingSqCount) {
@@ -1814,12 +1853,16 @@ int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
         }
     }
 
+    uint64_t queens = pieces[color][QUEENS];
     while (queens != 0) {
         int single = bitScanForward(queens);
         queens &= queens-1;
 
         uint64_t legal = getQueenSquares(single, occ);
-        result += queenMobility[count(legal & ~pieces)];
+        result += queenMobility[count(legal & openSqs)];
+
+        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
+        centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
 
         int kingSqCount = count(legal & oppKingSqs);
         if (kingSqCount) {
@@ -1828,12 +1871,19 @@ int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
         }
     }
 
+    // If at least two pieces are involved in the attack, we consider it "serious"
     if (kingAttackPieces >= 2) {
+        // Give a decent bonus for each additional piece participating
         kingSafety += 5 * KING_THREAT_MOBILITY * (kingAttackPieces - 2);
         result += kingSafety * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
     }
+    // This smoothens out the evaluation: if one piece is attacking, another
+    // piece could easily join in to make it "serious" so we must factor it in
+    // a little
     else
         result += (kingSafety / 2) * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
+
+    result += centerControl * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
 
     return result;
 }
