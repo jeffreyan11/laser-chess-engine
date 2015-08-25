@@ -1679,10 +1679,10 @@ int Board::evaluatePositional() {
     int wkNoBlackOpen = count(tempwk2 & RANKS[7]);
     int bkNoBlackOpen = count(tempbk2 & RANKS[0]);
 
-    valueMg -= 6*wkNoWhiteOpen;
+    valueMg -= 7*wkNoWhiteOpen;
     valueMg -= 4*wkNoBlackOpen;
     valueMg += 4*bkNoWhiteOpen;
-    valueMg += 6*bkNoBlackOpen;
+    valueMg += 7*bkNoBlackOpen;
     // Fully open files get an additional bonus
     valueMg -= 3*count(tempwk & tempwk2 & RANKS[7]);
     valueMg += 3*count(tempbk & tempbk2 & RANKS[0]);
@@ -1775,8 +1775,8 @@ int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
         int single = bitScanForward(knights);
         knights &= knights-1;
 
-        uint64_t legal = getKnightSquares(single) & ~pieces;
-        result += knightMobility[count(legal)];
+        uint64_t legal = getKnightSquares(single);
+        result += knightMobility[count(legal & ~pieces)];
 
         int kingSqCount = count(legal & oppKingSqs);
         if (kingSqCount) {
@@ -1790,8 +1790,8 @@ int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
         int single = bitScanForward(bishops);
         bishops &= bishops-1;
 
-        uint64_t legal = getBishopSquares(single, occ) & ~pieces;
-        result += bishopMobility[count(legal)];
+        uint64_t legal = getBishopSquares(single, occ);
+        result += bishopMobility[count(legal & ~pieces)];
 
         int kingSqCount = count(legal & oppKingSqs);
         if (kingSqCount) {
@@ -1804,8 +1804,8 @@ int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
         int single = bitScanForward(rooks);
         rooks &= rooks-1;
 
-        uint64_t legal = getRookSquares(single, occ) & ~pieces;
-        result += rookMobility[count(legal)];
+        uint64_t legal = getRookSquares(single, occ);
+        result += rookMobility[count(legal & ~pieces)];
 
         int kingSqCount = count(legal & oppKingSqs);
         if (kingSqCount) {
@@ -1818,8 +1818,8 @@ int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
         int single = bitScanForward(queens);
         queens &= queens-1;
 
-        uint64_t legal = getQueenSquares(single, occ) & ~pieces;
-        result += queenMobility[count(legal)];
+        uint64_t legal = getQueenSquares(single, occ);
+        result += queenMobility[count(legal & ~pieces)];
 
         int kingSqCount = count(legal & oppKingSqs);
         if (kingSqCount) {
