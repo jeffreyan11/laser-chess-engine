@@ -38,6 +38,9 @@ const vector<string> positions = {
     "8/8/8/p1k4p/P2R3P/2P5/1K6/5q2 w - -"
 };
 
+const int MIN_HASH_SIZE = 1;
+const int MAX_HASH_SIZE = 1024;
+
 void setPosition(string &input, vector<string> &inputVector, Board &board);
 vector<string> split(const string &s, char d);
 Board fenToBoard(string s);
@@ -71,8 +74,8 @@ int main() {
         if (input == "uci") {
             cout << "id name " << name << " " << version << endl;
             cout << "id author " << author << endl;
-            // make variables for default, min, and max values for hash in MB
-            cout << "option name Hash type spin default " << 16 << " min " << 1 << " max " << 1024 << endl;
+            cout << "option name Hash type spin default " << 16
+                 << " min " << MIN_HASH_SIZE << " max " << MAX_HASH_SIZE << endl;
             cout << "uciok" << endl;
         }
         else if (input == "isready") cout << "readyok" << endl;
@@ -123,6 +126,25 @@ int main() {
         }
         
         else if (input == "stop") isStop = true;
+        else if (input.substr(0, 9) == "setoption" && inputVector.size() == 5) {
+            if (inputVector.at(1) != "name" || inputVector.at(3) != "value") {
+                cout << "Invalid option format." << endl;
+            }
+            else {
+                if (inputVector.at(2) == "Hash" || inputVector.at(2) == "hash") {
+                    int MB = stoi(inputVector.at(4));
+                    if (MB < MIN_HASH_SIZE)
+                        MB = MIN_HASH_SIZE;
+                    if (MB > MAX_HASH_SIZE)
+                        MB = MAX_HASH_SIZE;
+                    setHashSize(MB);
+                }
+                else
+                    cout << "Invalid option." << endl;
+            }
+        }
+
+        //----------------------------Non-UCI Commands--------------------------
         else if (input == "board") cerr << boardToString(board);
         else if (input.substr(0, 5) == "perft" && inputVector.size() == 2) {
             int depth = stoi(inputVector.at(1));

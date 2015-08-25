@@ -112,6 +112,26 @@ uint64_t Hash::getSize() {
     return (2 * size);
 }
 
+void Hash::setSize(int MB) {
+    for(uint64_t i = 0; i < size; i++) {
+        if (table[i] != NULL)
+            delete table[i];
+    }
+    delete[] table;
+    
+    // Convert to bytes
+    uint64_t arrSize = MB << 20;
+    // Calculate how many array slots we can use
+    arrSize /= sizeof(HashNode);
+    size = arrSize;
+
+    table = new HashNode *[size];
+    for (uint64_t i = 0; i < size; i++) {
+        table[i] = NULL;
+    }
+    keys = 0;
+}
+
 void Hash::clear() {
     for(uint64_t i = 0; i < size; i++) {
         if (table[i] != NULL)

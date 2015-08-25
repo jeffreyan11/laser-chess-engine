@@ -164,7 +164,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
              << " nodes " << searchStats.nodes << " nps " << nps
              << " hashfull " << 1000 * transpositionTable.keys / transpositionTable.getSize()
              << " pv " << pvStr << endl;
-        
+
         rootDepth++;
     }
     while ((mode == TIME  && (timeSoFar * ONE_SECOND < value * TIME_FACTOR)
@@ -798,6 +798,10 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta) {
 void clearTables() {
     transpositionTable.clear();
     searchParams.resetHistoryTable();
+}
+
+void setHashSize(int MB) {
+    transpositionTable.setSize(MB);
 }
 
 uint64_t getNodes() {

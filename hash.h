@@ -94,7 +94,7 @@ private:
     Hash& operator=(const Hash &other);
 
 public:
-    int keys;
+    uint64_t keys;
 
     Hash(uint64_t MB);
     ~Hash();
@@ -102,6 +102,7 @@ public:
     void add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t age);
     HashEntry *get(Board &b);
     uint64_t getSize();
+    void setSize(int MB);
     void clear();
 };
 
