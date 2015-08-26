@@ -101,6 +101,7 @@ void printStatistics();
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 void changePV(Move best, SearchPV *parent, SearchPV *child);
 string retrievePV(SearchPV *pvLine);
+void feedPVToTT(Board *b, SearchPV *pvLine, int score, int depth);
 
 
 /**
@@ -518,6 +519,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 
 // See if a hash move exists.
 int probeTT(Board &b, Move &hashed, int depth, int &alpha, int beta, SearchPV *pvLine) {
+    bool usePVScore = (alpha == beta - 1);
     HashEntry *entry = transpositionTable.get(b);
     if (entry != NULL) {
         searchStats.hashHits++;
@@ -546,10 +548,12 @@ int probeTT(Board &b, Move &hashed, int depth, int &alpha, int beta, SearchPV *p
                     return beta;
                 }
                 // At PV nodes we can simply return the exact score
-                /*else if (nodeType == PV_NODE) {
+                // Do this only at non-PV nodes: at PV nodes we want to ensure
+                // a full PV line is returned
+                else if (nodeType == PV_NODE && usePVScore) {
                     searchStats.hashScoreCuts++;
                     return hashScore;
-                }*/
+                }
             }
             Board copy = b.staticCopy();
             // Sanity check in case of Type-1 hash error
@@ -846,6 +850,26 @@ string retrievePV(SearchPV *pvLine) {
     }
 
     return pvStr;
+}
+
+// Feeds the PV to the transposition table so that it will be searched first
+// next time
+void feedPVToTT(Board *b, SearchPV *pvLine, int score, int depth) {
+    if (pvLine->pvLength <= 2)
+        return;
+    int color = b->getPlayerToMove();
+    Board copy = b->staticCopy();
+    copy.doMove(pvLine->pv[0], color);
+    copy.doMove(pvLine->pv[1], color^1);
+    depth -= 2;
+
+    for (int i = 2; i < pvLine->pvLength; i++) {
+        transpositionTable.addPV(copy, depth, pvLine->pv[i], score, PV_NODE, searchParams.rootMoveNumber);
+        copy.doMove(pvLine->pv[i], color);
+        color = color ^ 1;
+        depth--;
+        score = -score;
+    }
 }
 
 // Formats a fraction into a percentage value (0 to 100) for printing
