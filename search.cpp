@@ -101,7 +101,7 @@ void printStatistics();
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 void changePV(Move best, SearchPV *parent, SearchPV *child);
 string retrievePV(SearchPV *pvLine);
-void feedPVToTT(Board *b, SearchPV *pvLine, int score, int depth);
+void feedPVToTT(Board *b, SearchPV *pvLine, int score);
 
 
 /**
@@ -166,6 +166,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
              << " hashfull " << 1000 * transpositionTable.keys / transpositionTable.getSize()
              << " pv " << pvStr << endl;
 
+        //if (!isStop)
+        //    feedPVToTT(b, &pvLine, bestScore);
         rootDepth++;
     }
     while ((mode == TIME  && (timeSoFar * ONE_SECOND < value * TIME_FACTOR)
@@ -499,8 +501,12 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     if (score == -INFTY)
         return scoreMate(ss.isInCheck, depth, alpha, beta);
     
-    if (toHash != NULL_MOVE && prevAlpha < alpha && alpha < beta) {
-        // Exact scores indicate a principal variation
+    // Exact scores indicate a principal variation
+    if (prevAlpha < alpha && alpha < beta) {
+        // If the score wasn't from a move we searched in the main loop, the
+        // alpha raise must have come from the hash move
+        if (toHash == NULL_MOVE)
+            toHash = hashed;
         transpositionTable.add(b, depth, toHash, alpha, PV_NODE, searchParams.rootMoveNumber);
         // Update the history table
         if (!isCapture(toHash)) {
@@ -854,20 +860,18 @@ string retrievePV(SearchPV *pvLine) {
 
 // Feeds the PV to the transposition table so that it will be searched first
 // next time
-void feedPVToTT(Board *b, SearchPV *pvLine, int score, int depth) {
+void feedPVToTT(Board *b, SearchPV *pvLine, int score) {
     if (pvLine->pvLength <= 2)
         return;
     int color = b->getPlayerToMove();
     Board copy = b->staticCopy();
     copy.doMove(pvLine->pv[0], color);
     copy.doMove(pvLine->pv[1], color^1);
-    depth -= 2;
 
     for (int i = 2; i < pvLine->pvLength; i++) {
-        transpositionTable.addPV(copy, depth, pvLine->pv[i], score, PV_NODE, searchParams.rootMoveNumber);
+        transpositionTable.addPV(copy, pvLine->pvLength - i, pvLine->pv[i], score, searchParams.rootMoveNumber);
         copy.doMove(pvLine->pv[i], color);
         color = color ^ 1;
-        depth--;
         score = -score;
     }
 }

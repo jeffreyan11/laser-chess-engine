@@ -25,6 +25,8 @@ A special thanks to the Chess Programming Wiki, which was consulted frequently f
 
 ## Known issues:
 
+feedPVToTT() crashes, possibly because the PV collected is not actually the PV
+
 isCheckMove() ignores en passant and castling
 
 tunemagic command leaks a large amount of memory
