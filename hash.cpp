@@ -22,21 +22,14 @@ Hash::Hash(uint64_t MB) {
     // Convert to bytes
     uint64_t arrSize = MB << 20;
     // Calculate how many array slots we can use
-    arrSize /= (sizeof(HashNode) + 8);
+    arrSize /= sizeof(HashNode);
     // Create the array
-    table = new HashNode *[arrSize];
+    table = new HashNode[arrSize];
     size = arrSize;
-    for(uint64_t i = 0; i < size; i++) {
-        table[i] = NULL;
-    }
     keys = 0;
 }
 
 Hash::~Hash() {
-    for(uint64_t i = 0; i < size; i++) {
-        if (table[i] != NULL)
-            delete table[i];
-    }
     delete[] table;
 }
 
@@ -46,10 +39,10 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
     // Use the lower 32 bits of the hash key to index the array
     uint32_t h = (uint32_t) (b.getZobristKey() & 0xFFFFFFFF);
     uint32_t index = h % size;
-    HashNode *node = table[index];
-    if (node == NULL) {
+    HashNode *node = &(table[index]);
+    if (node->slot1.zobristKey == 0) {
         keys++;
-        table[index] = new HashNode(b, depth, m, score, nodeType, age);
+        node->slot1.setEntry(b, depth, m, score, nodeType, age);
         return;
     }
     else if (node->slot2.zobristKey == 0) {
@@ -95,7 +88,7 @@ void Hash::addPV(Board &b, int depth, Move m, int score, uint8_t age) {
     // Use the lower 32 bits of the hash key to index the array
     uint32_t h = (uint32_t) (b.getZobristKey() & 0xFFFFFFFF);
     uint32_t index = h % size;
-    HashNode *node = table[index];
+    HashNode *node = &(table[index]);
 
     // A more recent update to the same position should always be chosen
     if (node->slot1.zobristKey == (uint32_t) (b.getZobristKey() >> 32)) {
@@ -127,10 +120,7 @@ HashEntry *Hash::get(Board &b) {
     // Use the lower 32 bits of the hash key to index the array
     uint32_t h = (uint32_t) (b.getZobristKey() & 0xFFFFFFFF);
     uint32_t index = h % size;
-    HashNode *node = table[index];
-
-    if(node == NULL)
-        return NULL;
+    HashNode *node = &(table[index]);
 
     if(node->slot1.zobristKey == (uint32_t) (b.getZobristKey() >> 32))
         return &(node->slot1);
@@ -144,36 +134,21 @@ uint64_t Hash::getSize() {
     return (2 * size);
 }
 
-void Hash::setSize(int MB) {
-    for(uint64_t i = 0; i < size; i++) {
-        if (table[i] != NULL)
-            delete table[i];
-    }
+void Hash::setSize(uint64_t MB) {
     delete[] table;
     
     // Convert to bytes
     uint64_t arrSize = MB << 20;
     // Calculate how many array slots we can use
-    arrSize /= (sizeof(HashNode) + 8);
+    arrSize /= sizeof(HashNode);
     size = arrSize;
 
-    table = new HashNode *[size];
-    for (uint64_t i = 0; i < size; i++) {
-        table[i] = NULL;
-    }
+    table = new HashNode[size];
     keys = 0;
 }
 
 void Hash::clear() {
-    for(uint64_t i = 0; i < size; i++) {
-        if (table[i] != NULL)
-            delete table[i];
-    }
     delete[] table;
-    
-    table = new HashNode *[size];
-    for (uint64_t i = 0; i < size; i++) {
-        table[i] = NULL;
-    }
+    table = new HashNode[size];
     keys = 0;
 }

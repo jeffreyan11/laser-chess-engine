@@ -137,7 +137,7 @@ int main() {
                         MB = MIN_HASH_SIZE;
                     if (MB > MAX_HASH_SIZE)
                         MB = MAX_HASH_SIZE;
-                    setHashSize(MB);
+                    setHashSize((uint64_t) MB);
                 }
                 else
                     cout << "Invalid option." << endl;

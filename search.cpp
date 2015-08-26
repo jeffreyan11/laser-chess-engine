@@ -810,7 +810,7 @@ void clearTables() {
     searchParams.resetHistoryTable();
 }
 
-void setHashSize(int MB) {
+void setHashSize(uint64_t MB) {
     transpositionTable.setSize(MB);
 }
 

@@ -77,16 +77,16 @@ public:
 
     HashNode() {}
 
-    HashNode(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t age) {
+    /*HashNode(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t age) {
         slot1.setEntry(b, depth, m, score, nodeType, age);
-    }
+    }*/
 
     ~HashNode() {}
 };
 
 class Hash {
 private:
-    HashNode **table;
+    HashNode *table;
     uint64_t size;
 
     // Prevent direct copying and assignment
@@ -103,7 +103,7 @@ public:
     void addPV(Board &b, int depth, Move m, int score, uint8_t age);
     HashEntry *get(Board &b);
     uint64_t getSize();
-    void setSize(int MB);
+    void setSize(uint64_t MB);
     void clear();
 };
 
