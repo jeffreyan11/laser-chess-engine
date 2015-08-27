@@ -100,16 +100,14 @@ int main() {
                 mode = TIME;
                 int color = board.getPlayerToMove();
                 int len = inputVector.size();
-                bool isInc = (len == 9) || (len == 11);
                 bool isRecur = (len == 7) || (len == 11);
+                bool isInc = (len == 9) || (len == 11);
                 
-                value = (color == WHITE) ? stoi(inputVector.at(2))
+                int maxValue = (color == WHITE) ? stoi(inputVector.at(2))
                     : stoi(inputVector.at(4));
-                value -= BUFFER_TIME;
+                maxValue -= BUFFER_TIME;
                 
-                if (isInc) value += (int)(MOVE_HORIZON / MAX_TIME_FACTOR)
-                    * ((color == WHITE) ? stoi(inputVector.at(6))
-                    : stoi(inputVector.at(8)));
+                value = maxValue;
                 
                 if (isRecur) {
                     int movesToGo = (len == 7) ? stoi(inputVector.at(6))
@@ -117,6 +115,12 @@ int main() {
                     value = (int)(value / max((double)movesToGo, MAX_TIME_FACTOR + 1));
                 }
                 else value /= MOVE_HORIZON;
+                
+                if (isInc) {
+                    value += ((color == WHITE) ? stoi(inputVector.at(6))
+                        : stoi(inputVector.at(8))) / MAX_TIME_FACTOR;
+                    value = min(value, maxValue);
+                }
             }
             
             bestMove = NULL_MOVE;
