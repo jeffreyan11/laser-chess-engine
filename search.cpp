@@ -116,6 +116,15 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
+
+    // Special case if we are given a mate/stalemate position
+    if (legalMoves.size() <= 0) {
+        *bestMove = NULL_MOVE;
+        isStop = true;
+        cout << "bestmove none" << endl;
+        return;
+    }
+
     *bestMove = legalMoves.get(0);
     
     // Set up timing
@@ -123,8 +132,14 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         ? (uint64_t)(MAX_TIME_FACTOR * value) : MAX_TIME;
     searchParams.startTime = ChessClock::now();
     double timeSoFar = getTimeElapsed(searchParams.startTime);
+
+    // Special case if there is only one legal move: use less search time,
+    // only to get a rough PV/score
+    if (legalMoves.size() == 1 && mode == TIME) {
+        searchParams.timeLimit = min(searchParams.timeLimit / 8, ONE_SECOND);
+    }
+
     int bestScore, bestMoveIndex;
-    
     int rootDepth = 1;
     do {
         // Reset all search parameters (killers, plies, etc)
