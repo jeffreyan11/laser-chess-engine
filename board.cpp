@@ -1690,12 +1690,15 @@ int Board::evaluatePositional() {
 
     //----------------------------Pawn structure--------------------------------
     // Passed pawns
+    const int PASSER_BONUS_MG[8] = {0, 10, 10, 15, 20, 30, 55, 0};
+    const int PASSER_BONUS_EG[8] = {0, 30, 30, 40, 55, 75, 130, 0};
     uint64_t bPassedBlocker = pieces[WHITE][PAWNS];
     uint64_t wPassedBlocker = pieces[BLACK][PAWNS];
     // These act as blockers for the flood fill: if opposing pawns are on the
-    // same or an adjacent rank, your pawn is not passed.
+    // same or an adjacent file, your pawn is not passed.
     bPassedBlocker |= ((bPassedBlocker >> 1) & NOTH) | ((bPassedBlocker << 1) & NOTA);
     wPassedBlocker |= ((wPassedBlocker >> 1) & NOTH) | ((wPassedBlocker << 1) & NOTA);
+    // Invert to get empty squares for the flood fill
     bPassedBlocker = ~bPassedBlocker;
     wPassedBlocker = ~wPassedBlocker;
     uint64_t tempwp = pieces[WHITE][PAWNS];
@@ -1706,13 +1709,27 @@ int Board::evaluatePositional() {
         tempbp |= (tempbp >> 8) & bPassedBlocker;
     }
     // Pawns that made it without being blocked are passed
-    int whitePassed = count(tempwp & RANKS[7]);
-    int blackPassed = count(tempbp & RANKS[0]);
-    
-    valueMg += 10 * whitePassed;
-    valueEg += 60 * whitePassed;
-    valueMg -= 10 * blackPassed;
-    valueEg -= 60 * blackPassed;
+    uint64_t whitePassedBits = tempwp & RANKS[6];
+    uint64_t blackPassedBits = tempbp & RANKS[1];
+    // Bring both file passer occupancy sets to the first rank
+    whitePassedBits >>= 48;
+    blackPassedBits >>= 8;
+    while (whitePassedBits) {
+        int file = bitScanForward(whitePassedBits);
+        whitePassedBits &= whitePassedBits - 1;
+        uint64_t fileMask = pieces[WHITE][PAWNS] & FILES[file];
+        int rank = bitScanReverse(fileMask) >> 3;
+        valueMg += PASSER_BONUS_MG[rank];
+        valueEg += PASSER_BONUS_EG[rank];
+    }
+    while (blackPassedBits) {
+        int file = bitScanForward(blackPassedBits);
+        blackPassedBits &= blackPassedBits - 1;
+        uint64_t fileMask = pieces[BLACK][PAWNS] & FILES[file];
+        int rank = 7 - (bitScanForward(fileMask) >> 3);
+        valueMg -= PASSER_BONUS_MG[rank];
+        valueEg -= PASSER_BONUS_EG[rank];
+    }
 
     int wPawnCtByFile[8];
     int bPawnCtByFile[8];
