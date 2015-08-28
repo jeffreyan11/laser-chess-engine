@@ -1691,7 +1691,7 @@ int Board::evaluatePositional() {
     //----------------------------Pawn structure--------------------------------
     // Passed pawns
     const int PASSER_BONUS_MG[8] = {0, 10, 10, 15, 20, 30, 55, 0};
-    const int PASSER_BONUS_EG[8] = {0, 30, 30, 40, 55, 75, 130, 0};
+    const int PASSER_BONUS_EG[8] = {0, 30, 35, 45, 65, 95, 140, 0};
     uint64_t bPassedBlocker = pieces[WHITE][PAWNS];
     uint64_t wPassedBlocker = pieces[BLACK][PAWNS];
     // These act as blockers for the flood fill: if opposing pawns are on the
