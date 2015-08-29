@@ -642,11 +642,11 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
     // evaluation for standPat to save time.
     int standPat = (color == WHITE) ? b.evaluateMaterial() : -b.evaluateMaterial();
 
-    if (standPat >= beta + MAX_POS_SCORE)
+    if (standPat >= beta + 180)
         return beta;
     
     // delta prune
-    if (standPat < alpha - 2 * MAX_POS_SCORE - QUEEN_VALUE)
+    if (standPat < alpha - 180 - MAX_POS_SCORE - QUEEN_VALUE)
         return alpha;
     
     // If we do not cut off, we get a more accurate evaluation.
