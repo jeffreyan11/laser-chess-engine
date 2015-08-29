@@ -1554,8 +1554,8 @@ int Board::evaluateMaterial() {
     // Tempo bonus
     valueMg += (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
     valueEg += (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
-
-    // material
+    
+    // Material
     int whiteMaterial = getMaterial(WHITE);
     int blackMaterial = getMaterial(BLACK);
     
@@ -1564,7 +1564,7 @@ int Board::evaluateMaterial() {
     valueEg += whiteMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[WHITE][PAWNS]);
     valueEg -= blackMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[BLACK][PAWNS]);
     
-    // bishop pair bonus
+    // Bishop pair bonus
     if ((pieces[WHITE][BISHOPS] & LIGHT) && (pieces[WHITE][BISHOPS] & DARK)) {
         valueMg += BISHOP_PAIR_VALUE;
         valueEg += BISHOP_PAIR_VALUE;
@@ -1574,8 +1574,8 @@ int Board::evaluateMaterial() {
         valueEg -= BISHOP_PAIR_VALUE;
     }
     
-
-    // piece square tables
+    
+    // Piece square tables
     // White pieces
     for (int pieceID = 0; pieceID < 6; pieceID++) {
         uint64_t bitboard = pieces[0][pieceID];
@@ -1599,8 +1599,8 @@ int Board::evaluateMaterial() {
         }
     }
     
-
-    // compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
+    
+    // Compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
     int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
     egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
     
@@ -1611,22 +1611,22 @@ int Board::evaluatePositional() {
     int valueMg = 0;
     int valueEg = 0;
     
-    // material: for calculating EG factor
+    // Material: for calculating EG factor
     int whiteMaterial = getMaterial(WHITE);
     int blackMaterial = getMaterial(BLACK);
-
-    // compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
+    
+    // Compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
     int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
     egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
     
-
+    
     //-----------------------King Safety and Mobility---------------------------
     // Castling rights
     valueMg += 6 * (bool) (castlingRights & WHITECASTLE);
     valueMg -= 6 * (bool) (castlingRights & BLACKCASTLE);
     valueMg += 17 * count(castlingRights & WHITECASTLE);
     valueMg -= 17 * count(castlingRights & BLACKCASTLE);
-
+    
     // Consider squares near king
     uint64_t wksq = getKingSquares(bitScanForward(pieces[WHITE][KINGS]));
     uint64_t bksq = getKingSquares(bitScanForward(pieces[BLACK][KINGS]));
@@ -1644,11 +1644,11 @@ int Board::evaluatePositional() {
     // the endgame)
     mobilityValue += getPseudoMobility(WHITE, bksq, egFactor);
     mobilityValue -= getPseudoMobility(BLACK, wksq, egFactor);
-
+    
     // Open files next to king
     // To find open files we flood fill the king and its adjacent files up the board
     // The inverse of the pawn bitboards act as blockers
-
+    
     uint64_t notwp = ~pieces[WHITE][PAWNS];
     uint64_t notbp = ~pieces[BLACK][PAWNS];
     // Get king and its adjacent files
@@ -1658,7 +1658,7 @@ int Board::evaluatePositional() {
     tempbk |= ((tempbk >> 1) & NOTH) | ((tempbk << 1) & NOTA);
     uint64_t tempwk2 = tempwk;
     uint64_t tempbk2 = tempbk;
-
+    
     // Flood fill: checking for white pawns
     for(int i = 0; i < 7; i++) {
         tempwk |= (tempwk << 8) & notwp;
@@ -1668,7 +1668,7 @@ int Board::evaluatePositional() {
     // then the file is semi-open.
     int wkNoWhiteOpen = count(tempwk & RANKS[7]);
     int bkNoWhiteOpen = count(tempbk & RANKS[0]);
-
+    
     // Flood fill: checking for black pawns
     for(int i = 0; i < 7; i++) {
         tempwk2 |= (tempwk2 << 8) & notbp;
@@ -1678,7 +1678,7 @@ int Board::evaluatePositional() {
     // then the file is semi-open.
     int wkNoBlackOpen = count(tempwk2 & RANKS[7]);
     int bkNoBlackOpen = count(tempbk2 & RANKS[0]);
-
+    
     valueMg -= 7*wkNoWhiteOpen;
     valueMg -= 4*wkNoBlackOpen;
     valueMg += 4*bkNoWhiteOpen;
@@ -1686,8 +1686,8 @@ int Board::evaluatePositional() {
     // Fully open files get an additional bonus
     valueMg -= 3*count(tempwk & tempwk2 & RANKS[7]);
     valueMg += 3*count(tempbk & tempbk2 & RANKS[0]);
-
-
+    
+    
     //----------------------------Pawn structure--------------------------------
     // Passed pawns
     const int PASSER_BONUS_MG[8] = {0, 10, 10, 15, 20, 30, 55, 0};
@@ -1730,14 +1730,14 @@ int Board::evaluatePositional() {
         valueMg -= PASSER_BONUS_MG[rank];
         valueEg -= PASSER_BONUS_EG[rank];
     }
-
+    
     int wPawnCtByFile[8];
     int bPawnCtByFile[8];
     for (int i = 0; i < 8; i++) {
         wPawnCtByFile[i] = count(pieces[WHITE][PAWNS] & FILES[i]);
         bPawnCtByFile[i] = count(pieces[BLACK][PAWNS] & FILES[i]);
     }
-
+    
     // Doubled pawns
     // 0 pawns on file: 0 cp
     // 1 pawn on file: 0 cp (each pawn worth 100 cp)
@@ -1752,7 +1752,7 @@ int Board::evaluatePositional() {
         valueMg += 24 * blackDoubled;
         valueEg += 24 * blackDoubled;
     }
-
+    
     // Isolated pawns
     uint64_t wp = 0, bp = 0;
     for (int i = 0; i < 8; i++) {
