@@ -349,7 +349,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // Reduce more if we are further ahead, but do not let NMR descend
         // directly into q-search
         reduction = min(depth - 2,
-            1 + (int) ((depth + 1.0) / 5.0 + (double) (staticEval - beta) / PAWN_VALUE));
+            1 + (int) ((depth + 2.0) / 5.0 + (double) (staticEval - beta) / 118.0));
 
         b.doNullMove();
         searchParams.nullMoveCount++;
