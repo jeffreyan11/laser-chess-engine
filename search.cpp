@@ -356,15 +356,14 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         searchParams.ply++;
         int nullScore = -PVS(b, depth-1-reduction, -beta, -alpha, &line);
         searchParams.ply--;
-        if (nullScore >= beta) {
-            b.doNullMove();
-            searchParams.nullMoveCount--;
-            return beta;
-        }
         
         // Undo the null move
         b.doNullMove();
         searchParams.nullMoveCount--;
+
+        if (nullScore >= beta) {
+            return beta;
+        }
     }
 
 
