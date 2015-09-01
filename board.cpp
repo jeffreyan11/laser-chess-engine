@@ -233,24 +233,18 @@ uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
 
     uint64_t nodes = 0;
 
-    MoveList pl = b.getPseudoLegalQuiets(color);
+    MoveList pl = b.getAllPseudoLegalMoves(color);
     for (unsigned int i = 0; i < pl.size(); i++) {
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(pl.get(i), color))
             continue;
 
+        if (isCapture(pl.get(i)))
+            captures++;
+
         nodes += perft(copy, color^1, depth-1, captures);
     }
 
-    MoveList pc = b.getPseudoLegalCaptures(color, true);
-    for (unsigned int i = 0; i < pc.size(); i++) {
-        Board copy = b.staticCopy();
-        if (!copy.doPseudoLegalMove(pc.get(i), color))
-            continue;
-        
-        captures++;
-        nodes += perft(copy, color^1, depth-1, captures);
-    }
     return nodes;
 }
 
@@ -608,6 +602,53 @@ void Board::doNullMove() {
 //-------------------------------Move Generation--------------------------------
 //------------------------------------------------------------------------------
 
+/*
+ * @brief Returns a list of structs containing the piece type, start square,
+ * and a bitboard of potential legal moves for each knight, bishop, rook, and queen.
+ */
+PieceMoveList Board::getPieceMoveList(int color) {
+    PieceMoveList pml;
+
+    uint64_t knights = pieces[color][KNIGHTS];
+    while (knights) {
+        int stsq = bitScanForward(knights);
+        knights &= knights-1;
+        uint64_t nSq = getKnightSquares(stsq);
+
+        pml.add(PieceMoveInfo(KNIGHTS, stsq, nSq));
+    }
+
+    uint64_t occ = getOccupancy();
+    uint64_t bishops = pieces[color][BISHOPS];
+    while (bishops) {
+        int stsq = bitScanForward(bishops);
+        bishops &= bishops-1;
+        uint64_t bSq = getBishopSquares(stsq, occ);
+
+        pml.add(PieceMoveInfo(BISHOPS, stsq, bSq));
+    }
+
+    uint64_t rooks = pieces[color][ROOKS];
+    while (rooks) {
+        int stsq = bitScanForward(rooks);
+        rooks &= rooks-1;
+        uint64_t rSq = getRookSquares(stsq, occ);
+
+        pml.add(PieceMoveInfo(ROOKS, stsq, rSq));
+    }
+
+    uint64_t queens = pieces[color][QUEENS];
+    while (queens) {
+        int stsq = bitScanForward(queens);
+        queens &= queens-1;
+        uint64_t qSq = getQueenSquares(stsq, occ);
+
+        pml.add(PieceMoveInfo(QUEENS, stsq, qSq));
+    }
+
+    return pml;
+}
+
 // Get all legal moves and captures
 MoveList Board::getAllLegalMoves(int color) {
     MoveList moves = getAllPseudoLegalMoves(color);
@@ -633,8 +674,9 @@ MoveList Board::getAllLegalMoves(int color) {
  * square and store as a Move object.
  */
 MoveList Board::getAllPseudoLegalMoves(int color) {
-    MoveList quiets = getPseudoLegalQuiets(color);
-    MoveList captures = getPseudoLegalCaptures(color, true);
+    PieceMoveList pml = getPieceMoveList(color);
+    MoveList quiets = getPseudoLegalQuiets(color, pml);
+    MoveList captures = getPseudoLegalCaptures(color, pml, true);
 
     // Put captures before quiet moves
     for (unsigned int i = 0; i < quiets.size(); i++) {
@@ -653,46 +695,14 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
  * Pawn moves
  * King moves
  */
-MoveList Board::getPseudoLegalQuiets(int color) {
+MoveList Board::getPseudoLegalQuiets(int color, PieceMoveList &pml) {
     MoveList quiets;
 
     addCastlesToList(quiets, color);
 
-    uint64_t knights = pieces[color][KNIGHTS];
-    while (knights) {
-        int stsq = bitScanForward(knights);
-        knights &= knights-1;
-        uint64_t nSq = getKnightSquares(stsq);
-
-        addMovesToList(quiets, stsq, nSq, false);
-    }
-
-    uint64_t occ = getOccupancy();
-    uint64_t bishops = pieces[color][BISHOPS];
-    while (bishops) {
-        int stsq = bitScanForward(bishops);
-        bishops &= bishops-1;
-        uint64_t bSq = getBishopSquares(stsq, occ);
-
-        addMovesToList(quiets, stsq, bSq, false);
-    }
-
-    uint64_t rooks = pieces[color][ROOKS];
-    while (rooks) {
-        int stsq = bitScanForward(rooks);
-        rooks &= rooks-1;
-        uint64_t rSq = getRookSquares(stsq, occ);
-
-        addMovesToList(quiets, stsq, rSq, false);
-    }
-
-    uint64_t queens = pieces[color][QUEENS];
-    while (queens) {
-        int stsq = bitScanForward(queens);
-        queens &= queens-1;
-        uint64_t qSq = getQueenSquares(stsq, occ);
-
-        addMovesToList(quiets, stsq, qSq, false);
+    for (unsigned int i = 0; i < pml.size(); i++) {
+        PieceMoveInfo pmi = pml.get(i);
+        addMovesToList(quiets, pmi.startSq, pmi.legal, false);
     }
 
     addPawnMovesToList(quiets, color);
@@ -714,7 +724,7 @@ MoveList Board::getPseudoLegalQuiets(int color) {
  * Rook captures
  * Queen captures
  */
-MoveList Board::getPseudoLegalCaptures(int color, bool includePromotions) {
+MoveList Board::getPseudoLegalCaptures(int color, PieceMoveList &pml, bool includePromotions) {
     MoveList captures;
 
     uint64_t otherPieces = allPieces[color^1];
@@ -725,41 +735,9 @@ MoveList Board::getPseudoLegalCaptures(int color, bool includePromotions) {
 
     addPawnCapturesToList(captures, color, otherPieces, includePromotions);
 
-    uint64_t knights = pieces[color][KNIGHTS];
-    while (knights) {
-        int stsq = bitScanForward(knights);
-        knights &= knights-1;
-        uint64_t nSq = getKnightSquares(stsq);
-
-        addMovesToList(captures, stsq, nSq, true, otherPieces);
-    }
-
-    uint64_t occ = getOccupancy();
-    uint64_t bishops = pieces[color][BISHOPS];
-    while (bishops) {
-        int stsq = bitScanForward(bishops);
-        bishops &= bishops-1;
-        uint64_t bSq = getBishopSquares(stsq, occ);
-
-        addMovesToList(captures, stsq, bSq, true, otherPieces);
-    }
-
-    uint64_t rooks = pieces[color][ROOKS];
-    while (rooks) {
-        int stsq = bitScanForward(rooks);
-        rooks &= rooks-1;
-        uint64_t rSq = getRookSquares(stsq, occ);
-
-        addMovesToList(captures, stsq, rSq, true, otherPieces);
-    }
-
-    uint64_t queens = pieces[color][QUEENS];
-    while (queens) {
-        int stsq = bitScanForward(queens);
-        queens &= queens-1;
-        uint64_t qSq = getQueenSquares(stsq, occ);
-
-        addMovesToList(captures, stsq, qSq, true, otherPieces);
+    for (unsigned int i = 0; i < pml.size(); i++) {
+        PieceMoveInfo pmi = pml.get(i);
+        addMovesToList(captures, pmi.startSq, pmi.legal, true, otherPieces);
     }
 
     return captures;

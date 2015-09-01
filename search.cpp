@@ -664,7 +664,8 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
 
 
     // Generate captures and order by MVV/LVA
-    MoveList legalCaptures = b.getPseudoLegalCaptures(color, false);
+    PieceMoveList pml = b.getPieceMoveList(color);
+    MoveList legalCaptures = b.getPseudoLegalCaptures(color, pml, false);
     ScoreList scores;
     for (unsigned int i = 0; i < legalCaptures.size(); i++) {
         scores.add(b.getMVVLVAScore(color, legalCaptures.get(i)));

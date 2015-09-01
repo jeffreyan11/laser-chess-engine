@@ -77,6 +77,21 @@ const uint64_t RESET_TWOFOLD = 0x8080808080808080;
 const int START_VALUE = 8 * PAWN_VALUE + 2 * KNIGHT_VALUE + 2 * BISHOP_VALUE + 2 * ROOK_VALUE + QUEEN_VALUE;
 const int EG_FACTOR_RES = 1000;
 
+struct PieceMoveInfo {
+    int pieceID;
+    int startSq;
+    uint64_t legal;
+
+    PieceMoveInfo() {}
+    PieceMoveInfo(int _pieceID, int _startSq, uint64_t _legal) {
+        pieceID = _pieceID;
+        startSq = _startSq;
+        legal = _legal;
+    }
+};
+
+typedef SearchArrayList<PieceMoveInfo> PieceMoveList;
+
 void initMagicTables(uint64_t seed);
 void initZobristTable();
 void initInBetweenTable();
@@ -103,10 +118,11 @@ public:
     bool doHashMove(Move m, int color);
     void doNullMove();
 
+    PieceMoveList getPieceMoveList(int color);
     MoveList getAllLegalMoves(int color);
     MoveList getAllPseudoLegalMoves(int color);
-    MoveList getPseudoLegalQuiets(int color);
-    MoveList getPseudoLegalCaptures(int color, bool includePromotions);
+    MoveList getPseudoLegalQuiets(int color, PieceMoveList &pml);
+    MoveList getPseudoLegalCaptures(int color, PieceMoveList &pml, bool includePromotions);
     MoveList getPseudoLegalPromotions(int color);
     MoveList getPseudoLegalChecks(int color);
     MoveList getPseudoLegalCheckEscapes(int color);
