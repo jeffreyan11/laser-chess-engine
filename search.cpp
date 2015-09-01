@@ -356,7 +356,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         searchParams.ply++;
         int nullScore = -PVS(b, depth-1-reduction, -beta, -alpha, &line);
         searchParams.ply--;
-        
+
         // Undo the null move
         b.doNullMove();
         searchParams.nullMoveCount--;
@@ -403,9 +403,9 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // move probably won't raise our prospects much, so don't bother
         // q-searching it.
         // TODO may fail low in some stalemate cases
-        if(depth <= 3 && staticEval <= alpha - FUTILITY_MARGIN[depth]
-        && ss.nodeIsReducible() && !isCapture(m) && abs(alpha) < QUEEN_VALUE
-        && !isPromotion(m) && !b.isCheckMove(m, color)) {
+        if (depth <= 3 && staticEval <= alpha - FUTILITY_MARGIN[depth]
+         && ss.nodeIsReducible() && !isCapture(m) && abs(alpha) < QUEEN_VALUE
+         && !isPromotion(m) && !b.isCheckMove(m, color)) {
             score = alpha;
             continue;
         }
@@ -424,14 +424,14 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // At low depths, moves late in the list with poor history are pruned
         // As used in Fruit/Stockfish:
         // https://chessprogramming.wikispaces.com/Futility+Pruning#MoveCountBasedPruning
-        if(((depth == 1 && movesSearched > 6)
-         || (depth == 2 && movesSearched > 12)
-         || (depth == 3 && movesSearched > 24))
-        && alpha <= prevAlpha && ss.nodeIsReducible() && !isCapture(m) && !isPromotion(m)
-        && m != searchParams.killers[searchParams.ply][0]
-        && m != searchParams.killers[searchParams.ply][1]
-        && searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)] < (1 - depth*depth)
-        && !b.isCheckMove(m, color)) {
+        if (((depth == 1 && movesSearched > 6)
+          || (depth == 2 && movesSearched > 12)
+          || (depth == 3 && movesSearched > 24))
+         && alpha <= prevAlpha && ss.nodeIsReducible() && !isCapture(m) && !isPromotion(m)
+         && m != searchParams.killers[searchParams.ply][0]
+         && m != searchParams.killers[searchParams.ply][1]
+         && searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)] < (1 - depth*depth)
+         && !b.isCheckMove(m, color)) {
             score = alpha;
             continue;
         }
@@ -448,16 +448,18 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // If we have not raised alpha in the first few moves, we are probably
         // at an all-node. The later moves are likely worse so we search them
         // to a shallower depth.
-        if(ss.nodeIsReducible() && !isCapture(m) && depth >= 3 && movesSearched > 2 && alpha <= prevAlpha
-        && m != searchParams.killers[searchParams.ply][0] && m != searchParams.killers[searchParams.ply][1]
-        && !isPromotion(m) && !copy.isInCheck(color^1)) {
+        if (depth >= 3 && movesSearched > 2 && alpha <= prevAlpha
+         && ss.nodeIsReducible() && !isCapture(m)
+         && m != searchParams.killers[searchParams.ply][0]
+         && m != searchParams.killers[searchParams.ply][1]
+         && !isPromotion(m) && !copy.isInCheck(color^1)) {
             // Increase reduction with higher depth and later moves, but do
             // not let search descend directly into q-search
             reduction = min(depth - 2,
                 1 + (int) (((double) depth - 4) / 5 + ((double) movesSearched) / 16));
             // Always start from a reduction of 1 and increase at most 1 depth
             // every 2 moves
-            reduction = min(reduction, (int) (movesSearched - 2) / 2);
+            reduction = min(reduction, 1 + (int) (movesSearched - 3) / 2);
         }
 
 
