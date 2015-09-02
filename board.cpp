@@ -1498,7 +1498,6 @@ int Board::evaluateMaterial() {
     
     // Tempo bonus
     valueMg += (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
-    valueEg += (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
     
     // Material
     int whiteMaterial = getMaterial(WHITE);
