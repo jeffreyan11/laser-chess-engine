@@ -1691,17 +1691,16 @@ int Board::evaluatePositional(PieceMoveList &pml) {
     }
     
     // Doubled pawns
-    // 0 pawns on file: 0 cp
-    // 1 pawn on file: 0 cp (each pawn worth 100 cp)
-    // 2 pawns on file: -24 cp (each pawn worth 88 cp)
-    // 3 pawns on file: -48 cp (each pawn worth 84 cp)
-    // 4 pawns on file: -144 cp (each pawn worth 64 cp)
+    // 0-1 pawns on file: multiplier 0
+    // 2 pawns on file: multiplier 1
+    // 3 pawns on file: multiplier 3
+    // 4 pawns on file: multiplier 6
     for (int i = 0; i < 8; i++) {
-        int whiteDoubled = (wPawnCtByFile[i] - 1) * (wPawnCtByFile[i] / 2);
-        int blackDoubled = (bPawnCtByFile[i] - 1) * (bPawnCtByFile[i] / 2);
-        valueMg -= 24 * whiteDoubled;
+        int whiteDoubled = ((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2;
+        int blackDoubled = ((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2;
+        valueMg -= 16 * whiteDoubled;
         valueEg -= 24 * whiteDoubled;
-        valueMg += 24 * blackDoubled;
+        valueMg += 16 * blackDoubled;
         valueEg += 24 * blackDoubled;
     }
     
