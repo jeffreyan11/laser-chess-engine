@@ -120,12 +120,12 @@ public:
 
     PieceMoveList getPieceMoveList(int color);
     MoveList getAllLegalMoves(int color);
-    MoveList getAllPseudoLegalMoves(int color);
+    MoveList getAllPseudoLegalMoves(int color, PieceMoveList &pml);
     MoveList getPseudoLegalQuiets(int color, PieceMoveList &pml);
     MoveList getPseudoLegalCaptures(int color, PieceMoveList &pml, bool includePromotions);
     MoveList getPseudoLegalPromotions(int color);
     MoveList getPseudoLegalChecks(int color);
-    MoveList getPseudoLegalCheckEscapes(int color);
+    MoveList getPseudoLegalCheckEscapes(int color, PieceMoveList &pml);
 
     // Get a bitboard of all xray-ers attacking a square if a blocker has been moved or removed
     uint64_t getXRayPieceMap(int color, int sq, int blockerColor,
@@ -147,10 +147,10 @@ public:
     bool isDraw();
 
     // Evaluation
-    int evaluate();
+    int evaluate(PieceMoveList &pml);
     int evaluateMaterial();
-    int evaluatePositional();
-    int getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor);
+    int evaluatePositional(PieceMoveList &pml);
+    int getPseudoMobility(int color, PieceMoveList &pml, uint64_t oppKingSqs, int egFactor);
     int getEGFactor();
     int getMaterial(int color);
     // Useful for turning off some pruning late endgame

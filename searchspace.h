@@ -87,7 +87,7 @@ struct SearchSpace {
 	// Node is reducible if not PV node and not in check
 	bool nodeIsReducible();
 
-	void generateMoves(Move hashed);
+	void generateMoves(Move hashed, PieceMoveList &pml);
 	Move nextMove();
     void reduceBadHistories(Move bestMove);
 };

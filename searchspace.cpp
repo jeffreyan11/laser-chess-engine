@@ -49,10 +49,10 @@ bool SearchSpace::nodeIsReducible() {
 	return !isPVNode && !isInCheck;
 }
 
-void SearchSpace::generateMoves(Move hashed) {
+void SearchSpace::generateMoves(Move hashed, PieceMoveList &pml) {
 	index = 0;
-    legalMoves = isInCheck ? b->getPseudoLegalCheckEscapes(color)
-                           : b->getAllPseudoLegalMoves(color);
+    legalMoves = isInCheck ? b->getPseudoLegalCheckEscapes(color, pml)
+                           : b->getAllPseudoLegalMoves(color, pml);
 
     // Remove the hash move from the list, since it has already been tried
     // TODO make this nicer

@@ -233,7 +233,8 @@ uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
 
     uint64_t nodes = 0;
 
-    MoveList pl = b.getAllPseudoLegalMoves(color);
+    PieceMoveList pml = b.getPieceMoveList(color);
+    MoveList pl = b.getAllPseudoLegalMoves(color, pml);
     for (unsigned int i = 0; i < pl.size(); i++) {
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(pl.get(i), color))
@@ -651,7 +652,8 @@ PieceMoveList Board::getPieceMoveList(int color) {
 
 // Get all legal moves and captures
 MoveList Board::getAllLegalMoves(int color) {
-    MoveList moves = getAllPseudoLegalMoves(color);
+    PieceMoveList pml = getPieceMoveList(color);
+    MoveList moves = getAllPseudoLegalMoves(color, pml);
 
     for (unsigned int i = 0; i < moves.size(); i++) {
         Board b = staticCopy();
@@ -673,8 +675,7 @@ MoveList Board::getAllLegalMoves(int color) {
  * Get the legal moves as a bitboard, then bitscan this to get the destination
  * square and store as a Move object.
  */
-MoveList Board::getAllPseudoLegalMoves(int color) {
-    PieceMoveList pml = getPieceMoveList(color);
+MoveList Board::getAllPseudoLegalMoves(int color, PieceMoveList &pml) {
     MoveList quiets = getPseudoLegalQuiets(color, pml);
     MoveList captures = getPseudoLegalCaptures(color, pml, true);
 
@@ -991,7 +992,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
 // This can only be used if we know the side to move is in check
 // Optimizations include looking for double check (king moves only),
 // otherwise we can only capture the checker or block if it is an xray piece
-MoveList Board::getPseudoLegalCheckEscapes(int color) {
+MoveList Board::getPseudoLegalCheckEscapes(int color, PieceMoveList &pml) {
     MoveList captures, blocks;
 
     int kingSq = bitScanForward(pieces[color][KINGS]);
@@ -1025,44 +1026,10 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
     else if (attackerType == QUEENS)
         xraySqs = getQueenSquares(attackerSq, occ);
 
-    uint64_t knights = pieces[color][KNIGHTS];
-    while (knights) {
-        int stsq = bitScanForward(knights);
-        knights &= knights-1;
-        uint64_t nSq = getKnightSquares(stsq);
-
-        addMovesToList(blocks, stsq, nSq & xraySqs, false);
-        addMovesToList(captures, stsq, nSq, true, otherPieces);
-    }
-
-    uint64_t bishops = pieces[color][BISHOPS];
-    while (bishops) {
-        int stsq = bitScanForward(bishops);
-        bishops &= bishops-1;
-        uint64_t bSq = getBishopSquares(stsq, occ);
-
-        addMovesToList(blocks, stsq, bSq & xraySqs, false);
-        addMovesToList(captures, stsq, bSq, true, otherPieces);
-    }
-
-    uint64_t rooks = pieces[color][ROOKS];
-    while (rooks) {
-        int stsq = bitScanForward(rooks);
-        rooks &= rooks-1;
-        uint64_t rSq = getRookSquares(stsq, occ);
-
-        addMovesToList(blocks, stsq, rSq & xraySqs, false);
-        addMovesToList(captures, stsq, rSq, true, otherPieces);
-    }
-
-    uint64_t queens = pieces[color][QUEENS];
-    while (queens) {
-        int stsq = bitScanForward(queens);
-        queens &= queens-1;
-        uint64_t qSq = getQueenSquares(stsq, occ);
-
-        addMovesToList(blocks, stsq, qSq & xraySqs, false);
-        addMovesToList(captures, stsq, qSq, true, otherPieces);
+    for (unsigned int i = 0; i < pml.size(); i++) {
+        PieceMoveInfo pmi = pml.get(i);
+        addMovesToList(blocks, pmi.startSq, pmi.legal & xraySqs, false);
+        addMovesToList(captures, pmi.startSq, pmi.legal, true, otherPieces);
     }
 
     int stsqK = bitScanForward(pieces[color][KINGS]);
@@ -1520,8 +1487,8 @@ bool Board::isDraw() {
  * Evaluates the current board position in hundredths of pawns. White is
  * positive and black is negative in traditional negamax format.
  */
-int Board::evaluate() {
-    return evaluateMaterial() + evaluatePositional();
+int Board::evaluate(PieceMoveList &pml) {
+    return evaluateMaterial() + evaluatePositional(pml);
 }
 
 // Helper functions for lazy evaluation
@@ -1585,7 +1552,7 @@ int Board::evaluateMaterial() {
     return (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES;
 }
 
-int Board::evaluatePositional() {
+int Board::evaluatePositional(PieceMoveList &pml) {
     int valueMg = 0;
     int valueEg = 0;
     
@@ -1620,8 +1587,16 @@ int Board::evaluatePositional() {
     int mobilityValue = 0;
     // Scores based on mobility and basic king safety (which is turned off in
     // the endgame)
-    mobilityValue += getPseudoMobility(WHITE, bksq, egFactor);
-    mobilityValue -= getPseudoMobility(BLACK, wksq, egFactor);
+    if (getPlayerToMove() == WHITE) {
+        PieceMoveList pmlOther = getPieceMoveList(BLACK);
+        mobilityValue += getPseudoMobility(WHITE, pml, bksq, egFactor);
+        mobilityValue -= getPseudoMobility(BLACK, pmlOther, wksq, egFactor);
+    }
+    else {
+        PieceMoveList pmlOther = getPieceMoveList(WHITE);
+        mobilityValue += getPseudoMobility(WHITE, pmlOther, bksq, egFactor);
+        mobilityValue -= getPseudoMobility(BLACK, pml, wksq, egFactor);
+    }
     
     // Open files next to king
     // To find open files we flood fill the king and its adjacent files up the board
@@ -1756,9 +1731,10 @@ int Board::evaluatePositional() {
  * This function also provides a bonus for having mobile pieces near the
  * opponent's king, and deals with control of center.
  */
-int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
+int Board::getPseudoMobility(int color, PieceMoveList &pml, uint64_t oppKingSqs, int egFactor) {
     // Scale factor for pieces attacking opposing king
     const int KING_THREAT_MOBILITY = 5;
+    const int KING_THREAT_MULTIPLIER[4] = {2, 3, 3, 4};
     // Bitboard of center 4 squares: d4, e4, d5, e5
     const uint64_t CENTER_SQS = 0x0000001818000000;
     // Value of each square in the extended center in cp
@@ -1787,16 +1763,15 @@ int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
     centerControl += EXTENDED_CENTER_VAL * count(pawnAttackMap & EXTENDED_CENTER_SQS);
     centerControl += CENTER_BONUS * count(pawnAttackMap & CENTER_SQS);
 
-    // Knights
-    uint64_t knights = pieces[color][KNIGHTS];
-    while (knights != 0) {
-        int single = bitScanForward(knights);
-        knights &= knights-1;
+    // Iterate over piece move information to extract all mobility-related scores
+    for (unsigned int i = 0; i < pml.size(); i++) {
+        PieceMoveInfo pmi = pml.get(i);
 
+        int pieceIndex = pmi.pieceID - 1;
         // Get all potential legal moves
-        uint64_t legal = getKnightSquares(single);
-        // Get knight mobility score
-        result += knightMobility[count(legal & openSqs)];
+        uint64_t legal = pmi.legal;
+        // Get mobility score
+        result += mobilityScore[pieceIndex][count(legal & openSqs)];
 
         // Get center control score
         centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
@@ -1806,63 +1781,7 @@ int Board::getPseudoMobility(int color, uint64_t oppKingSqs, int egFactor) {
         int kingSqCount = count(legal & oppKingSqs);
         if (kingSqCount) {
             kingAttackPieces++;
-            kingSafety += 2 * KING_THREAT_MOBILITY * kingSqCount;
-        }
-    }
-
-    // Occupancy is required for ray pieces
-    uint64_t occ = getOccupancy();
-    uint64_t bishops = pieces[color][BISHOPS];
-    while (bishops != 0) {
-        int single = bitScanForward(bishops);
-        bishops &= bishops-1;
-
-        uint64_t legal = getBishopSquares(single, occ);
-        result += bishopMobility[count(legal & openSqs)];
-
-        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
-        centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
-
-        int kingSqCount = count(legal & oppKingSqs);
-        if (kingSqCount) {
-            kingAttackPieces++;
-            kingSafety += 3 * KING_THREAT_MOBILITY * kingSqCount;
-        }
-    }
-
-    uint64_t rooks = pieces[color][ROOKS];
-    while (rooks != 0) {
-        int single = bitScanForward(rooks);
-        rooks &= rooks-1;
-
-        uint64_t legal = getRookSquares(single, occ);
-        result += rookMobility[count(legal & openSqs)];
-
-        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
-        centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
-
-        int kingSqCount = count(legal & oppKingSqs);
-        if (kingSqCount) {
-            kingAttackPieces++;
-            kingSafety += 3 * KING_THREAT_MOBILITY * kingSqCount;
-        }
-    }
-
-    uint64_t queens = pieces[color][QUEENS];
-    while (queens != 0) {
-        int single = bitScanForward(queens);
-        queens &= queens-1;
-
-        uint64_t legal = getQueenSquares(single, occ);
-        result += queenMobility[count(legal & openSqs)];
-
-        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
-        centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
-
-        int kingSqCount = count(legal & oppKingSqs);
-        if (kingSqCount) {
-            kingAttackPieces++;
-            kingSafety += 4 * KING_THREAT_MOBILITY * kingSqCount;
+            kingSafety += KING_THREAT_MULTIPLIER[pieceIndex] * KING_THREAT_MOBILITY * kingSqCount;
         }
     }
 

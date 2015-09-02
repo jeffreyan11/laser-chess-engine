@@ -327,6 +327,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         return hashScore;
 
     SearchPV line;
+    PieceMoveList pml = b.getPieceMoveList(color);
     // For PVS, the node is a PV node if beta - alpha > 1 (i.e. not a null window)
     // We do not want to do most pruning techniques on PV nodes
     bool isPVNode = (beta - alpha != 1);
@@ -334,7 +335,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     bool isInCheck = b.isInCheck(color);
     // A static evaluation, used to activate null move pruning and futility
     // pruning
-    int staticEval = (color == WHITE) ? b.evaluate() : -b.evaluate();
+    int staticEval = (color == WHITE) ? b.evaluate(pml) : -b.evaluate(pml);
     
 
     // Null move pruning
@@ -378,7 +379,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 
     SearchSpace ss(&b, color, depth, isPVNode, isInCheck, &searchParams);
     // Generate and sort all pseudo-legal moves
-    ss.generateMoves(hashed);
+    ss.generateMoves(hashed, pml);
 
 
     // Main search loop
@@ -651,7 +652,8 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
         return alpha;
     
     // If we do not cut off, we get a more accurate evaluation.
-    standPat += (color == WHITE) ? b.evaluatePositional() : -b.evaluatePositional();
+    PieceMoveList pml = b.getPieceMoveList(color);
+    standPat += (color == WHITE) ? b.evaluatePositional(pml) : -b.evaluatePositional(pml);
     
     if (standPat >= beta)
         return beta;
@@ -664,7 +666,6 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
 
 
     // Generate captures and order by MVV/LVA
-    PieceMoveList pml = b.getPieceMoveList(color);
     MoveList legalCaptures = b.getPseudoLegalCaptures(color, pml, false);
     ScoreList scores;
     for (unsigned int i = 0; i < legalCaptures.size(); i++) {
@@ -777,7 +778,8 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
  */
 int checkQuiescence(Board &b, int plies, int alpha, int beta) {
     int color = b.getPlayerToMove();
-    MoveList legalMoves = b.getPseudoLegalCheckEscapes(color);
+    PieceMoveList pml = b.getPieceMoveList(color);
+    MoveList legalMoves = b.getPseudoLegalCheckEscapes(color, pml);
 
     int score = -INFTY;
     unsigned int j = 0; // separate counter only incremented when valid move is searched

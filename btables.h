@@ -156,16 +156,21 @@ const int endgamePieceValues[6][64] = {
 }
 };
 
-// Mobility tables
-const int knightMobility[9] = {
--15,-10, -5,  0,  4,  7,  9, 12, 15};
-const int bishopMobility[14] = {
--20,-15,-10, -5,  0,  4,  7,  9, 11, 13, 15, 17, 19, 20};
-const int rookMobility[15] = {
--20,-15,-10, -5, -2,  0,  2,  4,  6,  8, 10, 11, 12, 13, 14};
-const int queenMobility[28] = {
--20,-13, -8, -6, -5, -4, -3, -2, -1,  0,  1,  1,  2,  2,
-  3,  3,  4,  4,  5,  5,  6,  6,  7,  7,  8,  8,  9,  9};
+// Mobility tables, with zero padding for pieces that cannot move up to 28 squares
+const int mobilityScore[4][28] = {
+// Knights
+{-15,-10, -5,  0,  4,  7,  9, 12, 15,
+ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+// Bishops
+{-20,-15,-10, -5,  0,  4,  7,  9, 11, 13, 15, 17, 19, 20,
+ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+// Rooks
+{-20,-15,-10, -5, -2,  0,  2,  4,  6,  8, 10, 11, 12, 13, 14,
+ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+// Queens
+{-20,-13, -8, -6, -5, -4, -3, -2, -1,  0,  1,  1,  2,  2,
+  3,  3,  4,  4,  5,  5,  6,  6,  7,  7,  8,  8,  9,  9}
+};
 
 // Lookup table for knight moves
 const uint64_t KNIGHTMOVES[64] = {
