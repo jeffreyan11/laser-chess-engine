@@ -112,7 +112,7 @@ int main() {
                 if (isRecur) {
                     int movesToGo = (len == 7) ? stoi(inputVector.at(6))
                         : stoi(inputVector.at(10));
-                    value = (int)(value / max((double)movesToGo, MAX_TIME_FACTOR + 1));
+                    value /= max(movesToGo, (int)MAX_TIME_FACTOR + 1);
                 }
                 else value /= MOVE_HORIZON;
                 
