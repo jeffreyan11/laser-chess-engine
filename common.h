@@ -40,8 +40,8 @@ const int KNIGHT_VALUE = 420;
 const int BISHOP_VALUE = 430;
 const int ROOK_VALUE = 660;
 const int QUEEN_VALUE = 1250;
-const int MATE_SCORE = (1 << 15) - 1;
-const int INFTY = (1 << 15) - 1;
+const int MATE_SCORE = 32766;
+const int INFTY = 32767;
 
 // Other values
 const int MAX_DEPTH = 127;
