@@ -77,6 +77,7 @@ const uint16_t MOVE_PROMO_N = 0x8;
 const uint16_t MOVE_PROMO_B = 0x9;
 const uint16_t MOVE_PROMO_R = 0xA;
 const uint16_t MOVE_PROMO_Q = 0xB;
+const int PROMO[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 1, 2, 3, 4};
 
 inline Move encodeMove(int startSq, int endSq) {
     return (endSq << 6) | startSq;
@@ -103,7 +104,7 @@ inline int getEndSq(Move m) {
 }
 
 inline int getPromotion(Move m) {
-    return (int) ((m >> 15) * (((m >> 12) & 0x3) + 1));
+    return PROMO[m >> 12];
 }
 
 inline bool isPromotion(Move m) {
