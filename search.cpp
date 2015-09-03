@@ -66,15 +66,15 @@ struct SearchPV {
 // amount below alpha, we skip quiet moves for this position.
 const int FUTILITY_MARGIN[4] = {0,
     MAX_POS_SCORE,
-    MAX_POS_SCORE + 2*PAWN_VALUE,
-    MAX_POS_SCORE + ROOK_VALUE
+    MAX_POS_SCORE + 200,
+    MAX_POS_SCORE + 660
 };
 
 // Reverse futility pruning margins indexed by depth. If static eval is at least
 // this amount above beta, we skip searching the position entirely.
 const int REVERSE_FUTILITY_MARGIN[3] = {0,
     MAX_POS_SCORE,
-    MAX_POS_SCORE + 3*PAWN_VALUE / 2
+    MAX_POS_SCORE + 150
 };
 
 static Hash transpositionTable(16);
