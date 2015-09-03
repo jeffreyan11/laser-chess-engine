@@ -118,7 +118,7 @@ int main() {
                 
                 if (isInc) {
                     value += ((color == WHITE) ? stoi(inputVector.at(6))
-                        : stoi(inputVector.at(8))) / MAX_TIME_FACTOR;
+                        : stoi(inputVector.at(8)));
                     value = min(value, maxValue);
                 }
             }
