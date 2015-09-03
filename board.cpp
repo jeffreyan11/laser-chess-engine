@@ -1693,11 +1693,15 @@ int Board::evaluatePositional(PieceMoveList &pml) {
     // Doubled pawns
     const int DOUBLED_PENALTY_MG[7] = {0, 0, 12, 36, 72, 120, 180};
     const int DOUBLED_PENALTY_EG[7] = {0, 0, 17, 51, 102, 170, 255};
+    // Doubled pawns are worse the less pawns you have
+    const int DOUBLED_PENALTY_SCALE[9] = {0, 0, 3, 2, 1, 1, 1, 1, 1};
+    int numWPawns = count(pieces[WHITE][PAWNS]);
+    int numBPawns = count(pieces[BLACK][PAWNS]);
     for (int i = 0; i < 8; i++) {
-        valueMg -= DOUBLED_PENALTY_MG[wPawnCtByFile[i]];
-        valueEg -= DOUBLED_PENALTY_EG[wPawnCtByFile[i]];
-        valueMg += DOUBLED_PENALTY_MG[bPawnCtByFile[i]];
-        valueEg += DOUBLED_PENALTY_EG[bPawnCtByFile[i]];
+        valueMg -= DOUBLED_PENALTY_MG[wPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[numWPawns];
+        valueEg -= DOUBLED_PENALTY_EG[wPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[numWPawns];
+        valueMg += DOUBLED_PENALTY_MG[bPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[numBPawns];
+        valueEg += DOUBLED_PENALTY_EG[bPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[numBPawns];
     }
     
     // Isolated pawns
@@ -1719,6 +1723,8 @@ int Board::evaluatePositional(PieceMoveList &pml) {
     valueEg += 16 * blackIsolated;
 
     // Isolated, doubled pawns
+    // -11 for isolated, doubled pawns
+    // -33 for isolated, tripled pawns
     for (int i = 0; i < 8; i++) {
         if ((wPawnCtByFile[i] > 1) && (wp & INDEX_TO_BIT[7-i])) {
             valueMg -= 11 * ((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2;
