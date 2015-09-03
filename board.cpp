@@ -1691,17 +1691,13 @@ int Board::evaluatePositional(PieceMoveList &pml) {
     }
     
     // Doubled pawns
-    // 0-1 pawns on file: multiplier 0
-    // 2 pawns on file: multiplier 1
-    // 3 pawns on file: multiplier 3
-    // 4 pawns on file: multiplier 6
+    const int DOUBLED_PENALTY_MG[7] = {0, 0, 12, 36, 72, 120, 180};
+    const int DOUBLED_PENALTY_EG[7] = {0, 0, 17, 51, 102, 170, 255};
     for (int i = 0; i < 8; i++) {
-        int whiteDoubled = ((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2;
-        int blackDoubled = ((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2;
-        valueMg -= 16 * whiteDoubled;
-        valueEg -= 20 * whiteDoubled;
-        valueMg += 16 * blackDoubled;
-        valueEg += 20 * blackDoubled;
+        valueMg -= DOUBLED_PENALTY_MG[wPawnCtByFile[i]];
+        valueEg -= DOUBLED_PENALTY_EG[wPawnCtByFile[i]];
+        valueMg += DOUBLED_PENALTY_MG[bPawnCtByFile[i]];
+        valueEg += DOUBLED_PENALTY_EG[bPawnCtByFile[i]];
     }
     
     // Isolated pawns
@@ -1717,10 +1713,22 @@ int Board::evaluatePositional(PieceMoveList &pml) {
     bp &= ~((bp >> 1) | (bp << 1));
     int whiteIsolated = count(wp);
     int blackIsolated = count(bp);
-    valueMg -= 16 * whiteIsolated;
-    valueEg -= 20 * whiteIsolated;
-    valueMg += 16 * blackIsolated;
-    valueEg += 20 * blackIsolated;
+    valueMg -= 14 * whiteIsolated;
+    valueEg -= 16 * whiteIsolated;
+    valueMg += 14 * blackIsolated;
+    valueEg += 16 * blackIsolated;
+
+    // Isolated, doubled pawns
+    for (int i = 0; i < 8; i++) {
+        if ((wPawnCtByFile[i] > 1) && (wp & INDEX_TO_BIT[7-i])) {
+            valueMg -= 11 * ((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2;
+            valueEg -= 11 * ((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2;
+        }
+        if ((bPawnCtByFile[i] > 1) && (bp & INDEX_TO_BIT[7-i])) {
+            valueMg += 11 * ((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2;
+            valueEg += 11 * ((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2;
+        }
+    }
     
     return (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES + mobilityValue;
 }
