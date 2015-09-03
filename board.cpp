@@ -1699,9 +1699,9 @@ int Board::evaluatePositional(PieceMoveList &pml) {
         int whiteDoubled = ((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2;
         int blackDoubled = ((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2;
         valueMg -= 16 * whiteDoubled;
-        valueEg -= 24 * whiteDoubled;
+        valueEg -= 20 * whiteDoubled;
         valueMg += 16 * blackDoubled;
-        valueEg += 24 * blackDoubled;
+        valueEg += 20 * blackDoubled;
     }
     
     // Isolated pawns
@@ -1717,9 +1717,9 @@ int Board::evaluatePositional(PieceMoveList &pml) {
     bp &= ~((bp >> 1) | (bp << 1));
     int whiteIsolated = count(wp);
     int blackIsolated = count(bp);
-    valueMg -= 20 * whiteIsolated;
+    valueMg -= 16 * whiteIsolated;
     valueEg -= 20 * whiteIsolated;
-    valueMg += 20 * blackIsolated;
+    valueMg += 16 * blackIsolated;
     valueEg += 20 * blackIsolated;
     
     return (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES + mobilityValue;
