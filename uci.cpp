@@ -103,11 +103,11 @@ int main() {
                 bool isRecur = (len == 7) || (len == 11);
                 bool isInc = (len == 9) || (len == 11);
                 
-                int maxValue = (color == WHITE) ? stoi(inputVector.at(2))
+                value = (color == WHITE) ? stoi(inputVector.at(2))
                     : stoi(inputVector.at(4));
-                maxValue -= BUFFER_TIME;
+                value -= BUFFER_TIME;
                 
-                value = maxValue;
+                int maxValue = value / MAX_TIME_FACTOR;
                 
                 if (isRecur) {
                     int movesToGo = (len == 7) ? stoi(inputVector.at(6))
