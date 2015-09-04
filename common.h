@@ -36,9 +36,9 @@ const int KINGS = 5;
 
 // Material constants
 const int PAWN_VALUE = 100, PAWN_VALUE_EG = 125;
-const int KNIGHT_VALUE = 420;
-const int BISHOP_VALUE = 430;
-const int ROOK_VALUE = 660;
+const int KNIGHT_VALUE = 410;
+const int BISHOP_VALUE = 420;
+const int ROOK_VALUE = 650;
 const int QUEEN_VALUE = 1250;
 const int MATE_SCORE = 32766;
 const int INFTY = 32767;
