@@ -183,6 +183,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
         //if (!isStop)
         //    feedPVToTT(b, &pvLine, bestScore);
+        // Aging for the history heuristic table
+        searchParams.ageHistoryTable(rootDepth);
         rootDepth++;
     }
     while ((mode == TIME  && (timeSoFar * ONE_SECOND < value * TIME_FACTOR)
@@ -191,7 +193,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     
     printStatistics();
     // Aging for the history heuristic table
-    searchParams.ageHistoryTable(rootDepth-1);
+    searchParams.ageHistoryTable(rootDepth);
     
     // Output best move to UCI interface
     isStop = true;
