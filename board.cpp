@@ -1505,8 +1505,8 @@ int Board::evaluateMaterial() {
     
     valueMg += whiteMaterial;
     valueMg -= blackMaterial;
-    valueEg += whiteMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[WHITE][PAWNS]);
-    valueEg -= blackMaterial + (PAWN_VALUE_EG - PAWN_VALUE) * count(pieces[BLACK][PAWNS]);
+    valueEg += getMaterialEG(WHITE);
+    valueEg -= getMaterialEG(BLACK);
     
     // Bishop pair bonus
     if ((pieces[WHITE][BISHOPS] & LIGHT) && (pieces[WHITE][BISHOPS] & DARK)) {
@@ -1829,6 +1829,14 @@ int Board::getMaterial(int color) {
          + BISHOP_VALUE * count(pieces[color][BISHOPS])
          + ROOK_VALUE   * count(pieces[color][ROOKS])
          + QUEEN_VALUE  * count(pieces[color][QUEENS]);
+}
+
+int Board::getMaterialEG(int color) {
+    return PAWN_VALUE_EG   * count(pieces[color][PAWNS])
+         + KNIGHT_VALUE_EG * count(pieces[color][KNIGHTS])
+         + BISHOP_VALUE_EG * count(pieces[color][BISHOPS])
+         + ROOK_VALUE_EG   * count(pieces[color][ROOKS])
+         + QUEEN_VALUE_EG  * count(pieces[color][QUEENS]);
 }
 
 uint64_t Board::getNonPawnMaterial(int color) {

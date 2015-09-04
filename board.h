@@ -153,6 +153,7 @@ public:
     int getPseudoMobility(int color, PieceMoveList &pml, uint64_t oppKingSqs, int egFactor);
     int getEGFactor();
     int getMaterial(int color);
+    int getMaterialEG(int color);
     // Useful for turning off some pruning late endgame
     uint64_t getNonPawnMaterial(int color);
     // Static exchange evaluation code: for checking material trades on a single square
