@@ -82,6 +82,8 @@ struct SearchSpace {
 	bool isInCheck;
 	SearchParameters *searchParams;
     MoveGenStage mgStage;
+    Move hashed;
+    PieceMoveList *pml;
 	MoveList legalMoves;
 	ScoreList scores;
     unsigned int quietStart;
@@ -93,13 +95,15 @@ struct SearchSpace {
 	// Node is reducible if not PV node and not in check
 	bool nodeIsReducible();
 
-	void generateMoves(Move hashed, PieceMoveList &pml);
+	void generateMoves(Move _hashed, PieceMoveList &_pml);
 	Move nextMove();
     void reduceBadHistories(Move bestMove);
 
 private:
     void scoreCaptures();
     void scoreQuiets();
+    void scoreIIDMove();
+    void generateQuiets();
 };
 
 #endif
