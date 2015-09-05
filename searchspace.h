@@ -23,6 +23,10 @@
 #include "board.h"
 #include "common.h"
 
+enum MoveGenStage {
+    STAGE_IID_MOVE, STAGE_CAPTURES, STAGE_QUIETS
+};
+
 struct SearchParameters {
     int ply;
     int nullMoveCount;
@@ -77,8 +81,10 @@ struct SearchSpace {
 	bool isPVNode;
 	bool isInCheck;
 	SearchParameters *searchParams;
+    MoveGenStage mgStage;
 	MoveList legalMoves;
 	ScoreList scores;
+    unsigned int quietStart;
 	unsigned int index;
 
 	SearchSpace(Board *_b, int _color, int _depth, bool _isPVNode, bool _isInCheck,
@@ -90,6 +96,10 @@ struct SearchSpace {
 	void generateMoves(Move hashed, PieceMoveList &pml);
 	Move nextMove();
     void reduceBadHistories(Move bestMove);
+
+private:
+    void scoreCaptures();
+    void scoreQuiets();
 };
 
 #endif

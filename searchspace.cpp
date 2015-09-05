@@ -50,6 +50,7 @@ SearchSpace::SearchSpace(Board *_b, int _color, int _depth, bool _isPVNode, bool
 	isPVNode = _isPVNode;
 	isInCheck = _isInCheck;
 	searchParams = _searchParams;
+    quietStart = 0;
 }
 
 bool SearchSpace::nodeIsReducible() {
@@ -58,6 +59,7 @@ bool SearchSpace::nodeIsReducible() {
 
 void SearchSpace::generateMoves(Move hashed, PieceMoveList &pml) {
 	index = 0;
+    mgStage = STAGE_QUIETS;
     legalMoves = isInCheck ? b->getPseudoLegalCheckEscapes(color, pml)
                            : b->getAllPseudoLegalMoves(color, pml);
 
@@ -73,10 +75,29 @@ void SearchSpace::generateMoves(Move hashed, PieceMoveList &pml) {
     }
 
     // Internal iterative deepening and SEE move ordering
-    // TODO make this cleaner, probably when captures and moves become generated separately
+    scoreCaptures();
+    scoreQuiets();
 
-    // ---------------Captures----------------
-    unsigned int quietStart = 0;
+    // IID: get a best move (hoping for a first move cutoff) if we don't
+    // have a hash move available
+    if (depth >= (isPVNode ? 5 : 6) && hashed == NULL_MOVE) {
+        // Sort the moves with what we have so far
+        /*for (Move m = nextMove(); m != NULL_MOVE;
+                  m = nextMove());
+        index = 0;*/
+
+        int iidDepth = isPVNode ? depth-2 : IID_DEPTHS[depth];
+        int bestIndex = getBestMoveForSort(b, legalMoves, iidDepth);
+        // Mate check to prevent crashes
+        if (bestIndex == -1)
+            legalMoves.clear();
+        else
+        	scores.set(bestIndex, SCORE_IID_MOVE);
+    }
+}
+
+// Sort captures using SEE and MVV/LVA
+void SearchSpace::scoreCaptures() {
     for (quietStart = 0; quietStart < legalMoves.size(); quietStart++) {
         Move m = legalMoves.get(quietStart);
         if (!isCapture(m))
@@ -102,11 +123,12 @@ void SearchSpace::generateMoves(Move hashed, PieceMoveList &pml) {
                 scores.add(see);
         }
     }
+}
 
-    // ---------------Non-captures----------------
-    // Score killers below even captures but above losing captures
+void SearchSpace::scoreQuiets() {
     for (unsigned int i = quietStart; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
+        // Score killers below even captures but above losing captures
         if (m == searchParams->killers[searchParams->ply][0])
             scores.add(SCORE_EVEN_CAPTURE - 1);
         else if (m == searchParams->killers[searchParams->ply][1])
@@ -121,31 +143,16 @@ void SearchSpace::generateMoves(Move hashed, PieceMoveList &pml) {
             scores.add(SCORE_QUIET_MOVE + searchParams->historyTable[color][pieceID][endSq]);
         }
     }
-
-    // IID: get a best move (hoping for a first move cutoff) if we don't
-    // have a hash move available
-    if (depth >= (isPVNode ? 5 : 6) && hashed == NULL_MOVE) {
-        // Sort the moves with what we have so far
-        /*for (Move m = nextMove(); m != NULL_MOVE;
-                  m = nextMove());
-        index = 0;*/
-
-        int iidDepth = isPVNode ? depth-2 : IID_DEPTHS[depth];
-        int bestIndex = getBestMoveForSort(b, legalMoves, iidDepth);
-        // Mate check to prevent crashes
-        if (bestIndex == -1)
-            legalMoves.clear();
-        else
-        	scores.set(bestIndex, SCORE_IID_MOVE);
-    }
 }
 
 // Retrieves the next move with the highest score, starting from index using a
 // partial selection sort. This way, the entire list does not have to be sorted
 // if an early cutoff occurs.
 Move SearchSpace::nextMove() {
-    if (index >= legalMoves.size())
-        return NULL_MOVE;
+    if (index >= legalMoves.size()) {
+        if (mgStage >= STAGE_QUIETS)
+            return NULL_MOVE;
+    }
     // Find the index of the next best move
     int bestIndex = index;
     int bestScore = scores.get(index);
