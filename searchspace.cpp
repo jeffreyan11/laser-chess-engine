@@ -19,6 +19,13 @@
 #include "search.h"
 #include "searchspace.h"
 
+const int SCORE_IID_MOVE = (1 << 20);
+const int SCORE_WINNING_CAPTURE = (1 << 18);
+const int SCORE_QUEEN_PROMO = (1 << 17);
+const int SCORE_EVEN_CAPTURE = (1 << 16);
+const int SCORE_LOSING_CAPTURE = 0;
+const int SCORE_QUIET_MOVE = -(1 << 30);
+
 const int IID_DEPTHS[MAX_DEPTH+1] = {0,
      0,  0,  0,  1,  1,  1,  1,  1,  2,  2,
      2,  3,  3,  3,  4,  4,  4,  5,  5,  6,
@@ -79,18 +86,18 @@ void SearchSpace::generateMoves(Move hashed, PieceMoveList &pml) {
         // We want the best move first for PV nodes
         if (isPVNode) {
             if (see > 0)
-                scores.add((1 << 18) + see);
+                scores.add(SCORE_WINNING_CAPTURE + see);
             else if (see == 0)
-                scores.add((1 << 16) + 1);
+                scores.add(SCORE_EVEN_CAPTURE);
             else
                 scores.add(see);
         }
         // Otherwise, MVV/LVA for cheaper cutoffs might help
         else {
             if (see > 0)
-                scores.add((1 << 18) + b->getMVVLVAScore(color, m));
+                scores.add(SCORE_WINNING_CAPTURE + b->getMVVLVAScore(color, m));
             else if (see == 0)
-                scores.add((1 << 16) + b->getMVVLVAScore(color, m));
+                scores.add(SCORE_EVEN_CAPTURE + b->getMVVLVAScore(color, m));
             else
                 scores.add(see);
         }
@@ -101,17 +108,17 @@ void SearchSpace::generateMoves(Move hashed, PieceMoveList &pml) {
     for (unsigned int i = quietStart; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
         if (m == searchParams->killers[searchParams->ply][0])
-            scores.add(1 << 16);
+            scores.add(SCORE_EVEN_CAPTURE - 1);
         else if (m == searchParams->killers[searchParams->ply][1])
-            scores.add((1 << 16) - 1);
+            scores.add(SCORE_EVEN_CAPTURE - 2);
         // Order queen promotions somewhat high
         else if (getPromotion(m) == QUEENS)
-            scores.add(1 << 17);
+            scores.add(SCORE_QUEEN_PROMO);
         else {
             int startSq = getStartSq(m);
             int endSq = getEndSq(m);
             int pieceID = b->getPieceOnSquare(color, startSq);
-            scores.add(-(MATE_SCORE << 5) + searchParams->historyTable[color][pieceID][endSq]);
+            scores.add(SCORE_QUIET_MOVE + searchParams->historyTable[color][pieceID][endSq]);
         }
     }
 
@@ -129,7 +136,7 @@ void SearchSpace::generateMoves(Move hashed, PieceMoveList &pml) {
         if (bestIndex == -1)
             legalMoves.clear();
         else
-        	scores.set(bestIndex, (1 << 20));
+        	scores.set(bestIndex, SCORE_IID_MOVE);
     }
 }
 
