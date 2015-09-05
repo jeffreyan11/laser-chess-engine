@@ -1639,6 +1639,26 @@ int Board::evaluatePositional(PieceMoveList &pml) {
     valueMg -= 3*count(tempwk & tempwk2 & RANKS[7]);
     valueMg += 3*count(tempbk & tempbk2 & RANKS[0]);
     
+
+    //------------------------------Minor Pieces--------------------------------
+    // Bishops tend to be worse if too many pawns are on squares of their color
+    if (pieces[WHITE][BISHOPS] & LIGHT) {
+        valueMg -= 2*count(pieces[WHITE][PAWNS] & LIGHT);
+        valueEg -= 2*count(pieces[WHITE][PAWNS] & LIGHT);
+    }
+    if (pieces[WHITE][BISHOPS] & DARK) {
+        valueMg -= 2*count(pieces[WHITE][PAWNS] & DARK);
+        valueEg -= 2*count(pieces[WHITE][PAWNS] & DARK);
+    }
+    if (pieces[BLACK][BISHOPS] & LIGHT) {
+        valueMg += 2*count(pieces[BLACK][PAWNS] & LIGHT);
+        valueEg += 2*count(pieces[BLACK][PAWNS] & LIGHT);
+    }
+    if (pieces[BLACK][BISHOPS] & DARK) {
+        valueMg += 2*count(pieces[BLACK][PAWNS] & DARK);
+        valueEg += 2*count(pieces[BLACK][PAWNS] & DARK);
+    }
+
     
     //----------------------------Pawn structure--------------------------------
     // Passed pawns
