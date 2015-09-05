@@ -73,7 +73,7 @@ const int FUTILITY_MARGIN[4] = {0,
 // Reverse futility pruning margins indexed by depth. If static eval is at least
 // this amount above beta, we skip searching the position entirely.
 const int REVERSE_FUTILITY_MARGIN[3] = {0,
-    MAX_POS_SCORE,
+    MAX_POS_SCORE - 15,
     MAX_POS_SCORE + 150
 };
 
@@ -646,11 +646,11 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
     // evaluation for standPat to save time.
     int standPat = (color == WHITE) ? b.evaluateMaterial() : -b.evaluateMaterial();
 
-    if (standPat >= beta + 180)
+    if (standPat >= beta + 205)
         return beta;
     
     // delta prune
-    if (standPat < alpha - 180 - MAX_POS_SCORE - QUEEN_VALUE)
+    if (standPat < alpha - 205 - MAX_POS_SCORE - QUEEN_VALUE)
         return alpha;
     
     // If we do not cut off, we get a more accurate evaluation.

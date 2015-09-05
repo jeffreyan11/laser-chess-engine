@@ -1659,6 +1659,12 @@ int Board::evaluatePositional(PieceMoveList &pml) {
         valueEg += 2*count(pieces[BLACK][PAWNS] & DARK);
     }
 
+    // Knights do better when the opponent has many pawns
+    valueMg += count(pieces[WHITE][KNIGHTS]) * count(pieces[BLACK][PAWNS]);
+    valueEg += count(pieces[WHITE][KNIGHTS]) * count(pieces[BLACK][PAWNS]);
+    valueMg -= count(pieces[BLACK][KNIGHTS]) * count(pieces[WHITE][PAWNS]);
+    valueEg -= count(pieces[BLACK][KNIGHTS]) * count(pieces[WHITE][PAWNS]);
+
     
     //----------------------------Pawn structure--------------------------------
     // Passed pawns
