@@ -21,6 +21,7 @@
 #include <random>
 #include "board.h"
 #include "btables.h"
+#include "eval.h"
 
 /**
  * @brief Our implementation of a xorshift generator as discovered by George
