@@ -683,8 +683,9 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
         if (standPat + b.valueOfPiece(b.getPieceOnSquare(color^1, getEndSq(m))) < alpha - MAX_POS_SCORE)
             continue;
         // Static exchange evaluation pruning
-        if (b.getExchangeScore(color, m) < 0 && b.getSEE(color, getEndSq(m)) < -MAX_POS_SCORE)
+        if (b.getExchangeScore(color, m) < 0 && b.getSEEForMove(color, m) < -MAX_POS_SCORE)
             continue;
+        
 
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(m, color))
@@ -711,7 +712,7 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
         Move m = legalPromotions.get(i);
 
         // Static exchange evaluation pruning
-        if(b.getSEE(color, getEndSq(m)) < 0)
+        if(b.getSEEForMove(color, m) < 0)
             continue;
 
         Board copy = b.staticCopy();

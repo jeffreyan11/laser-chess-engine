@@ -1890,7 +1890,12 @@ int Board::getSEE(int color, int sq) {
     uint64_t attackers = getAttackMap(WHITE, sq) | getAttackMap(BLACK, sq);
     // used attackers that may act as blockers for x-ray pieces
     uint64_t used = 0;
+
+    // Get the first attacker
     uint64_t single = getLeastValuableAttacker(attackers, color, piece);
+    // If there are no attackers, return immediately
+    if (!single)
+        return 0;
     // Get value of piece initially being captured, or 0 if the square is
     // empty
     gain[d] = valueOfPiece(getPieceOnSquare(color^1, sq));
@@ -1907,10 +1912,55 @@ int Board::getSEE(int color, int sq) {
         single = getLeastValuableAttacker(attackers, color, piece);
     } while (single);
 
+    // Minimax results
     while (--d)
         gain[d-1]= -((-gain[d-1] > gain[d]) ? -gain[d-1] : gain[d]);
 
     return gain[0];
+}
+
+/**
+ * @brief This function calculates a SEE for a move rather than a square, by
+ * forcing the initial move (to avoid standing pat if the move is bad).
+ */
+int Board::getSEEForMove(int color, Move m) {
+    int value = 0;
+    int startSq = getStartSq(m);
+    int endSq = getEndSq(m);
+    int pieceID = getPieceOnSquare(color, startSq);
+
+    // TODO temporary hack for EP captures
+    if (isEP(m))
+        return -PAWN_VALUE;
+
+    // Do the move temporarily
+    pieces[color][pieceID] &= ~INDEX_TO_BIT[startSq];
+    pieces[color][pieceID] |= INDEX_TO_BIT[endSq];
+    allPieces[color] &= ~INDEX_TO_BIT[startSq];
+    allPieces[color] |= INDEX_TO_BIT[endSq];
+
+    // For a capture, we also need to update the captured piece on the board
+    if (isCapture(m)) {
+        int capturedPiece = getPieceOnSquare(color^1, endSq);
+        pieces[color^1][capturedPiece] &= ~INDEX_TO_BIT[endSq];
+        allPieces[color^1] &= ~INDEX_TO_BIT[endSq];
+
+        value = valueOfPiece(capturedPiece) - getSEE(color^1, endSq);
+
+        pieces[color^1][capturedPiece] |= INDEX_TO_BIT[endSq];
+        allPieces[color^1] |= INDEX_TO_BIT[endSq];
+    }
+    else {
+        value = -getSEE(color^1, endSq);
+    }
+
+    // Undo the move
+    pieces[color][pieceID] |= INDEX_TO_BIT[startSq];
+    pieces[color][pieceID] &= ~INDEX_TO_BIT[endSq];
+    allPieces[color] |= INDEX_TO_BIT[startSq];
+    allPieces[color] &= ~INDEX_TO_BIT[endSq];
+
+    return value;
 }
 
 int Board::valueOfPiece(int piece) {

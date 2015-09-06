@@ -101,7 +101,7 @@ void SearchSpace::scoreCaptures() {
         if (!isCapture(m))
             break;
 
-        int see = b->getSEE(color, getEndSq(m));
+        int see = b->getSEEForMove(color, m);
         // We want the best move first for PV nodes
         if (isPVNode) {
             if (see > 0)
