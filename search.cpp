@@ -789,6 +789,9 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta) {
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
 
+        if (score != -INFTY && b.getSEEForMove(color, m) < 0)
+            continue;
+
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(m, color))
             continue;
