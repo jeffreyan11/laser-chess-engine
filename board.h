@@ -74,9 +74,6 @@ const uint64_t BLACK_QSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[57] | INDEX_TO_BIT[58]
 const uint16_t NO_EP_POSSIBLE = 0x8;
 const uint64_t RESET_TWOFOLD = 0x8080808080808080;
 
-const int START_VALUE = 8 * PAWN_VALUE + 2 * KNIGHT_VALUE + 2 * BISHOP_VALUE + 2 * ROOK_VALUE + QUEEN_VALUE;
-const int EG_FACTOR_RES = 1000;
-
 struct PieceMoveInfo {
     int pieceID;
     int startSq;

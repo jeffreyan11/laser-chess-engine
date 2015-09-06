@@ -1515,10 +1515,8 @@ int Board::evaluatePositional(PieceMoveList &pml) {
     
     //-----------------------King Safety and Mobility---------------------------
     // Castling rights
-    valueMg += 6 * (bool) (castlingRights & WHITECASTLE);
-    valueMg -= 6 * (bool) (castlingRights & BLACKCASTLE);
-    valueMg += 17 * count(castlingRights & WHITECASTLE);
-    valueMg -= 17 * count(castlingRights & BLACKCASTLE);
+    valueMg += CASTLING_RIGHTS_VALUE[count(castlingRights & WHITECASTLE)];
+    valueMg -= CASTLING_RIGHTS_VALUE[count(castlingRights & BLACKCASTLE)];
     
     // Consider squares near king
     uint64_t wksq = getKingSquares(bitScanForward(pieces[WHITE][KINGS]));
@@ -1526,11 +1524,11 @@ int Board::evaluatePositional(PieceMoveList &pml) {
     
     // Pawn shield bonus (files ABC, FGH)
     // Pawns on the second and third ranks are considered part of the shield
-    valueMg += 12 * count((wksq | (wksq << 8)) & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-    valueMg -= 12 * count((bksq | (bksq >> 8)) & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    valueMg += PAWN_SHIELD_VALUE * count((wksq | (wksq << 8)) & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    valueMg -= PAWN_SHIELD_VALUE * count((bksq | (bksq >> 8)) & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
     // An extra bonus for pawns on the second rank
-    valueMg += 9 * count(wksq & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-    valueMg -= 9 * count(bksq & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    valueMg += P_PAWN_SHIELD_BONUS * count(wksq & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    valueMg -= P_PAWN_SHIELD_BONUS * count(bksq & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
     
     int mobilityValue = 0;
     // Scores based on mobility and basic king safety (which is turned off in
@@ -1580,45 +1578,43 @@ int Board::evaluatePositional(PieceMoveList &pml) {
     int wkNoBlackOpen = count(tempwk2 & RANKS[7]);
     int bkNoBlackOpen = count(tempbk2 & RANKS[0]);
     
-    valueMg -= 7*wkNoWhiteOpen;
-    valueMg -= 4*wkNoBlackOpen;
-    valueMg += 4*bkNoWhiteOpen;
-    valueMg += 7*bkNoBlackOpen;
+    valueMg -= SEMIOPEN_OWN_PENALTY*wkNoWhiteOpen;
+    valueMg -= SEMIOPEN_OPP_PENALTY*wkNoBlackOpen;
+    valueMg += SEMIOPEN_OPP_PENALTY*bkNoWhiteOpen;
+    valueMg += SEMIOPEN_OWN_PENALTY*bkNoBlackOpen;
     // Fully open files get an additional bonus
-    valueMg -= 3*count(tempwk & tempwk2 & RANKS[7]);
-    valueMg += 3*count(tempbk & tempbk2 & RANKS[0]);
+    valueMg -= OPEN_PENALTY*count(tempwk & tempwk2 & RANKS[7]);
+    valueMg += OPEN_PENALTY*count(tempbk & tempbk2 & RANKS[0]);
     
 
     //------------------------------Minor Pieces--------------------------------
     // Bishops tend to be worse if too many pawns are on squares of their color
     if (pieces[WHITE][BISHOPS] & LIGHT) {
-        valueMg -= 2*count(pieces[WHITE][PAWNS] & LIGHT);
-        valueEg -= 2*count(pieces[WHITE][PAWNS] & LIGHT);
+        valueMg -= BISHOP_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & LIGHT);
+        valueEg -= BISHOP_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & LIGHT);
     }
     if (pieces[WHITE][BISHOPS] & DARK) {
-        valueMg -= 2*count(pieces[WHITE][PAWNS] & DARK);
-        valueEg -= 2*count(pieces[WHITE][PAWNS] & DARK);
+        valueMg -= BISHOP_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & DARK);
+        valueEg -= BISHOP_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & DARK);
     }
     if (pieces[BLACK][BISHOPS] & LIGHT) {
-        valueMg += 2*count(pieces[BLACK][PAWNS] & LIGHT);
-        valueEg += 2*count(pieces[BLACK][PAWNS] & LIGHT);
+        valueMg += BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & LIGHT);
+        valueEg += BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & LIGHT);
     }
     if (pieces[BLACK][BISHOPS] & DARK) {
-        valueMg += 2*count(pieces[BLACK][PAWNS] & DARK);
-        valueEg += 2*count(pieces[BLACK][PAWNS] & DARK);
+        valueMg += BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & DARK);
+        valueEg += BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & DARK);
     }
 
     // Knights do better when the opponent has many pawns
-    valueMg += count(pieces[WHITE][KNIGHTS]) * count(pieces[BLACK][PAWNS]);
-    valueEg += count(pieces[WHITE][KNIGHTS]) * count(pieces[BLACK][PAWNS]);
-    valueMg -= count(pieces[BLACK][KNIGHTS]) * count(pieces[WHITE][PAWNS]);
-    valueEg -= count(pieces[BLACK][KNIGHTS]) * count(pieces[WHITE][PAWNS]);
+    valueMg += KNIGHT_PAWN_BONUS * count(pieces[WHITE][KNIGHTS]) * count(pieces[BLACK][PAWNS]);
+    valueEg += KNIGHT_PAWN_BONUS * count(pieces[WHITE][KNIGHTS]) * count(pieces[BLACK][PAWNS]);
+    valueMg -= KNIGHT_PAWN_BONUS * count(pieces[BLACK][KNIGHTS]) * count(pieces[WHITE][PAWNS]);
+    valueEg -= KNIGHT_PAWN_BONUS * count(pieces[BLACK][KNIGHTS]) * count(pieces[WHITE][PAWNS]);
 
     
     //----------------------------Pawn structure--------------------------------
     // Passed pawns
-    const int PASSER_BONUS_MG[8] = {0, 10, 10, 15, 20, 30, 55, 0};
-    const int PASSER_BONUS_EG[8] = {0, 30, 35, 45, 65, 95, 140, 0};
     uint64_t bPassedBlocker = pieces[WHITE][PAWNS];
     uint64_t wPassedBlocker = pieces[BLACK][PAWNS];
     // These act as blockers for the flood fill: if opposing pawns are on the
@@ -1666,10 +1662,6 @@ int Board::evaluatePositional(PieceMoveList &pml) {
     }
     
     // Doubled pawns
-    const int DOUBLED_PENALTY_MG[7] = {0, 0, 12, 36, 72, 120, 180};
-    const int DOUBLED_PENALTY_EG[7] = {0, 0, 17, 51, 102, 170, 255};
-    // Doubled pawns are worse the less pawns you have
-    const int DOUBLED_PENALTY_SCALE[9] = {0, 0, 3, 2, 1, 1, 1, 1, 1};
     int numWPawns = count(pieces[WHITE][PAWNS]);
     int numBPawns = count(pieces[BLACK][PAWNS]);
     for (int i = 0; i < 8; i++) {
@@ -1692,22 +1684,22 @@ int Board::evaluatePositional(PieceMoveList &pml) {
     bp &= ~((bp >> 1) | (bp << 1));
     int whiteIsolated = count(wp);
     int blackIsolated = count(bp);
-    valueMg -= 14 * whiteIsolated;
-    valueEg -= 16 * whiteIsolated;
-    valueMg += 14 * blackIsolated;
-    valueEg += 16 * blackIsolated;
+    valueMg -= ISOLATED_PENALTY_MG * whiteIsolated;
+    valueEg -= ISOLATED_PENALTY_EG * whiteIsolated;
+    valueMg += ISOLATED_PENALTY_MG * blackIsolated;
+    valueEg += ISOLATED_PENALTY_EG * blackIsolated;
 
     // Isolated, doubled pawns
     // -11 for isolated, doubled pawns
     // -33 for isolated, tripled pawns
     for (int i = 0; i < 8; i++) {
         if ((wPawnCtByFile[i] > 1) && (wp & INDEX_TO_BIT[7-i])) {
-            valueMg -= 11 * ((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2;
-            valueEg -= 11 * ((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2;
+            valueMg -= ISOLATED_DOUBLED_PENALTY * ((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2;
+            valueEg -= ISOLATED_DOUBLED_PENALTY * ((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2;
         }
         if ((bPawnCtByFile[i] > 1) && (bp & INDEX_TO_BIT[7-i])) {
-            valueMg += 11 * ((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2;
-            valueEg += 11 * ((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2;
+            valueMg += ISOLATED_DOUBLED_PENALTY * ((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2;
+            valueEg += ISOLATED_DOUBLED_PENALTY * ((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2;
         }
     }
     
