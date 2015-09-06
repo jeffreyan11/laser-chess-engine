@@ -25,17 +25,23 @@
  * This file stores evaluation constants and encoding.
  */
 
+// Eval scores are packed into an unsigned 32-bit integer during calculations
+// (the SWAR technique)
 typedef uint32_t Score;
 
 // Encodes 16-bit midgame and endgame evaluation scores into a single int
 #define encEval(mg, eg) ((Score) ((eg << 16) | mg))
 
+// Retrieves the final evaluation score to return from the packed eval value
 int decEval(Score encodedValue, int egFactor) {
     int valueMg = (int) (encodedValue & 0xFFFF) - 0x8000;
     int valueEg = (int) (encodedValue >> 16) - 0x8000;
     return (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES;
 }
 
+// Since we can only work with unsigned numbers due to carryover / twos-complement
+// negative number issues, we make 2^15 the 0 point for each of the two 16-bit
+// halves of Score
 const Score EVAL_ZERO = 0x80008000;
 
 //-------------------------Material eval constants------------------------------
@@ -44,30 +50,38 @@ const int TEMPO_VALUE = 10;
 
 //------------------------Positional eval constants-----------------------------
 // King safety
-const Score CASTLING_RIGHTS_VALUE[3] = {0, 23, 40};
-const Score PAWN_SHIELD_VALUE = 12;
-const Score P_PAWN_SHIELD_BONUS = 9;
-const Score SEMIOPEN_OWN_PENALTY = 7;
-const Score SEMIOPEN_OPP_PENALTY = 4;
-const Score OPEN_PENALTY = 3;
+// The value of having 0, 1, and both castling rights
+const Score CASTLING_RIGHTS_VALUE[3] = {encEval(0, 0), encEval(23, 0), encEval(40, 0)};
+// The value of a pawn shield per pawn
+const Score PAWN_SHIELD_VALUE = encEval(12, 0);
+// The additional bonus for each pawn in the primary pawn shield, the 3 squares
+// directly in front of the king
+const Score P_PAWN_SHIELD_BONUS = encEval(9, 0);
+// The penalty for a semi-open file next to the king where your own pawn is missing
+const Score SEMIOPEN_OWN_PENALTY = encEval(7, 0);
+// The penalty for a semi-open file next to the king where your opponent's pawn is missing
+const Score SEMIOPEN_OPP_PENALTY = encEval(4, 0);
+// An additional penalty for a fully open file next to the king
+const Score OPEN_PENALTY = encEval(3, 0);
 
 // Minor pieces
-const Score BISHOP_PAWN_COLOR_PENALTY = 2;
-const Score KNIGHT_PAWN_BONUS = 1;
+// A penalty for each own pawn that is on a square of the same color as your bishop
+const Score BISHOP_PAWN_COLOR_PENALTY = encEval(2, 2);
+// A bonus for each opponent pawn on the board, given once for each knight
+const Score KNIGHT_PAWN_BONUS = encEval(1, 1);
 
 // Pawn structure
 // Passed pawns
-const Score PASSER_BONUS_MG[8] = {0, 10, 10, 15, 20, 30, 55, 0};
-const Score PASSER_BONUS_EG[8] = {0, 30, 35, 45, 65, 95, 140, 0};
+const Score PASSER_BONUS[8] = {encEval(0, 0), encEval(10, 30), encEval(10, 35), encEval(15, 45),
+                               encEval(20, 65), encEval(30, 95), encEval(55, 140), encEval(0, 0)};
 // Doubled pawns
-const Score DOUBLED_PENALTY_MG[7] = {0, 0, 12, 36, 72, 120, 180};
-const Score DOUBLED_PENALTY_EG[7] = {0, 0, 17, 51, 102, 170, 255};
+const Score DOUBLED_PENALTY[7] = {encEval(0, 0), encEval(0, 0), encEval(12, 17), encEval(36, 51),
+                                  encEval(72, 102), encEval(120, 170), encEval(180, 255)};
 // Doubled pawns are worse the less pawns you have
 const Score DOUBLED_PENALTY_SCALE[9] = {0, 0, 3, 2, 1, 1, 1, 1, 1};
 // Isolated pawns
-const Score ISOLATED_PENALTY_MG = 14;
-const Score ISOLATED_PENALTY_EG = 16;
+const Score ISOLATED_PENALTY = encEval(14, 16);
 // Isolated, doubled pawns
-const Score ISOLATED_DOUBLED_PENALTY = 11;
+const Score ISOLATED_DOUBLED_PENALTY = encEval(11, 11);
 
 #endif
