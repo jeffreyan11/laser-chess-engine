@@ -712,7 +712,7 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
         Move m = legalPromotions.get(i);
 
         // Static exchange evaluation pruning
-        if(b.getSEEForMove(color, m) < 0)
+        if (b.getSEEForMove(color, m) < 0)
             continue;
 
         Board copy = b.staticCopy();
@@ -735,14 +735,14 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
     }
 
     // Checks: only on the first three plies of q-search
-    if(plies <= 2) {
+    if (plies <= 2) {
         MoveList legalMoves = b.getPseudoLegalChecks(color);
 
         for (unsigned int i = 0; i < legalMoves.size(); i++) {
             Move m = legalMoves.get(i);
 
             // Static exchange evaluation pruning
-            if(b.getSEE(color, getEndSq(m)) < 0)
+            if (b.getSEEForMove(color, m) < 0)
                 continue;
 
             Board copy = b.staticCopy();
