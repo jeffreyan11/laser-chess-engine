@@ -101,9 +101,9 @@ void SearchSpace::scoreCaptures() {
         if (!isCapture(m))
             break;
 
-        int see = b->getSEEForMove(color, m);
         // We want the best move first for PV nodes
         if (isPVNode) {
+            int see = b->getSEEForMove(color, m);
             if (see > 0)
                 scores.add(SCORE_WINNING_CAPTURE + see);
             else if (see == 0)
@@ -113,12 +113,20 @@ void SearchSpace::scoreCaptures() {
         }
         // Otherwise, MVV/LVA for cheaper cutoffs might help
         else {
-            if (see > 0)
+            int exchange = b->getExchangeScore(color, m);
+            if (exchange > 0)
                 scores.add(SCORE_WINNING_CAPTURE + b->getMVVLVAScore(color, m));
-            else if (see == 0)
+            else if (exchange == 0)
                 scores.add(SCORE_EVEN_CAPTURE + b->getMVVLVAScore(color, m));
-            else
-                scores.add(see);
+            else {
+                int see = b->getSEEForMove(color, m);
+                if (see > 0)
+                    scores.add(SCORE_WINNING_CAPTURE + b->getMVVLVAScore(color, m));
+                else if (see == 0)
+                    scores.add(SCORE_EVEN_CAPTURE + b->getMVVLVAScore(color, m));
+                else
+                    scores.add(see);
+            }
         }
     }
 }
