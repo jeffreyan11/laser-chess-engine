@@ -67,10 +67,10 @@ void SearchSpace::generateMoves(Move _hashed, PieceMoveList &_pml) {
 
         scoreCaptures();
         scoreQuiets();
-        if (hashed == NULL_MOVE)
+        if (hashed == NULL_MOVE && doIID())
             scoreIIDMove();
     }
-    else if (hashed == NULL_MOVE) {
+    else if (hashed == NULL_MOVE && doIID()) {
         mgStage = STAGE_QUIETS;
         legalMoves = b->getAllPseudoLegalMoves(color, *pml);
         scoreCaptures();
@@ -161,23 +161,25 @@ void SearchSpace::scoreQuiets() {
     }
 }
 
+bool SearchSpace::doIID() {
+    return depth >= (isPVNode ? 5 : 6);
+}
+
 // IID: get a best move (hoping for a first move cutoff) if we don't
 // have a hash move available
 void SearchSpace::scoreIIDMove() {
-    if (depth >= (isPVNode ? 5 : 6)) {
-        // Sort the moves with what we have so far
-        /*for (Move m = nextMove(); m != NULL_MOVE;
-                  m = nextMove());
-        index = 0;*/
+    // Sort the moves with what we have so far
+    /*for (Move m = nextMove(); m != NULL_MOVE;
+              m = nextMove());
+    index = 0;*/
 
-        int iidDepth = isPVNode ? depth-2 : IID_DEPTHS[depth];
-        int bestIndex = getBestMoveForSort(b, legalMoves, iidDepth);
-        // Mate check to prevent crashes
-        if (bestIndex == -1)
-            legalMoves.clear();
-        else
-            scores.set(bestIndex, SCORE_IID_MOVE);
-    }
+    int iidDepth = isPVNode ? depth-2 : IID_DEPTHS[depth];
+    int bestIndex = getBestMoveForSort(b, legalMoves, iidDepth);
+    // Mate check to prevent crashes
+    if (bestIndex == -1)
+        legalMoves.clear();
+    else
+        scores.set(bestIndex, SCORE_IID_MOVE);
 }
 
 void SearchSpace::generateQuiets() {

@@ -102,6 +102,7 @@ struct SearchSpace {
 private:
     void scoreCaptures();
     void scoreQuiets();
+    bool doIID();
     void scoreIIDMove();
     void generateQuiets();
 };
