@@ -805,7 +805,7 @@ MoveList Board::getPseudoLegalPromotions(int color) {
 }
 
 /*
- * Get all pseudo-legal checks for a position. Used in quiescence search.
+ * Get all pseudo-legal non-capture checks for a position. Used in quiescence search.
  * This function can be optimized compared to a normal getLegalMoves() because
  * for each piece, we can intersect the legal moves of the piece with the attack
  * map of this piece to the opposing king square to determine direct checks.
@@ -814,11 +814,10 @@ MoveList Board::getPseudoLegalPromotions(int color) {
  * For simplicity, promotions and en passant are left out of this function.
  */
 MoveList Board::getPseudoLegalChecks(int color) {
-    MoveList checkCaptures, checks;
+    MoveList checks;
     int kingSq = bitScanForward(pieces[color^1][KINGS]);
     // Square parity for knight and bishop moves
     uint64_t kingParity = (pieces[color^1][KINGS] & LIGHT) ? LIGHT : DARK;
-    uint64_t otherPieces = allPieces[color^1];
     uint64_t potentialXRay = pieces[color][BISHOPS] | pieces[color][ROOKS] | pieces[color][QUEENS];
 
     // We can do pawns in parallel, since the start square of a pawn move is
@@ -844,13 +843,6 @@ MoveList Board::getPseudoLegalChecks(int color) {
                 checks.add(encodeMove(stsq, endsq, PAWNS, false));
             }
 
-            legal = (color == WHITE) ? getWPawnLeftCaptures(INDEX_TO_BIT[stsq]) | getWPawnRightCaptures(INDEX_TO_BIT[stsq])
-                                     : getBPawnLeftCaptures(INDEX_TO_BIT[stsq]) | getBPawnRightCaptures(INDEX_TO_BIT[stsq]);
-            while (legal) {
-                int endsq = bitScanForward(legal);
-                legal &= legal - 1;
-                checkCaptures.add(encodeMove(stsq, endsq, PAWNS, true));
-            }
             // Remove this pawn from future consideration
             pawns ^= INDEX_TO_BIT[stsq];
         }
@@ -887,42 +879,6 @@ MoveList Board::getPseudoLegalChecks(int color) {
         checks.add(m);
     }
 
-    // For pawn captures, we can use a similar approach, but we must consider
-    // left-hand and right-hand captures separately so we can tell which
-    // pawn is doing the capturing.
-    int leftDiff = (color == WHITE) ? -7 : 9;
-    int rightDiff = (color == WHITE) ? -9 : 7;
-
-    pLegal = (color == WHITE) ? getWPawnLeftCaptures(pawns)
-                              : getBPawnLeftCaptures(pawns);
-    pLegal &= otherPieces;
-    promotions = pLegal & finalRank;
-    pLegal ^= promotions;
-    pLegal &= pAttackMap;
-
-    while (pLegal) {
-        int endsq = bitScanForward(pLegal);
-        pLegal &= pLegal-1;
-        Move m = encodeMove(endsq+leftDiff, endsq);
-        m = setCapture(m, true);
-        checkCaptures.add(m);
-    }
-
-    pLegal = (color == WHITE) ? getWPawnRightCaptures(pawns)
-                              : getBPawnRightCaptures(pawns);
-    pLegal &= otherPieces;
-    promotions = pLegal & finalRank;
-    pLegal ^= promotions;
-    pLegal &= pAttackMap;
-
-    while (pLegal) {
-        int endsq = bitScanForward(pLegal);
-        pLegal &= pLegal-1;
-        Move m = encodeMove(endsq+rightDiff, endsq);
-        m = setCapture(m, true);
-        checkCaptures.add(m);
-    }
-
     uint64_t knights = pieces[color][KNIGHTS] & kingParity;
     uint64_t nAttackMap = getKnightSquares(kingSq);
     while (knights) {
@@ -938,7 +894,6 @@ MoveList Board::getPseudoLegalChecks(int color) {
             nSq &= nAttackMap;
 
         addMovesToList(checks, stsq, nSq, false);
-        addMovesToList(checkCaptures, stsq, nSq, true, otherPieces);
     }
 
     uint64_t occ = getOccupancy();
@@ -953,7 +908,6 @@ MoveList Board::getPseudoLegalChecks(int color) {
             bSq &= bAttackMap;
 
         addMovesToList(checks, stsq, bSq, false);
-        addMovesToList(checkCaptures, stsq, bSq, true, otherPieces);
     }
 
     uint64_t rooks = pieces[color][ROOKS];
@@ -967,7 +921,6 @@ MoveList Board::getPseudoLegalChecks(int color) {
             rSq &= rAttackMap;
 
         addMovesToList(checks, stsq, rSq, false);
-        addMovesToList(checkCaptures, stsq, rSq, true, otherPieces);
     }
 
     uint64_t queens = pieces[color][QUEENS];
@@ -978,14 +931,9 @@ MoveList Board::getPseudoLegalChecks(int color) {
         uint64_t qSq = getQueenSquares(stsq, occ) & qAttackMap;
 
         addMovesToList(checks, stsq, qSq, false);
-        addMovesToList(checkCaptures, stsq, qSq, true, otherPieces);
     }
 
-    // Put captures before quiet moves
-    for (unsigned int i = 0; i < checks.size(); i++) {
-        checkCaptures.add(checks.get(i));
-    }
-    return checkCaptures;
+    return checks;
 }
 
 // Generate moves that (sort of but not really) get out of check
