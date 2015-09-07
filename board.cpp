@@ -2049,6 +2049,10 @@ int Board::getPlayerToMove() {
     return playerToMove;
 }
 
+uint64_t Board::getPieces(int color, int piece) {
+    return pieces[color][piece];
+}
+
 uint64_t Board::getAllPieces(int color) {
     return allPieces[color];
 }
@@ -2059,14 +2063,14 @@ int *Board::getMailbox() {
         result[i] = -1;
     }
     for (int i = 0; i < 6; i++) {
-        uint64_t bitboard = pieces[0][i];
+        uint64_t bitboard = pieces[WHITE][i];
         while (bitboard) {
             result[bitScanForward(bitboard)] = i;
             bitboard &= bitboard - 1;
         }
     }
     for (int i = 0; i < 6; i++) {
-        uint64_t bitboard = pieces[1][i];
+        uint64_t bitboard = pieces[BLACK][i];
         while (bitboard) {
             result[bitScanForward(bitboard)] = 6 + i;
             bitboard &= bitboard - 1;

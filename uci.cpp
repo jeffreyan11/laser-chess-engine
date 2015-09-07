@@ -245,13 +245,14 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
             int startSq = 8 * (moveStr.at(1) - '1') + (moveStr.at(0) - 'a');
             int endSq = 8 * (moveStr.at(3) - '1') + (moveStr.at(2) - 'a');
             
-            int *mailbox = board.getMailbox();
-            int piece = mailbox[startSq] % 6;
-            bool isCapture = (mailbox[endSq] != -1);
-            bool isEP = (piece == PAWNS && (mailbox[endSq] == -1) && ((endSq - startSq) & 1));
-            bool isDoublePawn = (piece == PAWNS && abs(endSq - startSq) == 16);
+            int color = board.getPlayerToMove();
+            bool isCapture = (bool)(INDEX_TO_BIT[endSq] & board.getAllPieces(color ^ 1));
+            bool isPawnMove = (bool)(INDEX_TO_BIT[startSq] & board.getPieces(color, PAWNS));
+            bool isKingMove = (bool)(INDEX_TO_BIT[startSq] & board.getPieces(color, KINGS));
             
-            bool isCastle = (piece == KINGS && abs(endSq - startSq) == 2);
+            bool isEP = (isPawnMove && !isCapture && ((endSq - startSq) & 1));
+            bool isDoublePawn = (isPawnMove && abs(endSq - startSq) == 16);
+            bool isCastle = (isKingMove && abs(endSq - startSq) == 2);
             string promotionString = " nbrq";
             int promotion = (moveStr.length() == 5)
                 ? promotionString.find(moveStr.at(4)) : 0;
@@ -267,8 +268,7 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
             else if (isDoublePawn)
                 m = setFlags(m, MOVE_DOUBLE_PAWN);
             
-            delete[] mailbox;
-            board.doMove(m, board.getPlayerToMove());
+            board.doMove(m, color);
         }
     }
 }
@@ -328,7 +328,7 @@ string boardToString(Board &board) {
         boardString += (char)(i + '1');
         boardString += '|';
         for (int j = 0; j < 8; j++) {
-            boardString += pieceString[mailbox[8 * i + j] + 1];
+            boardString += pieceString[mailbox[8*i+j] + 1];
         }
         boardString += "|\n";
     }

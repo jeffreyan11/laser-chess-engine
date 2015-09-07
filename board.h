@@ -108,7 +108,6 @@ public:
             int _playerToMove);
     ~Board();
     Board staticCopy();
-    // Board *dynamicCopy();
 
     void doMove(Move m, int color);
     bool doPseudoLegalMove(Move m, int color);
@@ -171,6 +170,7 @@ public:
     uint8_t getFiftyMoveCounter();
     uint16_t getMoveNumber();
     int getPlayerToMove();
+    uint64_t getPieces(int color, int piece);
     uint64_t getAllPieces(int color);
     int *getMailbox();
     uint64_t getZobristKey();
