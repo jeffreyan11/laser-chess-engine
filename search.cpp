@@ -517,7 +517,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     }
 
     // If there were no legal moves
-    if (score == -INFTY)
+    if (score == -INFTY && movesSearched == 0)
         return scoreMate(ss.isInCheck, depth, alpha, beta);
     
     // Exact scores indicate a principal variation

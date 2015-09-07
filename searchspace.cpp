@@ -197,6 +197,8 @@ Move SearchSpace::nextMove() {
     if (index >= legalMoves.size()) {
         if (mgStage == STAGE_CAPTURES) {
             generateQuiets();
+            if (index >= legalMoves.size())
+                return NULL_MOVE;
         }
         else
             return NULL_MOVE;
