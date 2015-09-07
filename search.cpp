@@ -113,7 +113,6 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     searchParams.reset();
     searchStats.reset();
     searchParams.rootMoveNumber = (uint8_t) (b->getMoveNumber());
-    isStop = false;
 
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
@@ -215,11 +214,6 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int beta = MATE_SCORE;
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
-        // Stop condition. If stopping, return search results from incomplete
-        // search, if any.
-        if (isStop)
-            return tempMove;
-
         Board copy = b->staticCopy();
         copy.doMove(legalMoves.get(i), color);
         searchStats.nodes++;
@@ -240,14 +234,18 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
             searchParams.ply--;
         }
 
+        // Stop condition. If stopping, return search results from incomplete
+        // search, if any.
+        if (isStop)
+            return tempMove;
+
         if (score > alpha) {
             alpha = score;
+            bestScore = score;
             tempMove = i;
             changePV(legalMoves.get(i), pvLine, &line);
         }
     }
-
-    bestScore = alpha;
 
     return tempMove;
 }
@@ -399,7 +397,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             isStop = true;
         // Stop condition to help break out as quickly as possible
         if (isStop)
-            return -INFTY;
+            return INFTY;
 
 
         // Futility pruning
@@ -485,6 +483,10 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             score = -PVS(copy, depth-1, -beta, -alpha, &line);
             searchParams.ply--;
         }
+
+        // Stop condition to help break out as quickly as possible
+        if (isStop)
+            return INFTY;
         
         // Beta cutoff
         if (score >= beta) {

@@ -130,6 +130,7 @@ int main() {
             }
             
             bestMove = NULL_MOVE;
+            isStop = false;
             searchThread = thread(getBestMove, &board, mode, value, &bestMove);
             searchThread.detach();
         }
@@ -179,6 +180,7 @@ int main() {
                 clearAll(board);
                 board = fenToBoard(positions.at(i));
                 bestMove = NULL_MOVE;
+                isStop = false;
                 
                 searchThread = thread(getBestMove, &board, DEPTH, 9, &bestMove);
                 searchThread.join();
