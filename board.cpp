@@ -1514,22 +1514,65 @@ int Board::evaluatePositional(PieceMoveList &pml) {
     
     
     //-----------------------King Safety and Mobility---------------------------
-    // Castling rights
-    value += CASTLING_RIGHTS_VALUE[count(castlingRights & WHITECASTLE)];
-    value -= CASTLING_RIGHTS_VALUE[count(castlingRights & BLACKCASTLE)];
-    
     // Consider squares near king
     uint64_t wksq = getKingSquares(bitScanForward(pieces[WHITE][KINGS]));
     uint64_t bksq = getKingSquares(bitScanForward(pieces[BLACK][KINGS]));
-    
-    // Pawn shield bonus (files ABC, FGH)
-    // Pawns on the second and third ranks are considered part of the shield
-    value += PAWN_SHIELD_VALUE * count((wksq | (wksq << 8)) & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-    value -= PAWN_SHIELD_VALUE * count((bksq | (bksq >> 8)) & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-    // An extra bonus for pawns on the second rank
-    value += P_PAWN_SHIELD_BONUS * count(wksq & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-    value -= P_PAWN_SHIELD_BONUS * count(bksq & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-    
+    // All king safety terms are midgame only, so don't calculate them in the endgame
+    if (egFactor < EG_FACTOR_RES) {
+        // Castling rights
+        value += CASTLING_RIGHTS_VALUE[count(castlingRights & WHITECASTLE)];
+        value -= CASTLING_RIGHTS_VALUE[count(castlingRights & BLACKCASTLE)];
+        
+        // Pawn shield bonus (files ABC, FGH)
+        // Pawns on the second and third ranks are considered part of the shield
+        value += PAWN_SHIELD_VALUE * count((wksq | (wksq << 8)) & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+        value -= PAWN_SHIELD_VALUE * count((bksq | (bksq >> 8)) & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+        // An extra bonus for pawns on the second rank
+        value += P_PAWN_SHIELD_BONUS * count(wksq & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+        value -= P_PAWN_SHIELD_BONUS * count(bksq & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+        
+        // Open files next to king
+        // To find open files we flood fill the king and its adjacent files up the board
+        // The inverse of the pawn bitboards act as blockers
+        uint64_t notwp = ~pieces[WHITE][PAWNS];
+        uint64_t notbp = ~pieces[BLACK][PAWNS];
+        // Get king and its adjacent files
+        uint64_t tempwk = pieces[WHITE][KINGS];
+        uint64_t tempbk = pieces[BLACK][KINGS];
+        tempwk |= ((tempwk >> 1) & NOTH) | ((tempwk << 1) & NOTA);
+        tempbk |= ((tempbk >> 1) & NOTH) | ((tempbk << 1) & NOTA);
+        uint64_t tempwk2 = tempwk;
+        uint64_t tempbk2 = tempbk;
+        
+        // Flood fill: checking for white pawns
+        for(int i = 0; i < 7; i++) {
+            tempwk |= (tempwk << 8) & notwp;
+            tempbk |= (tempbk >> 8) & notwp;
+        }
+        // If the "king" made it across the board without running into a white pawn,
+        // then the file is semi-open.
+        int wkNoWhiteOpen = count(tempwk & RANKS[7]);
+        int bkNoWhiteOpen = count(tempbk & RANKS[0]);
+        
+        // Flood fill: checking for black pawns
+        for(int i = 0; i < 7; i++) {
+            tempwk2 |= (tempwk2 << 8) & notbp;
+            tempbk2 |= (tempbk2 >> 8) & notbp;
+        }
+        // If the "king" made it across the board without running into a black pawn,
+        // then the file is semi-open.
+        int wkNoBlackOpen = count(tempwk2 & RANKS[7]);
+        int bkNoBlackOpen = count(tempbk2 & RANKS[0]);
+        
+        value -= SEMIOPEN_OWN_PENALTY*wkNoWhiteOpen;
+        value -= SEMIOPEN_OPP_PENALTY*wkNoBlackOpen;
+        value += SEMIOPEN_OPP_PENALTY*bkNoWhiteOpen;
+        value += SEMIOPEN_OWN_PENALTY*bkNoBlackOpen;
+        // Fully open files get an additional bonus
+        value -= OPEN_PENALTY*count(tempwk & tempwk2 & RANKS[7]);
+        value += OPEN_PENALTY*count(tempbk & tempbk2 & RANKS[0]);
+    }
+
     int mobilityValue = 0;
     // Scores based on mobility and basic king safety (which is turned off in
     // the endgame)
@@ -1543,48 +1586,6 @@ int Board::evaluatePositional(PieceMoveList &pml) {
         mobilityValue += getPseudoMobility(WHITE, pmlOther, bksq, egFactor);
         mobilityValue -= getPseudoMobility(BLACK, pml, wksq, egFactor);
     }
-    
-    // Open files next to king
-    // To find open files we flood fill the king and its adjacent files up the board
-    // The inverse of the pawn bitboards act as blockers
-    
-    uint64_t notwp = ~pieces[WHITE][PAWNS];
-    uint64_t notbp = ~pieces[BLACK][PAWNS];
-    // Get king and its adjacent files
-    uint64_t tempwk = pieces[WHITE][KINGS];
-    uint64_t tempbk = pieces[BLACK][KINGS];
-    tempwk |= ((tempwk >> 1) & NOTH) | ((tempwk << 1) & NOTA);
-    tempbk |= ((tempbk >> 1) & NOTH) | ((tempbk << 1) & NOTA);
-    uint64_t tempwk2 = tempwk;
-    uint64_t tempbk2 = tempbk;
-    
-    // Flood fill: checking for white pawns
-    for(int i = 0; i < 7; i++) {
-        tempwk |= (tempwk << 8) & notwp;
-        tempbk |= (tempbk >> 8) & notwp;
-    }
-    // If the "king" made it across the board without running into a white pawn,
-    // then the file is semi-open.
-    int wkNoWhiteOpen = count(tempwk & RANKS[7]);
-    int bkNoWhiteOpen = count(tempbk & RANKS[0]);
-    
-    // Flood fill: checking for black pawns
-    for(int i = 0; i < 7; i++) {
-        tempwk2 |= (tempwk2 << 8) & notbp;
-        tempbk2 |= (tempbk2 >> 8) & notbp;
-    }
-    // If the "king" made it across the board without running into a black pawn,
-    // then the file is semi-open.
-    int wkNoBlackOpen = count(tempwk2 & RANKS[7]);
-    int bkNoBlackOpen = count(tempbk2 & RANKS[0]);
-    
-    value -= SEMIOPEN_OWN_PENALTY*wkNoWhiteOpen;
-    value -= SEMIOPEN_OPP_PENALTY*wkNoBlackOpen;
-    value += SEMIOPEN_OPP_PENALTY*bkNoWhiteOpen;
-    value += SEMIOPEN_OWN_PENALTY*bkNoBlackOpen;
-    // Fully open files get an additional bonus
-    value -= OPEN_PENALTY*count(tempwk & tempwk2 & RANKS[7]);
-    value += OPEN_PENALTY*count(tempbk & tempbk2 & RANKS[0]);
     
 
     //------------------------------Minor Pieces--------------------------------
