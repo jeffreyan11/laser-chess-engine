@@ -113,6 +113,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     searchParams.reset();
     searchStats.reset();
     searchParams.rootMoveNumber = (uint8_t) (b->getMoveNumber());
+    isStop = false;
 
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);

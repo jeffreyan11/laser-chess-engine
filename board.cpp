@@ -296,10 +296,10 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
     }
     allPieces[WHITE] = 0;
     for (int i = 0; i < 6; i++)
-        allPieces[WHITE] |= pieces[0][i];
+        allPieces[WHITE] |= pieces[WHITE][i];
     allPieces[BLACK] = 0;
     for (int i = 0; i < 6; i++)
-        allPieces[BLACK] |= pieces[1][i];
+        allPieces[BLACK] |= pieces[BLACK][i];
 
     twoFoldSqs = RESET_TWOFOLD;
     epCaptureFile = _epCaptureFile;

@@ -100,8 +100,6 @@ int main() {
                 mode = TIME;
                 int color = board.getPlayerToMove();
                 int len = inputVector.size();
-                bool isRecur = (len == 7) || (len == 11);
-                bool isInc = (len == 9) || (len == 11);
                 
                 value = (color == WHITE) ? stoi(inputVector.at(2))
                     : stoi(inputVector.at(4));
@@ -109,14 +107,14 @@ int main() {
                 
                 int maxValue = value / MAX_TIME_FACTOR;
                 
-                if (isRecur) {
+                if (len == 7 || len == 11) { // recurring time controls
                     int movesToGo = (len == 7) ? stoi(inputVector.at(6))
                         : stoi(inputVector.at(10));
                     value /= max(movesToGo, (int)MAX_TIME_FACTOR + 1);
                 }
                 else value /= MOVE_HORIZON;
                 
-                if (isInc) {
+                if (len == 9 || len == 11) { // increment time controls
                     value += ((color == WHITE) ? stoi(inputVector.at(6))
                         : stoi(inputVector.at(8)));
                     value = min(value, maxValue);
@@ -124,7 +122,6 @@ int main() {
             }
             
             bestMove = NULL_MOVE;
-            isStop = false;
             searchThread = thread(getBestMove, &board, mode, value, &bestMove);
             searchThread.detach();
         }
@@ -174,7 +171,6 @@ int main() {
                 clearAll(board);
                 board = fenToBoard(positions.at(i));
                 bestMove = NULL_MOVE;
-                isStop = false;
                 
                 searchThread = thread(getBestMove, &board, DEPTH, 9, &bestMove);
                 searchThread.join();
@@ -288,7 +284,7 @@ Board fenToBoard(string s) {
     vector<string> components = split(s, ' ');
     vector<string> rows = split(components.at(0), '/');
     int mailbox[64];
-    int sqCounter = 0;
+    int sqCounter = -1;
     string pieceString = "PNBRQKpnbrqk";
     
     // iterate through rows backwards (because mailbox goes a1 -> h8), converting into mailbox format
@@ -297,11 +293,7 @@ Board fenToBoard(string s) {
         
         for (unsigned col = 0; col < rowAtElem.length(); col++) {
             char sq = rowAtElem.at(col);
-            do {
-                mailbox[sqCounter] = pieceString.find(sq);
-                sqCounter++;
-                sq--;
-            }
+            do mailbox[++sqCounter] = pieceString.find(sq--);
             while ('0' < sq && sq < '8');
         }
     }
