@@ -141,6 +141,7 @@ public:
     bool isBInMate();
     bool isStalemate(int sideToMove);
     bool isDraw();
+    bool isInsufficientMaterial();
 
     // Evaluation
     int evaluate(PieceMoveList &pml);

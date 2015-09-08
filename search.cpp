@@ -644,6 +644,15 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
     if (b.isInCheck(color))
         return checkQuiescence(b, plies, alpha, beta);
 
+    if (b.isInsufficientMaterial()) {
+        if (0 >= beta)
+            return beta;
+        if (0 > alpha)
+            return 0;
+        else
+            return alpha;
+    }
+
     // Stand pat: if our current position is already way too good or way too bad
     // we can simply stop the search here. We first obtain an approximate
     // evaluation for standPat to save time.
