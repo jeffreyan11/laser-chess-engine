@@ -145,8 +145,6 @@ public:
 
     // Evaluation
     int evaluate(PieceMoveList &pml);
-    int evaluateMaterial();
-    int evaluatePositional(PieceMoveList &pml);
     int getPseudoMobility(int color, PieceMoveList &pml, uint64_t oppKingSqs, int egFactor);
     int getEGFactor();
     int getMaterial(int color);

@@ -654,20 +654,9 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
     }
 
     // Stand pat: if our current position is already way too good or way too bad
-    // we can simply stop the search here. We first obtain an approximate
-    // evaluation for standPat to save time.
-    int standPat = (color == WHITE) ? b.evaluateMaterial() : -b.evaluateMaterial();
-
-    if (standPat >= beta + 205)
-        return beta;
-    
-    // delta prune
-    if (standPat < alpha - 205 - MAX_POS_SCORE - QUEEN_VALUE)
-        return alpha;
-    
-    // If we do not cut off, we get a more accurate evaluation.
+    // we can simply stop the search here.
     PieceMoveList pml = b.getPieceMoveList(color);
-    standPat += (color == WHITE) ? b.evaluatePositional(pml) : -b.evaluatePositional(pml);
+    int standPat = (color == WHITE) ? b.evaluate(pml) : -b.evaluate(pml);
     
     if (standPat >= beta)
         return beta;

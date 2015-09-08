@@ -1452,11 +1452,7 @@ bool Board::isInsufficientMaterial() {
  * positive and black is negative in traditional negamax format.
  */
 int Board::evaluate(PieceMoveList &pml) {
-    return evaluateMaterial() + evaluatePositional(pml);
-}
-
-// Helper functions for lazy evaluation
-int Board::evaluateMaterial() {
+    //---------------------------Material terms---------------------------------
     int valueMg = 0;
     int valueEg = 0;
     
@@ -1512,20 +1508,12 @@ int Board::evaluateMaterial() {
     int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
     egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
     
-    return (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES;
-}
+    int materialValue = (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES;
 
-int Board::evaluatePositional(PieceMoveList &pml) {
+
+    //----------------------------Positional terms------------------------------
     // A 32-bit integer that holds both the midgame and endgame values using SWAR
     Score value = EVAL_ZERO;
-    
-    // Material: for calculating EG factor
-    int whiteMaterial = getMaterial(WHITE);
-    int blackMaterial = getMaterial(BLACK);
-    
-    // Compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
-    int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
-    egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
     
     
     //-----------------------King Safety and Mobility---------------------------
@@ -1705,7 +1693,7 @@ int Board::evaluatePositional(PieceMoveList &pml) {
         }
     }
     
-    return decEval(value, egFactor) + mobilityValue;
+    return materialValue + decEval(value, egFactor) + mobilityValue;
 }
 
 /* Scores the board for a player based on estimates of mobility
