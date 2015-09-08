@@ -25,6 +25,8 @@
  * This file stores evaluation constants and encoding.
  */
 
+const int SEE_PIECE_VALS[6] = {100, 400, 400, 600, 1150, MATE_SCORE};
+
 // Eval scores are packed into an unsigned 32-bit integer during calculations
 // (the SWAR technique)
 typedef uint32_t Score;

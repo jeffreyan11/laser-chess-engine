@@ -1826,12 +1826,12 @@ int Board::getSEE(int color, int sq) {
         return 0;
     // Get value of piece initially being captured, or 0 if the square is
     // empty
-    gain[d] = valueOfPiece(getPieceOnSquare(color^1, sq));
+    gain[d] = SEE_PIECE_VALS[getPieceOnSquare(color^1, sq)];
 
     do {
         d++; // next depth
         color ^= 1;
-        gain[d]  = valueOfPiece(piece) - gain[d-1];
+        gain[d]  = SEE_PIECE_VALS[piece] - gain[d-1];
         if (-gain[d-1] < 0 && gain[d] < 0) // pruning for stand pat
             break;
         attackers ^= single; // remove used attacker
@@ -1873,7 +1873,7 @@ int Board::getSEEForMove(int color, Move m) {
         pieces[color^1][capturedPiece] &= ~INDEX_TO_BIT[endSq];
         allPieces[color^1] &= ~INDEX_TO_BIT[endSq];
 
-        value = valueOfPiece(capturedPiece) - getSEE(color^1, endSq);
+        value = SEE_PIECE_VALS[capturedPiece] - getSEE(color^1, endSq);
 
         pieces[color^1][capturedPiece] |= INDEX_TO_BIT[endSq];
         allPieces[color^1] |= INDEX_TO_BIT[endSq];
