@@ -1775,11 +1775,6 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, uint64_t oppKingSqs,
         kingSafety += KING_THREAT_MOBILITY * KING_THREAT_PIECE_BONUS[kingAttackPieces];
         result += kingSafety * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
     }
-    // This smoothens out the evaluation: if one piece is attacking, another
-    // piece could easily join in to make it "serious" so we must factor it in
-    // a little
-    else
-        result += (kingSafety / 2) * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
 
     result += centerControl * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
 
