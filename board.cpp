@@ -1477,7 +1477,7 @@ int Board::evaluate(PieceMoveList &pml) {
         valueMg -= BISHOP_PAIR_VALUE;
         valueEg -= BISHOP_PAIR_VALUE;
     }
-    
+
     
     // Piece square tables
     // White pieces
@@ -1501,6 +1501,20 @@ int Board::evaluate(PieceMoveList &pml) {
             valueMg -= midgamePieceValues[pieceID][i];
             valueEg -= endgamePieceValues[pieceID][i];
         }
+    }
+
+
+    // Pawn value scaling: incur a penalty for having no pawns since the
+    // ability to promote is gone
+    int whitePawnCount = count(pieces[WHITE][PAWNS]);
+    int blackPawnCount = count(pieces[BLACK][PAWNS]);
+    if (whitePawnCount == 0) {
+        valueMg -= 48;
+        valueEg -= 56;
+    }
+    if (blackPawnCount == 0) {
+        valueMg += 48;
+        valueEg += 56;
     }
     
     
