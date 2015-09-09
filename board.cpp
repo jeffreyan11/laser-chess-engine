@@ -1506,16 +1506,15 @@ int Board::evaluate(PieceMoveList &pml) {
 
     // Pawn value scaling: incur a penalty for having no pawns since the
     // ability to promote is gone
+    const int PAWN_SCALING_MG[9] = {10, 3, 2, 2, 1, 0, 0, 0, 0};
+    const int PAWN_SCALING_EG[9] = {71, 20, 8, 4, 2, 0, 0, 0, 0};
     int whitePawnCount = count(pieces[WHITE][PAWNS]);
     int blackPawnCount = count(pieces[BLACK][PAWNS]);
-    if (whitePawnCount == 0) {
-        valueMg -= 48;
-        valueEg -= 56;
-    }
-    if (blackPawnCount == 0) {
-        valueMg += 48;
-        valueEg += 56;
-    }
+
+    valueMg -= PAWN_SCALING_MG[whitePawnCount];
+    valueEg -= PAWN_SCALING_EG[whitePawnCount];
+    valueMg += PAWN_SCALING_MG[blackPawnCount];
+    valueEg += PAWN_SCALING_EG[blackPawnCount];
     
     
     // Compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
