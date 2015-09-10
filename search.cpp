@@ -378,6 +378,23 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         return beta;
 
 
+    // Razoring
+    // If static eval is a good amount below alpha, we are probably at an all-node.
+    // Do a qsearch just to confirm. If the qsearch fails high, a capture gained back
+    // the material and trust its result since a quiet move probably can't gain
+    // as much.
+    if (!isPVNode && !isInCheck && ((depth == 1 && staticEval <= alpha - 400)
+                                 /*|| (depth == 2 && staticEval <= alpha - MAX_POS_SCORE - 650)
+                                 || (depth == 3 && staticEval <= alpha - MAX_POS_SCORE - 900)*/)) {
+        if (depth == 1)
+            return quiescence(b, 0, alpha, beta);
+
+        //int value = quiescence(b, 0, alpha, beta);
+        //if (value <= alpha)
+        //    return alpha;
+    }
+
+
     SearchSpace ss(&b, color, depth, isPVNode, isInCheck, &searchParams);
     // Generate and sort all pseudo-legal moves
     ss.generateMoves(hashed, pml);
