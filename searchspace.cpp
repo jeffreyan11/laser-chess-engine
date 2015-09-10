@@ -147,8 +147,6 @@ void SearchSpace::scoreQuiets() {
         // Score killers below even captures but above losing captures
         if (m == searchParams->killers[searchParams->ply][0])
             scores.add(SCORE_EVEN_CAPTURE - 1);
-        else if (m == searchParams->killers[searchParams->ply][1])
-            scores.add(SCORE_EVEN_CAPTURE - 2);
         // Order queen promotions somewhat high
         else if (getPromotion(m) == QUEENS)
             scores.add(SCORE_QUEEN_PROMO);
