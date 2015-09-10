@@ -487,8 +487,14 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             searchParams.ply++;
             score = -PVS(copy, depth-1-reduction, -alpha-1, -alpha, &line);
             searchParams.ply--;
-            // The re-search is always done at normal depth
-            if (alpha < score && score < beta) {
+            // LMR re-search if the reduced search did not fail low
+            if (reduction > 0 && score > alpha) {
+                searchParams.ply++;
+                score = -PVS(copy, depth-1, -alpha-1, -alpha, &line);
+                searchParams.ply--;
+            }
+            // Re-search for a scout window at PV nodes
+            else if (alpha < score && score < beta) {
                 searchParams.ply++;
                 score = -PVS(copy, depth-1, -beta, -alpha, &line);
                 searchParams.ply--;
