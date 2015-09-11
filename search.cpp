@@ -337,7 +337,9 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     bool isInCheck = b.isInCheck(color);
     // A static evaluation, used to activate null move pruning and futility
     // pruning
-    int staticEval = (color == WHITE) ? b.evaluate(pml) : -b.evaluate(pml);
+    int staticEval = isInCheck ? INFTY
+                               : (color == WHITE) ? b.evaluate(pml)
+                                                  : -b.evaluate(pml);
     
 
     // Reverse futility pruning
