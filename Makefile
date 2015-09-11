@@ -16,9 +16,13 @@
 
 CC          = g++
 CFLAGS      = -Wall -ansi -pedantic -ggdb -std=c++0x -g -O3
-LDFLAGS     = -static -static-libgcc -static-libstdc++ -lpthread
+LDFLAGS     = -lpthread
 OBJS        = board.o common.o hash.o search.o searchspace.o
 ENGINENAME  = laser
+
+ifeq ($(USE_STATIC), true)
+	LDFLAGS += -static -static-libgcc -static-libstdc++
+endif
 
 all: uci
 
