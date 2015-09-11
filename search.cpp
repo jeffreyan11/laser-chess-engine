@@ -424,15 +424,19 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             return INFTY;
 
 
+        bool moveIsPrunable = ss.nodeIsReducible()
+                           && !isPromotion(m)
+                           && !b.isCheckMove(m, color);
+
+
         // Futility pruning
         // If we are already a decent amount of material below alpha, a quiet
         // move probably won't raise our prospects much, so don't bother
         // q-searching it.
         // TODO may fail low in some stalemate cases
-        if (ss.nodeIsReducible()
+        if (moveIsPrunable
          && depth <= 3 && staticEval <= alpha - FUTILITY_MARGIN[depth]
-         && !isCapture(m) && !isPromotion(m)
-         && abs(alpha) < QUEEN_VALUE && !b.isCheckMove(m, color)) {
+         && !isCapture(m) && abs(alpha) < QUEEN_VALUE) {
             score = alpha;
             continue;
         }
@@ -440,9 +444,9 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 
         // Futility pruning using SEE
         /*
-        if(ss.nodeIsReducible()
+        if(moveIsPrunable
         && depth == 1 && staticEval <= alpha
-        && abs(alpha) < QUEEN_VALUE && !isPromotion(m) && !b.isCheckMove(m, color)
+        && abs(alpha) < QUEEN_VALUE
         && ((!isCapture(m) && b.getSEEForMove(color, m) < 0)
          || (isCapture(m) && b.getExchangeScore(color, m) < 0 && b.getSEEForMove(color, m) < -200))) {
             score = alpha;
@@ -455,15 +459,15 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // At low depths, moves late in the list with poor history are pruned
         // As used in Fruit/Stockfish:
         // https://chessprogramming.wikispaces.com/Futility+Pruning#MoveCountBasedPruning
-        if (ss.nodeIsReducible()
+        if (moveIsPrunable
          && ((depth == 1 && movesSearched > 6)
           || (depth == 2 && movesSearched > 12)
           || (depth == 3 && movesSearched > 24))
-         && alpha <= prevAlpha && !isCapture(m) && !isPromotion(m)
+         && alpha <= prevAlpha && !isCapture(m)
          && m != searchParams.killers[searchParams.ply][0]
          && m != searchParams.killers[searchParams.ply][1]
          && searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)] < (1 - depth*depth)
-         && !b.isCheckMove(m, color)) {
+            ) {
             score = alpha;
             continue;
         }
