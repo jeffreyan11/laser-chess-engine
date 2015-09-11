@@ -327,6 +327,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     if (hashScore != -INFTY)
         return hashScore;
 
+
     SearchPV line;
     PieceMoveList pml = b.getPieceMoveList(color);
     // For PVS, the node is a PV node if beta - alpha > 1 (i.e. not a null window)
@@ -339,14 +340,44 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     int staticEval = (color == WHITE) ? b.evaluate(pml) : -b.evaluate(pml);
     
 
+    // Reverse futility pruning
+    // If we are already doing really well and it's our turn, our opponent
+    // probably wouldn't have let us get here (a form of the null-move observation
+    // adapted to low depths)
+    if (!isPVNode && !isInCheck
+     && (depth <= 2 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
+     && b.getNonPawnMaterial(color))
+        return beta;
+
+
+    // Razoring
+    // If static eval is a good amount below alpha, we are probably at an all-node.
+    // Do a qsearch just to confirm. If the qsearch fails high, a capture gained back
+    // the material and trust its result since a quiet move probably can't gain
+    // as much.
+    if (!isPVNode && !isInCheck
+     && ((depth == 1 && staticEval <= alpha - 400)
+      /*|| (depth == 2 && staticEval <= alpha - MAX_POS_SCORE - 650)
+      || (depth == 3 && staticEval <= alpha - MAX_POS_SCORE - 900)*/)) {
+        if (depth == 1)
+            return quiescence(b, 0, alpha, beta);
+
+        //int value = quiescence(b, 0, alpha, beta);
+        //if (value <= alpha)
+        //    return alpha;
+    }
+
+
     // Null move pruning
     // If we are in a position good enough that even after passing and giving
     // our opponent a free turn, we still exceed beta, then simply return beta
     // Only if doing a null move does not leave player in check
     // Do not do if the side to move has only pawns
     // Do not do more than 2 null moves in a row
-    if (depth >= 3 && !isPVNode && !isInCheck && searchParams.nullMoveCount < 2
-                   && staticEval >= beta && b.getNonPawnMaterial(color)) {
+    if (!isPVNode && !isInCheck
+     && depth >= 3 && staticEval >= beta
+     && searchParams.nullMoveCount < 2
+     && b.getNonPawnMaterial(color)) {
         int reduction;
         // Reduce more if we are further ahead, but do not let NMR descend
         // directly into q-search
@@ -366,32 +397,6 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         if (nullScore >= beta) {
             return beta;
         }
-    }
-
-
-    // Reverse futility pruning
-    // If we are already doing really well and it's our turn, our opponent
-    // probably wouldn't have let us get here (a form of the null-move observation
-    // adapted to low depths)
-    if (!isPVNode && !isInCheck && (depth <= 2 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
-     && b.getNonPawnMaterial(color))
-        return beta;
-
-
-    // Razoring
-    // If static eval is a good amount below alpha, we are probably at an all-node.
-    // Do a qsearch just to confirm. If the qsearch fails high, a capture gained back
-    // the material and trust its result since a quiet move probably can't gain
-    // as much.
-    if (!isPVNode && !isInCheck && ((depth == 1 && staticEval <= alpha - 400)
-                                 /*|| (depth == 2 && staticEval <= alpha - MAX_POS_SCORE - 650)
-                                 || (depth == 3 && staticEval <= alpha - MAX_POS_SCORE - 900)*/)) {
-        if (depth == 1)
-            return quiescence(b, 0, alpha, beta);
-
-        //int value = quiescence(b, 0, alpha, beta);
-        //if (value <= alpha)
-        //    return alpha;
     }
 
 
@@ -422,31 +427,37 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // move probably won't raise our prospects much, so don't bother
         // q-searching it.
         // TODO may fail low in some stalemate cases
-        if (depth <= 3 && staticEval <= alpha - FUTILITY_MARGIN[depth]
-         && ss.nodeIsReducible() && !isCapture(m) && abs(alpha) < QUEEN_VALUE
-         && !isPromotion(m) && !b.isCheckMove(m, color)) {
+        if (ss.nodeIsReducible()
+         && depth <= 3 && staticEval <= alpha - FUTILITY_MARGIN[depth]
+         && !isCapture(m) && !isPromotion(m)
+         && abs(alpha) < QUEEN_VALUE && !b.isCheckMove(m, color)) {
             score = alpha;
             continue;
         }
 
 
         // Futility pruning using SEE
-        /*if(!isPVNode && depth == 1 //&& staticEval <= alpha - MAX_POS_SCORE
-        && !isInCheck && abs(alpha) < QUEEN_VALUE && !isCapture(m) && !isPromotion(m)
-        && !b.isCheckMove(m, color) && b.getExchangeScore(color, m) < 0 && b.getSEE(color, getEndSq(m)) < 0) {
+        /*
+        if(ss.nodeIsReducible()
+        && depth == 1 && staticEval <= alpha
+        && abs(alpha) < QUEEN_VALUE && !isPromotion(m) && !b.isCheckMove(m, color)
+        && ((!isCapture(m) && b.getSEEForMove(color, m) < 0)
+         || (isCapture(m) && b.getExchangeScore(color, m) < 0 && b.getSEEForMove(color, m) < -200))) {
             score = alpha;
             continue;
-        }*/
+        }
+        */
 
 
         // Move count based pruning / Late move pruning
         // At low depths, moves late in the list with poor history are pruned
         // As used in Fruit/Stockfish:
         // https://chessprogramming.wikispaces.com/Futility+Pruning#MoveCountBasedPruning
-        if (((depth == 1 && movesSearched > 6)
+        if (ss.nodeIsReducible()
+         && ((depth == 1 && movesSearched > 6)
           || (depth == 2 && movesSearched > 12)
           || (depth == 3 && movesSearched > 24))
-         && alpha <= prevAlpha && ss.nodeIsReducible() && !isCapture(m) && !isPromotion(m)
+         && alpha <= prevAlpha && !isCapture(m) && !isPromotion(m)
          && m != searchParams.killers[searchParams.ply][0]
          && m != searchParams.killers[searchParams.ply][1]
          && searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)] < (1 - depth*depth)
@@ -467,11 +478,12 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // If we have not raised alpha in the first few moves, we are probably
         // at an all-node. The later moves are likely worse so we search them
         // to a shallower depth.
-        if (depth >= 3 && movesSearched > 2 && alpha <= prevAlpha
-         && ss.nodeIsReducible() && !isCapture(m)
+        if (ss.nodeIsReducible()
+         && depth >= 3 && movesSearched > 2 && alpha <= prevAlpha
+         && !isCapture(m) && !isPromotion(m)
          && m != searchParams.killers[searchParams.ply][0]
          && m != searchParams.killers[searchParams.ply][1]
-         && !isPromotion(m) && !copy.isInCheck(color^1)) {
+         && !copy.isInCheck(color^1)) {
             // Increase reduction with higher depth and later moves
             reduction = 1 + (int) (((double) depth - 3) / 4.5 + ((double) movesSearched) / 14);
             // Reduce more for moves with poor history
