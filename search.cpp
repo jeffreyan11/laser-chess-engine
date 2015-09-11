@@ -472,10 +472,15 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
          && m != searchParams.killers[searchParams.ply][0]
          && m != searchParams.killers[searchParams.ply][1]
          && !isPromotion(m) && !copy.isInCheck(color^1)) {
-            // Increase reduction with higher depth and later moves, but do
-            // not let search descend directly into q-search
-            reduction = min(depth - 2,
-                1 + (int) (((double) depth - 3) / 4.5 + ((double) movesSearched) / 14));
+            // Increase reduction with higher depth and later moves
+            reduction = 1 + (int) (((double) depth - 3) / 4.5 + ((double) movesSearched) / 14);
+            // Reduce more for moves with poor history
+            int historyValue = searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)];
+            if (historyValue < 0)
+                reduction++;
+
+            // Do not let search descend directly into q-search
+            reduction = min(reduction, depth - 2);
             // Always start from a reduction of 1 and increase at most 1 depth
             // every 2 moves
             reduction = min(reduction, 1 + (int) (movesSearched - 3) / 2);
