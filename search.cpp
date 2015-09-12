@@ -361,14 +361,14 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     // as much.
     if (!isPVNode && !isInCheck
      && ((depth == 1 && staticEval <= alpha - 400)
-      /*|| (depth == 2 && staticEval <= alpha - MAX_POS_SCORE - 650)
-      || (depth == 3 && staticEval <= alpha - MAX_POS_SCORE - 900)*/)) {
+      || (depth == 2 && staticEval <= alpha - 600)
+      || (depth == 3 && staticEval <= alpha - 800))) {
         if (depth == 1)
             return quiescence(b, 0, alpha, beta);
 
-        //int value = quiescence(b, 0, alpha, beta);
-        //if (value <= alpha)
-        //    return alpha;
+        int value = quiescence(b, 0, alpha, beta);
+        if (value <= alpha)
+            return alpha;
     }
 
 
