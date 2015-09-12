@@ -64,17 +64,19 @@ struct SearchPV {
 
 // Futility pruning margins indexed by depth. If static eval is at least this
 // amount below alpha, we skip quiet moves for this position.
-const int FUTILITY_MARGIN[4] = {0,
+const int FUTILITY_MARGIN[5] = {0,
     MAX_POS_SCORE,
-    MAX_POS_SCORE + 200,
-    MAX_POS_SCORE + 660
+    MAX_POS_SCORE + 180,
+    MAX_POS_SCORE + 400,
+    MAX_POS_SCORE + 700
 };
 
 // Reverse futility pruning margins indexed by depth. If static eval is at least
 // this amount above beta, we skip searching the position entirely.
-const int REVERSE_FUTILITY_MARGIN[3] = {0,
+const int REVERSE_FUTILITY_MARGIN[4] = {0,
     MAX_POS_SCORE - 15,
-    MAX_POS_SCORE + 150
+    MAX_POS_SCORE + 140,
+    MAX_POS_SCORE + 360
 };
 
 static Hash transpositionTable(16);
@@ -347,7 +349,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     // probably wouldn't have let us get here (a form of the null-move observation
     // adapted to low depths)
     if (!isPVNode && !isInCheck
-     && (depth <= 2 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
+     && (depth <= 3 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
      && b.getNonPawnMaterial(color))
         return beta;
 
@@ -435,7 +437,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // q-searching it.
         // TODO may fail low in some stalemate cases
         if (moveIsPrunable
-         && depth <= 3 && staticEval <= alpha - FUTILITY_MARGIN[depth]
+         && depth <= 4 && staticEval <= alpha - FUTILITY_MARGIN[depth]
          && !isCapture(m) && abs(alpha) < QUEEN_VALUE) {
             score = alpha;
             continue;
