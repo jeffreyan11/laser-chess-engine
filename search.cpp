@@ -386,7 +386,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // Reduce more if we are further ahead, but do not let NMR descend
         // directly into q-search
         reduction = min(depth - 2,
-            1 + (int) ((depth + 2.0) / 5.0 + (double) (staticEval - beta) / 118.0));
+            1 + (int) ((depth + 1.5) / 4.5 + (double) (staticEval - beta) / 118.0));
 
         b.doNullMove();
         searchParams.nullMoveCount++;
@@ -922,7 +922,7 @@ void changePV(Move best, SearchPV *parent, SearchPV *child) {
     parent->pvLength = child->pvLength + 1;
 }
 
-// Recover PV for outputting to terminal / GUI using transposition table entries
+// Recover PV for outputting to terminal / GUI
 string retrievePV(SearchPV *pvLine) {
     string pvStr = moveToString(pvLine->pv[0]);
     for (int i = 1; i < pvLine->pvLength; i++) {
