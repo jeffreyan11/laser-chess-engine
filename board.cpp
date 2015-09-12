@@ -1267,6 +1267,7 @@ int Board::getPieceOnSquare(int color, int sq) {
 
 // Returns true if a move puts the opponent in check
 // Precondition: opposing king is not already in check (obviously)
+// Does not consider en passant or castling
 bool Board::isCheckMove(Move m, int color) {
     int kingSq = bitScanForward(pieces[color^1][KINGS]);
 
