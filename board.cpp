@@ -578,8 +578,8 @@ bool Board::doPseudoLegalMove(Move m, int color) {
 // Do a hash move, which requires a few more checks in case of a Type-1 error.
 bool Board::doHashMove(Move m, int color) {
     int pieceID = getPieceOnSquare(color, getStartSq(m));
-    // Check that the correct piece is on the start square
-    if (!(pieces[color][pieceID] & INDEX_TO_BIT[getStartSq(m)]))
+    // Check that the start square is not empty
+    if (pieceID == -1)
         return false;
     // Check that the end square has correct occupancy
     uint64_t otherPieces = allPieces[color^1];
