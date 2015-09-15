@@ -319,11 +319,9 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     int color = b.getPlayerToMove();
 
 
-    // Probe the hash table for a match/cutoff
+    // Transposition table probe
     // If a cutoff or exact score hit occurred, probeTT will return a value
     // other than -INFTY
-    // alpha is passed by reference in case a hash move raises alpha but does
-    // not cause a cutoff
     Move hashed = NULL_MOVE;
     searchStats.hashProbes++;
     int hashScore = probeTT(b, hashed, depth, alpha, beta, pvLine);
@@ -331,7 +329,9 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         return hashScore;
 
 
+    // Keeps track of the PV to propagate up to root
     SearchPV line;
+    // For move generation and eval
     PieceMoveList pml = b.getPieceMoveList(color);
     // For PVS, the node is a PV node if beta - alpha > 1 (i.e. not a null window)
     // We do not want to do most pruning techniques on PV nodes
@@ -405,17 +405,18 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     }
 
 
+    // Initialize move generator and sorter
     MoveOrder moveSorter(&b, color, depth, isPVNode, isInCheck, &searchParams, hashed, pml);
-    // Generate and sort all pseudo-legal moves
     moveSorter.generateMoves();
 
-
-    // Main search loop
     // Keeps track of the best move for storing into the TT
     Move toHash = NULL_MOVE;
     // separate counter only incremented when valid move is searched
     unsigned int movesSearched = 0;
     int score = -INFTY;
+
+
+    //----------------------------Main search loop------------------------------
     for (Move m = moveSorter.nextMove(); m != NULL_MOVE;
               m = moveSorter.nextMove()) {
         // Check for a timeout
@@ -425,7 +426,6 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // Stop condition to help break out as quickly as possible
         if (isStop)
             return INFTY;
-
 
         bool moveIsPrunable = moveSorter.nodeIsReducible()
                            && !isPromotion(m)
@@ -477,7 +477,10 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         }
 
 
+        // Copy the board and do the move
         Board copy = b.staticCopy();
+        // If we are searching the hash move, we must use to a special
+        // move generator for extra verification.
         if (m == hashed) {
             if (!copy.doHashMove(m, color)) {
                 hashed = NULL_MOVE;
@@ -524,12 +527,14 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             searchParams.ply++;
             score = -PVS(copy, depth-1-reduction, -alpha-1, -alpha, &line);
             searchParams.ply--;
+
             // LMR re-search if the reduced search did not fail low
             if (reduction > 0 && score > alpha) {
                 searchParams.ply++;
                 score = -PVS(copy, depth-1, -alpha-1, -alpha, &line);
                 searchParams.ply--;
             }
+
             // Re-search for a scout window at PV nodes
             else if (alpha < score && score < beta) {
                 searchParams.ply++;
@@ -537,6 +542,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
                 searchParams.ply--;
             }
         }
+
         // The first move is always searched at a normal depth
         else {
             searchParams.ply++;
@@ -555,8 +561,10 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
                 searchStats.firstFailHighs++;
             if (m == hashed)
                 searchStats.hashMoveCuts++;
-            // Hash moves that caused a beta cutoff
+
+            // Hash the cut move and score
             transpositionTable.add(b, depth, m, beta, CUT_NODE, searchParams.rootMoveNumber);
+
             // Record killer if applicable
             if (!isCapture(m)) {
                 // Ensure the same killer does not fill both slots
@@ -569,8 +577,10 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
                     += depth * depth;
                 moveSorter.reduceBadHistories(m);
             }
+
             return beta;
         }
+
         // If alpha was raised, we have a new PV
         if (score > alpha) {
             alpha = score;
@@ -587,9 +597,11 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     
     // Exact scores indicate a principal variation
     if (prevAlpha < alpha && alpha < beta) {
-        transpositionTable.add(b, depth, toHash, alpha, PV_NODE, searchParams.rootMoveNumber);
         if (toHash == hashed)
             searchStats.hashMoveCuts++;
+
+        transpositionTable.add(b, depth, toHash, alpha, PV_NODE, searchParams.rootMoveNumber);
+
         // Update the history table
         if (!isCapture(toHash)) {
             searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(toHash))][getEndSq(toHash)]
@@ -597,7 +609,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             moveSorter.reduceBadHistories(toHash);
         }
     }
-    // Record all-nodes. No best move can be recorded in a fail-hard framework.
+    // Record all-nodes. No best move can be recorded.
     else if (alpha <= prevAlpha) {
         transpositionTable.add(b, depth, NULL_MOVE, alpha, ALL_NODE, searchParams.rootMoveNumber);
     }
@@ -607,6 +619,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 
 // See if a hash move exists.
 int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta, SearchPV *pvLine) {
+    // Only use the PV score in null window searches
     bool usePVScore = (alpha == beta - 1);
     HashEntry *entry = transpositionTable.get(b);
     if (entry != NULL) {

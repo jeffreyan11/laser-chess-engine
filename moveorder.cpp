@@ -55,6 +55,7 @@ bool MoveOrder::generateMoves() {
                 return true;
             }
             // else fallthrough
+
         case STAGE_HASH_MOVE:
             if (isInCheck) {
                 mgStage = STAGE_QUIETS;
@@ -156,6 +157,7 @@ void MoveOrder::scoreQuiets() {
         // Order queen promotions somewhat high
         else if (getPromotion(m) == QUEENS)
             scores.add(SCORE_QUEEN_PROMO);
+        // Sort all other quiet moves by history
         else {
             int startSq = getStartSq(m);
             int endSq = getEndSq(m);
@@ -189,11 +191,15 @@ void MoveOrder::scoreIIDMove() {
 bool MoveOrder::generateQuiets() {
     mgStage = STAGE_QUIETS;
     MoveList legalQuiets = b->getPseudoLegalQuiets(color, *pml);
+    // Since quiets are the last generated, if there are no quiets then all
+    // moves are done
     if (legalQuiets.size() <= 0)
         return false;
+
     for (unsigned int i = 0; i < legalQuiets.size(); i++)
         legalMoves.add(legalQuiets.get(i));
     scoreQuiets();
+
     return true;
 }
 
@@ -201,13 +207,17 @@ bool MoveOrder::generateQuiets() {
 // partial selection sort. This way, the entire list does not have to be sorted
 // if an early cutoff occurs.
 Move MoveOrder::nextMove() {
+    // Special case when we have a hash move available
     if (mgStage == STAGE_HASH_MOVE)
         return hashed;
+    // If we are the end of our generated list, generate more.
+    // If there are no moves left, return NULL_MOVE to indicate so.
     if (index >= legalMoves.size()) {
         if (!generateMoves()) {
             return NULL_MOVE;
         }
     }
+
     // Find the index of the next best move
     int bestIndex = index;
     int bestScore = scores.get(index);
@@ -220,10 +230,12 @@ Move MoveOrder::nextMove() {
     // Swap the best move to the correct position
     legalMoves.swap(bestIndex, index);
     scores.swap(bestIndex, index);
+
     // Once we've gotten to losing captures, we need to generate quiets since
     // some quiets (killers, promotions) should be searched first.
     if (mgStage == STAGE_CAPTURES && bestScore < SCORE_EVEN_CAPTURE)
         generateMoves();
+
     return legalMoves.get(index++);
 }
 
