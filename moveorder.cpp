@@ -17,7 +17,7 @@
 */
 
 #include "search.h"
-#include "searchspace.h"
+#include "moveorder.h"
 
 const int SCORE_IID_MOVE = (1 << 20);
 const int SCORE_WINNING_CAPTURE = (1 << 18);
@@ -26,7 +26,7 @@ const int SCORE_EVEN_CAPTURE = (1 << 16);
 const int SCORE_LOSING_CAPTURE = 0;
 const int SCORE_QUIET_MOVE = -(1 << 30);
 
-SearchSpace::SearchSpace(Board *_b, int _color, int _depth, bool _isPVNode, bool _isInCheck,
+MoveOrder::MoveOrder(Board *_b, int _color, int _depth, bool _isPVNode, bool _isInCheck,
 	SearchParameters *_searchParams) {
 	b = _b;
 	color = _color;
@@ -37,11 +37,11 @@ SearchSpace::SearchSpace(Board *_b, int _color, int _depth, bool _isPVNode, bool
     quietStart = 0;
 }
 
-bool SearchSpace::nodeIsReducible() {
+bool MoveOrder::nodeIsReducible() {
 	return !isPVNode && !isInCheck;
 }
 
-void SearchSpace::generateMoves(Move _hashed, PieceMoveList &_pml) {
+void MoveOrder::generateMoves(Move _hashed, PieceMoveList &_pml) {
 	index = 0;
     hashed = _hashed;
     pml = &_pml;
@@ -69,7 +69,7 @@ void SearchSpace::generateMoves(Move _hashed, PieceMoveList &_pml) {
 }
 
 // Sort captures using SEE and MVV/LVA
-void SearchSpace::scoreCaptures() {
+void MoveOrder::scoreCaptures() {
     // Remove the hash move from the list, since it has already been tried
     if (hashed != NULL_MOVE) {
         for (unsigned int i = quietStart; i < legalMoves.size(); i++) {
@@ -115,7 +115,7 @@ void SearchSpace::scoreCaptures() {
     }
 }
 
-void SearchSpace::scoreQuiets() {
+void MoveOrder::scoreQuiets() {
     // Remove the hash move from the list, since it has already been tried
     if (hashed != NULL_MOVE) {
         for (unsigned int i = quietStart; i < legalMoves.size(); i++) {
@@ -143,13 +143,13 @@ void SearchSpace::scoreQuiets() {
     }
 }
 
-bool SearchSpace::doIID() {
+bool MoveOrder::doIID() {
     return depth >= (isPVNode ? 5 : 6);
 }
 
 // IID: get a best move (hoping for a first move cutoff) if we don't
 // have a hash move available
-void SearchSpace::scoreIIDMove() {
+void MoveOrder::scoreIIDMove() {
     // Sort the moves with what we have so far
     /*for (Move m = nextMove(); m != NULL_MOVE;
               m = nextMove());
@@ -164,7 +164,7 @@ void SearchSpace::scoreIIDMove() {
         scores.set(bestIndex, SCORE_IID_MOVE);
 }
 
-void SearchSpace::generateQuiets() {
+void MoveOrder::generateQuiets() {
     mgStage = STAGE_QUIETS;
     MoveList legalQuiets = b->getPseudoLegalQuiets(color, *pml);
     for (unsigned int i = 0; i < legalQuiets.size(); i++)
@@ -175,7 +175,7 @@ void SearchSpace::generateQuiets() {
 // Retrieves the next move with the highest score, starting from index using a
 // partial selection sort. This way, the entire list does not have to be sorted
 // if an early cutoff occurs.
-Move SearchSpace::nextMove() {
+Move MoveOrder::nextMove() {
     if (index >= legalMoves.size()) {
         if (mgStage == STAGE_CAPTURES) {
             generateQuiets();
@@ -206,7 +206,7 @@ Move SearchSpace::nextMove() {
 
 // When a PV or cut move is found, the histories of all
 // quiet moves searched prior to the best move are reduced
-void SearchSpace::reduceBadHistories(Move bestMove) {
+void MoveOrder::reduceBadHistories(Move bestMove) {
     for (unsigned int i = 0; i < index-1; i++) {
         if (legalMoves.get(i) == bestMove)
             break;

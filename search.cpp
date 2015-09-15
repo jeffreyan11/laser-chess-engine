@@ -20,7 +20,8 @@
 #include <iomanip>
 #include <iostream>
 #include "search.h"
-#include "searchspace.h"
+#include "moveorder.h"
+#include "searchparams.h"
 
 using namespace std;
 
@@ -404,9 +405,9 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     }
 
 
-    SearchSpace ss(&b, color, depth, isPVNode, isInCheck, &searchParams);
+    MoveOrder moveSorter(&b, color, depth, isPVNode, isInCheck, &searchParams);
     // Generate and sort all pseudo-legal moves
-    ss.generateMoves(hashed, pml);
+    moveSorter.generateMoves(hashed, pml);
 
 
     // Main search loop
@@ -415,8 +416,8 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     // separate counter only incremented when valid move is searched
     unsigned int movesSearched = (hashed == NULL_MOVE) ? 0 : 1;
     int score = -INFTY;
-    for (Move m = ss.nextMove(); m != NULL_MOVE;
-              m = ss.nextMove()) {
+    for (Move m = moveSorter.nextMove(); m != NULL_MOVE;
+              m = moveSorter.nextMove()) {
         // Check for a timeout
         double timeSoFar = getTimeElapsed(searchParams.startTime);
         if (timeSoFar * ONE_SECOND > searchParams.timeLimit)
@@ -426,7 +427,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             return INFTY;
 
 
-        bool moveIsPrunable = ss.nodeIsReducible()
+        bool moveIsPrunable = moveSorter.nodeIsReducible()
                            && !isPromotion(m)
                            && !b.isCheckMove(m, color);
 
@@ -486,7 +487,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // If we have not raised alpha in the first few moves, we are probably
         // at an all-node. The later moves are likely worse so we search them
         // to a shallower depth.
-        if (ss.nodeIsReducible()
+        if (moveSorter.nodeIsReducible()
          && depth >= 3 && movesSearched > 2 && alpha <= prevAlpha
          && !isCapture(m) && !isPromotion(m)
          && m != searchParams.killers[searchParams.ply][0]
@@ -553,7 +554,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
                 // Update the history table
                 searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)]
                     += depth * depth;
-                ss.reduceBadHistories(m);
+                moveSorter.reduceBadHistories(m);
             }
             return beta;
         }
@@ -569,7 +570,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 
     // If there were no legal moves
     if (score == -INFTY && movesSearched == 0)
-        return scoreMate(ss.isInCheck, depth, alpha, beta);
+        return scoreMate(moveSorter.isInCheck, depth, alpha, beta);
     
     // Exact scores indicate a principal variation
     if (prevAlpha < alpha && alpha < beta) {
@@ -582,7 +583,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         if (!isCapture(toHash)) {
             searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(toHash))][getEndSq(toHash)]
                 += depth * depth;
-            ss.reduceBadHistories(toHash);
+            moveSorter.reduceBadHistories(toHash);
         }
     }
     // Record all-nodes. No best move can be recorded in a fail-hard framework.

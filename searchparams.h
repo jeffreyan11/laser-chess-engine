@@ -16,16 +16,10 @@
     along with Laser.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __SEARCHSPACE_H__
-#define __SEARCHSPACE_H__
+#ifndef __SEARCHPARAMS_H__
+#define __SEARCHPARAMS_H__
 
-#include <cmath>
-#include "board.h"
 #include "common.h"
-
-enum MoveGenStage {
-    STAGE_IID_MOVE, STAGE_CAPTURES, STAGE_QUIETS
-};
 
 struct SearchParameters {
     int ply;
@@ -72,39 +66,6 @@ struct SearchParameters {
             }
         }
     }
-};
-
-struct SearchSpace {
-	Board *b;
-	int color;
-	int depth;
-	bool isPVNode;
-	bool isInCheck;
-	SearchParameters *searchParams;
-    MoveGenStage mgStage;
-    Move hashed;
-    PieceMoveList *pml;
-	MoveList legalMoves;
-	ScoreList scores;
-    unsigned int quietStart;
-	unsigned int index;
-
-	SearchSpace(Board *_b, int _color, int _depth, bool _isPVNode, bool _isInCheck,
-		SearchParameters *_searchParams);
-
-	// Node is reducible if not PV node and not in check
-	bool nodeIsReducible();
-
-	void generateMoves(Move _hashed, PieceMoveList &_pml);
-	Move nextMove();
-    void reduceBadHistories(Move bestMove);
-
-private:
-    void scoreCaptures();
-    void scoreQuiets();
-    bool doIID();
-    void scoreIIDMove();
-    void generateQuiets();
 };
 
 #endif
