@@ -95,7 +95,7 @@ int quiescence(Board &b, int plies, int alpha, int beta);
 int checkQuiescence(Board &b, int plies, int alpha, int beta);
 
 // Search helpers
-int probeTT(Board &b, Move &hashed, int depth, int &alpha, int beta, SearchPV *pvLine);
+int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta, SearchPV *pvLine);
 int scoreMate(bool isInCheck, int depth, int alpha, int beta);
 double getPercentage(uint64_t numerator, uint64_t denominator);
 void printStatistics();
@@ -414,7 +414,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     // Keeps track of the best move for storing into the TT
     Move toHash = NULL_MOVE;
     // separate counter only incremented when valid move is searched
-    unsigned int movesSearched = (hashed == NULL_MOVE) ? 0 : 1;
+    unsigned int movesSearched = 0;
     int score = -INFTY;
     for (Move m = moveSorter.nextMove(); m != NULL_MOVE;
               m = moveSorter.nextMove()) {
@@ -429,7 +429,8 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 
         bool moveIsPrunable = moveSorter.nodeIsReducible()
                            && !isPromotion(m)
-                           && !b.isCheckMove(m, color);
+                           && !b.isCheckMove(m, color)
+                           && m != hashed;
 
 
         // Futility pruning
@@ -477,7 +478,17 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 
 
         Board copy = b.staticCopy();
-        if (!copy.doPseudoLegalMove(m, color))
+        if (m == hashed) {
+            if (!copy.doHashMove(m, color)) {
+                hashed = NULL_MOVE;
+                moveSorter.hashed = NULL_MOVE;
+                moveSorter.generateMoves();
+                continue;
+            }
+            searchStats.hashMoveAttempts++;
+            moveSorter.generateMoves();
+        }
+        else if (!copy.doPseudoLegalMove(m, color))
             continue;
         searchStats.nodes++;
 
@@ -542,6 +553,8 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             searchStats.failHighs++;
             if (movesSearched == 0)
                 searchStats.firstFailHighs++;
+            if (m == hashed)
+                searchStats.hashMoveCuts++;
             // Hash moves that caused a beta cutoff
             transpositionTable.add(b, depth, m, beta, CUT_NODE, searchParams.rootMoveNumber);
             // Record killer if applicable
@@ -574,11 +587,9 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     
     // Exact scores indicate a principal variation
     if (prevAlpha < alpha && alpha < beta) {
-        // If the score wasn't from a move we searched in the main loop, the
-        // alpha raise must have come from the hash move
-        if (toHash == NULL_MOVE)
-            toHash = hashed;
         transpositionTable.add(b, depth, toHash, alpha, PV_NODE, searchParams.rootMoveNumber);
+        if (toHash == hashed)
+            searchStats.hashMoveCuts++;
         // Update the history table
         if (!isCapture(toHash)) {
             searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(toHash))][getEndSq(toHash)]
@@ -595,7 +606,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 }
 
 // See if a hash move exists.
-int probeTT(Board &b, Move &hashed, int depth, int &alpha, int beta, SearchPV *pvLine) {
+int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta, SearchPV *pvLine) {
     bool usePVScore = (alpha == beta - 1);
     HashEntry *entry = transpositionTable.get(b);
     if (entry != NULL) {
@@ -631,31 +642,6 @@ int probeTT(Board &b, Move &hashed, int depth, int &alpha, int beta, SearchPV *p
                     searchStats.hashScoreCuts++;
                     return hashScore;
                 }
-            }
-            Board copy = b.staticCopy();
-            // Sanity check in case of Type-1 hash error
-            if (copy.doHashMove(hashed, b.getPlayerToMove())) {
-                SearchPV line;
-                // If the hash score is unusable and node is not a predicted
-                // all-node, we can search the hash move first.
-                searchStats.hashMoveAttempts++;
-                searchStats.nodes++;
-                searchParams.ply++;
-                int score = -PVS(copy, depth-1, -beta, -alpha, &line);
-                searchParams.ply--;
-
-                if (score >= beta) {
-                    searchStats.hashMoveCuts++;
-                    return beta;
-                }
-                if (score > alpha) {
-                    alpha = score;
-                    changePV(hashed, pvLine, &line);
-                }
-            }
-            else {
-                cerr << "Type-1 TT error on " << moveToString(hashed) << endl;
-                hashed = NULL_MOVE;
             }
         }
     }

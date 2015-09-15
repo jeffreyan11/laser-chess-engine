@@ -50,6 +50,12 @@ bool MoveOrder::nodeIsReducible() {
 bool MoveOrder::generateMoves() {
     switch (mgStage) {
         case STAGE_NONE:
+            if (hashed != NULL_MOVE) {
+                mgStage = STAGE_HASH_MOVE;
+                return true;
+            }
+            // else fallthrough
+        case STAGE_HASH_MOVE:
             if (isInCheck) {
                 mgStage = STAGE_QUIETS;
                 legalMoves = b->getPseudoLegalCheckEscapes(color, *pml);
@@ -195,6 +201,8 @@ bool MoveOrder::generateQuiets() {
 // partial selection sort. This way, the entire list does not have to be sorted
 // if an early cutoff occurs.
 Move MoveOrder::nextMove() {
+    if (mgStage == STAGE_HASH_MOVE)
+        return hashed;
     if (index >= legalMoves.size()) {
         if (!generateMoves()) {
             return NULL_MOVE;
@@ -222,6 +230,9 @@ Move MoveOrder::nextMove() {
 // When a PV or cut move is found, the histories of all
 // quiet moves searched prior to the best move are reduced
 void MoveOrder::reduceBadHistories(Move bestMove) {
+    // If we searched only the hash move, return to prevent crashes
+    if (index <= 0)
+        return;
     for (unsigned int i = 0; i < index-1; i++) {
         if (legalMoves.get(i) == bestMove)
             break;

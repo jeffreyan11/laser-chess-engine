@@ -25,7 +25,7 @@
 #include "searchparams.h"
 
 enum MoveGenStage {
-    STAGE_NONE, STAGE_IID_MOVE, STAGE_CAPTURES, STAGE_QUIETS
+    STAGE_NONE, STAGE_HASH_MOVE, STAGE_IID_MOVE, STAGE_CAPTURES, STAGE_QUIETS
 };
 
 struct MoveOrder {
