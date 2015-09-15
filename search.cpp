@@ -306,6 +306,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         return quiescence(b, 0, alpha, beta);
     }
 
+    // Draw check
     if (b.isDraw()) {
         if (0 >= beta)
             return beta;
@@ -314,6 +315,15 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         else
             return alpha;
     }
+
+    // Mate distance pruning
+    int matingScore = MATE_SCORE - searchParams.ply;
+    if (alpha >= matingScore)
+        return alpha;
+    int matedScore = -MATE_SCORE + searchParams.ply;
+    if (beta <= matedScore)
+        return beta;
+    
     
     int prevAlpha = alpha;
     int color = b.getPlayerToMove();
@@ -429,8 +439,9 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 
         bool moveIsPrunable = moveSorter.nodeIsReducible()
                            && !isPromotion(m)
-                           && !b.isCheckMove(m, color)
-                           && m != hashed;
+                           && m != hashed
+                           && abs(alpha) < QUEEN_VALUE
+                           && !b.isCheckMove(m, color);
 
 
         // Futility pruning
@@ -440,7 +451,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // TODO may fail low in some stalemate cases
         if (moveIsPrunable
          && depth <= 4 && staticEval <= alpha - FUTILITY_MARGIN[depth]
-         && !isCapture(m) && abs(alpha) < QUEEN_VALUE) {
+         && !isCapture(m)) {
             score = alpha;
             continue;
         }
@@ -450,7 +461,6 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         /*
         if(moveIsPrunable
         && depth == 1 && staticEval <= alpha
-        && abs(alpha) < QUEEN_VALUE
         && ((!isCapture(m) && b.getSEEForMove(color, m) < 0)
          || (isCapture(m) && b.getExchangeScore(color, m) < 0 && b.getSEEForMove(color, m) < -200))) {
             score = alpha;
