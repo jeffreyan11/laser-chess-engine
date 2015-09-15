@@ -25,7 +25,7 @@
 #include "searchparams.h"
 
 enum MoveGenStage {
-    STAGE_IID_MOVE, STAGE_CAPTURES, STAGE_QUIETS
+    STAGE_NONE, STAGE_IID_MOVE, STAGE_CAPTURES, STAGE_QUIETS
 };
 
 struct MoveOrder {
@@ -44,12 +44,12 @@ struct MoveOrder {
 	unsigned int index;
 
 	MoveOrder(Board *_b, int _color, int _depth, bool _isPVNode, bool _isInCheck,
-		SearchParameters *_searchParams);
+		SearchParameters *_searchParams, Move _hashed, PieceMoveList &_pml);
 
 	// Node is reducible if not PV node and not in check
 	bool nodeIsReducible();
 
-	void generateMoves(Move _hashed, PieceMoveList &_pml);
+	bool generateMoves();
 	Move nextMove();
     void reduceBadHistories(Move bestMove);
 
@@ -58,7 +58,7 @@ private:
     void scoreQuiets();
     bool doIID();
     void scoreIIDMove();
-    void generateQuiets();
+    bool generateQuiets();
 };
 
 #endif

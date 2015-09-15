@@ -405,9 +405,9 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     }
 
 
-    MoveOrder moveSorter(&b, color, depth, isPVNode, isInCheck, &searchParams);
+    MoveOrder moveSorter(&b, color, depth, isPVNode, isInCheck, &searchParams, hashed, pml);
     // Generate and sort all pseudo-legal moves
-    moveSorter.generateMoves(hashed, pml);
+    moveSorter.generateMoves();
 
 
     // Main search loop
