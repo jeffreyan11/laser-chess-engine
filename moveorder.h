@@ -59,6 +59,7 @@ private:
     bool doIID();
     void scoreIIDMove();
     bool generateQuiets();
+    void findQuietStart();
 };
 
 #endif

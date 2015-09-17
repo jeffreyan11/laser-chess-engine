@@ -60,6 +60,7 @@ bool MoveOrder::generateMoves() {
             if (isInCheck) {
                 mgStage = STAGE_QUIETS;
                 legalMoves = b->getPseudoLegalCheckEscapes(color, *pml);
+                findQuietStart();
 
                 scoreCaptures();
                 scoreQuiets();
@@ -69,6 +70,8 @@ bool MoveOrder::generateMoves() {
             else if (hashed == NULL_MOVE && doIID()) {
                 mgStage = STAGE_QUIETS;
                 legalMoves = b->getAllPseudoLegalMoves(color, *pml);
+                findQuietStart();
+
                 scoreCaptures();
                 scoreQuiets();
                 scoreIIDMove();
@@ -76,6 +79,8 @@ bool MoveOrder::generateMoves() {
             else {
                 mgStage = STAGE_CAPTURES;
                 legalMoves = b->getPseudoLegalCaptures(color, *pml, true);
+                quietStart = legalMoves.size();
+
                 scoreCaptures();
             }
             return true;
@@ -95,18 +100,17 @@ bool MoveOrder::generateMoves() {
 void MoveOrder::scoreCaptures() {
     // Remove the hash move from the list, since it has already been tried
     if (hashed != NULL_MOVE) {
-        for (unsigned int i = quietStart; i < legalMoves.size(); i++) {
+        for (unsigned int i = 0; i < quietStart; i++) {
             if (legalMoves.get(i) == hashed) {
                 legalMoves.remove(i);
+                quietStart--;
                 break;
             }
         }
     }
 
-    for (quietStart = 0; quietStart < legalMoves.size(); quietStart++) {
-        Move m = legalMoves.get(quietStart);
-        if (!isCapture(m))
-            break;
+    for (unsigned int i = 0; i < quietStart; i++) {
+        Move m = legalMoves.get(i);
 
         // We want the best move first for PV nodes
         if (isPVNode) {
@@ -252,4 +256,16 @@ void MoveOrder::reduceBadHistories(Move bestMove) {
             continue;
         searchParams->historyTable[color][b->getPieceOnSquare(color, getStartSq(legalMoves.get(i)))][getEndSq(legalMoves.get(i))] -= depth;
     }
+}
+
+void MoveOrder::findQuietStart() {
+    for (unsigned int i = 0; i < legalMoves.size(); i++) {
+        if (!isCapture(legalMoves.get(i))) {
+            quietStart = i;
+            return;
+        }
+    }
+
+    // If there are no quiets
+    quietStart = legalMoves.size();
 }
