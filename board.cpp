@@ -581,6 +581,7 @@ bool Board::doHashMove(Move m, int color) {
     // Check that the start square is not empty
     if (pieceID == -1)
         return false;
+
     // Check that the end square has correct occupancy
     uint64_t otherPieces = allPieces[color^1];
     uint64_t endSingle = INDEX_TO_BIT[getEndSq(m)];
@@ -588,6 +589,9 @@ bool Board::doHashMove(Move m, int color) {
                       || (isCapture(m) && pieceID == PAWNS && (~otherPieces & endSingle));
     uint64_t empty = ~getOccupancy();
     if (!(captureRoutes || (!isCapture(m) && (empty & endSingle))))
+        return false;
+    // Check that the king is not captured
+    if (isCapture(m) && ((endSingle & pieces[WHITE][KINGS]) || (endSingle & pieces[BLACK][KINGS])))
         return false;
 
     return doPseudoLegalMove(m, color);
