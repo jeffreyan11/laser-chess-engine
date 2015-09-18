@@ -95,7 +95,7 @@ int quiescence(Board &b, int plies, int alpha, int beta);
 int checkQuiescence(Board &b, int plies, int alpha, int beta);
 
 // Search helpers
-int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta, SearchPV *pvLine);
+int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta);
 int scoreMate(bool isInCheck, int depth, int alpha, int beta);
 double getPercentage(uint64_t numerator, uint64_t denominator);
 void printStatistics();
@@ -334,7 +334,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     // other than -INFTY
     Move hashed = NULL_MOVE;
     searchStats.hashProbes++;
-    int hashScore = probeTT(b, hashed, depth, alpha, beta, pvLine);
+    int hashScore = probeTT(b, hashed, depth, alpha, beta);
     if (hashScore != -INFTY)
         return hashScore;
 
@@ -628,7 +628,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 }
 
 // See if a hash move exists.
-int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta, SearchPV *pvLine) {
+int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta) {
     // Only use the PV score in null window searches
     bool usePVScore = (alpha == beta - 1);
     HashEntry *entry = transpositionTable.get(b);

@@ -254,9 +254,9 @@ Move MoveOrder::nextMove() {
     legalMoves.swap(bestIndex, index);
     scores.swap(bestIndex, index);
 
-    // Once we've gotten to losing captures, we need to generate quiets since
+    // Once we've gotten to even captures, we need to generate quiets since
     // some quiets (killers, promotions) should be searched first.
-    if (mgStage == STAGE_CAPTURES && bestScore < SCORE_EVEN_CAPTURE)
+    if (mgStage == STAGE_CAPTURES && bestScore < SCORE_WINNING_CAPTURE)
         generateMoves();
 
     return legalMoves.get(index++);
