@@ -54,7 +54,7 @@ struct MoveOrder {
     void reduceBadHistories(Move bestMove);
 
 private:
-    void scoreCaptures();
+    void scoreCaptures(bool isIIDMove);
     void scoreQuiets();
     bool doIID();
     void scoreIIDMove();

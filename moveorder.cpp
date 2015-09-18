@@ -58,22 +58,23 @@ bool MoveOrder::generateMoves() {
 
         case STAGE_HASH_MOVE:
             if (isInCheck) {
-                mgStage = STAGE_QUIETS;
                 legalMoves = b->getPseudoLegalCheckEscapes(color, *pml);
                 findQuietStart();
 
-                scoreCaptures();
-                scoreQuiets();
-                if (hashed == NULL_MOVE && doIID())
+                if (hashed == NULL_MOVE && doIID()) {
+                    mgStage = STAGE_IID_MOVE;
                     scoreIIDMove();
+                }
+                else {
+                    mgStage = STAGE_CAPTURES;
+                    scoreCaptures(false);
+                }
             }
             else if (hashed == NULL_MOVE && doIID()) {
-                mgStage = STAGE_QUIETS;
+                mgStage = STAGE_IID_MOVE;
                 legalMoves = b->getAllPseudoLegalMoves(color, *pml);
                 findQuietStart();
 
-                scoreCaptures();
-                scoreQuiets();
                 scoreIIDMove();
             }
             else {
@@ -81,11 +82,22 @@ bool MoveOrder::generateMoves() {
                 legalMoves = b->getPseudoLegalCaptures(color, *pml, true);
                 quietStart = legalMoves.size();
 
-                scoreCaptures();
+                scoreCaptures(false);
             }
             return true;
 
         case STAGE_IID_MOVE:
+            if (legalMoves.size() == 1)
+                return false;
+            if (quietStart > 1) {
+                mgStage = STAGE_CAPTURES;
+                scoreCaptures(true);
+            }
+            else {
+                mgStage = STAGE_QUIETS;
+                scoreQuiets();
+            }
+            return true;
 
         case STAGE_CAPTURES:
             return generateQuiets();
@@ -97,10 +109,10 @@ bool MoveOrder::generateMoves() {
 }
 
 // Sort captures using SEE and MVV/LVA
-void MoveOrder::scoreCaptures() {
+void MoveOrder::scoreCaptures(bool isIIDMove) {
     // Remove the hash move from the list, since it has already been tried
     if (hashed != NULL_MOVE) {
-        for (unsigned int i = 0; i < quietStart; i++) {
+        for (unsigned int i = isIIDMove; i < quietStart; i++) {
             if (legalMoves.get(i) == hashed) {
                 legalMoves.remove(i);
                 quietStart--;
@@ -109,7 +121,7 @@ void MoveOrder::scoreCaptures() {
         }
     }
 
-    for (unsigned int i = 0; i < quietStart; i++) {
+    for (unsigned int i = isIIDMove; i < quietStart; i++) {
         Move m = legalMoves.get(i);
 
         // We want the best move first for PV nodes
@@ -188,8 +200,17 @@ void MoveOrder::scoreIIDMove() {
     // Mate check to prevent crashes
     if (bestIndex == -1)
         legalMoves.clear();
-    else
-        scores.set(bestIndex, SCORE_IID_MOVE);
+    else {
+        scores.add(SCORE_IID_MOVE);
+        if (isCapture(legalMoves.get(bestIndex))) {
+            legalMoves.swap(0, bestIndex);
+        }
+        else {
+            legalMoves.swap(quietStart, bestIndex);
+            legalMoves.swap(0, quietStart);
+            quietStart++;
+        }
+    }
 }
 
 bool MoveOrder::generateQuiets() {
@@ -214,6 +235,10 @@ Move MoveOrder::nextMove() {
     // Special case when we have a hash move available
     if (mgStage == STAGE_HASH_MOVE)
         return hashed;
+    if (mgStage == STAGE_IID_MOVE) {
+        generateMoves();
+        return legalMoves.get(0);
+    }
     // If we are the end of our generated list, generate more.
     // If there are no moves left, return NULL_MOVE to indicate so.
     if (index >= legalMoves.size()) {
