@@ -47,12 +47,12 @@ bool MoveOrder::nodeIsReducible() {
 
 // Returns true if there are still moves remaining, false if we have
 // generated all moves already
-bool MoveOrder::generateMoves() {
+void MoveOrder::generateMoves() {
     switch (mgStage) {
         case STAGE_NONE:
             if (hashed != NULL_MOVE) {
                 mgStage = STAGE_HASH_MOVE;
-                return true;
+                break;
             }
             // else fallthrough
 
@@ -66,7 +66,7 @@ bool MoveOrder::generateMoves() {
                     scoreIIDMove();
                 }
                 else {
-                    mgStage = STAGE_CAPTURES;
+                    mgStage = STAGE_SCORE_QUIETS;
                     scoreCaptures(false);
                 }
             }
@@ -84,21 +84,25 @@ bool MoveOrder::generateMoves() {
 
                 scoreCaptures(false);
             }
-            return true;
+            break;
 
         case STAGE_IID_MOVE:
-            mgStage = STAGE_CAPTURES;
+            mgStage = STAGE_SCORE_QUIETS;
             scoreCaptures(true);
-
-            return true;
+            break;
 
         case STAGE_CAPTURES:
-            return generateQuiets();
+            generateQuiets();
+            break;
+
+        case STAGE_SCORE_QUIETS:
+            mgStage = STAGE_QUIETS;
+            scoreQuiets();
+            break;
 
         case STAGE_QUIETS:
-            return false;
+            break;
     }
-    return false;
 }
 
 // Sort captures using SEE and MVV/LVA
@@ -206,19 +210,13 @@ void MoveOrder::scoreIIDMove() {
     }
 }
 
-bool MoveOrder::generateQuiets() {
+void MoveOrder::generateQuiets() {
     mgStage = STAGE_QUIETS;
     MoveList legalQuiets = b->getPseudoLegalQuiets(color, *pml);
-    // Since quiets are the last generated, if there are no quiets then all
-    // moves are done
-    if (legalQuiets.size() <= 0)
-        return false;
 
     for (unsigned int i = 0; i < legalQuiets.size(); i++)
         legalMoves.add(legalQuiets.get(i));
     scoreQuiets();
-
-    return true;
 }
 
 // Retrieves the next move with the highest score, starting from index using a
@@ -235,9 +233,11 @@ Move MoveOrder::nextMove() {
     }
     // If we are the end of our generated list, generate more.
     // If there are no moves left, return NULL_MOVE to indicate so.
-    if (index >= legalMoves.size()) {
-        if (!generateMoves()) {
+    while (index >= legalMoves.size()) {
+        if (mgStage == STAGE_QUIETS)
             return NULL_MOVE;
+        else {
+            generateMoves();
         }
     }
 
@@ -256,7 +256,8 @@ Move MoveOrder::nextMove() {
 
     // Once we've gotten to even captures, we need to generate quiets since
     // some quiets (killers, promotions) should be searched first.
-    if (mgStage == STAGE_CAPTURES && bestScore < SCORE_WINNING_CAPTURE)
+    if ((mgStage == STAGE_CAPTURES || mgStage == STAGE_SCORE_QUIETS)
+     && bestScore < SCORE_WINNING_CAPTURE)
         generateMoves();
 
     return legalMoves.get(index++);
