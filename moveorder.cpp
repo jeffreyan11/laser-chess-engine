@@ -87,16 +87,9 @@ bool MoveOrder::generateMoves() {
             return true;
 
         case STAGE_IID_MOVE:
-            if (legalMoves.size() == 1)
-                return false;
-            if (quietStart > 1) {
-                mgStage = STAGE_CAPTURES;
-                scoreCaptures(true);
-            }
-            else {
-                mgStage = STAGE_QUIETS;
-                scoreQuiets();
-            }
+            mgStage = STAGE_CAPTURES;
+            scoreCaptures(true);
+
             return true;
 
         case STAGE_CAPTURES:
@@ -237,6 +230,7 @@ Move MoveOrder::nextMove() {
         return hashed;
     if (mgStage == STAGE_IID_MOVE) {
         generateMoves();
+        index++;
         return legalMoves.get(0);
     }
     // If we are the end of our generated list, generate more.
