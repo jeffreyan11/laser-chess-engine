@@ -7,19 +7,20 @@ After being compiled, the executable can be run with any UCI chess GUI, such as 
 
 
 ### Engine Strength
-Estimated ELO is 2547 +/- 50 on the CCRL 40/4 list (tested 12/9/15) and 2358 +/- 90 (tested 26/8/15) on the CCRL 40/40 list (95% CI), tested using cutechess-cli (http://cutechess.com/).
+Estimated ELO is 2570 +/- 40 on the CCRL 40/4 list (tested 19/9/15) and 2358 +/- 90 (tested 26/8/15) on the CCRL 40/40 list (95% CI), tested using cutechess-cli (http://cutechess.com/).
 
 The code was compiled with MinGW, GCC version 4.9.2. All engines used their default hash sizes and one thread on an i5-4690 using the appropriate equivalent time controls.
 
 Link to the CCRL website: http://www.computerchess.org.uk/ccrl/
 
-Engines used for testing: Delphil 3.2, Fridolin 2.00, Maverick 1.0, and Jellyfish 1.1. Thanks to the respective authors for making their engines available for public use.
+Engines used for testing: Fridolin 2.00, Maverick 1.0, and Jellyfish 1.1. Thanks to the respective authors for making their engines available for public use.
 
 
 ### Engine Personality
 - Strong in complex tactical lines (even more so than most other engines at this level)
 - Strong in ultra-bullet, scales poorly with time
 - Extremely poor endgame play (there is little to no endgame code)
+- Overextends pawns
 
 
 ### Implementation Details
@@ -32,10 +33,11 @@ Engines used for testing: Delphil 3.2, Fridolin 2.00, Maverick 1.0, and Jellyfis
   - Futility pruning
   - Razoring
   - Move count based pruning (late move pruning)
-- Internal iterative deepening when a hash move is not available
-- Static exchange evaluation (SEE) and Most Valuable Victim / Least Valuable Attacker (MVV/LVA) to order captures
-- Killer and history heuristics to order quiet moves
 - Quiescence search with captures, queen promotions, and checks on the first three plies
+- Move ordering
+  - Internal iterative deepening when a hash move is not available
+  - Static exchange evaluation (SEE) and Most Valuable Victim / Least Valuable Attacker (MVV/LVA) to order captures
+  - Killer and history heuristics to order quiet moves
 
 
 ### Notes
@@ -45,7 +47,7 @@ A special thanks to the Chess Programming Wiki, which was consulted frequently f
 
 
 ### Known issues:
-- feedPVToTT() crashes, possibly because the PV collected is not actually the PV
-- Hash errors can cause strange moves and give illegal PVs?
+- Hash errors on PV nodes cause strange moves and give illegal PVs, also causing feedPVToTT() to fail
+- Mate distance pruning interaction with IID causes crashes
 - tunemagic command leaks a large amount of memory
 - SEE, MVV/LVA scoring functions handle en passant as if no pawn was captured
