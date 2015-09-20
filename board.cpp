@@ -1440,8 +1440,8 @@ bool Board::isInsufficientMaterial() {
     if (numPieces < 2) {
         if (numPieces == 0)
             return true;
-        if (count(pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]
-                | pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) == 1)
+        if (pieces[WHITE][KNIGHTS] || pieces[WHITE][BISHOPS]
+         || pieces[BLACK][KNIGHTS] || pieces[BLACK][BISHOPS])
             return true;
     }
     return false;
