@@ -1653,12 +1653,17 @@ int Board::evaluate(PieceMoveList &pml) {
     // Bring both file passer occupancy sets to the first rank
     whitePassedBits >>= 48;
     blackPassedBits >>= 8;
+    // Give penalties if the passed pawn is blockaded by a knight, bishop, or king
+    uint64_t whiteBlockaders = pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS] | pieces[BLACK][KINGS];
+    uint64_t blackBlockaders = pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS] | pieces[WHITE][KINGS];
     while (whitePassedBits) {
         int file = bitScanForward(whitePassedBits);
         whitePassedBits &= whitePassedBits - 1;
         uint64_t fileMask = pieces[WHITE][PAWNS] & FILES[file];
         int rank = bitScanReverse(fileMask) >> 3;
         value += PASSER_BONUS[rank];
+        if ((fileMask << 8) & whiteBlockaders)
+            value -= BLOCKADED_PASSER_PENALTY;
     }
     while (blackPassedBits) {
         int file = bitScanForward(blackPassedBits);
@@ -1666,6 +1671,8 @@ int Board::evaluate(PieceMoveList &pml) {
         uint64_t fileMask = pieces[BLACK][PAWNS] & FILES[file];
         int rank = 7 - (bitScanForward(fileMask) >> 3);
         value -= PASSER_BONUS[rank];
+        if ((fileMask >> 8) & blackBlockaders)
+            value += BLOCKADED_PASSER_PENALTY;
     }
     
     int wPawnCtByFile[8];

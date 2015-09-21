@@ -76,6 +76,8 @@ const Score KNIGHT_PAWN_BONUS = encEval(1, 1);
 // Passed pawns
 const Score PASSER_BONUS[8] = {encEval(0, 0), encEval(10, 30), encEval(10, 35), encEval(15, 45),
                                encEval(20, 65), encEval(30, 95), encEval(55, 140), encEval(0, 0)};
+const Score BLOCKADED_PASSER_PENALTY = encEval(8, 20);
+
 // Doubled pawns
 const Score DOUBLED_PENALTY[7] = {encEval(0, 0), encEval(0, 0), encEval(12, 17), encEval(36, 51),
                                   encEval(72, 102), encEval(120, 170), encEval(180, 255)};
