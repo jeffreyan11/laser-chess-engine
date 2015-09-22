@@ -477,16 +477,18 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // As used in Fruit/Stockfish:
         // https://chessprogramming.wikispaces.com/Futility+Pruning#MoveCountBasedPruning
         if (moveIsPrunable
-         && ((depth == 1 && movesSearched > 6)
-          || (depth == 2 && movesSearched > 12)
-          || (depth == 3 && movesSearched > 24))
+         && ((depth == 1 && movesSearched > 5)
+          || (depth == 2 && movesSearched > 11)
+          || (depth == 3 && movesSearched > 18)
+          || (depth == 4 && movesSearched > 40))
          && alpha <= prevAlpha && !isCapture(m)
          && m != searchParams.killers[searchParams.ply][0]
-         && m != searchParams.killers[searchParams.ply][1]
-         && searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)] < (1 - depth*depth)
-            ) {
-            score = alpha;
-            continue;
+         && m != searchParams.killers[searchParams.ply][1]) {
+            if (depth < 3
+             || searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)] < (1 - depth * depth)) {
+                score = alpha;
+                continue;
+            }
         }
 
 
