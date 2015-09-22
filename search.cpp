@@ -188,7 +188,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         //if (!isStop)
         //    feedPVToTT(b, &pvLine, bestScore);
         // Aging for the history heuristic table
-        searchParams.ageHistoryTable(rootDepth);
+        searchParams.ageHistoryTable(rootDepth, false);
         rootDepth++;
     }
     while ((mode == TIME  && (timeSoFar * ONE_SECOND < value * TIME_FACTOR)
@@ -197,7 +197,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     
     printStatistics();
     // Aging for the history heuristic table
-    searchParams.ageHistoryTable(rootDepth);
+    searchParams.ageHistoryTable(rootDepth, true);
     
     // Output best move to UCI interface
     isStop = true;
@@ -484,8 +484,9 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
          && alpha <= prevAlpha && !isCapture(m)
          && m != searchParams.killers[searchParams.ply][0]
          && m != searchParams.killers[searchParams.ply][1]) {
-            if (depth < 3
-             || searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)] < (1 - depth * depth)) {
+            int historyValue = searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)];
+            if ((depth < 3 && historyValue <= 0)
+             || (historyValue < (1 - depth * depth))) {
                 score = alpha;
                 continue;
             }

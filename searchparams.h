@@ -54,14 +54,24 @@ struct SearchParameters {
         }
     }
 
-    void ageHistoryTable(int depth) {
+    void ageHistoryTable(int depth, bool isEndOfSearch) {
+        int posHistoryScale, negHistoryScale;
+        if (isEndOfSearch) {
+            posHistoryScale = depth * depth;
+            negHistoryScale = depth;
+        }
+        else {
+            posHistoryScale = depth;
+            negHistoryScale = std::max(1, ((int) std::sqrt(depth)) / 2);
+        }
+
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 6; j++) {
                 for (int k = 0; k < 64; k++) {
                     if (historyTable[i][j][k] > 0)
-                        historyTable[i][j][k] /= depth;
+                        historyTable[i][j][k] /= posHistoryScale;
                     else
-                        historyTable[i][j][k] /= (int) std::sqrt(depth);
+                        historyTable[i][j][k] /= negHistoryScale;
                 }
             }
         }
