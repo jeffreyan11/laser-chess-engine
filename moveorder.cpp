@@ -195,8 +195,10 @@ void MoveOrder::scoreIIDMove() {
     int iidDepth = isPVNode ? depth-2 : (depth - 3) / 3;
     int bestIndex = getBestMoveForSort(b, legalMoves, iidDepth);
     // Mate check to prevent crashes
-    if (bestIndex == -1)
+    if (bestIndex == -1) {
         legalMoves.clear();
+        mgStage = STAGE_QUIETS;
+    }
     else {
         scores.add(SCORE_IID_MOVE);
         if (isCapture(legalMoves.get(bestIndex))) {
