@@ -1461,9 +1461,6 @@ int Board::evaluate(PieceMoveList &pml) {
     int valueMg = 0;
     int valueEg = 0;
     
-    // Tempo bonus
-    valueMg += (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
-    
     // Material
     int whiteMaterial = getMaterial(WHITE);
     int blackMaterial = getMaterial(BLACK);
@@ -1472,6 +1469,9 @@ int Board::evaluate(PieceMoveList &pml) {
     valueMg -= blackMaterial;
     valueEg += getMaterialEG(WHITE);
     valueEg -= getMaterialEG(BLACK);
+    
+    // Tempo bonus
+    valueMg += (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
     
     // Bishop pair bonus
     if ((pieces[WHITE][BISHOPS] & LIGHT) && (pieces[WHITE][BISHOPS] & DARK)) {

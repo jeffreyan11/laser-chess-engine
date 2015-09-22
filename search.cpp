@@ -80,6 +80,19 @@ const int REVERSE_FUTILITY_MARGIN[4] = {0,
     MAX_POS_SCORE + 360
 };
 
+// Razor margins indexed by depth. If static eval is far below alpha, use a
+// qsearch to confirm fail low and then return.
+const int RAZOR_MARGIN[4] = {0,
+    400,
+    600,
+    800
+};
+
+// Move count pruning
+const unsigned int LMP_MOVE_COUNTS[5] = {0,
+    5, 11, 18, 40
+};
+
 static Hash transpositionTable(16);
 static SearchParameters searchParams;
 static SearchStatistics searchStats;
@@ -374,9 +387,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     // the material and trust its result since a quiet move probably can't gain
     // as much.
     if (!isPVNode && !isInCheck
-     && ((depth == 1 && staticEval <= alpha - 400)
-      || (depth == 2 && staticEval <= alpha - 600)
-      || (depth == 3 && staticEval <= alpha - 800))) {
+     && depth <= 3 && staticEval <= alpha - RAZOR_MARGIN[depth]) {
         if (depth == 1)
             return quiescence(b, 0, alpha, beta);
 
@@ -477,10 +488,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // As used in Fruit/Stockfish:
         // https://chessprogramming.wikispaces.com/Futility+Pruning#MoveCountBasedPruning
         if (moveIsPrunable
-         && ((depth == 1 && movesSearched > 5)
-          || (depth == 2 && movesSearched > 11)
-          || (depth == 3 && movesSearched > 18)
-          || (depth == 4 && movesSearched > 40))
+         && depth <= 4 && movesSearched > LMP_MOVE_COUNTS[depth]
          && alpha <= prevAlpha && !isCapture(m)
          && m != searchParams.killers[searchParams.ply][0]
          && m != searchParams.killers[searchParams.ply][1]) {
