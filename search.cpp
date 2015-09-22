@@ -97,6 +97,7 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta);
 // Search helpers
 int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta);
 int scoreMate(bool isInCheck, int depth, int alpha, int beta);
+int adjustHashScore(int score);
 double getPercentage(uint64_t numerator, uint64_t denominator);
 void printStatistics();
 
@@ -442,7 +443,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         bool moveIsPrunable = moveSorter.nodeIsReducible()
                            && !isPromotion(m)
                            && m != hashed
-                           && abs(alpha) < QUEEN_VALUE
+                           && abs(alpha) < 2 * QUEEN_VALUE
                            && !b.isCheckMove(m, color);
 
 
@@ -575,7 +576,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
                 searchStats.hashMoveCuts++;
 
             // Hash the cut move and score
-            transpositionTable.add(b, depth, m, beta, CUT_NODE, searchParams.rootMoveNumber);
+            transpositionTable.add(b, depth, m, adjustHashScore(beta), CUT_NODE, searchParams.rootMoveNumber);
 
             // Record killer if applicable
             if (!isCapture(m)) {
@@ -612,7 +613,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         if (toHash == hashed)
             searchStats.hashMoveCuts++;
 
-        transpositionTable.add(b, depth, toHash, alpha, PV_NODE, searchParams.rootMoveNumber);
+        transpositionTable.add(b, depth, toHash, adjustHashScore(alpha), PV_NODE, searchParams.rootMoveNumber);
 
         // Update the history table
         if (!isCapture(toHash)) {
@@ -623,7 +624,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     }
     // Record all-nodes. No best move can be recorded.
     else if (alpha <= prevAlpha) {
-        transpositionTable.add(b, depth, NULL_MOVE, alpha, ALL_NODE, searchParams.rootMoveNumber);
+        transpositionTable.add(b, depth, NULL_MOVE, adjustHashScore(alpha), ALL_NODE, searchParams.rootMoveNumber);
     }
 
     return alpha;
@@ -640,6 +641,13 @@ int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta) {
         // since score is an upper bound
         // Vulnerable to Type-1 errors
         int hashScore = entry->score;
+
+        // Adjust the hash score to mate distance from root if necessary
+        if (hashScore >= MATE_SCORE - MAX_DEPTH)
+            hashScore -= searchParams.ply;
+        else if (hashScore <= -MATE_SCORE + MAX_DEPTH)
+            hashScore += searchParams.ply;
+
         uint8_t nodeType = entry->getNodeType();
         if (nodeType == ALL_NODE) {
             if (entry->depth >= depth && hashScore <= alpha) {
@@ -689,6 +697,16 @@ int scoreMate(bool isInCheck, int depth, int alpha, int beta) {
     if (score > alpha)
         alpha = score;
     return alpha;
+}
+
+// Adjust a mate score to accurate reflect distance to mate from the
+// current position, if necessary.
+int adjustHashScore(int score) {
+    if (score >= MATE_SCORE - MAX_DEPTH)
+        return score + searchParams.ply;
+    if (score <= -MATE_SCORE + MAX_DEPTH)
+        return score - searchParams.ply;
+    return score;
 }
 
 /* Quiescence search, which completes all capture and check lines (thus reaching
