@@ -107,7 +107,6 @@ int main() {
             else if (input.find("wtime") != string::npos) {
                 mode = TIME;
                 int color = board.getPlayerToMove();
-                int len = inputVector.size();
                 vector<string>::iterator it;
 
                 it = find(inputVector.begin(), inputVector.end(),
