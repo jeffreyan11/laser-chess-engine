@@ -69,15 +69,16 @@ const int FUTILITY_MARGIN[5] = {0,
     MAX_POS_SCORE,
     MAX_POS_SCORE + 180,
     MAX_POS_SCORE + 400,
-    MAX_POS_SCORE + 700
+    MAX_POS_SCORE + 750
 };
 
 // Reverse futility pruning margins indexed by depth. If static eval is at least
 // this amount above beta, we skip searching the position entirely.
-const int REVERSE_FUTILITY_MARGIN[4] = {0,
+const int REVERSE_FUTILITY_MARGIN[5] = {0,
     MAX_POS_SCORE - 15,
     MAX_POS_SCORE + 140,
-    MAX_POS_SCORE + 360
+    MAX_POS_SCORE + 450,
+    MAX_POS_SCORE + 800
 };
 
 // Razor margins indexed by depth. If static eval is far below alpha, use a
@@ -376,7 +377,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     // probably wouldn't have let us get here (a form of the null-move observation
     // adapted to low depths)
     if (!isPVNode && !isInCheck
-     && (depth <= 3 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
+     && (depth <= 4 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
      && b.getNonPawnMaterial(color))
         return beta;
 
