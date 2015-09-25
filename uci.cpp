@@ -108,23 +108,31 @@ int main() {
                 mode = TIME;
                 int color = board.getPlayerToMove();
                 int len = inputVector.size();
-                
-                value = (color == WHITE) ? stoi(inputVector.at(2))
-                    : stoi(inputVector.at(4));
+                vector<string>::iterator it;
+
+                it = find(inputVector.begin(), inputVector.end(),
+                        (color == WHITE) ? "wtime" : "btime");
+                it++;
+                value = stoi(*it);
                 value -= BUFFER_TIME;
                 
                 int maxValue = value / MAX_TIME_FACTOR;
-                
-                if (len == 7 || len == 11) { // recurring time controls
-                    int movesToGo = (len == 7) ? stoi(inputVector.at(6))
-                        : stoi(inputVector.at(10));
+
+                // recurring time controls
+                it = find(inputVector.begin(), inputVector.end(), "movestogo");
+                if (it != inputVector.end()) {
+                    it++;
+                    int movesToGo = stoi(*it);
                     value /= max(movesToGo, (int)MAX_TIME_FACTOR + 1);
                 }
                 else value /= MOVE_HORIZON;
                 
-                if (len == 9 || len == 11) { // increment time controls
-                    value += ((color == WHITE) ? stoi(inputVector.at(6))
-                        : stoi(inputVector.at(8)));
+                // increment time controls
+                it = find(inputVector.begin(), inputVector.end(),
+                        (color == WHITE) ? "winc" : "binc");
+                if (it != inputVector.end()) {
+                    it++;
+                    value += stoi(*it);
                     value = min(value, maxValue);
                 }
             }
