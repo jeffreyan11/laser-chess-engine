@@ -422,7 +422,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 
         // Undo the null move
         b.doNullMove();
-        searchParams.nullMoveCount--;
+        searchParams.nullMoveCount = 0;
 
         if (nullScore >= beta) {
             return beta;
