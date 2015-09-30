@@ -1717,6 +1717,33 @@ int Board::evaluate(PieceMoveList &pml) {
             value += ISOLATED_DOUBLED_PENALTY * ((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2;
         }
     }
+
+    // Backward pawns
+    uint64_t wPawnAtt = getWPawnLeftCaptures(pieces[WHITE][PAWNS])
+                      | getWPawnRightCaptures(pieces[WHITE][PAWNS]);
+    uint64_t bPawnAtt = getBPawnLeftCaptures(pieces[BLACK][PAWNS])
+                      | getBPawnRightCaptures(pieces[BLACK][PAWNS]);
+    uint64_t wPawnFrontSpan = pieces[WHITE][PAWNS] << 8;
+    uint64_t bPawnFrontSpan = pieces[BLACK][PAWNS] >> 8;
+    for (int i = 0; i < 5; i++) {
+        wPawnFrontSpan |= wPawnFrontSpan << 8;
+        bPawnFrontSpan |= bPawnFrontSpan >> 8;
+    }
+    uint64_t wPawnStopAtt = ((wPawnFrontSpan >> 1) & NOTH) | ((wPawnFrontSpan << 1) & NOTA);
+    uint64_t bPawnStopAtt = ((bPawnFrontSpan >> 1) & NOTH) | ((bPawnFrontSpan << 1) & NOTA);
+
+    uint64_t wBadStopSqs = ~wPawnStopAtt & bPawnAtt;
+    uint64_t bBadStopSqs = ~bPawnStopAtt & wPawnAtt;
+    for (int i = 0; i < 6; i++) {
+        wBadStopSqs |= wBadStopSqs >> 8;
+        bBadStopSqs |= bBadStopSqs << 8;
+    }
+
+    uint64_t wBackwards = wBadStopSqs & pieces[WHITE][PAWNS];
+    uint64_t bBackwards = bBadStopSqs & pieces[BLACK][PAWNS];
+    value -= BACKWARD_PENALTY * count(wBackwards);
+    value += BACKWARD_PENALTY * count(bBackwards);
+
     
     return materialValue + decEval(value, egFactor) + mobilityValue;
 }

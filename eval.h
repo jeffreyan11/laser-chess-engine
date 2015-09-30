@@ -87,5 +87,7 @@ const Score DOUBLED_PENALTY_SCALE[9] = {0, 0, 3, 2, 1, 1, 1, 1, 1};
 const Score ISOLATED_PENALTY = encEval(14, 16);
 // Isolated, doubled pawns
 const Score ISOLATED_DOUBLED_PENALTY = encEval(11, 11);
+// Backward pawns
+const Score BACKWARD_PENALTY = encEval(11, 12);
 
 #endif
