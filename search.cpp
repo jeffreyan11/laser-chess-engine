@@ -825,8 +825,8 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
         j++;
     }
 
-    // Checks: only on the first three plies of q-search
-    if (plies <= 2) {
+    // Checks: only on the first two plies of q-search
+    if (plies <= 1) {
         MoveList legalMoves = b.getPseudoLegalChecks(color);
 
         for (unsigned int i = 0; i < legalMoves.size(); i++) {
