@@ -743,6 +743,38 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
             return alpha;
     }
 
+    // Q-search hash table probe
+    HashEntry *entry = transpositionTable.get(b);
+    if (entry != NULL) {
+        int hashScore = entry->score;
+
+        // Adjust the hash score to mate distance from root if necessary
+        if (hashScore >= MATE_SCORE - MAX_DEPTH)
+            hashScore -= searchParams.ply + plies;
+        else if (hashScore <= -MATE_SCORE + MAX_DEPTH)
+            hashScore += searchParams.ply + plies;
+
+        uint8_t nodeType = entry->getNodeType();
+        // All nodes
+        if (nodeType == ALL_NODE) {
+            if (entry->depth >= -plies && hashScore <= alpha)
+                return alpha;
+        }
+        else {
+            // Only used a hashed score if the search depth was at least
+            // the current depth
+            if (entry->depth >= -plies) {
+                // Cut nodes
+                if (nodeType == CUT_NODE && hashScore >= beta)
+                    return beta;
+
+                // PV nodes
+                else if (nodeType == PV_NODE)
+                    return hashScore;
+            }
+        }
+    }
+
     // Stand pat: if our current position is already way too good or way too bad
     // we can simply stop the search here.
     PieceMoveList pml = b.getPieceMoveList(color);
@@ -790,6 +822,9 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
             searchStats.qsFailHighs++;
             if (j == 0)
                 searchStats.qsFirstFailHighs++;
+
+            transpositionTable.add(b, -plies, m, adjustHashScore(beta), CUT_NODE, searchParams.rootMoveNumber);
+
             return beta;
         }
         if (score > alpha)
@@ -818,6 +853,9 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
             searchStats.qsFailHighs++;
             if (j == 0)
                 searchStats.qsFirstFailHighs++;
+
+            transpositionTable.add(b, -plies, m, adjustHashScore(beta), CUT_NODE, searchParams.rootMoveNumber);
+
             return beta;
         }
         if (score > alpha)
@@ -848,7 +886,9 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
                 searchStats.qsFailHighs++;
                 if (j == 0)
                     searchStats.qsFirstFailHighs++;
-                alpha = beta;
+
+                transpositionTable.add(b, -plies, m, adjustHashScore(beta), CUT_NODE, searchParams.rootMoveNumber);
+
                 return beta;
             }
             if (score > alpha)
