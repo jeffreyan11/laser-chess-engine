@@ -730,6 +730,7 @@ int adjustHashScore(int score) {
  */
 int quiescence(Board &b, int plies, int alpha, int beta) {
     int color = b.getPlayerToMove();
+
     // If in check, we must consider all legal check evasions
     if (b.isInCheck(color))
         return checkQuiescence(b, plies, alpha, beta);
@@ -743,7 +744,7 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
             return alpha;
     }
 
-    // Q-search hash table probe
+    // Qsearch hash table probe
     HashEntry *entry = transpositionTable.get(b);
     if (entry != NULL) {
         int hashScore = entry->score;
@@ -755,23 +756,14 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
             hashScore += searchParams.ply + plies;
 
         uint8_t nodeType = entry->getNodeType();
-        // All nodes
-        if (nodeType == ALL_NODE) {
-            if (entry->depth >= -plies && hashScore <= alpha)
-                return alpha;
-        }
-        else {
-            // Only used a hashed score if the search depth was at least
-            // the current depth
-            if (entry->depth >= -plies) {
-                // Cut nodes
-                if (nodeType == CUT_NODE && hashScore >= beta)
-                    return beta;
-
-                // PV nodes
-                else if (nodeType == PV_NODE)
-                    return hashScore;
-            }
+        // Only used a hashed score if the search depth was at least
+        // the current depth
+        if (entry->depth >= -plies) {
+            // Check for the correct node type and bounds
+            if ((nodeType == ALL_NODE && hashScore <= alpha)
+             || (nodeType == CUT_NODE && hashScore >= beta)
+             || (nodeType == PV_NODE))
+                return hashScore;
         }
     }
 
