@@ -235,7 +235,7 @@ Move MoveOrder::nextMove() {
     }
     // If we are the end of our generated list, generate more.
     // If there are no moves left, return NULL_MOVE to indicate so.
-    while (index >= legalMoves.size()) {
+    while (index >= scores.size()) {
         if (mgStage == STAGE_QUIETS)
             return NULL_MOVE;
         else {
@@ -246,7 +246,7 @@ Move MoveOrder::nextMove() {
     // Find the index of the next best move
     int bestIndex = index;
     int bestScore = scores.get(index);
-    for (unsigned int i = index + 1; i < legalMoves.size(); i++) {
+    for (unsigned int i = index + 1; i < scores.size(); i++) {
         if (scores.get(i) > bestScore) {
             bestIndex = i;
             bestScore = scores.get(bestIndex);
