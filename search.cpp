@@ -669,6 +669,10 @@ int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta) {
         }
         else {
             hashed = entry->m;
+            if ((entry->depth < 1 && depth >= 7)
+             || (!usePVScore && entry->depth < depth - 3))
+                hashed = NULL_MOVE;
+
             // Only used a hashed score if the search depth was at least
             // the current depth
             if (entry->depth >= depth) {
