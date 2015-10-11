@@ -1435,6 +1435,7 @@ bool Board::isDraw() {
     return false;
 }
 
+// Check for guaranteed drawn positions, where helpmate is not possible.
 bool Board::isInsufficientMaterial() {
     int numPieces = count(allPieces[WHITE] | allPieces[BLACK]) - 2;
     if (numPieces < 2) {
@@ -1457,14 +1458,51 @@ bool Board::isInsufficientMaterial() {
  * positive and black is negative in traditional negamax format.
  */
 int Board::evaluate(PieceMoveList &pml) {
-    //---------------------------Material terms---------------------------------
-    int valueMg = 0;
-    int valueEg = 0;
-    
     // Material
     int whiteMaterial = getMaterial(WHITE);
     int blackMaterial = getMaterial(BLACK);
-    
+
+    // Compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
+    int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
+    egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
+
+
+    // Check special endgame cases: where help mate is possible (detecting this
+    // is delegated to search), but forced mate is not, or where a simple
+    // forced mate is possible.
+    if (egFactor == EG_FACTOR_RES) {
+        int numWPieces = count(allPieces[WHITE]) - 1;
+        int numBPieces = count(allPieces[BLACK]) - 1;
+        int numPieces = numWPieces + numBPieces;
+
+        // Rook or queen + anything else vs. lone king is a forced win
+        if (numBPieces == 0 && (pieces[WHITE][ROOKS] || pieces[WHITE][QUEENS])) {
+            return scoreSimpleKnownWin(WHITE);
+        }
+        if (numWPieces == 0 && (pieces[BLACK][ROOKS] || pieces[BLACK][QUEENS])) {
+            return scoreSimpleKnownWin(BLACK);
+        }
+
+        if (numPieces == 1) {
+            if (pieces[WHITE][PAWNS]) {
+            }
+            if (pieces[BLACK][PAWNS]) {
+            }
+        }
+
+        else if (numPieces == 2) {
+            // If each side has one minor piece, then draw
+            if ((pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS])
+             && (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]))
+                return 0;
+        }
+    }
+
+
+    //---------------------------Material terms---------------------------------
+    int valueMg = 0;
+    int valueEg = 0;
+
     valueMg += whiteMaterial;
     valueMg -= blackMaterial;
     valueEg += getMaterialEG(WHITE);
@@ -1521,10 +1559,6 @@ int Board::evaluate(PieceMoveList &pml) {
     valueMg += PAWN_SCALING_MG[blackPawnCount];
     valueEg += PAWN_SCALING_EG[blackPawnCount];
     
-    
-    // Compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
-    int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
-    egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
     
     int materialValue = (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES;
 
@@ -1818,6 +1852,16 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, uint64_t oppKingSqs,
     result += centerControl * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
 
     return result;
+}
+
+// A function for scoring the most basic mating cases, when it is only necessary
+// to get the opposing king into a corner.
+int Board::scoreSimpleKnownWin(int winningColor) {
+    int wKing = bitScanForward(pieces[WHITE][KINGS]);
+    int bKing = bitScanForward(pieces[BLACK][KINGS]);
+    int winScore = (winningColor == WHITE) ? KNOWN_WIN : -KNOWN_WIN;
+    return winScore + endgamePieceValues[KINGS][wKing]
+                    - endgamePieceValues[KINGS][bKing];
 }
 
 // Gets the endgame factor, which adjusts the evaluation based on how much

@@ -26,6 +26,7 @@
  */
 
 const int SEE_PIECE_VALS[6] = {100, 400, 400, 600, 1150, MATE_SCORE};
+const int KNOWN_WIN = PAWN_VALUE_EG * 100;
 
 // Eval scores are packed into an unsigned 32-bit integer during calculations
 // (the SWAR technique)
