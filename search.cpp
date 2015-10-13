@@ -112,14 +112,15 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta);
 int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta);
 int scoreMate(bool isInCheck, int depth, int alpha, int beta);
 int adjustHashScore(int score);
-double getPercentage(uint64_t numerator, uint64_t denominator);
-void printStatistics();
+int adjustHashScoreQsearch(int score, int plies);
 
 // Other utility functions
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 void changePV(Move best, SearchPV *parent, SearchPV *child);
 string retrievePV(SearchPV *pvLine);
 void feedPVToTT(Board *b, SearchPV *pvLine, int score);
+double getPercentage(uint64_t numerator, uint64_t denominator);
+void printStatistics();
 
 
 /**
@@ -331,15 +332,21 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             return alpha;
     }
 
+
     // Mate distance pruning
-    /*
     int matingScore = MATE_SCORE - searchParams.ply;
-    if (alpha >= matingScore)
-        return alpha;
+    if (matingScore < beta) {
+        beta = matingScore;
+        if (alpha >= matingScore)
+            return alpha;
+    }
+
     int matedScore = -MATE_SCORE + searchParams.ply;
-    if (beta <= matedScore)
-        return beta;
-        */
+    if (matedScore > alpha) {
+        alpha = matedScore;
+        if (beta <= matedScore)
+            return beta;
+    }
     
     
     int prevAlpha = alpha;
@@ -715,13 +722,21 @@ int scoreMate(bool isInCheck, int depth, int alpha, int beta) {
     return alpha;
 }
 
-// Adjust a mate score to accurate reflect distance to mate from the
+// Adjust a mate score to accurately reflect distance to mate from the
 // current position, if necessary.
 int adjustHashScore(int score) {
     if (score >= MATE_SCORE - MAX_DEPTH)
         return score + searchParams.ply;
     if (score <= -MATE_SCORE + MAX_DEPTH)
         return score - searchParams.ply;
+    return score;
+}
+
+int adjustHashScoreQsearch(int score, int plies) {
+    if (score >= MATE_SCORE - MAX_DEPTH)
+        return score + searchParams.ply + plies;
+    if (score <= -MATE_SCORE + MAX_DEPTH)
+        return score - searchParams.ply - plies;
     return score;
 }
 
@@ -819,7 +834,7 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
             if (j == 0)
                 searchStats.qsFirstFailHighs++;
 
-            transpositionTable.add(b, -plies, m, adjustHashScore(beta), CUT_NODE, searchParams.rootMoveNumber);
+            transpositionTable.add(b, -plies, m, adjustHashScoreQsearch(beta, plies), CUT_NODE, searchParams.rootMoveNumber);
 
             return beta;
         }
@@ -850,7 +865,7 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
             if (j == 0)
                 searchStats.qsFirstFailHighs++;
 
-            transpositionTable.add(b, -plies, m, adjustHashScore(beta), CUT_NODE, searchParams.rootMoveNumber);
+            transpositionTable.add(b, -plies, m, adjustHashScoreQsearch(beta, plies), CUT_NODE, searchParams.rootMoveNumber);
 
             return beta;
         }
@@ -883,7 +898,7 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
                 if (j == 0)
                     searchStats.qsFirstFailHighs++;
 
-                transpositionTable.add(b, -plies, m, adjustHashScore(beta), CUT_NODE, searchParams.rootMoveNumber);
+                transpositionTable.add(b, -plies, m, adjustHashScoreQsearch(beta, plies), CUT_NODE, searchParams.rootMoveNumber);
 
                 return beta;
             }
