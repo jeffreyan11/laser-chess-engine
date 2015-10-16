@@ -1485,8 +1485,20 @@ int Board::evaluate(PieceMoveList &pml) {
 
         if (numPieces == 1) {
             if (pieces[WHITE][PAWNS]) {
+                int wKing = bitScanForward(pieces[WHITE][KINGS]);
+                int bKing = bitScanForward(pieces[BLACK][KINGS]);
+                int wPawn = bitScanForward(flipAcrossRanks(pieces[WHITE][PAWNS]));
+                return 3 * PAWN_VALUE_EG / 2 + endgamePieceValues[KINGS][wKing]
+                                             - endgamePieceValues[KINGS][bKing]
+                                             + endgamePieceValues[PAWNS][wPawn];
             }
             if (pieces[BLACK][PAWNS]) {
+                int wKing = bitScanForward(pieces[WHITE][KINGS]);
+                int bKing = bitScanForward(pieces[BLACK][KINGS]);
+                int bPawn = bitScanForward(pieces[BLACK][PAWNS]);
+                return 3 * PAWN_VALUE_EG / 2 + endgamePieceValues[KINGS][wKing]
+                                             - endgamePieceValues[KINGS][bKing]
+                                             + endgamePieceValues[PAWNS][bPawn];
             }
         }
 
@@ -1495,6 +1507,14 @@ int Board::evaluate(PieceMoveList &pml) {
             if ((pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS])
              && (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]))
                 return 0;
+            // Two knights is a draw
+            if (count(pieces[WHITE][KNIGHTS]) == 2 || count(pieces[BLACK][KNIGHTS]) == 2)
+                return 0;
+            // Two bishops is a win
+            if (count(pieces[WHITE][BISHOPS]) == 2)
+                return scoreSimpleKnownWin(WHITE);
+            if (count(pieces[BLACK][BISHOPS]) == 2)
+                return scoreSimpleKnownWin(BLACK);
         }
     }
 
