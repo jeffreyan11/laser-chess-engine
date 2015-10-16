@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
+#include "evalhash.h"
+#include "hash.h"
 #include "search.h"
 #include "moveorder.h"
 #include "searchparams.h"
@@ -36,6 +38,7 @@ struct SearchStatistics {
     uint64_t failHighs, firstFailHighs;
     uint64_t qsNodes;
     uint64_t qsFailHighs, qsFirstFailHighs;
+    uint64_t evalCacheProbes, evalCacheHits;
 
     SearchStatistics() {
         reset();
@@ -48,6 +51,7 @@ struct SearchStatistics {
         failHighs = firstFailHighs = 0;
         qsNodes = 0;
         qsFailHighs = qsFirstFailHighs = 0;
+        evalCacheProbes = evalCacheHits = 0;
     }
 };
 
@@ -95,6 +99,7 @@ const unsigned int LMP_MOVE_COUNTS[5] = {0,
 };
 
 static Hash transpositionTable(16);
+static EvalHash evalCache(16);
 static SearchParameters searchParams;
 static SearchStatistics searchStats;
 
@@ -374,9 +379,21 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     bool isInCheck = b.isInCheck(color);
     // A static evaluation, used to activate null move pruning and futility
     // pruning
-    int staticEval = isInCheck ? INFTY
-                               : (color == WHITE) ? b.evaluate(pml)
-                                                  : -b.evaluate(pml);
+    int staticEval = INFTY;
+    if (!isInCheck) {
+        searchStats.evalCacheProbes++;
+        // Probe the eval cache for a saved calculation
+        EvalHashEntry *ehe = evalCache.get(b);
+        if (ehe != NULL) {
+            searchStats.evalCacheHits++;
+            staticEval = ehe->score;
+        }
+        else {
+            staticEval = (color == WHITE) ? b.evaluate(pml)
+                                          : -b.evaluate(pml);
+            evalCache.add(b, staticEval);
+        }
+    }
     
 
     // Reverse futility pruning
@@ -687,8 +704,6 @@ int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta) {
                 // score is a lower bound.
                 if (nodeType == CUT_NODE && hashScore >= beta) {
                     searchStats.hashScoreCuts++;
-                    searchStats.failHighs++;
-                    searchStats.firstFailHighs++;
                     return beta;
                 }
                 // At PV nodes we can simply return the exact score
@@ -786,10 +801,22 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
         }
     }
 
+    PieceMoveList pml = b.getPieceMoveList(color);
+
     // Stand pat: if our current position is already way too good or way too bad
     // we can simply stop the search here.
-    PieceMoveList pml = b.getPieceMoveList(color);
-    int standPat = (color == WHITE) ? b.evaluate(pml) : -b.evaluate(pml);
+    int standPat;
+    // Probe the eval cache for a saved calculation
+    searchStats.evalCacheProbes++;
+    EvalHashEntry *ehe = evalCache.get(b);
+    if (ehe != NULL) {
+        searchStats.evalCacheHits++;
+        standPat = ehe->score;
+    }
+    else {
+        standPat = (color == WHITE) ? b.evaluate(pml) : -b.evaluate(pml);
+        evalCache.add(b, standPat);
+    }
     
     if (standPat >= beta)
         return beta;
@@ -974,6 +1001,7 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta) {
 // These functions help to communicate with uci.cpp
 void clearTables() {
     transpositionTable.clear();
+    evalCache.clear();
     searchParams.resetHistoryTable();
 }
 
@@ -1054,7 +1082,7 @@ double getPercentage(uint64_t numerator, uint64_t denominator) {
 
 // Prints the statistics gathered during search
 void printStatistics() {
-    cerr << setw(22) << "Hash hitrate: " << getPercentage(searchStats.hashHits, searchStats.hashProbes)
+    cerr << setw(22) << "Hash hit rate: " << getPercentage(searchStats.hashHits, searchStats.hashProbes)
          << '%' << " of " << searchStats.hashProbes << " probes" << endl;
     cerr << setw(22) << "Hash score cut rate: " << getPercentage(searchStats.hashScoreCuts, searchStats.hashHits)
          << '%' << " of " << searchStats.hashHits << " hash hits" << endl;
@@ -1066,4 +1094,6 @@ void printStatistics() {
          << getPercentage(searchStats.qsNodes, searchStats.nodes) << '%' << ")" << endl;
     cerr << setw(22) << "QS FFH rate: " << getPercentage(searchStats.qsFirstFailHighs, searchStats.qsFailHighs)
          << '%' << " of " << searchStats.qsFailHighs << " qs fail highs" << endl;
+    cerr << setw(22) << "Eval cache hit rate: " << getPercentage(searchStats.evalCacheHits, searchStats.evalCacheProbes)
+         << '%' << " of " << searchStats.evalCacheProbes << " probes" << endl;
 }

@@ -21,7 +21,6 @@
 
 #include "board.h"
 #include "common.h"
-#include "hash.h"
 
 void getBestMove(Board *b, int mode, int value, Move *bestMove);
 void clearTables();
