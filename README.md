@@ -5,13 +5,20 @@ For the latest (semi-)stable release and previous versions, check https://github
 
 After being compiled, the executable can be run with any UCI chess GUI, such as Arena (http://www.playwitharena.com/) or Tarrasch (http://www.triplehappy.com/).
 
+A special thanks to the Chess Programming Wiki, which was consulted frequently for this project: https://chessprogramming.wikispaces.com.
+A few ideas and inspiration came from Stockfish (https://stockfishchess.org/):
+- Using SWAR for midgame/endgame evaluation
+- Razoring implementation
+
 
 ### Engine Strength
-Estimated ELO is 2570 +/- 40 on the CCRL 40/4 list (tested 19/9/15) and 2358 +/- 90 (tested 26/8/15) on the CCRL 40/40 list (95% CI), tested using cutechess-cli (http://cutechess.com/).
+We are now on the CCRL 40/4!
+
+Laser 0.1: 179-180th, 2377 elo as of Oct 11, 2015.
+
+Most recent estimated ELO for Laser 0.2 beta is 2570 +/- 40 on the CCRL 40/4 list (tested 19/9/15) and 2358 +/- 90 (tested 26/8/15) on the CCRL 40/40 list (95% CI), tested using cutechess-cli (http://cutechess.com/).
 
 The code was compiled with MinGW, GCC version 4.9.2. All engines used their default hash sizes and one thread on an i5-4690 using the appropriate equivalent time controls.
-
-Link to the CCRL website: http://www.computerchess.org.uk/ccrl/
 
 Engines used for testing: Fridolin 2.00, Maverick 1.0, and Jellyfish 1.1. Thanks to the respective authors for making their engines available for public use.
 
@@ -19,14 +26,14 @@ Engines used for testing: Fridolin 2.00, Maverick 1.0, and Jellyfish 1.1. Thanks
 ### Engine Personality
 - Strong in complex tactical lines (even more so than most other engines at this level)
 - Strong in ultra-bullet, scales poorly with time
-- Extremely poor endgame play (there is little to no endgame code)
-- Overextends pawns
+- Poor endgame play (there is little to no endgame code)
 
 
 ### Implementation Details
 - Fancy magic bitboards for a 5 to 6 sec PERFT 6.
 - Evaluation with piece square tables, basic king safety, isolated/doubled/passed pawns, and mobility
 - A transposition table with Zobrist hashing, a two bucket system, and 16 MB default size
+- An evaluation cache
 - Fail-hard principal variation search
   - Adaptive null move pruning
   - Late move reduction
@@ -43,11 +50,8 @@ Engines used for testing: Fridolin 2.00, Maverick 1.0, and Jellyfish 1.1. Thanks
 ### Notes
 The code and Makefile support gcc on Linux and MinGW on Windows for Intel Nehalem (2008-2010) and later processors only (due to popcnt instruction support). For older or 32-bit systems, set the preprocessor flag USE_INLINE_ASM in common.h to false.
 
-A special thanks to the Chess Programming Wiki, which was consulted frequently for this project: https://chessprogramming.wikispaces.com
-
 
 ### Known issues:
 - Hash errors on PV nodes cause strange moves and give illegal PVs, also causing feedPVToTT() to fail
-- Mate distance pruning interaction with IID causes crashes
 - tunemagic command leaks a large amount of memory
 - SEE, MVV/LVA scoring functions handle en passant as if no pawn was captured

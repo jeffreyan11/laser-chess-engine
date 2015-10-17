@@ -669,7 +669,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 // See if a hash move exists.
 int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta) {
     // Only use the PV score in null window searches
-    bool usePVScore = (alpha == beta - 1);
+    bool isPVNode = (alpha != beta - 1);
     HashEntry *entry = transpositionTable.get(b);
     if (entry != NULL) {
         searchStats.hashHits++;
@@ -693,8 +693,9 @@ int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta) {
         }
         else {
             hashed = entry->m;
+            // Don't use hash moves from too low of a depth
             if ((entry->depth < 1 && depth >= 7)
-             || (!usePVScore && entry->depth < depth - 3))
+             || (isPVNode && entry->depth < depth - 3))
                 hashed = NULL_MOVE;
 
             // Only used a hashed score if the search depth was at least
@@ -709,7 +710,7 @@ int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta) {
                 // At PV nodes we can simply return the exact score
                 // Do this only at non-PV nodes: at PV nodes we want to ensure
                 // a full PV line is returned
-                else if (nodeType == PV_NODE && usePVScore) {
+                else if (nodeType == PV_NODE && !isPVNode) {
                     searchStats.hashScoreCuts++;
                     return hashScore;
                 }
