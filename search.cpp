@@ -115,7 +115,7 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta);
 
 // Search helpers
 int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta);
-int scoreMate(bool isInCheck, int depth, int alpha, int beta);
+int scoreMate(bool isInCheck, int depth);
 int adjustHashScore(int score, int plies);
 
 // Other utility functions
@@ -334,14 +334,8 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     }
 
     // Draw check
-    if (b.isDraw()) {
-        if (0 >= beta)
-            return beta;
-        if (0 > alpha)
-            return 0;
-        else
-            return alpha;
-    }
+    if (b.isDraw())
+        return 0;
 
 
     // Mate distance pruning
@@ -647,7 +641,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 
     // If there were no legal moves
     if (score == -INFTY && movesSearched == 0)
-        return scoreMate(moveSorter.isInCheck, depth, alpha, beta);
+        return scoreMate(moveSorter.isInCheck, depth);
     
     // Exact scores indicate a principal variation
     if (prevAlpha < alpha && alpha < beta) {
@@ -671,88 +665,6 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     return alpha;
 }
 
-// See if a hash move exists.
-int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta) {
-    // Only use the PV score in null window searches
-    bool isPVNode = (alpha != beta - 1);
-    HashEntry *entry = transpositionTable.get(b);
-    if (entry != NULL) {
-        searchStats.hashHits++;
-        // If the node is a predicted all node and score <= alpha, return alpha
-        // since score is an upper bound
-        // Vulnerable to Type-1 errors
-        int hashScore = entry->score;
-
-        // Adjust the hash score to mate distance from root if necessary
-        if (hashScore >= MATE_SCORE - MAX_DEPTH)
-            hashScore -= searchParams.ply;
-        else if (hashScore <= -MATE_SCORE + MAX_DEPTH)
-            hashScore += searchParams.ply;
-
-        uint8_t nodeType = entry->getNodeType();
-        if (nodeType == ALL_NODE) {
-            if (entry->depth >= depth && hashScore <= alpha) {
-                searchStats.hashScoreCuts++;
-                return alpha;
-            }
-        }
-        else {
-            hashed = entry->m;
-            // Don't use hash moves from too low of a depth
-            if ((entry->depth < 1 && depth >= 7)
-             || (isPVNode && entry->depth < depth - 3))
-                hashed = NULL_MOVE;
-
-            // Only used a hashed score if the search depth was at least
-            // the current depth
-            if (entry->depth >= depth) {
-                // At cut nodes if hash score >= beta return beta since hash
-                // score is a lower bound.
-                if (nodeType == CUT_NODE && hashScore >= beta) {
-                    searchStats.hashScoreCuts++;
-                    return beta;
-                }
-                // At PV nodes we can simply return the exact score
-                // Do this only at non-PV nodes: at PV nodes we want to ensure
-                // a full PV line is returned
-                else if (nodeType == PV_NODE && !isPVNode) {
-                    searchStats.hashScoreCuts++;
-                    return hashScore;
-                }
-            }
-        }
-    }
-    return -INFTY;
-}
-
-// Used to get a score when we have realized that we have no legal moves.
-int scoreMate(bool isInCheck, int depth, int alpha, int beta) {
-    int score;
-    // If we are in check, then checkmate
-    if (isInCheck) {
-        // Adjust score so that quicker mates are better
-        score = (-MATE_SCORE + searchParams.ply);
-    }
-    else { // else, it is a stalemate
-        score = 0;
-    }
-    if (score >= beta)
-        return beta;
-    if (score > alpha)
-        alpha = score;
-    return alpha;
-}
-
-// Adjust a mate score to accurately reflect distance to mate from the
-// current position, if necessary.
-int adjustHashScore(int score, int plies) {
-    if (score >= MATE_SCORE - MAX_DEPTH)
-        return score + plies;
-    if (score <= -MATE_SCORE + MAX_DEPTH)
-        return score - plies;
-    return score;
-}
-
 
 /* Quiescence search, which completes all capture and check lines (thus reaching
  * a "quiet" position.)
@@ -768,14 +680,8 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
     if (b.isInCheck(color))
         return checkQuiescence(b, plies, alpha, beta);
 
-    if (b.isInsufficientMaterial()) {
-        if (0 >= beta)
-            return beta;
-        if (0 > alpha)
-            return 0;
-        else
-            return alpha;
-    }
+    if (b.isInsufficientMaterial())
+        return 0;
 
     // Qsearch hash table probe
     HashEntry *entry = transpositionTable.get(b);
@@ -983,15 +889,91 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta) {
     if (score == -INFTY) {
         // We already know we are in check, so it must be a checkmate
         // Adjust score so that quicker mates are better
-        score = (-MATE_SCORE + searchParams.ply + plies);
-        if (score >= beta)
-            return beta;
-        if (score > alpha)
-            alpha = score;
+        return (-MATE_SCORE + searchParams.ply + plies);
     }
     
     return alpha;
 }
+
+
+//------------------------------------------------------------------------------
+//-----------------------------Search Helpers-----------------------------------
+//------------------------------------------------------------------------------
+// See if a hash move exists.
+int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta) {
+    // Only use the PV score in null window searches
+    bool isPVNode = (alpha != beta - 1);
+    HashEntry *entry = transpositionTable.get(b);
+    if (entry != NULL) {
+        searchStats.hashHits++;
+        // If the node is a predicted all node and score <= alpha, return alpha
+        // since score is an upper bound
+        // Vulnerable to Type-1 errors
+        int hashScore = entry->score;
+
+        // Adjust the hash score to mate distance from root if necessary
+        if (hashScore >= MATE_SCORE - MAX_DEPTH)
+            hashScore -= searchParams.ply;
+        else if (hashScore <= -MATE_SCORE + MAX_DEPTH)
+            hashScore += searchParams.ply;
+
+        uint8_t nodeType = entry->getNodeType();
+        if (nodeType == ALL_NODE) {
+            if (entry->depth >= depth && hashScore <= alpha) {
+                searchStats.hashScoreCuts++;
+                return alpha;
+            }
+        }
+        else {
+            hashed = entry->m;
+            // Don't use hash moves from too low of a depth
+            if ((entry->depth < 1 && depth >= 7)
+             || (isPVNode && entry->depth < depth - 3))
+                hashed = NULL_MOVE;
+
+            // Only used a hashed score if the search depth was at least
+            // the current depth
+            if (entry->depth >= depth) {
+                // At cut nodes if hash score >= beta return beta since hash
+                // score is a lower bound.
+                if (nodeType == CUT_NODE && hashScore >= beta) {
+                    searchStats.hashScoreCuts++;
+                    return beta;
+                }
+                // At PV nodes we can simply return the exact score
+                // Do this only at non-PV nodes: at PV nodes we want to ensure
+                // a full PV line is returned
+                else if (nodeType == PV_NODE && !isPVNode) {
+                    searchStats.hashScoreCuts++;
+                    return hashScore;
+                }
+            }
+        }
+    }
+    return -INFTY;
+}
+
+// Used to get a score when we have realized that we have no legal moves.
+int scoreMate(bool isInCheck, int depth) {
+    // If we are in check, then it is a checkmate
+    if (isInCheck)
+        // Adjust score so that quicker mates are better
+        return (-MATE_SCORE + searchParams.ply);
+
+    // Else, it is a stalemate
+    else return 0;
+}
+
+// Adjust a mate score to accurately reflect distance to mate from the
+// current position, if necessary.
+int adjustHashScore(int score, int plies) {
+    if (score >= MATE_SCORE - MAX_DEPTH)
+        return score + plies;
+    if (score <= -MATE_SCORE + MAX_DEPTH)
+        return score - plies;
+    return score;
+}
+
 
 //------------------------------------------------------------------------------
 //------------------------------Other functions---------------------------------
