@@ -237,6 +237,13 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int beta = MATE_SCORE;
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
+        // Output current move info to the GUI. Only do so if 5 seconds of
+        // search have elapsed to avoid clutter
+        double timeSoFar = getTimeElapsed(searchParams.startTime);
+        if (timeSoFar * ONE_SECOND > 5 * ONE_SECOND)
+            cout << "info depth " << depth << " currmove " << moveToString(legalMoves.get(i))
+                 << " currmovenumber " << i+1 << " nodes " << searchStats.nodes << endl;
+
         Board copy = b->staticCopy();
         copy.doMove(legalMoves.get(i), color);
         searchStats.nodes++;
