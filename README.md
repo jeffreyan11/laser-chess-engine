@@ -16,7 +16,7 @@ We are now on the CCRL 40/4!
 
 Laser 0.1: 179-180th, 2377 elo as of Oct 11, 2015.
 
-Most recent estimated ELO for Laser 0.2 beta is 2570 +/- 40 on the CCRL 40/4 list (tested 19/9/15) and 2358 +/- 90 (tested 26/8/15) on the CCRL 40/40 list (95% CI), tested using cutechess-cli (http://cutechess.com/).
+Most recent estimated ELO for Laser 0.2 beta is 2580 +/- 40 on the CCRL 40/4 list (tested 17/10/15) and 2597 +/- 80 (tested 18/10/15) on the CCRL 40/40 list (95% CI), tested using cutechess-cli (http://cutechess.com/).
 
 The code was compiled with MinGW, GCC version 4.9.2. All engines used their default hash sizes and one thread on an i5-4690 using the appropriate equivalent time controls.
 

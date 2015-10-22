@@ -94,8 +94,8 @@ const int RAZOR_MARGIN[4] = {0,
 };
 
 // Move count pruning
-const unsigned int LMP_MOVE_COUNTS[5] = {0,
-    5, 11, 18, 40
+const unsigned int LMP_MOVE_COUNTS[6] = {0,
+    5, 9, 16, 29, 50
 };
 
 static Hash transpositionTable(16);
@@ -513,13 +513,12 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // As used in Fruit/Stockfish:
         // https://chessprogramming.wikispaces.com/Futility+Pruning#MoveCountBasedPruning
         if (moveIsPrunable
-         && depth <= 4 && movesSearched > LMP_MOVE_COUNTS[depth]
+         && depth <= 5 && movesSearched > LMP_MOVE_COUNTS[depth]
          && alpha <= prevAlpha && !isCapture(m)
          && m != searchParams.killers[searchParams.ply][0]
          && m != searchParams.killers[searchParams.ply][1]) {
             int historyValue = searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)];
-            if ((depth < 3 && historyValue <= 0)
-             || (historyValue < (1 - depth * depth))) {
+            if (depth < 3 || historyValue < 0) {
                 score = alpha;
                 continue;
             }
