@@ -116,8 +116,7 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta);
 // Search helpers
 int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta);
 int scoreMate(bool isInCheck, int depth, int alpha, int beta);
-int adjustHashScore(int score);
-int adjustHashScoreQsearch(int score, int plies);
+int adjustHashScore(int score, int plies);
 
 // Other utility functions
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
@@ -611,7 +610,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
                 searchStats.hashMoveCuts++;
 
             // Hash the cut move and score
-            transpositionTable.add(b, depth, m, adjustHashScore(beta), CUT_NODE, searchParams.rootMoveNumber);
+            transpositionTable.add(b, depth, m, adjustHashScore(beta, searchParams.ply), CUT_NODE, searchParams.rootMoveNumber);
 
             // Record killer if applicable
             if (!isCapture(m)) {
@@ -648,7 +647,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         if (toHash == hashed)
             searchStats.hashMoveCuts++;
 
-        transpositionTable.add(b, depth, toHash, adjustHashScore(alpha), PV_NODE, searchParams.rootMoveNumber);
+        transpositionTable.add(b, depth, toHash, adjustHashScore(alpha, searchParams.ply), PV_NODE, searchParams.rootMoveNumber);
 
         // Update the history table
         if (!isCapture(toHash)) {
@@ -659,7 +658,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     }
     // Record all-nodes. No best move can be recorded.
     else if (alpha <= prevAlpha) {
-        transpositionTable.add(b, depth, NULL_MOVE, adjustHashScore(alpha), ALL_NODE, searchParams.rootMoveNumber);
+        transpositionTable.add(b, depth, NULL_MOVE, adjustHashScore(alpha, searchParams.ply), ALL_NODE, searchParams.rootMoveNumber);
     }
 
     return alpha;
@@ -739,21 +738,14 @@ int scoreMate(bool isInCheck, int depth, int alpha, int beta) {
 
 // Adjust a mate score to accurately reflect distance to mate from the
 // current position, if necessary.
-int adjustHashScore(int score) {
+int adjustHashScore(int score, int plies) {
     if (score >= MATE_SCORE - MAX_DEPTH)
-        return score + searchParams.ply;
+        return score + plies;
     if (score <= -MATE_SCORE + MAX_DEPTH)
-        return score - searchParams.ply;
+        return score - plies;
     return score;
 }
 
-int adjustHashScoreQsearch(int score, int plies) {
-    if (score >= MATE_SCORE - MAX_DEPTH)
-        return score + searchParams.ply + plies;
-    if (score <= -MATE_SCORE + MAX_DEPTH)
-        return score - searchParams.ply - plies;
-    return score;
-}
 
 /* Quiescence search, which completes all capture and check lines (thus reaching
  * a "quiet" position.)
@@ -861,7 +853,7 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
             if (j == 0)
                 searchStats.qsFirstFailHighs++;
 
-            transpositionTable.add(b, -plies, m, adjustHashScoreQsearch(beta, plies), CUT_NODE, searchParams.rootMoveNumber);
+            transpositionTable.add(b, -plies, m, adjustHashScore(beta, searchParams.ply + plies), CUT_NODE, searchParams.rootMoveNumber);
 
             return beta;
         }
@@ -892,7 +884,7 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
             if (j == 0)
                 searchStats.qsFirstFailHighs++;
 
-            transpositionTable.add(b, -plies, m, adjustHashScoreQsearch(beta, plies), CUT_NODE, searchParams.rootMoveNumber);
+            transpositionTable.add(b, -plies, m, adjustHashScore(beta, searchParams.ply + plies), CUT_NODE, searchParams.rootMoveNumber);
 
             return beta;
         }
@@ -925,7 +917,7 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
                 if (j == 0)
                     searchStats.qsFirstFailHighs++;
 
-                transpositionTable.add(b, -plies, m, adjustHashScoreQsearch(beta, plies), CUT_NODE, searchParams.rootMoveNumber);
+                transpositionTable.add(b, -plies, m, adjustHashScore(beta, searchParams.ply + plies), CUT_NODE, searchParams.rootMoveNumber);
 
                 return beta;
             }
