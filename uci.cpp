@@ -84,6 +84,8 @@ int main() {
             cout << "id author " << author << endl;
             cout << "option name Hash type spin default " << 16
                  << " min " << MIN_HASH_SIZE << " max " << MAX_HASH_SIZE << endl;
+            cout << "option name EvalCache type spin default " << 16
+                 << " min " << MIN_HASH_SIZE << " max " << MAX_HASH_SIZE << endl;
             cout << "uciok" << endl;
         }
         else if (input == "isready") cout << "readyok" << endl;
@@ -155,6 +157,14 @@ int main() {
                     if (MB > MAX_HASH_SIZE)
                         MB = MAX_HASH_SIZE;
                     setHashSize((uint64_t) MB);
+                }
+                else if (inputVector.at(2) == "EvalCache" || inputVector.at(2) == "evalcache") {
+                    int MB = stoi(inputVector.at(4));
+                    if (MB < MIN_HASH_SIZE)
+                        MB = MIN_HASH_SIZE;
+                    if (MB > MAX_HASH_SIZE)
+                        MB = MAX_HASH_SIZE;
+                    setEvalCacheSize((uint64_t) MB);
                 }
                 else
                     cout << "Invalid option." << endl;

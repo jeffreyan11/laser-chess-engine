@@ -1001,6 +1001,10 @@ void setHashSize(uint64_t MB) {
     transpositionTable.setSize(MB);
 }
 
+void setEvalCacheSize(uint64_t MB) {
+    evalCache.setSize(MB);
+}
+
 uint64_t getNodes() {
     return searchStats.nodes;
 }
