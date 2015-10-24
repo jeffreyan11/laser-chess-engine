@@ -504,8 +504,11 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     }
 
 
-    // Initialize move generator and sorter
-    MoveOrder moveSorter(&b, color, depth, isPVNode, isInCheck, &searchParams, hashed, pml);
+    // Create list of legal moves
+    MoveList legalMoves = isInCheck ? b.getPseudoLegalCheckEscapes(color, pml)
+                                    : b.getAllPseudoLegalMoves(color, pml);
+    // Initialize the module for move ordering
+    MoveOrder moveSorter(&b, color, depth, isPVNode, isInCheck, &searchParams, hashed, legalMoves);
     moveSorter.generateMoves();
 
     // Keeps track of the best move for storing into the TT
