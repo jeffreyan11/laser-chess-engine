@@ -374,13 +374,14 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     // other than -INFTY
     Move hashed = NULL_MOVE;
     int hashScore = -INFTY;
+    uint8_t nodeType = NO_NODE_INFO;
     searchStats.hashProbes++;
 
     HashEntry *entry = transpositionTable.get(b);
     if (entry != NULL) {
         searchStats.hashHits++;
         hashScore = entry->score;
-        uint8_t nodeType = entry->getNodeType();
+        nodeType = entry->getNodeType();
 
         // Adjust the hash score to mate distance from root if necessary
         if (hashScore >= MATE_SCORE - MAX_DEPTH)
@@ -434,6 +435,14 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
                                           : -b.evaluate(pml);
             evalCache.add(b, staticEval);
         }
+    }
+
+    // Use the TT score as a better "static" eval, if available.
+    if (hashScore != -INFTY) {
+        if ((nodeType == ALL_NODE && hashScore < staticEval)
+         || (nodeType == CUT_NODE && hashScore > staticEval)
+         || (nodeType == PV_NODE))
+            staticEval = hashScore;
     }
     
 
