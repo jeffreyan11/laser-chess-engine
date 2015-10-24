@@ -114,7 +114,6 @@ int quiescence(Board &b, int plies, int alpha, int beta);
 int checkQuiescence(Board &b, int plies, int alpha, int beta);
 
 // Search helpers
-int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta);
 int scoreMate(bool isInCheck, int depth);
 int adjustHashScore(int score, int plies);
 
@@ -365,25 +364,58 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     
     int prevAlpha = alpha;
     int color = b.getPlayerToMove();
+    // For PVS, the node is a PV node if beta - alpha != 1 (i.e. not a null window)
+    // We do not want to do most pruning techniques on PV nodes
+    bool isPVNode = (beta - alpha != 1);
 
 
     // Transposition table probe
     // If a cutoff or exact score hit occurred, probeTT will return a value
     // other than -INFTY
     Move hashed = NULL_MOVE;
+    int hashScore = -INFTY;
     searchStats.hashProbes++;
-    int hashScore = probeTT(b, hashed, depth, alpha, beta);
-    if (hashScore != -INFTY)
-        return hashScore;
+
+    HashEntry *entry = transpositionTable.get(b);
+    if (entry != NULL) {
+        searchStats.hashHits++;
+        hashScore = entry->score;
+        uint8_t nodeType = entry->getNodeType();
+
+        // Adjust the hash score to mate distance from root if necessary
+        if (hashScore >= MATE_SCORE - MAX_DEPTH)
+            hashScore -= searchParams.ply;
+        else if (hashScore <= -MATE_SCORE + MAX_DEPTH)
+            hashScore += searchParams.ply;
+
+        // Return hash score failing soft if hash depth >= current depth and:
+        //   The node is a hashed all node and score <= alpha
+        //   The node is a hashed cut node and score >= beta
+        //   The node is a hashed PV node and we are searching on a null window
+        //    (we do not return immediately on full PVS windows since this cuts
+        //     short the PV line)
+        if (entry->depth >= depth) {
+            if ((nodeType == ALL_NODE && hashScore <= alpha)
+             || (nodeType == CUT_NODE && hashScore >= beta)
+             || (nodeType == PV_NODE  && !isPVNode)) {
+                searchStats.hashScoreCuts++;
+                return hashScore;
+            }
+        }
+
+        // Otherwise, store the hash move for later use
+        hashed = entry->m;
+        // Don't use hash moves from too low of a depth
+        if ((entry->depth < 1 && depth >= 7)
+         || (isPVNode && entry->depth < depth - 3))
+            hashed = NULL_MOVE;
+    }
 
 
     // Keeps track of the PV to propagate up to root
     SearchPV line;
     // For move generation and eval
     PieceMoveList pml = b.getPieceMoveList(color);
-    // For PVS, the node is a PV node if beta - alpha > 1 (i.e. not a null window)
-    // We do not want to do most pruning techniques on PV nodes
-    bool isPVNode = (beta - alpha != 1);
     // Similarly, we do not want to prune if we are in check
     bool isInCheck = b.isInCheck(color);
     // A static evaluation, used to activate null move pruning and futility
@@ -921,59 +953,6 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta) {
 //------------------------------------------------------------------------------
 //-----------------------------Search Helpers-----------------------------------
 //------------------------------------------------------------------------------
-// See if a hash move exists.
-int probeTT(Board &b, Move &hashed, int depth, int alpha, int beta) {
-    // Only use the PV score in null window searches
-    bool isPVNode = (alpha != beta - 1);
-    HashEntry *entry = transpositionTable.get(b);
-    if (entry != NULL) {
-        searchStats.hashHits++;
-        // If the node is a predicted all node and score <= alpha, return alpha
-        // since score is an upper bound
-        // Vulnerable to Type-1 errors
-        int hashScore = entry->score;
-
-        // Adjust the hash score to mate distance from root if necessary
-        if (hashScore >= MATE_SCORE - MAX_DEPTH)
-            hashScore -= searchParams.ply;
-        else if (hashScore <= -MATE_SCORE + MAX_DEPTH)
-            hashScore += searchParams.ply;
-
-        uint8_t nodeType = entry->getNodeType();
-        if (nodeType == ALL_NODE) {
-            if (entry->depth >= depth && hashScore <= alpha) {
-                searchStats.hashScoreCuts++;
-                return alpha;
-            }
-        }
-        else {
-            hashed = entry->m;
-            // Don't use hash moves from too low of a depth
-            if ((entry->depth < 1 && depth >= 7)
-             || (isPVNode && entry->depth < depth - 3))
-                hashed = NULL_MOVE;
-
-            // Only used a hashed score if the search depth was at least
-            // the current depth
-            if (entry->depth >= depth) {
-                // At cut nodes if hash score >= beta return beta since hash
-                // score is a lower bound.
-                if (nodeType == CUT_NODE && hashScore >= beta) {
-                    searchStats.hashScoreCuts++;
-                    return beta;
-                }
-                // At PV nodes we can simply return the exact score
-                // Do this only at non-PV nodes: at PV nodes we want to ensure
-                // a full PV line is returned
-                else if (nodeType == PV_NODE && !isPVNode) {
-                    searchStats.hashScoreCuts++;
-                    return hashScore;
-                }
-            }
-        }
-    }
-    return -INFTY;
-}
 
 // Used to get a score when we have realized that we have no legal moves.
 int scoreMate(bool isInCheck, int depth) {
