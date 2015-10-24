@@ -167,6 +167,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     do {
         // Reset all search parameters (killers, plies, etc)
         searchParams.reset();
+        searchParams.rootDepth = rootDepth;
         // For recording the PV
         SearchPV pvLine;
         // Get the index of the best move
@@ -184,7 +185,10 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         string pvStr = retrievePV(&pvLine);
         
         // Output info using UCI protocol
-        cout << "info depth " << rootDepth << " score";
+        cout << "info depth " << rootDepth;
+        if (searchParams.selectiveDepth > rootDepth)
+            cout << " seldepth " << searchParams.selectiveDepth;
+        cout << " score";
 
         // Print score in mate or centipawns
         if (bestScore >= MATE_SCORE - MAX_DEPTH)
@@ -329,7 +333,12 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     // When the standard search is done, enter quiescence search.
     // Static board evaluation is done there.
     if (depth <= 0) {
+        // Update selective depth if necessary
+        if (searchParams.ply > searchParams.selectiveDepth)
+            searchParams.selectiveDepth = searchParams.ply;
+        // The PV starts at depth 0
         pvLine->pvLength = 0;
+        // Score the position using qsearch
         return quiescence(b, 0, alpha, beta);
     }
 
@@ -570,23 +579,34 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         }
 
 
+        // Check extensions
+        int extension = 0;
+        if (depth >= 5 && reduction == 0
+         && searchParams.extensions < 2 + searchParams.rootDepth / 4
+         && copy.isInCheck(color^1)
+         && (isCapture(m) || b.getSEEForMove(color, m) >= 0)) {
+            extension++;
+            searchParams.extensions++;
+        }
+
+
         // Null-window search, with re-search if applicable
         if (movesSearched != 0) {
             searchParams.ply++;
-            score = -PVS(copy, depth-1-reduction, -alpha-1, -alpha, &line);
+            score = -PVS(copy, depth-1-reduction+extension, -alpha-1, -alpha, &line);
             searchParams.ply--;
 
             // LMR re-search if the reduced search did not fail low
             if (reduction > 0 && score > alpha) {
                 searchParams.ply++;
-                score = -PVS(copy, depth-1, -alpha-1, -alpha, &line);
+                score = -PVS(copy, depth-1+extension, -alpha-1, -alpha, &line);
                 searchParams.ply--;
             }
 
             // Re-search for a scout window at PV nodes
             else if (alpha < score && score < beta) {
                 searchParams.ply++;
-                score = -PVS(copy, depth-1, -beta, -alpha, &line);
+                score = -PVS(copy, depth-1+extension, -beta, -alpha, &line);
                 searchParams.ply--;
             }
         }
@@ -594,13 +614,15 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // The first move is always searched at a normal depth
         else {
             searchParams.ply++;
-            score = -PVS(copy, depth-1, -beta, -alpha, &line);
+            score = -PVS(copy, depth-1+extension, -beta, -alpha, &line);
             searchParams.ply--;
         }
 
         // Stop condition to help break out as quickly as possible
         if (isStop)
             return INFTY;
+
+        searchParams.extensions -= extension;
         
         // Beta cutoff
         if (score >= beta) {

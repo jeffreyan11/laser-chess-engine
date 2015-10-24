@@ -22,8 +22,11 @@
 #include "common.h"
 
 struct SearchParameters {
+    int rootDepth;
     int ply;
     int nullMoveCount;
+    int extensions;
+    int selectiveDepth;
     ChessTime startTime;
     uint64_t timeLimit;
     Move killers[MAX_DEPTH][2];
@@ -38,6 +41,8 @@ struct SearchParameters {
     void reset() {
         ply = 0;
         nullMoveCount = 0;
+        extensions = 0;
+        selectiveDepth = 0;
         for (int i = 0; i < MAX_DEPTH; i++) {
             killers[i][0] = NULL_MOVE;
             killers[i][1] = NULL_MOVE;
