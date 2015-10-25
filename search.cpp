@@ -624,6 +624,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 
 
         // Check extensions
+        bool isCheckExtension = false;
         int extension = 0;
         if (depth >= 5 && reduction == 0
          && searchParams.extensions < 2 + searchParams.rootDepth / 4
@@ -631,6 +632,42 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
          && (isCapture(m) || b.getSEEForMove(color, m) >= 0)) {
             extension++;
             searchParams.extensions++;
+            isCheckExtension = true;
+        }
+
+
+        // Singular extensions
+        if (depth >= 6 && reduction == 0 && extension == 0
+         && !searchParams.lastSingular
+         && m == hashed && entry->depth >= 3*depth/4 - 2
+         && hashScore >= beta) {
+            bool isSingular = true;
+            // Do a reduced depth search with a lowered window for a fail low check
+            for (unsigned int i = 0; i < legalMoves.size(); i++) {
+                Board copy = b.staticCopy();
+                if (m == hashed)
+                    continue;
+                if (!copy.doPseudoLegalMove(m, color))
+                    continue;
+
+                int SEWindow = -alpha - 100 - 2 * depth;
+
+                searchParams.ply++;
+                score = -PVS(copy, depth - 4, SEWindow - 1, SEWindow, &line);
+                searchParams.ply--;
+
+                if (score >= SEWindow) {
+                    isSingular = false;
+                    break;
+                }
+            }
+
+            // If all moves other than the hash move failed low, we extend for
+            // the singular move
+            if (isSingular) {
+                extension++;
+                searchParams.lastSingular = true;
+            }
         }
 
 
@@ -666,7 +703,12 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         if (isStop)
             return INFTY;
 
-        searchParams.extensions -= extension;
+        // Reduce check extension counter
+        if (isCheckExtension)
+            searchParams.extensions -= extension;
+        // If the extension was a singular extension, reset the consecutive singular check
+        else if (extension)
+            searchParams.lastSingular = false;
         
         // Beta cutoff
         if (score >= beta) {

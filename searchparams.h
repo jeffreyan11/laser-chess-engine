@@ -27,6 +27,7 @@ struct SearchParameters {
     int nullMoveCount;
     int extensions;
     int selectiveDepth;
+    bool lastSingular;
     ChessTime startTime;
     uint64_t timeLimit;
     Move killers[MAX_DEPTH][2];
@@ -43,6 +44,7 @@ struct SearchParameters {
         nullMoveCount = 0;
         extensions = 0;
         selectiveDepth = 0;
+        lastSingular = false;
         for (int i = 0; i < MAX_DEPTH; i++) {
             killers[i][0] = NULL_MOVE;
             killers[i][1] = NULL_MOVE;
