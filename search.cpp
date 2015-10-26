@@ -638,9 +638,9 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 
         // Singular extensions
         if (depth >= 6 && reduction == 0 && extension == 0
-         && !searchParams.lastSingular
-         && m == hashed && entry->depth >= 3*depth/4 - 2
-         && hashScore >= beta) {
+         && !searchParams.lastSingular && m == hashed
+         && ((hashScore >= beta && entry->depth >= depth - 4)
+          || (isPVNode && nodeType == PV_NODE && entry->depth >= depth - 2))) {
             bool isSingular = true;
             // Do a reduced depth search with a lowered window for a fail low check
             for (unsigned int i = 0; i < legalMoves.size(); i++) {
@@ -650,10 +650,13 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
                 if (!copy.doPseudoLegalMove(m, color))
                     continue;
 
-                int SEWindow = -alpha - 100 - 2 * depth;
+                int SEWindow = isPVNode ? -hashScore - 150 - 3 * depth
+                                        : -alpha - 100 - 2 * depth;
+                int SEDepth = isPVNode ? 3 * depth / 4 - 2
+                                       : depth / 2 - 1;
 
                 searchParams.ply++;
-                score = -PVS(copy, depth - 4, SEWindow - 1, SEWindow, &line);
+                score = -PVS(copy, SEDepth, SEWindow - 1, SEWindow, &line);
                 searchParams.ply--;
 
                 if (score >= SEWindow) {
