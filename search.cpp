@@ -623,9 +623,9 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         }
 
 
+        int extension = 0;
         // Check extensions
         bool isCheckExtension = false;
-        int extension = 0;
         if (depth >= 5 && reduction == 0
          && searchParams.extensions < 2 + searchParams.rootDepth / 4
          && copy.isInCheck(color^1)
@@ -637,29 +637,40 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 
 
         // Singular extensions
+        // If one move appears to be much better than all others, extend the move
         if (depth >= 6 && reduction == 0 && extension == 0
-         && !searchParams.lastSingular && m == hashed
-         && ((hashScore >= beta && entry->depth >= depth - 4)
+         && searchParams.singularExtensions <= searchParams.rootDepth
+         && m == hashed
+         && abs(hashScore) < 2 * QUEEN_VALUE
+         && ((hashScore >= beta && (nodeType == CUT_NODE || nodeType == PV_NODE)
+                                && entry->depth >= depth - 4)
           || (isPVNode && nodeType == PV_NODE && entry->depth >= depth - 2))) {
+
             bool isSingular = true;
+
             // Do a reduced depth search with a lowered window for a fail low check
             for (unsigned int i = 0; i < legalMoves.size(); i++) {
+                Move seMove = legalMoves.get(i);
                 Board copy = b.staticCopy();
-                if (m == hashed)
+                // Search every move except the hash move
+                if (seMove == hashed)
                     continue;
-                if (!copy.doPseudoLegalMove(m, color))
+                if (!copy.doPseudoLegalMove(seMove, color))
                     continue;
 
-                int SEWindow = isPVNode ? -hashScore - 150 - 3 * depth
-                                        : -alpha - 100 - 2 * depth;
-                int SEDepth = isPVNode ? 3 * depth / 4 - 2
+                // The window is lowered more for PV nodes and for higher depths
+                int SEWindow = isPVNode ? hashScore - 80 - 3 * depth
+                                        : alpha - 20 - 2 * depth;
+                // Do a reduced search for fail-low confirmation
+                int SEDepth = isPVNode ? 3 * depth / 4 - 1
                                        : depth / 2 - 1;
 
                 searchParams.ply++;
-                score = -PVS(copy, SEDepth, SEWindow - 1, SEWindow, &line);
+                score = -PVS(copy, SEDepth, -SEWindow - 1, -SEWindow, &line);
                 searchParams.ply--;
 
-                if (score >= SEWindow) {
+                // If a move did not fail low, no singular extension
+                if (score > SEWindow) {
                     isSingular = false;
                     break;
                 }
@@ -669,7 +680,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             // the singular move
             if (isSingular) {
                 extension++;
-                searchParams.lastSingular = true;
+                searchParams.singularExtensions++;
             }
         }
 
@@ -711,7 +722,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             searchParams.extensions -= extension;
         // If the extension was a singular extension, reset the consecutive singular check
         else if (extension)
-            searchParams.lastSingular = false;
+            searchParams.singularExtensions--;
         
         // Beta cutoff
         if (score >= beta) {
