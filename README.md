@@ -9,6 +9,7 @@ A special thanks to the Chess Programming Wiki, which was consulted frequently f
 A few ideas and inspiration came from Stockfish (https://stockfishchess.org/):
 - Using SWAR for midgame/endgame evaluation
 - Razoring implementation
+- Singular extension implementation
 
 
 ### Engine Strength
@@ -24,8 +25,7 @@ Engines used for testing: Fridolin 2.00, Maverick 1.0, and Jellyfish 1.1. Thanks
 
 
 ### Engine Personality
-- Strong in complex tactical lines (even more so than most other engines at this level)
-- Strong in ultra-bullet, scales poorly with time
+- Overpushes pawns in quieter positions
 - Poor endgame play (there is little to no endgame code)
 
 
@@ -40,6 +40,7 @@ Engines used for testing: Fridolin 2.00, Maverick 1.0, and Jellyfish 1.1. Thanks
   - Futility pruning
   - Razoring
   - Move count based pruning (late move pruning)
+  - Check and singular extensions
 - Quiescence search with captures, queen promotions, and checks on the first three plies
 - Move ordering
   - Internal iterative deepening when a hash move is not available
@@ -52,6 +53,7 @@ The code and Makefile support gcc on Linux and MinGW on Windows for Intel Nehale
 
 
 ### Known issues:
+- Gives incorrect mate scores for long mates and stalls in mate positions occasionally
 - Hash errors on PV nodes cause strange moves and give illegal PVs, also causing feedPVToTT() to fail
 - tunemagic command leaks a large amount of memory
 - SEE, MVV/LVA scoring functions handle en passant as if no pawn was captured
