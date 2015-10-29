@@ -47,6 +47,7 @@ struct MoveOrder {
 
 	// Node is reducible if not PV node and not in check
 	bool nodeIsReducible();
+    bool doIID();
 
 	void generateMoves();
 	Move nextMove();
@@ -55,7 +56,6 @@ struct MoveOrder {
 private:
     void scoreCaptures(bool isIIDMove);
     void scoreQuiets();
-    bool doIID();
     void scoreIIDMove();
     void findQuietStart();
 };

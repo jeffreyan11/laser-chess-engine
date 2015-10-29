@@ -781,7 +781,15 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     }
     // Record all-nodes. No best move can be recorded.
     else if (alpha <= prevAlpha) {
-        transpositionTable.add(b, depth, NULL_MOVE, adjustHashScore(alpha, searchParams.ply), ALL_NODE, searchParams.rootMoveNumber);
+        // If we would have done IID, save the hash/IID move so we don't have to
+        // waste computation for it next time
+        if (!isPVNode && moveSorter.doIID())
+            transpositionTable.add(b, depth,
+                (hashed == NULL_MOVE) ? moveSorter.legalMoves.get(0) : hashed,
+                adjustHashScore(alpha, searchParams.ply), ALL_NODE, searchParams.rootMoveNumber);
+        // Otherwise, just store no best move as expected
+        else
+            transpositionTable.add(b, depth, NULL_MOVE, adjustHashScore(alpha, searchParams.ply), ALL_NODE, searchParams.rootMoveNumber);
     }
 
     return alpha;
