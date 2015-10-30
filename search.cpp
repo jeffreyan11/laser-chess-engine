@@ -331,7 +331,7 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth) {
 int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     // When the standard search is done, enter quiescence search.
     // Static board evaluation is done there.
-    if (depth <= 0) {
+    if (depth <= 0 || searchParams.ply >= MAX_DEPTH) {
         // Update selective depth if necessary
         if (searchParams.ply > searchParams.selectiveDepth)
             searchParams.selectiveDepth = searchParams.ply;
@@ -627,7 +627,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // Check extensions
         bool isCheckExtension = false;
         if (depth >= 5 && reduction == 0
-         && searchParams.extensions < 2 + searchParams.rootDepth / 4
+         && searchParams.extensions <= 2 + searchParams.rootDepth / 2
          && copy.isInCheck(color^1)
          && (isCapture(m) || b.getSEEForMove(color, m) >= 0)) {
             extension++;
