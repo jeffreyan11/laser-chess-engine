@@ -461,7 +461,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     // Do a qsearch just to confirm. If the qsearch fails high, a capture gained back
     // the material and trust its result since a quiet move probably can't gain
     // as much.
-    if (!isPVNode && !isInCheck
+    if (!isPVNode && !isInCheck && abs(alpha) < 2 * QUEEN_VALUE
      && depth <= 3 && staticEval <= alpha - RAZOR_MARGIN[depth]) {
         if (depth == 1)
             return quiescence(b, 0, alpha, beta);
