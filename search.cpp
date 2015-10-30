@@ -347,6 +347,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 
 
     // Mate distance pruning
+    /*
     int matingScore = MATE_SCORE - searchParams.ply;
     if (matingScore < beta) {
         beta = matingScore;
@@ -360,6 +361,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         if (beta <= matedScore)
             return beta;
     }
+    */
     
     
     int prevAlpha = alpha;
