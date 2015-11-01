@@ -661,10 +661,10 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
                     continue;
 
                 // The window is lowered more for PV nodes and for higher depths
-                int SEWindow = isPVNode ? hashScore - 80 - 3 * depth
-                                        : alpha - 20 - 2 * depth;
+                int SEWindow = isPVNode ? hashScore - 50 - 2 * depth
+                                        : alpha - 10 - depth;
                 // Do a reduced search for fail-low confirmation
-                int SEDepth = isPVNode ? 3 * depth / 4 - 1
+                int SEDepth = isPVNode ? 2 * depth / 3 - 1
                                        : depth / 2 - 1;
 
                 searchParams.ply++;
