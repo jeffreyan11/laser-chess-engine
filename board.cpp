@@ -1496,25 +1496,71 @@ int Board::evaluate(PieceMoveList &pml) {
                 int wKing = bitScanForward(pieces[WHITE][KINGS]);
                 int bKing = bitScanForward(pieces[BLACK][KINGS]);
                 int bPawn = bitScanForward(pieces[BLACK][PAWNS]);
-                return 3 * PAWN_VALUE_EG / 2 + endgamePieceValues[KINGS][wKing]
-                                             - endgamePieceValues[KINGS][bKing]
-                                             + endgamePieceValues[PAWNS][bPawn];
+                return -3 * PAWN_VALUE_EG / 2 + endgamePieceValues[KINGS][wKing]
+                                              - endgamePieceValues[KINGS][bKing]
+                                              + endgamePieceValues[PAWNS][bPawn];
             }
         }
 
         else if (numPieces == 2) {
-            // If each side has one minor piece, then draw
-            if ((pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS])
-             && (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]))
-                return 0;
-            // Two knights is a draw
-            if (count(pieces[WHITE][KNIGHTS]) == 2 || count(pieces[BLACK][KNIGHTS]) == 2)
-                return 0;
-            // Two bishops is a win
-            if (count(pieces[WHITE][BISHOPS]) == 2)
-                return scoreSimpleKnownWin(WHITE);
-            if (count(pieces[BLACK][BISHOPS]) == 2)
-                return scoreSimpleKnownWin(BLACK);
+            // If white has one piece, the other must be black's
+            if (numWPieces == 1) {
+                // If each side has one minor piece, then draw
+                if ((pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS])
+                 && (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]))
+                    return 0;
+                // If each side has a rook, then draw
+                if (pieces[WHITE][ROOKS] && pieces[BLACK][ROOKS])
+                    return 0;
+                // If each side has a queen, then draw
+                if (pieces[WHITE][QUEENS] && pieces[BLACK][QUEENS])
+                    return 0;
+            }
+            // Otherwise, one side has both pieces
+            else {
+                // Pawn + anything is a win
+                // TODO Not always true, also needs code simplification
+                if (pieces[WHITE][PAWNS]) {
+                    int value = KNOWN_WIN / 2;
+                    // White pieces
+                    for (int pieceID = 0; pieceID < 6; pieceID++) {
+                        uint64_t bitboard = pieces[0][pieceID];
+                        // Invert the board for white side
+                        bitboard = flipAcrossRanks(bitboard);
+                        while (bitboard) {
+                            int i = bitScanForward(bitboard);
+                            bitboard &= bitboard - 1;
+                            value += endgamePieceValues[pieceID][i];
+                        }
+                    }
+                    int bKing = bitScanForward(pieces[BLACK][KINGS]);
+                    value -= endgamePieceValues[KINGS][bKing];
+                    return value;
+                }
+                if (pieces[BLACK][PAWNS]) {
+                    int value = -KNOWN_WIN / 2;
+                    // Black pieces
+                    for (int pieceID = 0; pieceID < 6; pieceID++)  {
+                        uint64_t bitboard = pieces[1][pieceID];
+                        while (bitboard) {
+                            int i = bitScanForward(bitboard);
+                            bitboard &= bitboard - 1;
+                            value -= endgamePieceValues[pieceID][i];
+                        }
+                    }
+                    int wKing = bitScanForward(pieces[WHITE][KINGS]);
+                    value += endgamePieceValues[KINGS][wKing];
+                    return value;
+                }
+                // Two knights is a draw
+                if (count(pieces[WHITE][KNIGHTS]) == 2 || count(pieces[BLACK][KNIGHTS]) == 2)
+                    return 0;
+                // Two bishops is a win
+                if (count(pieces[WHITE][BISHOPS]) == 2)
+                    return scoreSimpleKnownWin(WHITE);
+                if (count(pieces[BLACK][BISHOPS]) == 2)
+                    return scoreSimpleKnownWin(BLACK);
+            }
         }
     }
 
