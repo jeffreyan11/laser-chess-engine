@@ -163,6 +163,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
     int bestScore, bestMoveIndex;
     int rootDepth = 1;
+    searchParams.selectiveDepth = 0;
     do {
         // Reset all search parameters (killers, plies, etc)
         searchParams.reset();

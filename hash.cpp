@@ -71,7 +71,7 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
             else
                 toReplace = &(node->slot2);
             // The node must be from a newer search space or be a
-            // higher depth. Each move forward in the search space is worth 4 depth.
+            // higher depth. Each move forward in the search space is worth 8 depth.
             if (score1 < 0 && score2 < 0)
                 toReplace = NULL;
 

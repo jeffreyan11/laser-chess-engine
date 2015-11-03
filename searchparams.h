@@ -43,7 +43,6 @@ struct SearchParameters {
         ply = 0;
         nullMoveCount = 0;
         extensions = 0;
-        selectiveDepth = 0;
         singularExtensions = 0;
         for (int i = 0; i < MAX_DEPTH; i++) {
             killers[i][0] = NULL_MOVE;
