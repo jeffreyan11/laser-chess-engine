@@ -23,8 +23,15 @@ const int SCORE_IID_MOVE = (1 << 20);
 const int SCORE_WINNING_CAPTURE = (1 << 18);
 const int SCORE_QUEEN_PROMO = (1 << 17);
 const int SCORE_EVEN_CAPTURE = (1 << 16);
-const int SCORE_LOSING_CAPTURE = 0;
+const int SCORE_LOSING_CAPTURE = -(1 << 30) - (1 << 28);
 const int SCORE_QUIET_MOVE = -(1 << 30);
+const int SCORE_LOSING_QUIET = -(1 << 30) - (1 << 29) - (1 << 28);
+
+// The depth at which we start using SEE on quiet moves. On at least this depth,
+// we place losing captures below non-losing quiets. Below this depth, we place
+// losing captures before all quiets.
+const int QUIET_SEE_DEPTH = 2;
+
 
 MoveOrder::MoveOrder(Board *_b, int _color, int _depth, bool _isPVNode, bool _isInCheck,
 	SearchParameters *_searchParams, Move _hashed, MoveList _legalMoves) {
@@ -106,28 +113,40 @@ void MoveOrder::scoreCaptures(bool isIIDMove) {
         // We want the best move first for PV nodes
         if (isPVNode) {
             int see = b->getSEEForMove(color, m);
+
             if (see > 0)
                 scores.add(SCORE_WINNING_CAPTURE + see);
             else if (see == 0)
                 scores.add(SCORE_EVEN_CAPTURE);
             else
-                scores.add(see);
+                // If we are doing SEE on quiets, score losing captures lower
+                scores.add(((depth >= QUIET_SEE_DEPTH) ? 0 : SCORE_LOSING_CAPTURE) + see);
         }
+
         // Otherwise, MVV/LVA for cheaper cutoffs might help
         else {
+            // Use exchange score to save an SEE if possible: if the SEE is
+            // winning for us on the first turn, then we can stand pat after
+            // our opponent's recapture
             int exchange = b->getExchangeScore(color, m);
+
             if (exchange > 0)
                 scores.add(SCORE_WINNING_CAPTURE + b->getMVVLVAScore(color, m));
+
             else if (exchange == 0)
                 scores.add(SCORE_EVEN_CAPTURE + b->getMVVLVAScore(color, m));
+
+            // If the initial capture is losing, we need to check whether the
+            // piece was hanging using SEE
             else {
                 int see = b->getSEEForMove(color, m);
+
                 if (see > 0)
                     scores.add(SCORE_WINNING_CAPTURE + b->getMVVLVAScore(color, m));
                 else if (see == 0)
                     scores.add(SCORE_EVEN_CAPTURE + b->getMVVLVAScore(color, m));
                 else
-                    scores.add(see);
+                    scores.add(((depth >= QUIET_SEE_DEPTH) ? 0 : SCORE_LOSING_CAPTURE) + see);
             }
         }
     }
@@ -136,18 +155,31 @@ void MoveOrder::scoreCaptures(bool isIIDMove) {
 void MoveOrder::scoreQuiets() {
     for (unsigned int i = quietStart; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
+
         // Score killers below even captures but above losing captures
         if (m == searchParams->killers[searchParams->ply][0])
             scores.add(SCORE_EVEN_CAPTURE - 1);
+
         // Order queen promotions somewhat high
         else if (getPromotion(m) == QUEENS)
             scores.add(SCORE_QUEEN_PROMO);
+
         // Sort all other quiet moves by history
         else {
             int startSq = getStartSq(m);
             int endSq = getEndSq(m);
             int pieceID = b->getPieceOnSquare(color, startSq);
-            scores.add(SCORE_QUIET_MOVE + searchParams->historyTable[color][pieceID][endSq]);
+
+            // Sort by SEE at higher depths
+            if (depth >= QUIET_SEE_DEPTH) {
+                int see = b->getSEEForMove(color, m);
+                scores.add(((see < 0) ? SCORE_LOSING_QUIET : SCORE_QUIET_MOVE)
+                    + searchParams->historyTable[color][pieceID][endSq]);
+            }
+            else {
+                scores.add(SCORE_QUIET_MOVE
+                    + searchParams->historyTable[color][pieceID][endSq]);
+            }
         }
     }
 }
@@ -166,13 +198,16 @@ void MoveOrder::scoreIIDMove() {
 
     int iidDepth = isPVNode ? depth-2 : (depth - 5) / 2;
     int bestIndex = getBestMoveForSort(b, legalMoves, iidDepth);
+
     // Mate check to prevent crashes
     if (bestIndex == -1) {
         legalMoves.clear();
         mgStage = STAGE_QUIETS;
     }
+
     else {
         scores.add(SCORE_IID_MOVE);
+
         if (isCapture(legalMoves.get(bestIndex))) {
             legalMoves.swap(0, bestIndex);
         }
@@ -196,6 +231,7 @@ Move MoveOrder::nextMove() {
         index++;
         return legalMoves.get(0);
     }
+
     // If we are the end of our generated list, generate more.
     // If there are no moves left, return NULL_MOVE to indicate so.
     while (index >= scores.size()) {
@@ -215,6 +251,7 @@ Move MoveOrder::nextMove() {
             bestScore = scores.get(bestIndex);
         }
     }
+
     // Swap the best move to the correct position
     legalMoves.swap(bestIndex, index);
     scores.swap(bestIndex, index);
