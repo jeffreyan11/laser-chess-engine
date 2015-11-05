@@ -106,9 +106,12 @@ static SearchStatistics searchStats;
 // Used to break out of the search thread if the stop command is given
 extern bool isStop;
 
+unsigned int multiPV;
+
+
 // Search functions
 unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
-    int &bestScore, SearchPV *pvLine);
+    int &bestScore, int startMove, SearchPV *pvLine);
 int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine);
 int quiescence(Board &b, int plies, int alpha, int beta);
 int checkQuiescence(Board &b, int plies, int alpha, int beta);
@@ -165,58 +168,71 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     int rootDepth = 1;
     searchParams.selectiveDepth = 0;
     do {
-        // Reset all search parameters (killers, plies, etc)
-        searchParams.reset();
-        searchParams.rootDepth = rootDepth;
         // For recording the PV
         SearchPV pvLine;
-        // Get the index of the best move
-        bestMoveIndex = getBestMoveAtDepth(b, legalMoves, rootDepth, bestScore, &pvLine);
-        if (bestMoveIndex == -1)
-            break;
-        // Swap the PV to be searched first next iteration
-        legalMoves.swap(0, bestMoveIndex);
-        *bestMove = legalMoves.get(0);
-        
 
-        // Calculate values for printing
-        timeSoFar = getTimeElapsed(searchParams.startTime);
-        uint64_t nps = (uint64_t) ((double) searchStats.nodes / timeSoFar);
-        string pvStr = retrievePV(&pvLine);
-        
-        // Output info using UCI protocol
-        cout << "info depth " << rootDepth;
-        if (searchParams.selectiveDepth > rootDepth)
-            cout << " seldepth " << searchParams.selectiveDepth;
-        cout << " score";
+        // Handle multi PV (if multiPV = 1 then the loop is only run once)
+        for (unsigned int multiPVNum = 1; multiPVNum <= multiPV
+                && multiPVNum <= legalMoves.size(); multiPVNum++) {
+            // Reset all search parameters (killers, plies, etc)
+            searchParams.reset();
+            searchParams.rootDepth = rootDepth;
+            // Get the index of the best move
+            bestMoveIndex = getBestMoveAtDepth(b, legalMoves, rootDepth,
+                bestScore, multiPVNum-1, &pvLine);
+            timeSoFar = getTimeElapsed(searchParams.startTime);
 
-        // Print score in mate or centipawns
-        if (bestScore >= MATE_SCORE - MAX_DEPTH)
-            // If it is our mate, it takes plies / 2 + 1 moves to mate since
-            // our move ends the game
-            cout << " mate " << (MATE_SCORE - bestScore) / 2 + 1;
-        else if (bestScore <= -MATE_SCORE + MAX_DEPTH)
-            // If we are being mated, it takes plies / 2 moves since our
-            // opponent's move ends the game
-            cout << " mate " << (-MATE_SCORE - bestScore) / 2;
-        else
-            // Scale score into centipawns using our internal pawn value
-            cout << " cp " << bestScore * 100 / PAWN_VALUE_EG;
+            if (bestMoveIndex == -1)
+                break;
+            // Swap the PV to be searched first next iteration
+            legalMoves.swap(multiPVNum-1, bestMoveIndex);
+            *bestMove = legalMoves.get(0);
+            
 
-        cout << " time " << (int)(timeSoFar * ONE_SECOND)
-             << " nodes " << searchStats.nodes << " nps " << nps
-             << " hashfull " << 1000 * transpositionTable.keys / transpositionTable.getSize()
-             << " pv " << pvStr << endl;
+            // Calculate values for printing
+            uint64_t nps = (uint64_t) ((double) searchStats.nodes / timeSoFar);
+            string pvStr = retrievePV(&pvLine);
+            
+            // Output info using UCI protocol
+            cout << "info depth " << rootDepth;
+            if (searchParams.selectiveDepth > rootDepth)
+                cout << " seldepth " << searchParams.selectiveDepth;
+            if (multiPV > 1)
+                cout << " multipv " << multiPVNum;
+            cout << " score";
+
+            // Print score in mate or centipawns
+            if (bestScore >= MATE_SCORE - MAX_DEPTH)
+                // If it is our mate, it takes plies / 2 + 1 moves to mate since
+                // our move ends the game
+                cout << " mate " << (MATE_SCORE - bestScore) / 2 + 1;
+            else if (bestScore <= -MATE_SCORE + MAX_DEPTH)
+                // If we are being mated, it takes plies / 2 moves since our
+                // opponent's move ends the game
+                cout << " mate " << (-MATE_SCORE - bestScore) / 2;
+            else
+                // Scale score into centipawns using our internal pawn value
+                cout << " cp " << bestScore * 100 / PAWN_VALUE_EG;
+
+            cout << " time " << (int)(timeSoFar * ONE_SECOND)
+                 << " nodes " << searchStats.nodes << " nps " << nps
+                 << " hashfull " << 1000 * transpositionTable.keys
+                                         / transpositionTable.getSize()
+                 << " pv " << pvStr << endl;
+
+            // Aging for the history heuristic table
+            searchParams.ageHistoryTable(rootDepth, false);
+        }
 
         //if (!isStop)
         //    feedPVToTT(b, &pvLine, bestScore);
-        // Aging for the history heuristic table
-        searchParams.ageHistoryTable(rootDepth, false);
         rootDepth++;
     }
-    while ((mode == TIME  && (timeSoFar * ONE_SECOND < value * TIME_FACTOR)
+
+    while (!isStop
+        && ((mode == TIME  && (timeSoFar * ONE_SECOND < value * TIME_FACTOR)
                           && (rootDepth <= MAX_DEPTH))
-        || (mode == DEPTH && rootDepth <= value));
+         || (mode == DEPTH && rootDepth <= value)));
     
     printStatistics();
     // Aging for the history heuristic table
@@ -232,7 +248,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
  * @brief Returns the index of the best move in legalMoves.
  */
 unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
-        int &bestScore, SearchPV *pvLine) {
+        int &bestScore, int startMove, SearchPV *pvLine) {
     SearchPV line;
     int color = b->getPlayerToMove();
     unsigned int tempMove = -1;
@@ -240,7 +256,7 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int alpha = -MATE_SCORE;
     int beta = MATE_SCORE;
     
-    for (unsigned int i = 0; i < legalMoves.size(); i++) {
+    for (unsigned int i = startMove; i < legalMoves.size(); i++) {
         // Output current move info to the GUI. Only do so if 5 seconds of
         // search have elapsed to avoid clutter
         double timeSoFar = getTimeElapsed(searchParams.startTime);
@@ -1077,6 +1093,11 @@ void setEvalCacheSize(uint64_t MB) {
 uint64_t getNodes() {
     return searchStats.nodes;
 }
+
+void setMultiPV(unsigned int n) {
+    multiPV = n;
+}
+
 
 // Retrieves the next move with the highest score, starting from index using a
 // partial selection sort. This way, the entire list does not have to be sorted

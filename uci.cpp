@@ -62,6 +62,8 @@ int main() {
     initZobristTable();
     initInBetweenTable();
 
+    setMultiPV(1);
+
     string input;
     vector<string> inputVector;
     string name = "Laser";
@@ -86,6 +88,8 @@ int main() {
                  << " min " << MIN_HASH_SIZE << " max " << MAX_HASH_SIZE << endl;
             cout << "option name EvalCache type spin default " << 16
                  << " min " << MIN_HASH_SIZE << " max " << MAX_HASH_SIZE << endl;
+            cout << "option name MultiPV type spin default " << 1
+                 << " min " << 1 << " max " << 4 << endl;
             cout << "uciok" << endl;
         }
         else if (input == "isready") cout << "readyok" << endl;
@@ -165,6 +169,14 @@ int main() {
                     if (MB > MAX_HASH_SIZE)
                         MB = MAX_HASH_SIZE;
                     setEvalCacheSize((uint64_t) MB);
+                }
+                else if (inputVector.at(2) == "MultiPV" || inputVector.at(2) == "multipv") {
+                    int multiPV = stoi(inputVector.at(4));
+                    if (multiPV < 1)
+                        multiPV = 1;
+                    if (multiPV > 4)
+                        multiPV = 4;
+                    setMultiPV((unsigned int) multiPV);
                 }
                 else
                     cout << "Invalid option." << endl;

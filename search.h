@@ -27,6 +27,7 @@ void clearTables();
 void setHashSize(uint64_t MB);
 void setEvalCacheSize(uint64_t MB);
 uint64_t getNodes();
+void setMultiPV(unsigned int n);
 
 int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth);
 
