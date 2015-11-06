@@ -1764,10 +1764,9 @@ int Board::evaluate(PieceMoveList &pml) {
  */
 int Board::getPseudoMobility(int color, PieceMoveList &pml, uint64_t oppKingSqs, int egFactor) {
     // Scale factor for pieces attacking opposing king
-    const int KING_THREAT_MOBILITY = 5;
-    const int KING_THREAT_MULTIPLIER[4] = {2, 3, 3, 4};
-    const int KING_THREAT_PIECE_BONUS[16] = {0, 0, 1, 6, 10, 14, 17, 19,
-                                            20, 20, 20, 20, 20, 20, 20, 20};
+    const int KING_THREAT_MULTIPLIER[4] = {12, 15, 17, 24};
+    const int KING_THREAT_PIECE_BONUS[16] = {0, 0, 0, 35, 60, 80, 90, 95,
+                                            100, 100, 100, 100, 100, 100, 100, 100};
     // Bitboard of center 4 squares: d4, e4, d5, e5
     const uint64_t CENTER_SQS = 0x0000001818000000;
     // Value of each square in the extended center in cp
@@ -1814,14 +1813,14 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, uint64_t oppKingSqs,
         int kingSqCount = count(legal & oppKingSqs);
         if (kingSqCount) {
             kingAttackPieces++;
-            kingSafety += KING_THREAT_MULTIPLIER[pieceIndex] * KING_THREAT_MOBILITY * kingSqCount;
+            kingSafety += KING_THREAT_MULTIPLIER[pieceIndex] * kingSqCount;
         }
     }
 
     // If at least two pieces are involved in the attack, we consider it "serious"
     if (kingAttackPieces >= 2) {
         // Give a decent bonus for each additional piece participating
-        kingSafety += KING_THREAT_MOBILITY * KING_THREAT_PIECE_BONUS[kingAttackPieces];
+        kingSafety += KING_THREAT_PIECE_BONUS[kingAttackPieces];
         result += kingSafety * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
     }
 
