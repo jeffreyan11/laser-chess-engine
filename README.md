@@ -7,6 +7,7 @@ After being compiled, the executable can be run with any UCI chess GUI, such as 
 
 A special thanks to the Chess Programming Wiki, which was consulted frequently for this project: https://chessprogramming.wikispaces.com.
 A few ideas and inspiration came from Stockfish (https://stockfishchess.org/):
+- "bench" command
 - Using SWAR for midgame/endgame evaluation
 - Razoring implementation
 - Singular extension implementation
@@ -17,15 +18,16 @@ We are now on the CCRL 40/4!
 
 Laser 0.1: 179-180th, 2377 elo as of Oct 11, 2015.
 
-Most recent estimated ELO for Laser 0.2 beta is 2580 +/- 40 on the CCRL 40/4 list (tested 17/10/15) and 2597 +/- 80 (tested 18/10/15) on the CCRL 40/40 list (95% CI), tested using cutechess-cli (http://cutechess.com/).
+Most recent estimated ELO for Laser 0.3 beta is 2657 +/- 40 on the CCRL 40/4 list (tested 06/11/15) and 2597 +/- 80 (tested 18/10/15) on the CCRL 40/40 list (95% CI), tested using cutechess-cli (http://cutechess.com/).
 
-The code was compiled with MinGW, GCC version 4.9.2. All engines used their default hash sizes and one thread on an i5-4690 using the appropriate equivalent time controls.
+The code was compiled with MinGW, GCC version 4.9.2. All engines used their default settings and one thread on an i5-4690 using the equivalent time controls.
 
 Engines used for testing: Fridolin 2.00, Maverick 1.0, and Jellyfish 1.1. Thanks to the respective authors for making their engines available for public use.
 
 
 ### Engine Personality
-- Overpushes pawns in quieter positions
+- Materialistic
+- Overextends pawns, especially in quiet positions
 - Poor endgame play (there is little to no endgame code)
 
 
