@@ -1755,7 +1755,7 @@ int Board::evaluate(PieceMoveList &pml) {
     value += BACKWARD_PENALTY * count(bBackwards);
 
     
-    return materialValue + decEval(value, egFactor) + mobilityValue;
+    return (16 * materialValue + 17 * decEval(value, egFactor) + 18 * mobilityValue) / 16;
 }
 
 /* Scores the board for a player based on estimates of mobility
