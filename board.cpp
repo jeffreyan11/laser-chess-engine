@@ -1609,15 +1609,17 @@ int Board::evaluate(PieceMoveList &pml) {
     // the endgame)
     if (getPlayerToMove() == WHITE) {
         PieceMoveList pmlOther = getPieceMoveList(BLACK);
-        mobilityValue += getPseudoMobility(WHITE, pml, bksq, egFactor);
-        mobilityValue -= getPseudoMobility(BLACK, pmlOther, wksq, egFactor);
+        mobilityValue += getPseudoMobility(WHITE, pml, egFactor);
+        mobilityValue -= getPseudoMobility(BLACK, pmlOther, egFactor);
+        mobilityValue += getKingSafety(pml, pmlOther, wksq, bksq, egFactor);
     }
     else {
         PieceMoveList pmlOther = getPieceMoveList(WHITE);
-        mobilityValue += getPseudoMobility(WHITE, pmlOther, bksq, egFactor);
-        mobilityValue -= getPseudoMobility(BLACK, pml, wksq, egFactor);
+        mobilityValue += getPseudoMobility(WHITE, pmlOther, egFactor);
+        mobilityValue -= getPseudoMobility(BLACK, pml, egFactor);
+        mobilityValue += getKingSafety(pmlOther, pml, wksq, bksq, egFactor);
     }
-    
+
 
     //------------------------------Minor Pieces--------------------------------
     // Bishops tend to be worse if too many pawns are on squares of their color
@@ -1762,11 +1764,7 @@ int Board::evaluate(PieceMoveList &pml) {
  * This function also provides a bonus for having mobile pieces near the
  * opponent's king, and deals with control of center.
  */
-int Board::getPseudoMobility(int color, PieceMoveList &pml, uint64_t oppKingSqs, int egFactor) {
-    // Scale factor for pieces attacking opposing king
-    const int KING_THREAT_MULTIPLIER[4] = {12, 15, 17, 24};
-    const int KING_THREAT_PIECE_BONUS[16] = {0, 0, 0, 35, 60, 80, 90, 95,
-                                            100, 100, 100, 100, 100, 100, 100, 100};
+int Board::getPseudoMobility(int color, PieceMoveList &pml, int egFactor) {
     // Bitboard of center 4 squares: d4, e4, d5, e5
     const uint64_t CENTER_SQS = 0x0000001818000000;
     // Value of each square in the extended center in cp
@@ -1778,10 +1776,6 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, uint64_t oppKingSqs,
     int result = 0;
     // Holds the center control score
     int centerControl = 0;
-    // Holds the king safety score
-    int kingSafety = 0;
-    // Counts the number of pieces participating in the king attack
-    int kingAttackPieces = 0;
     // All squares the side to move could possibly move to
     uint64_t openSqs = ~allPieces[color];
     // Extended center: center, plus c4, f4, c5, f5, and d6/d3, e6/e3
@@ -1808,25 +1802,72 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, uint64_t oppKingSqs,
         // Get center control score
         centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
         centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
-
-        // Get king safety score
-        int kingSqCount = count(legal & oppKingSqs);
-        if (kingSqCount) {
-            kingAttackPieces++;
-            kingSafety += KING_THREAT_MULTIPLIER[pieceIndex] * kingSqCount;
-        }
-    }
-
-    // If at least two pieces are involved in the attack, we consider it "serious"
-    if (kingAttackPieces >= 2) {
-        // Give a decent bonus for each additional piece participating
-        kingSafety += KING_THREAT_PIECE_BONUS[kingAttackPieces];
-        result += kingSafety * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
     }
 
     result += centerControl * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
 
     return result;
+}
+
+// King safety, based on the number of opponent pieces near the king
+int Board::getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
+    uint64_t wKingSqs, uint64_t bKingSqs, int egFactor) {
+    // Scale factor for pieces attacking opposing king
+    const int KING_THREAT_MULTIPLIER[4] = {12, 15, 17, 24};
+    const int KING_THREAT_PIECE_BONUS[16] = {0, 0, 0, 35, 60, 80, 90, 95,
+                                            100, 100, 100, 100, 100, 100, 100, 100};
+
+    int result = 0;
+    // Holds the king safety score
+    int wKingSafety = 0, bKingSafety = 0;
+    // Counts the number of pieces participating in the king attack
+    int wKingAttackPieces = 0, bKingAttackPieces = 0;
+
+    // Iterate over piece move information to extract all mobility-related scores
+    for (unsigned int i = 0; i < pmlWhite.size(); i++) {
+        PieceMoveInfo pmi = pmlWhite.get(i);
+
+        int pieceIndex = pmi.pieceID - 1;
+        // Get all potential legal moves
+        uint64_t legal = pmi.legal;
+
+        // Get king safety score
+        int kingSqCount = count(legal & bKingSqs);
+        if (kingSqCount) {
+            wKingAttackPieces++;
+            wKingSafety += KING_THREAT_MULTIPLIER[pieceIndex] * kingSqCount;
+        }
+    }
+
+    // Iterate over piece move information to extract all mobility-related scores
+    for (unsigned int i = 0; i < pmlBlack.size(); i++) {
+        PieceMoveInfo pmi = pmlBlack.get(i);
+
+        int pieceIndex = pmi.pieceID - 1;
+        // Get all potential legal moves
+        uint64_t legal = pmi.legal;
+
+        // Get king safety score
+        int kingSqCount = count(legal & wKingSqs);
+        if (kingSqCount) {
+            bKingAttackPieces++;
+            bKingSafety += KING_THREAT_MULTIPLIER[pieceIndex] * kingSqCount;
+        }
+    }
+
+    // If at least two pieces are involved in the attack, we consider it "serious"
+    if (wKingAttackPieces >= 2) {
+        // Give a decent bonus for each additional piece participating
+        result += KING_THREAT_PIECE_BONUS[wKingAttackPieces];
+        result += wKingSafety;
+    }
+    if (bKingAttackPieces >= 2) {
+        // Give a decent bonus for each additional piece participating
+        result -= KING_THREAT_PIECE_BONUS[bKingAttackPieces];
+        result -= bKingSafety;
+    }
+
+    return result * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
 }
 
 // Check special endgame cases: where help mate is possible (detecting this

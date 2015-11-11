@@ -145,7 +145,9 @@ public:
 
     // Evaluation
     int evaluate(PieceMoveList &pml);
-    int getPseudoMobility(int color, PieceMoveList &pml, uint64_t oppKingSqs, int egFactor);
+    int getPseudoMobility(int color, PieceMoveList &pml, int egFactor);
+    int getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
+        uint64_t wKingSqs, uint64_t bKingSqs, int egFactor);
     int checkEndgameCases();
     int scoreSimpleKnownWin(int winningColor);
     int getEGFactor();
