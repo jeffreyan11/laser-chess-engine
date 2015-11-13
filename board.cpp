@@ -1604,6 +1604,28 @@ int Board::evaluate(PieceMoveList &pml) {
     value += KNIGHT_PAWN_BONUS * count(pieces[WHITE][KNIGHTS]) * count(pieces[BLACK][PAWNS]);
     value -= KNIGHT_PAWN_BONUS * count(pieces[BLACK][KNIGHTS]) * count(pieces[WHITE][PAWNS]);
 
+
+    //-------------------------------Rooks--------------------------------------
+    uint64_t wRooksOpen = pieces[WHITE][ROOKS];
+    while (wRooksOpen) {
+        int rookSq = bitScanForward(wRooksOpen);
+        wRooksOpen &= wRooksOpen - 1;
+        int file = rookSq & 7;
+
+        if (!(FILES[file] & (pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS])))
+            value += ROOK_OPEN_FILE_BONUS;
+    }
+
+    uint64_t bRooksOpen = pieces[BLACK][ROOKS];
+    while (bRooksOpen) {
+        int rookSq = bitScanForward(bRooksOpen);
+        bRooksOpen &= bRooksOpen - 1;
+        int file = rookSq & 7;
+
+        if (!(FILES[file] & (pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS])))
+            value -= ROOK_OPEN_FILE_BONUS;
+    }
+
     
     //----------------------------Pawn structure--------------------------------
     // Passed pawns

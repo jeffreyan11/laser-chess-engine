@@ -73,6 +73,9 @@ const Score BISHOP_PAWN_COLOR_PENALTY = encEval(2, 2);
 // A bonus for each opponent pawn on the board, given once for each knight
 const Score KNIGHT_PAWN_BONUS = encEval(1, 1);
 
+// Rooks
+const Score ROOK_OPEN_FILE_BONUS = encEval(5, 5);
+
 // Pawn structure
 // Passed pawns
 const Score PASSER_BONUS[8] = {encEval(0, 0), encEval(10, 30), encEval(10, 35), encEval(15, 45),
