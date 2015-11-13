@@ -103,6 +103,9 @@ static EvalHash evalCache(16);
 static SearchParameters searchParams;
 static SearchStatistics searchStats;
 
+// Accessible from uci.cpp
+TwoFoldStack twoFoldPositions;
+
 // Used to break out of the search thread if the stop command is given
 extern bool isStop;
 
@@ -256,6 +259,9 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int alpha = -MATE_SCORE;
     int beta = MATE_SCORE;
     
+    // Push current position to two fold stack
+    twoFoldPositions.push(b->getZobristKey());
+
     for (unsigned int i = startMove; i < legalMoves.size(); i++) {
         // Output current move info to the GUI. Only do so if 5 seconds of
         // search have elapsed to avoid clutter
@@ -287,7 +293,7 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
         // Stop condition. If stopping, return search results from incomplete
         // search, if any.
         if (isStop)
-            return tempMove;
+            break;
 
         if (score > alpha) {
             alpha = score;
@@ -296,6 +302,8 @@ unsigned int getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
             changePV(legalMoves.get(i), pvLine, &line);
         }
     }
+
+    twoFoldPositions.pop();
 
     return tempMove;
 }
@@ -308,6 +316,9 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth) {
     int score = -MATE_SCORE;
     int alpha = -MATE_SCORE;
     int beta = MATE_SCORE;
+
+    // Push current position to two fold stack
+    twoFoldPositions.push(b->getZobristKey());
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Board copy = b->staticCopy();
@@ -336,6 +347,8 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth) {
         }
     }
 
+    twoFoldPositions.pop();
+
     return tempMove;
 }
 
@@ -360,6 +373,8 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 
     // Draw check
     if (b.isDraw())
+        return 0;
+    if (twoFoldPositions.find(b.getZobristKey()))
         return 0;
 
 
@@ -654,6 +669,8 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             isCheckExtension = true;
         }
 
+        // Record two-fold stack since we may do a search for singular extensions
+        twoFoldPositions.push(b.getZobristKey());
 
         // Singular extensions
         // If one move appears to be much better than all others, extend the move
@@ -731,6 +748,9 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             score = -PVS(copy, depth-1+extension, -beta, -alpha, &line);
             searchParams.ply--;
         }
+
+        // Pop the position in case we return early from this search
+        twoFoldPositions.pop();
 
         // Stop condition to help break out as quickly as possible
         if (isStop)

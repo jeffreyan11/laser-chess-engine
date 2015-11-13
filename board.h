@@ -72,7 +72,6 @@ const uint64_t BLACK_KSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[61] | INDEX_TO_BIT[62]
 const uint64_t BLACK_QSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[57] | INDEX_TO_BIT[58] | INDEX_TO_BIT[59];
 
 const uint16_t NO_EP_POSSIBLE = 0x8;
-const uint64_t RESET_TWOFOLD = 0x8080808080808080;
 
 struct PieceMoveInfo {
     int pieceID;
@@ -186,9 +185,6 @@ private:
     // 12 bitboards, one for each of the 12 piece types, indexed by the
     // constants given in common.h
     uint64_t pieces[2][6];
-    // Keep track of the last 4 half-plys for two-fold repetition
-    // Lowest bits are most recent
-    uint64_t twoFoldSqs;
     // Zobrist key for hash table use
     uint64_t zobristKey;
     // 8 if cannot en passant, if en passant is possible, the file of the

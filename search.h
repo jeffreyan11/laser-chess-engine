@@ -22,6 +22,49 @@
 #include "board.h"
 #include "common.h"
 
+/*
+ * This struct is a simple stack implementation that stores Zobrist keys to
+ * check for two-fold repetition.
+ * Each time before a move is made, the board position is pushed onto the stack.
+ * When the move is unmade or we return back up the search tree, the positions
+ * are popped off the stack one by one.
+ * The find() function loops through to look for a two-fold repetition. We must
+ * only find the first repeat from the top of the stack since we have the
+ * condition that the branch terminates immediately returning 0 if two-fold
+ * repetition occurs in that branch.
+ */
+struct TwoFoldStack {
+public:
+    uint64_t keys[128];
+    unsigned int length;
+
+    TwoFoldStack() {
+        length = 0;
+    }
+    ~TwoFoldStack() {}
+
+    unsigned int size() { return length; }
+
+    void push(uint64_t pos) {
+        keys[length] = pos;
+        length++;
+    }
+
+    void pop() { length--; }
+
+    void clear() {
+        length = 0;
+    }
+
+    bool find(uint64_t pos) {
+        for (unsigned int i = length; i > 0; i--) {
+            if (keys[i-1] == pos)
+                return true;
+        }
+        return false;
+    }
+};
+
 void getBestMove(Board *b, int mode, int value, Move *bestMove);
 void clearTables();
 void setHashSize(uint64_t MB);

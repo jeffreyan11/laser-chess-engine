@@ -272,7 +272,6 @@ Board::Board() {
     pieces[BLACK][QUEENS] = 0x0800000000000000; // black queens
     pieces[BLACK][KINGS] = 0x1000000000000000; // black kings
 
-    twoFoldSqs = RESET_TWOFOLD;
     zobristKey = startPosZobristKey;
     epCaptureFile = NO_EP_POSSIBLE;
     playerToMove = WHITE;
@@ -301,7 +300,6 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
     for (int i = 0; i < 6; i++)
         allPieces[BLACK] |= pieces[BLACK][i];
 
-    twoFoldSqs = RESET_TWOFOLD;
     epCaptureFile = _epCaptureFile;
     playerToMove = _playerToMove;
     moveNumber = _moveNumber;
@@ -332,7 +330,6 @@ Board::Board(Board *b) {
         pieces[1][i] = b->pieces[1][i];
     }
 
-    twoFoldSqs = b->twoFoldSqs;
     zobristKey = b->zobristKey;
     epCaptureFile = b->epCaptureFile;
     playerToMove = b->playerToMove;
@@ -368,14 +365,6 @@ void Board::doMove(Move m, int color) {
     zobristKey ^= zobristTable[769 + castlingRights];
     zobristKey ^= zobristTable[785 + epCaptureFile];
 
-    // Record current board position for two-fold repetition
-    if (isCapture(m) || pieceID == PAWNS || isCastle(m)) {
-        twoFoldSqs = RESET_TWOFOLD;
-    }
-    else {
-        twoFoldSqs <<= 16;
-        twoFoldSqs |= (startSq << 8) | endSq;
-    }
 
     if (isPromotion(m)) {
         int promotionType = getPromotion(m);
@@ -1403,31 +1392,6 @@ bool Board::isStalemate(int sideToMove) {
 
 bool Board::isDraw() {
     if (fiftyMoveCounter >= 100) return true;
-
-    // If the highest bit is set, this is a flag telling us the two-fold repetition
-    // counter was reset too recently
-    if ((twoFoldSqs >> 63) == 0) {
-        uint8_t *pTwoFoldSqs = (uint8_t*) (&twoFoldSqs);
-        
-        /* Check for a loop in moves. For example:
-         * =====most recent=====
-         * 0 b2 (white end sq)
-         * 1 a1 (white start sq)
-         * 2 a8 (black end sq)
-         * 3 b7 (black start sq)
-         * 4 a1 (white end sq)
-         * 5 b2 (white start sq)
-         * 6 b7 (black end sq)
-         * 7 a8 (black start sq)
-         * =====least recent=====
-         */
-        if ((pTwoFoldSqs[0] == pTwoFoldSqs[5])
-         && (pTwoFoldSqs[1] == pTwoFoldSqs[4])
-         && (pTwoFoldSqs[2] == pTwoFoldSqs[7])
-         && (pTwoFoldSqs[3] == pTwoFoldSqs[6])) {
-            return true;
-        }
-    }
 
     if (isInsufficientMaterial())
         return true;
