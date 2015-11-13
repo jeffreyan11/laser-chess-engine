@@ -1852,20 +1852,12 @@ int Board::checkEndgameCases() {
 
     if (numPieces == 1) {
         if (pieces[WHITE][PAWNS]) {
-            int wKing = bitScanForward(pieces[WHITE][KINGS]);
-            int bKing = bitScanForward(pieces[BLACK][KINGS]);
             int wPawn = bitScanForward(flipAcrossRanks(pieces[WHITE][PAWNS]));
-            return 3 * PAWN_VALUE_EG / 2 + endgamePieceValues[KINGS][wKing]
-                                         - endgamePieceValues[KINGS][bKing]
-                                         + endgamePieceValues[PAWNS][wPawn];
+            return 3 * PAWN_VALUE_EG / 2 + endgamePieceValues[PAWNS][wPawn];
         }
         if (pieces[BLACK][PAWNS]) {
-            int wKing = bitScanForward(pieces[WHITE][KINGS]);
-            int bKing = bitScanForward(pieces[BLACK][KINGS]);
             int bPawn = bitScanForward(pieces[BLACK][PAWNS]);
-            return -3 * PAWN_VALUE_EG / 2 + endgamePieceValues[KINGS][wKing]
-                                          - endgamePieceValues[KINGS][bKing]
-                                          + endgamePieceValues[PAWNS][bPawn];
+            return -3 * PAWN_VALUE_EG / 2 - endgamePieceValues[PAWNS][bPawn];
         }
     }
 
