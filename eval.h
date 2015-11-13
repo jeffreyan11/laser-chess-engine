@@ -74,7 +74,7 @@ const Score BISHOP_PAWN_COLOR_PENALTY = encEval(2, 2);
 const Score KNIGHT_PAWN_BONUS = encEval(1, 1);
 
 // Rooks
-const Score ROOK_OPEN_FILE_BONUS = encEval(5, 5);
+const Score ROOK_OPEN_FILE_BONUS = encEval(8, 8);
 
 // Pawn structure
 // Passed pawns

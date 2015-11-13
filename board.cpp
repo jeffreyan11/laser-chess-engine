@@ -1606,6 +1606,7 @@ int Board::evaluate(PieceMoveList &pml) {
 
 
     //-------------------------------Rooks--------------------------------------
+    // Bonus for having rooks on open files
     uint64_t wRooksOpen = pieces[WHITE][ROOKS];
     while (wRooksOpen) {
         int rookSq = bitScanForward(wRooksOpen);
