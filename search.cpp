@@ -669,11 +669,22 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             isCheckExtension = true;
         }
 
+        // Extension for transition into pawn-only endgame
+        if (depth >= 3 && reduction == 0) {
+            uint64_t nonPawns = b.getNonPawnMaterial(color^1);
+            if (INDEX_TO_BIT[getEndSq(m)] == nonPawns) {
+                extension += 1;
+                if (!b.getNonPawnMaterial(color))
+                    extension += 2;
+            }
+        }
+
         // Record two-fold stack since we may do a search for singular extensions
         twoFoldPositions.push(b.getZobristKey());
 
         // Singular extensions
         // If one move appears to be much better than all others, extend the move
+        bool isSingularExtension = false;
         if (depth >= 6 && reduction == 0 && extension == 0
          && searchParams.singularExtensions <= searchParams.rootDepth
          && m == hashed
@@ -717,6 +728,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             if (isSingular) {
                 extension++;
                 searchParams.singularExtensions++;
+                isSingularExtension = true;
             }
         }
 
@@ -760,7 +772,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         if (isCheckExtension)
             searchParams.extensions -= extension;
         // If the extension was a singular extension, reset the consecutive singular check
-        else if (extension)
+        else if (isSingularExtension)
             searchParams.singularExtensions--;
         
         // Beta cutoff
