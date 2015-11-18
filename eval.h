@@ -72,6 +72,9 @@ const Score OPEN_PENALTY = encEval(3, 0);
 const Score BISHOP_PAWN_COLOR_PENALTY = encEval(2, 2);
 // A bonus for each opponent pawn on the board, given once for each knight
 const Score KNIGHT_PAWN_BONUS = encEval(1, 1);
+// A bonus for strong outpost knights
+const Score KNIGHT_OUTPOST_BONUS = encEval(8, 1);
+const Score OUTPOST_PAWN_DEF_BONUS = encEval(3, 1);
 
 // Rooks
 const Score ROOK_OPEN_FILE_BONUS = encEval(8, 8);

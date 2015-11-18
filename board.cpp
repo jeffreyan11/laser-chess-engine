@@ -1585,6 +1585,24 @@ int Board::evaluate(PieceMoveList &pml) {
     }
 
 
+    // Current pawn attacks
+    // Used for outposts and backwards pawns
+    uint64_t wPawnAtt = getWPawnLeftCaptures(pieces[WHITE][PAWNS])
+                      | getWPawnRightCaptures(pieces[WHITE][PAWNS]);
+    uint64_t bPawnAtt = getBPawnLeftCaptures(pieces[BLACK][PAWNS])
+                      | getBPawnRightCaptures(pieces[BLACK][PAWNS]);
+    // Get all squares attackable by pawns in the future
+    // Used for outposts and backwards pawns
+    uint64_t wPawnFrontSpan = pieces[WHITE][PAWNS] << 8;
+    uint64_t bPawnFrontSpan = pieces[BLACK][PAWNS] >> 8;
+    for (int i = 0; i < 5; i++) {
+        wPawnFrontSpan |= wPawnFrontSpan << 8;
+        bPawnFrontSpan |= bPawnFrontSpan >> 8;
+    }
+    uint64_t wPawnStopAtt = ((wPawnFrontSpan >> 1) & NOTH) | ((wPawnFrontSpan << 1) & NOTA);
+    uint64_t bPawnStopAtt = ((bPawnFrontSpan >> 1) & NOTH) | ((bPawnFrontSpan << 1) & NOTA);
+
+
     //------------------------------Minor Pieces--------------------------------
     // Bishops tend to be worse if too many pawns are on squares of their color
     if (pieces[WHITE][BISHOPS] & LIGHT) {
@@ -1603,6 +1621,20 @@ int Board::evaluate(PieceMoveList &pml) {
     // Knights do better when the opponent has many pawns
     value += KNIGHT_PAWN_BONUS * count(pieces[WHITE][KNIGHTS]) * count(pieces[BLACK][PAWNS]);
     value -= KNIGHT_PAWN_BONUS * count(pieces[BLACK][KNIGHTS]) * count(pieces[WHITE][PAWNS]);
+
+    // Knight outposts: knights that cannot be attacked by opposing pawns
+    const uint64_t RANKS_456 = RANKS[3] | RANKS[4] | RANKS[5];
+    const uint64_t RANKS_543 = RANKS[4] | RANKS[3] | RANKS[2];
+    const uint64_t FILES_CDEF = FILES[2] | FILES[3] | FILES[4] | FILES[5];
+    if (uint64_t wOutpost = pieces[WHITE][KNIGHTS] & ~bPawnStopAtt & RANKS_456 & FILES_CDEF) {
+        value += KNIGHT_OUTPOST_BONUS * count(wOutpost);
+        // An additional bonus if the outpost knight is defended by a pawn
+        value += OUTPOST_PAWN_DEF_BONUS * count(wOutpost & wPawnAtt);
+    }
+    if (uint64_t bOutpost = pieces[BLACK][KNIGHTS] & ~wPawnStopAtt & RANKS_543 & FILES_CDEF) {
+        value -= KNIGHT_OUTPOST_BONUS * count(bOutpost);
+        value -= OUTPOST_PAWN_DEF_BONUS * count(bOutpost & bPawnAtt);
+    }
 
 
     //-------------------------------Rooks--------------------------------------
@@ -1718,19 +1750,6 @@ int Board::evaluate(PieceMoveList &pml) {
     }
 
     // Backward pawns
-    uint64_t wPawnAtt = getWPawnLeftCaptures(pieces[WHITE][PAWNS])
-                      | getWPawnRightCaptures(pieces[WHITE][PAWNS]);
-    uint64_t bPawnAtt = getBPawnLeftCaptures(pieces[BLACK][PAWNS])
-                      | getBPawnRightCaptures(pieces[BLACK][PAWNS]);
-    uint64_t wPawnFrontSpan = pieces[WHITE][PAWNS] << 8;
-    uint64_t bPawnFrontSpan = pieces[BLACK][PAWNS] >> 8;
-    for (int i = 0; i < 5; i++) {
-        wPawnFrontSpan |= wPawnFrontSpan << 8;
-        bPawnFrontSpan |= bPawnFrontSpan >> 8;
-    }
-    uint64_t wPawnStopAtt = ((wPawnFrontSpan >> 1) & NOTH) | ((wPawnFrontSpan << 1) & NOTA);
-    uint64_t bPawnStopAtt = ((bPawnFrontSpan >> 1) & NOTH) | ((bPawnFrontSpan << 1) & NOTA);
-
     uint64_t wBadStopSqs = ~wPawnStopAtt & bPawnAtt;
     uint64_t bBadStopSqs = ~bPawnStopAtt & wPawnAtt;
     for (int i = 0; i < 6; i++) {
