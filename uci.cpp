@@ -99,6 +99,7 @@ int main() {
         else if (input.substr(0, 8) == "position") setPosition(input, inputVector, board);
         else if (input.substr(0, 2) == "go" && isStop) {
             int mode = DEPTH, value = 1;
+            vector<string>::iterator it;
             
             if (input.find("movetime") != string::npos && inputVector.size() > 2) {
                 mode = TIME;
@@ -106,7 +107,9 @@ int main() {
             }
             else if (input.find("depth") != string::npos && inputVector.size() > 2) {
                 mode = DEPTH;
-                value = min(MAX_DEPTH, stoi(inputVector.at(2)));
+                it = find(inputVector.begin(), inputVector.end(), "depth");
+                it++;
+                value = min(MAX_DEPTH, stoi(*it));
             }
             else if (input.find("infinite") != string::npos) {
                 mode = DEPTH;
@@ -115,7 +118,6 @@ int main() {
             else if (input.find("wtime") != string::npos) {
                 mode = TIME;
                 int color = board.getPlayerToMove();
-                vector<string>::iterator it;
 
                 it = find(inputVector.begin(), inputVector.end(),
                         (color == WHITE) ? "wtime" : "btime");
