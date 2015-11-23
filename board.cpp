@@ -1498,6 +1498,12 @@ int Board::evaluate(PieceMoveList &pml) {
     valueEg -= PAWN_SCALING_EG[whitePawnCount];
     valueMg += PAWN_SCALING_MG[blackPawnCount];
     valueEg += PAWN_SCALING_EG[blackPawnCount];
+
+    // With queens on the board pawns are a target in the endgame
+    if (pieces[WHITE][QUEENS])
+        valueEg += 2 * count(pieces[BLACK][PAWNS]);
+    if (pieces[BLACK][QUEENS])
+        valueEg -= 2 * count(pieces[WHITE][PAWNS]);
     
     
     int materialValue = (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES;
