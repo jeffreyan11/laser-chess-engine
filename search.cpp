@@ -67,6 +67,18 @@ struct SearchPV {
     }
 };
 
+struct EasyMove {
+    Move prevBest;
+    Move streakBest;
+    int pvStreak;
+
+    void reset() {
+        prevBest = NULL_MOVE;
+        streakBest = NULL_MOVE;
+        pvStreak = 0;
+    }
+};
+
 // Futility pruning margins indexed by depth. If static eval is at least this
 // amount below alpha, we skip quiet moves for this position.
 const int FUTILITY_MARGIN[5] = {0,
@@ -102,6 +114,7 @@ static Hash transpositionTable(16);
 static EvalHash evalCache(16);
 static SearchParameters searchParams;
 static SearchStatistics searchStats;
+static EasyMove easyMoveInfo;
 
 // Accessible from uci.cpp
 TwoFoldStack twoFoldPositions;
@@ -164,12 +177,15 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     // Special case if there is only one legal move: use less search time,
     // only to get a rough PV/score
     if (legalMoves.size() == 1 && mode == TIME) {
-        searchParams.timeLimit = min(searchParams.timeLimit / 8, ONE_SECOND);
+        searchParams.timeLimit = min(searchParams.timeLimit / 16, ONE_SECOND);
     }
 
     int bestScore, bestMoveIndex;
     int rootDepth = 1;
     searchParams.selectiveDepth = 0;
+    Move prevBest = NULL_MOVE;
+    int pvStreak = 0;
+
     do {
         // For recording the PV
         SearchPV pvLine;
@@ -227,6 +243,39 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
             searchParams.ageHistoryTable(rootDepth, false);
         }
 
+        if (multiPV == 1 && pvLine.pvLength >= 3) {
+            if (pvLine.pv[2] == easyMoveInfo.streakBest) {
+                easyMoveInfo.pvStreak++;
+            }
+            else {
+                easyMoveInfo.streakBest = pvLine.pv[2];
+                easyMoveInfo.pvStreak = 1;
+            }
+        }
+
+        if (*bestMove == prevBest) {
+            pvStreak++;
+        }
+        else {
+            prevBest = *bestMove;
+            pvStreak = 1;
+        }
+
+        if (mode == TIME && multiPV == 1
+         && timeSoFar * ONE_SECOND > value / 16
+         && timeSoFar * ONE_SECOND < value / 2) {
+            if ((*bestMove == easyMoveInfo.prevBest && pvStreak >= 6)
+                || pvStreak >= 9) {
+                int secondBestScore;
+                getBestMoveAtDepth(b, legalMoves, rootDepth-5,
+                    secondBestScore, 1, &pvLine);
+                if (secondBestScore < bestScore - 150)
+                    break;
+                else
+                    pvStreak = -10;
+            }
+        }
+
         //if (!isStop)
         //    feedPVToTT(b, &pvLine, bestScore);
         rootDepth++;
@@ -236,6 +285,12 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         && ((mode == TIME  && (timeSoFar * ONE_SECOND < value * TIME_FACTOR)
                           && (rootDepth <= MAX_DEPTH))
          || (mode == DEPTH && rootDepth <= value)));
+
+    if (easyMoveInfo.pvStreak >= 7) {
+        easyMoveInfo.prevBest = easyMoveInfo.streakBest;
+    }
+    else
+        easyMoveInfo.reset();
     
     printStatistics();
     // Aging for the history heuristic table
