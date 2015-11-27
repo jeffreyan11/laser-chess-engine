@@ -715,7 +715,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         int extension = 0;
         // Check extensions
         bool isCheckExtension = false;
-        if (depth >= 5 && reduction == 0
+        if (depth >= 2 && reduction == 0
          && searchParams.extensions <= 2 + searchParams.rootDepth / 2
          && copy.isInCheck(color^1)
          && (isCapture(m) || b.getSEEForMove(color, m) >= 0)) {
