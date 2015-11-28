@@ -227,6 +227,11 @@ int main() {
             cerr << "Time: " << (int)(time * ONE_SECOND) << endl;
             cerr << "Nodes/second: " << (uint64_t)(totalNodes / time) << endl;
         }
+        else if (input == "eval") {
+            int color = board.getPlayerToMove();
+            PieceMoveList pml = board.getPieceMoveList(color);
+            cerr << "Static evaluation: " << board.evaluate(pml) << " cp" << endl;
+        }
         else if (input.substr(0, 9) == "tunemagic" && inputVector.size() == 3) {
             int iters = stoi(inputVector.at(1));
             uint64_t seed = stoull(inputVector.at(2));

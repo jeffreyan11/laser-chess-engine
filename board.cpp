@@ -1642,6 +1642,18 @@ int Board::evaluate(PieceMoveList &pml) {
         value -= OUTPOST_PAWN_DEF_BONUS * count(bOutpost & bPawnAtt);
     }
 
+    // Special case: Nc3 blocking c2-c4 in closed openings (pawn on d4, no pawn on e4)
+    if ((pieces[WHITE][KNIGHTS] & 0x40000)
+     && (pieces[WHITE][PAWNS] & 0x400)
+     && (pieces[WHITE][PAWNS] & 0x8000000)
+    && !(pieces[WHITE][PAWNS] & 0x10000000))
+        value -= KNIGHT_C3_CLOSED_PENALTY;
+    if ((pieces[BLACK][KNIGHTS] & 0x40000000000)
+     && (pieces[BLACK][PAWNS] & 0x4000000000000)
+     && (pieces[BLACK][PAWNS] & 0x800000000)
+    && !(pieces[BLACK][PAWNS] & 0x1000000000))
+        value += KNIGHT_C3_CLOSED_PENALTY;
+
 
     //-------------------------------Rooks--------------------------------------
     // Bonus for having rooks on open files
@@ -1663,6 +1675,23 @@ int Board::evaluate(PieceMoveList &pml) {
 
         if (!(FILES[file] & (pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS])))
             value -= ROOK_OPEN_FILE_BONUS;
+    }
+
+
+    //------------------------------Queens--------------------------------------
+    // If the queen is too far out, apply a penalty based on how much the
+    // opponent has developed - this is generally bad because the opponent can
+    // gain tempi while developing minor pieces
+    if (pieces[WHITE][QUEENS]
+     && (pieces[WHITE][QUEENS] & ~(RANKS[0] | RANKS[1] | RANKS[2]))
+     && count(allPieces[BLACK] & RANKS[7]) >= 5)
+        value -= QUEEN_EARLY_PENALTY * count(
+            (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & RANKS[7]);
+    if (pieces[BLACK][QUEENS]
+     && (pieces[BLACK][QUEENS] & ~(RANKS[7] | RANKS[6] | RANKS[5]))
+     && count(allPieces[WHITE] & RANKS[0]) >= 5) {
+        value += QUEEN_EARLY_PENALTY * count(
+            (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & RANKS[0]);
     }
 
     

@@ -75,9 +75,15 @@ const Score KNIGHT_PAWN_BONUS = encEval(1, 1);
 // A bonus for strong outpost knights
 const Score KNIGHT_OUTPOST_BONUS = encEval(8, 1);
 const Score OUTPOST_PAWN_DEF_BONUS = encEval(3, 1);
+// A penalty for Nc3 blocking c2-c4 in closed openings
+const Score KNIGHT_C3_CLOSED_PENALTY = encEval(15, 0);
 
 // Rooks
 const Score ROOK_OPEN_FILE_BONUS = encEval(8, 8);
+
+// Queens
+// Penalty for bringing the queen out too early
+const Score QUEEN_EARLY_PENALTY = encEval(5, 0);
 
 // Pawn structure
 // Passed pawns
