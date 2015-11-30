@@ -53,10 +53,14 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
     else { // Decide whether to replace the entry
         // A more recent update to the same position should always be chosen
         if (node->slot1.zobristKey == (uint32_t) (b.getZobristKey() >> 32)) {
+            if (node->slot1.getAge() != age)
+                keys++;
             node->slot1.clearEntry();
             node->slot1.setEntry(b, depth, m, score, nodeType, age);
         }
         else if (node->slot2.zobristKey == (uint32_t) (b.getZobristKey() >> 32)) {
+            if (node->slot2.getAge() != age)
+                keys++;
             node->slot2.clearEntry();
             node->slot2.setEntry(b, depth, m, score, nodeType, age);
         }
@@ -64,18 +68,20 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
         // depth entry with the new entry if the new entry's depth is higher
         else {
             HashEntry *toReplace = NULL;
-            int score1 = 8*(age - node->slot1.getAge()) + depth - node->slot1.depth;
-            int score2 = 8*(age - node->slot2.getAge()) + depth - node->slot2.depth;
+            int score1 = 128*((int) (age - node->slot1.getAge())) + depth - node->slot1.depth;
+            int score2 = 128*((int) (age - node->slot2.getAge())) + depth - node->slot2.depth;
             if (score1 >= score2)
                 toReplace = &(node->slot1);
             else
                 toReplace = &(node->slot2);
             // The node must be from a newer search space or be a
-            // higher depth. Each move forward in the search space is worth 8 depth.
+            // higher depth if from the same search space.
             if (score1 < 0 && score2 < 0)
                 toReplace = NULL;
 
             if (toReplace != NULL) {
+                if (toReplace->getAge() != age)
+                    keys++;
                 toReplace->clearEntry();
                 toReplace->setEntry(b, depth, m, score, nodeType, age);
             }
@@ -103,8 +109,8 @@ void Hash::addPV(Board &b, int depth, Move m, int score, uint8_t age) {
     // depth entry with the new entry if the new entry's depth is higher
     else {
         HashEntry *toReplace = NULL;
-        int score1 = 8*(age - node->slot1.getAge()) + depth - node->slot1.depth;
-        int score2 = 8*(age - node->slot2.getAge()) + depth - node->slot2.depth;
+        int score1 = 128*((int) (age - node->slot1.getAge())) + depth - node->slot1.depth;
+        int score2 = 128*((int) (age - node->slot2.getAge())) + depth - node->slot2.depth;
         if (score1 >= score2)
             toReplace = &(node->slot1);
         else

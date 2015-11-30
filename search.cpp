@@ -295,6 +295,9 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     printStatistics();
     // Aging for the history heuristic table
     searchParams.ageHistoryTable(rootDepth, true);
+
+    // Reset the hashfull counter
+    transpositionTable.keys = 0;
     
     // Output best move to UCI interface
     isStop = true;
