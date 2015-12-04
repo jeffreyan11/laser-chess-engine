@@ -207,9 +207,10 @@ private:
 
     void addPawnMovesToList(MoveList &quiets, int color);
     void addPawnCapturesToList(MoveList &captures, int color, uint64_t otherPieces, bool includePromotions);
-    void addMovesToList(MoveList &moves, int stSq, uint64_t allEndSqs,
-        bool isCapture, uint64_t otherPieces = 0);
-    void addPromotionsToList(MoveList &moves, int stSq, int endSq, bool isCapture);
+    template <bool isCapture> void addMovesToList(MoveList &moves, int stSq,
+        uint64_t allEndSqs, uint64_t otherPieces = 0);
+    template <bool isCapture> void addPromotionsToList(MoveList &moves,
+        int stSq, int endSq);
     void addCastlesToList(MoveList &moves, int color);
 
     // Move generation

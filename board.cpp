@@ -693,14 +693,14 @@ MoveList Board::getPseudoLegalQuiets(int color, PieceMoveList &pml) {
 
     for (unsigned int i = 0; i < pml.size(); i++) {
         PieceMoveInfo pmi = pml.get(i);
-        addMovesToList(quiets, pmi.startSq, pmi.legal, false);
+        addMovesToList<false>(quiets, pmi.startSq, pmi.legal);
     }
 
     addPawnMovesToList(quiets, color);
 
     int stsqK = bitScanForward(pieces[color][KINGS]);
     uint64_t kingSqs = getKingSquares(stsqK);
-    addMovesToList(quiets, stsqK, kingSqs, false);
+    addMovesToList<false>(quiets, stsqK, kingSqs);
 
     return quiets;
 }
@@ -722,13 +722,13 @@ MoveList Board::getPseudoLegalCaptures(int color, PieceMoveList &pml, bool inclu
 
     int kingStSq = bitScanForward(pieces[color][KINGS]);
     uint64_t kingSqs = getKingSquares(kingStSq);
-    addMovesToList(captures, kingStSq, kingSqs, true, otherPieces);
+    addMovesToList<true>(captures, kingStSq, kingSqs, otherPieces);
 
     addPawnCapturesToList(captures, color, otherPieces, includePromotions);
 
     for (unsigned int i = 0; i < pml.size(); i++) {
         PieceMoveInfo pmi = pml.get(i);
-        addMovesToList(captures, pmi.startSq, pmi.legal, true, otherPieces);
+        addMovesToList<true>(captures, pmi.startSq, pmi.legal, otherPieces);
     }
 
     return captures;
@@ -883,7 +883,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
         if (!(xrays & potentialXRay))
             nSq &= nAttackMap;
 
-        addMovesToList(checks, stsq, nSq, false);
+        addMovesToList<false>(checks, stsq, nSq);
     }
 
     uint64_t occ = getOccupancy();
@@ -897,7 +897,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
         if (!(xrays & potentialXRay))
             bSq &= bAttackMap;
 
-        addMovesToList(checks, stsq, bSq, false);
+        addMovesToList<false>(checks, stsq, bSq);
     }
 
     uint64_t rooks = pieces[color][ROOKS];
@@ -910,7 +910,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
         if (!(xrays & potentialXRay))
             rSq &= rAttackMap;
 
-        addMovesToList(checks, stsq, rSq, false);
+        addMovesToList<false>(checks, stsq, rSq);
     }
 
     uint64_t queens = pieces[color][QUEENS];
@@ -920,7 +920,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
         queens &= queens-1;
         uint64_t qSq = getQueenSquares(stsq, occ) & qAttackMap;
 
-        addMovesToList(checks, stsq, qSq, false);
+        addMovesToList<false>(checks, stsq, qSq);
     }
 
     return checks;
@@ -943,8 +943,8 @@ MoveList Board::getPseudoLegalCheckEscapes(int color, PieceMoveList &pml) {
     if (count(otherPieces) >= 2) {
         uint64_t kingSqs = getKingSquares(kingSq);
 
-        addMovesToList(captures, kingSq, kingSqs, true, allPieces[color^1]);
-        addMovesToList(captures, kingSq, kingSqs, false);
+        addMovesToList<true>(captures, kingSq, kingSqs, allPieces[color^1]);
+        addMovesToList<false>(captures, kingSq, kingSqs);
         return captures;
     }
 
@@ -966,14 +966,14 @@ MoveList Board::getPseudoLegalCheckEscapes(int color, PieceMoveList &pml) {
 
     for (unsigned int i = 0; i < pml.size(); i++) {
         PieceMoveInfo pmi = pml.get(i);
-        addMovesToList(blocks, pmi.startSq, pmi.legal & xraySqs, false);
-        addMovesToList(captures, pmi.startSq, pmi.legal, true, otherPieces);
+        addMovesToList<false>(blocks, pmi.startSq, pmi.legal & xraySqs);
+        addMovesToList<true>(captures, pmi.startSq, pmi.legal, otherPieces);
     }
 
     int stsqK = bitScanForward(pieces[color][KINGS]);
     uint64_t kingSqs = getKingSquares(stsqK);
-    addMovesToList(blocks, stsqK, kingSqs, false);
-    addMovesToList(captures, stsqK, kingSqs, true, allPieces[color^1]);
+    addMovesToList<false>(blocks, stsqK, kingSqs);
+    addMovesToList<true>(captures, stsqK, kingSqs, allPieces[color^1]);
 
     // Put captures before blocking moves
     for (unsigned int i = 0; i < blocks.size(); i++) {
@@ -1004,7 +1004,7 @@ void Board::addPawnMovesToList(MoveList &quiets, int color) {
         promotions &= promotions - 1;
         int stSq = endSq + sqDiff;
 
-        addPromotionsToList(quiets, stSq, endSq, false);
+        addPromotionsToList<false>(quiets, stSq, endSq);
     }
     while (pLegal) {
         int endsq = bitScanForward(pLegal);
@@ -1043,7 +1043,7 @@ void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherP
             int endSq = bitScanForward(promotions);
             promotions &= promotions-1;
 
-            addPromotionsToList(captures, endSq+leftDiff, endSq, true);
+            addPromotionsToList<true>(captures, endSq+leftDiff, endSq);
         }
     }
     while (legal) {
@@ -1065,7 +1065,7 @@ void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherP
             int endSq = bitScanForward(promotions);
             promotions &= promotions-1;
 
-            addPromotionsToList(captures, endSq+rightDiff, endSq, true);
+            addPromotionsToList<true>(captures, endSq+rightDiff, endSq);
         }
     }
     while (legal) {
@@ -1098,31 +1098,24 @@ void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherP
 
 // Helper function that processes a bitboard of legal moves and adds all
 // moves into a list.
+template <bool isCapture>
 void Board::addMovesToList(MoveList &moves, int stSq, uint64_t allEndSqs,
-    bool isCapture, uint64_t otherPieces) {
+    uint64_t otherPieces) {
 
     uint64_t intersect = (isCapture) ? otherPieces : ~getOccupancy();
     uint64_t legal = allEndSqs & intersect;
-    if (isCapture) {
-        while (legal) {
-            int endSq = bitScanForward(legal);
-            legal &= legal-1;
-            Move m = encodeMove(stSq, endSq);
+    while (legal) {
+        int endSq = bitScanForward(legal);
+        legal &= legal-1;
+        Move m = encodeMove(stSq, endSq);
+        if (isCapture)
             m = setCapture(m, true);
-            moves.add(m);
-        }
-    }
-    else {
-        while (legal) {
-            int endSq = bitScanForward(legal);
-            legal &= legal-1;
-            Move m = encodeMove(stSq, endSq);
-            moves.add(m);
-        }
+        moves.add(m);
     }
 }
 
-void Board::addPromotionsToList(MoveList &moves, int stSq, int endSq, bool isCapture) {
+template <bool isCapture>
+void Board::addPromotionsToList(MoveList &moves, int stSq, int endSq) {
     Move mk = encodeMove(stSq, endSq);
     mk = setFlags(mk, MOVE_PROMO_N);
     Move mb = encodeMove(stSq, endSq);
