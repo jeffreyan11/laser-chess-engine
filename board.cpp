@@ -840,8 +840,8 @@ MoveList Board::getPseudoLegalChecks(int color) {
     */
 
     uint64_t pAttackMap = (color == WHITE) 
-            ? getBPawnLeftCaptures(INDEX_TO_BIT[kingSq]) | getBPawnRightCaptures(INDEX_TO_BIT[kingSq])
-            : getWPawnLeftCaptures(INDEX_TO_BIT[kingSq]) | getWPawnRightCaptures(INDEX_TO_BIT[kingSq]);
+            ? getBPawnCaptures(INDEX_TO_BIT[kingSq])
+            : getWPawnCaptures(INDEX_TO_BIT[kingSq]);
     uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
     int sqDiff = (color == WHITE) ? -8 : 8;
 
@@ -1232,8 +1232,8 @@ uint64_t Board::getXRayPieceMap(int color, int sq, int blockerColor,
 uint64_t Board::getAttackMap(int color, int sq) {
     uint64_t occ = getOccupancy();
     uint64_t pawnCap = (color == WHITE)
-                     ? getBPawnLeftCaptures(INDEX_TO_BIT[sq]) | getBPawnRightCaptures(INDEX_TO_BIT[sq])
-                     : getWPawnLeftCaptures(INDEX_TO_BIT[sq]) | getWPawnRightCaptures(INDEX_TO_BIT[sq]);
+                     ? getBPawnCaptures(INDEX_TO_BIT[sq])
+                     : getWPawnCaptures(INDEX_TO_BIT[sq]);
     return (pawnCap & pieces[color][PAWNS])
          | (getKnightSquares(sq) & pieces[color][KNIGHTS])
          | (getBishopSquares(sq, occ) & (pieces[color][BISHOPS] | pieces[color][QUEENS]))
@@ -1266,8 +1266,8 @@ bool Board::isCheckMove(Move m, int color) {
     switch (getPieceOnSquare(color, getStartSq(m))) {
         case PAWNS:
             attackMap = (color == WHITE) 
-                ? getBPawnLeftCaptures(INDEX_TO_BIT[kingSq]) | getBPawnRightCaptures(INDEX_TO_BIT[kingSq])
-                : getWPawnLeftCaptures(INDEX_TO_BIT[kingSq]) | getWPawnRightCaptures(INDEX_TO_BIT[kingSq]);
+                ? getBPawnCaptures(INDEX_TO_BIT[kingSq])
+                : getWPawnCaptures(INDEX_TO_BIT[kingSq]);
             break;
         case KNIGHTS:
             attackMap = getKnightSquares(kingSq);
@@ -1589,10 +1589,8 @@ int Board::evaluate(PieceMoveList &pml) {
 
     // Current pawn attacks
     // Used for outposts and backwards pawns
-    uint64_t wPawnAtt = getWPawnLeftCaptures(pieces[WHITE][PAWNS])
-                      | getWPawnRightCaptures(pieces[WHITE][PAWNS]);
-    uint64_t bPawnAtt = getBPawnLeftCaptures(pieces[BLACK][PAWNS])
-                      | getBPawnRightCaptures(pieces[BLACK][PAWNS]);
+    uint64_t wPawnAtt = getWPawnCaptures(pieces[WHITE][PAWNS]);
+    uint64_t bPawnAtt = getBPawnCaptures(pieces[BLACK][PAWNS]);
     // Get all squares attackable by pawns in the future
     // Used for outposts and backwards pawns
     uint64_t wPawnFrontSpan = pieces[WHITE][PAWNS] << 8;
@@ -1821,8 +1819,8 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, int egFactor) {
 
     // Calculate center control only for pawns
     uint64_t pawns = pieces[color][PAWNS];
-    uint64_t pawnAttackMap = (color == WHITE) ? getWPawnLeftCaptures(pawns) | getWPawnRightCaptures(pawns)
-                                              : getBPawnLeftCaptures(pawns) | getBPawnRightCaptures(pawns);
+    uint64_t pawnAttackMap = (color == WHITE) ? getWPawnCaptures(pawns)
+                                              : getBPawnCaptures(pawns);
     centerControl += EXTENDED_CENTER_VAL * count(pawnAttackMap & EXTENDED_CENTER_SQS);
     centerControl += CENTER_BONUS * count(pawnAttackMap & CENTER_SQS);
 
@@ -2219,6 +2217,14 @@ inline uint64_t Board::getWPawnRightCaptures(uint64_t pawns) {
 
 inline uint64_t Board::getBPawnRightCaptures(uint64_t pawns) {
     return (pawns >> 7) & NOTA;
+}
+
+inline uint64_t Board::getWPawnCaptures(uint64_t pawns) {
+    return getWPawnLeftCaptures(pawns) | getWPawnRightCaptures(pawns);
+}
+
+inline uint64_t Board::getBPawnCaptures(uint64_t pawns) {
+    return getBPawnLeftCaptures(pawns) | getBPawnRightCaptures(pawns);
 }
 
 inline uint64_t Board::getKnightSquares(int single) {

@@ -224,6 +224,8 @@ private:
     uint64_t getBPawnLeftCaptures(uint64_t pawns);
     uint64_t getWPawnRightCaptures(uint64_t pawns);
     uint64_t getBPawnRightCaptures(uint64_t pawns);
+    uint64_t getWPawnCaptures(uint64_t pawns);
+    uint64_t getBPawnCaptures(uint64_t pawns);
     uint64_t getKnightSquares(int single);
     uint64_t getBishopSquares(int single, uint64_t occ);
     uint64_t getRookSquares(int single, uint64_t occ);
