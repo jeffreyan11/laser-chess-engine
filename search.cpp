@@ -627,6 +627,10 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
                            && abs(alpha) < 2 * QUEEN_VALUE
                            && !b.isCheckMove(m, color);
 
+        int startSq = getStartSq(m);
+        int endSq = getEndSq(m);
+        int pieceID = b.getPieceOnSquare(color, startSq);
+
 
         // Futility pruning
         // If we are already a decent amount of material below alpha, a quiet
@@ -662,7 +666,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
          && alpha <= prevAlpha && !isCapture(m)
          && m != searchParams.killers[searchParams.ply][0]
          && m != searchParams.killers[searchParams.ply][1]) {
-            int historyValue = searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)];
+            int historyValue = searchParams.historyTable[color][pieceID][endSq];
             if (depth < 3 || historyValue < 0) {
                 score = alpha;
                 continue;
@@ -703,7 +707,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             // Increase reduction with higher depth and later moves
             reduction = 1 + (int) ((depth - 4.0) / 5.0 + movesSearched / 16.0);
             // Reduce more for moves with poor history
-            int historyValue = searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)];
+            int historyValue = searchParams.historyTable[color][pieceID][endSq];
             if (historyValue < 0)
                 reduction++;
 
@@ -829,7 +833,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         // Reduce check extension counter
         if (isCheckExtension)
             searchParams.extensions -= extension;
-        // If the extension was a singular extension, reset the consecutive singular check
+        // If the extension was singular, reset the consecutive singular check
         else if (isSingularExtension)
             searchParams.singularExtensions--;
         
@@ -842,17 +846,20 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
                 searchStats.hashMoveCuts++;
 
             // Hash the cut move and score
-            transpositionTable.add(b, depth, m, adjustHashScore(beta, searchParams.ply), CUT_NODE, searchParams.rootMoveNumber);
+            transpositionTable.add(b, depth, m,
+                adjustHashScore(beta, searchParams.ply), CUT_NODE,
+                searchParams.rootMoveNumber);
 
             // Record killer if applicable
             if (!isCapture(m)) {
                 // Ensure the same killer does not fill both slots
                 if (m != searchParams.killers[searchParams.ply][0]) {
-                    searchParams.killers[searchParams.ply][1] = searchParams.killers[searchParams.ply][0];
+                    searchParams.killers[searchParams.ply][1] =
+                        searchParams.killers[searchParams.ply][0];
                     searchParams.killers[searchParams.ply][0] = m;
                 }
                 // Update the history table
-                searchParams.historyTable[color][b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)]
+                searchParams.historyTable[color][pieceID][endSq]
                     += depth * depth;
                 moveSorter.reduceBadHistories(m);
             }
@@ -879,7 +886,9 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         if (toHash == hashed)
             searchStats.hashMoveCuts++;
 
-        transpositionTable.add(b, depth, toHash, adjustHashScore(alpha, searchParams.ply), PV_NODE, searchParams.rootMoveNumber);
+        transpositionTable.add(b, depth, toHash,
+            adjustHashScore(alpha, searchParams.ply), PV_NODE,
+            searchParams.rootMoveNumber);
 
         // Update the history table
         if (!isCapture(toHash)) {
@@ -895,10 +904,13 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         if (!isPVNode && moveSorter.doIID())
             transpositionTable.add(b, depth,
                 (hashed == NULL_MOVE) ? moveSorter.legalMoves.get(0) : hashed,
-                adjustHashScore(alpha, searchParams.ply), ALL_NODE, searchParams.rootMoveNumber);
+                adjustHashScore(alpha, searchParams.ply), ALL_NODE,
+                searchParams.rootMoveNumber);
         // Otherwise, just store no best move as expected
         else
-            transpositionTable.add(b, depth, NULL_MOVE, adjustHashScore(alpha, searchParams.ply), ALL_NODE, searchParams.rootMoveNumber);
+            transpositionTable.add(b, depth, NULL_MOVE,
+                adjustHashScore(alpha, searchParams.ply), ALL_NODE,
+                searchParams.rootMoveNumber);
     }
 
     return alpha;
@@ -1005,7 +1017,9 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
             if (j == 0)
                 searchStats.qsFirstFailHighs++;
 
-            transpositionTable.add(b, -plies, m, adjustHashScore(beta, searchParams.ply + plies), CUT_NODE, searchParams.rootMoveNumber);
+            transpositionTable.add(b, -plies, m,
+                adjustHashScore(beta, searchParams.ply + plies), CUT_NODE,
+                searchParams.rootMoveNumber);
 
             return beta;
         }
@@ -1036,7 +1050,9 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
             if (j == 0)
                 searchStats.qsFirstFailHighs++;
 
-            transpositionTable.add(b, -plies, m, adjustHashScore(beta, searchParams.ply + plies), CUT_NODE, searchParams.rootMoveNumber);
+            transpositionTable.add(b, -plies, m,
+                adjustHashScore(beta, searchParams.ply + plies), CUT_NODE,
+                searchParams.rootMoveNumber);
 
             return beta;
         }
@@ -1069,7 +1085,9 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
                 if (j == 0)
                     searchStats.qsFirstFailHighs++;
 
-                transpositionTable.add(b, -plies, m, adjustHashScore(beta, searchParams.ply + plies), CUT_NODE, searchParams.rootMoveNumber);
+                transpositionTable.add(b, -plies, m,
+                    adjustHashScore(beta, searchParams.ply + plies), CUT_NODE,
+                    searchParams.rootMoveNumber);
 
                 return beta;
             }
