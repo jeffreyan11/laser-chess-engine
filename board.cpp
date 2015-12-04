@@ -182,10 +182,6 @@ void initZobristTable() {
     delete[] mailbox;
 }
 
-int epVictimSquare(int victimColor, uint16_t file) {
-    return 8 * (3 + victimColor) + file;
-}
-
 // Initializes the 64x64 table, indexed by from and to square, of all
 // squares in a line between from and to
 void initInBetweenTable() {
@@ -2255,6 +2251,10 @@ inline uint64_t Board::getKingSquares(int single) {
 
 inline uint64_t Board::getOccupancy() {
     return allPieces[WHITE] | allPieces[BLACK];
+}
+
+inline int Board::epVictimSquare(int victimColor, uint16_t file) {
+    return 8 * (3 + victimColor) + file;
 }
 
 

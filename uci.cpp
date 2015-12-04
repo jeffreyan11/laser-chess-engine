@@ -232,27 +232,6 @@ int main() {
             PieceMoveList pml = board.getPieceMoveList(color);
             cerr << "Static evaluation: " << board.evaluate(pml) << " cp" << endl;
         }
-        else if (input.substr(0, 9) == "tunemagic" && inputVector.size() == 3) {
-            int iters = stoi(inputVector.at(1));
-            uint64_t seed = stoull(inputVector.at(2));
-            mt19937_64 rng (seed);
-            double minTime = 999;
-            uint64_t bestSeed = 0;
-            for (int i = 0; i < iters; i++) {
-                if ((i & 0xFF) == 0xFF) cerr << "Trial " << i+1 << endl;
-                auto initStart = ChessClock::now();
-                uint64_t test = rng();
-                initMagicTables(test);
-                double initTime = getTimeElapsed(initStart);
-                if (initTime < minTime) {
-                    bestSeed = test;
-                    minTime = initTime;
-                    cerr << "New best! Seed: " << bestSeed << " Time: " << initTime << endl;
-                }
-            }
-            cerr << "Best seed: " << bestSeed << endl;
-            cerr << "Time: " << minTime << endl;
-        }
         
         // According to UCI protocol, inputs that do not make sense are ignored
     }

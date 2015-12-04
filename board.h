@@ -91,7 +91,6 @@ typedef SearchArrayList<PieceMoveInfo> PieceMoveList;
 void initMagicTables(uint64_t seed);
 void initZobristTable();
 void initInBetweenTable();
-int epVictimSquare(int victimColor, uint16_t file);
 
 /**
  * @brief A chess board and its associated functionality, including get legal
@@ -231,6 +230,7 @@ private:
     uint64_t getQueenSquares(int single, uint64_t occ);
     uint64_t getKingSquares(int single);
     uint64_t getOccupancy();
+    int epVictimSquare(int victimColor, uint16_t file);
 
     // Kindergarten bitboard methods
     uint64_t rankAttacks(uint64_t occ, int single);
