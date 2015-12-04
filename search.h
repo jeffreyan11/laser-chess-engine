@@ -78,6 +78,7 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth);
 const int TIME = 1;
 const int DEPTH = 2;
 // const int NODES = 3;
+const int MOVETIME = 4;
 
 // Time constants
 const uint64_t ONE_SECOND = 1000;

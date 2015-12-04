@@ -169,8 +169,9 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     *bestMove = legalMoves.get(0);
     
     // Set up timing
-    searchParams.timeLimit = (mode == TIME)
-        ? (uint64_t)(MAX_TIME_FACTOR * value) : MAX_TIME;
+    searchParams.timeLimit = (mode == TIME) ? (uint64_t)(MAX_TIME_FACTOR * value)
+                                            : (mode == MOVETIME) ? value
+                                                                 : MAX_TIME;
     searchParams.startTime = ChessClock::now();
     double timeSoFar = getTimeElapsed(searchParams.startTime);
 
@@ -284,6 +285,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     while (!isStop
         && ((mode == TIME  && (timeSoFar * ONE_SECOND < value * TIME_FACTOR)
                           && (rootDepth <= MAX_DEPTH))
+         || (mode == MOVETIME && timeSoFar < value)
          || (mode == DEPTH && rootDepth <= value)));
 
     if (easyMoveInfo.pvStreak >= 7) {

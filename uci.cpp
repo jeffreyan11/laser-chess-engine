@@ -102,7 +102,7 @@ int main() {
             vector<string>::iterator it;
             
             if (input.find("movetime") != string::npos && inputVector.size() > 2) {
-                mode = TIME;
+                mode = MOVETIME;
                 value = stoi(inputVector.at(2));
             }
             else if (input.find("depth") != string::npos && inputVector.size() > 2) {
