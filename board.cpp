@@ -586,6 +586,17 @@ bool Board::doHashMove(Move m, int color) {
 void Board::doNullMove() {
     playerToMove = playerToMove ^ 1;
     zobristKey ^= zobristTable[768];
+    zobristKey ^= zobristTable[785 + epCaptureFile];
+    epCaptureFile = NO_EP_POSSIBLE;
+    zobristKey ^= zobristTable[785 + epCaptureFile];
+}
+
+void Board::undoNullMove(uint16_t _epCaptureFile) {
+    playerToMove = playerToMove ^ 1;
+    zobristKey ^= zobristTable[768];
+    zobristKey ^= zobristTable[785 + epCaptureFile];
+    epCaptureFile = _epCaptureFile;
+    zobristKey ^= zobristTable[785 + epCaptureFile];
 }
 
 

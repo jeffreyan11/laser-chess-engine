@@ -111,6 +111,7 @@ public:
     bool doPseudoLegalMove(Move m, int color);
     bool doHashMove(Move m, int color);
     void doNullMove();
+    void undoNullMove(uint16_t _epCaptureFile);
 
     PieceMoveList getPieceMoveList(int color);
     MoveList getAllLegalMoves(int color);

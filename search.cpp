@@ -582,6 +582,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         reduction = min(depth - 2,
             1 + (int) ((depth + 1.5) / 4.5 + (double) (staticEval - beta) / 118.0));
 
+        uint16_t epCaptureFile = b.getEPCaptureFile();
         b.doNullMove();
         searchParams.nullMoveCount++;
         searchParams.ply++;
@@ -589,7 +590,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         searchParams.ply--;
 
         // Undo the null move
-        b.doNullMove();
+        b.undoNullMove(epCaptureFile);
         searchParams.nullMoveCount = 0;
 
         if (nullScore >= beta) {
@@ -762,11 +763,11 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
             // Do a reduced depth search with a lowered window for a fail low check
             for (unsigned int i = 0; i < legalMoves.size(); i++) {
                 Move seMove = legalMoves.get(i);
-                Board copy = b.staticCopy();
+                Board seCopy = b.staticCopy();
                 // Search every move except the hash move
                 if (seMove == hashed)
                     continue;
-                if (!copy.doPseudoLegalMove(seMove, color))
+                if (!seCopy.doPseudoLegalMove(seMove, color))
                     continue;
 
                 // The window is lowered more for PV nodes and for higher depths
@@ -777,7 +778,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
                                        : depth / 2 - 1;
 
                 searchParams.ply++;
-                score = -PVS(copy, SEDepth, -SEWindow - 1, -SEWindow, &line);
+                score = -PVS(seCopy, SEDepth, -SEWindow - 1, -SEWindow, &line);
                 searchParams.ply--;
 
                 // If a move did not fail low, no singular extension
