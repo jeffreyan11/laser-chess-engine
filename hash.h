@@ -42,7 +42,7 @@ struct HashEntry {
     }
 
     void setEntry(Board &b, uint64_t _data) {
-        zobristKey = b.getZobristKey();
+        zobristKey = b.getZobristKey() ^ _data;
         data = _data;
     }
 

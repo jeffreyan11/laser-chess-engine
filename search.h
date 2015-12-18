@@ -71,10 +71,9 @@ void setHashSize(uint64_t MB);
 void setEvalCacheSize(uint64_t MB);
 uint64_t getNodes();
 void setMultiPV(unsigned int n);
+void setNumThreads(int n);
 
 int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth);
-
-const int DEFAULT_HASH_SIZE = 16;
 
 // Search modes
 const int TIME = 1;

@@ -19,8 +19,14 @@
 #ifndef __UCI_H__
 #define __UCI_H__
 
-#include "common.h"
-#include "board.h"
-#include "search.h"
+const int DEFAULT_HASH_SIZE = 16;
+const int MIN_HASH_SIZE = 1;
+const int MAX_HASH_SIZE = 1024;
+const int DEFAULT_MULTI_PV = 1;
+const int MIN_MULTI_PV = 1;
+const int MAX_MULTI_PV = 256;
+const int DEFAULT_THREADS = 1;
+const int MIN_THREADS = 1;
+const int MAX_THREADS = 8;
 
 #endif

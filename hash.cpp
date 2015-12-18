@@ -66,12 +66,12 @@ void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
     }
     else { // Decide whether to replace the entry
         // A more recent update to the same position should always be chosen
-        if (node->slot1.zobristKey == b.getZobristKey()) {
+        if ((node->slot1.zobristKey ^ node->slot1.data) == b.getZobristKey()) {
             if (node->slot1.getAge() != age)
                 keys++;
             node->slot1.setEntry(b, data);
         }
-        else if (node->slot2.zobristKey == b.getZobristKey()) {
+        else if ((node->slot2.zobristKey ^ node->slot2.data) == b.getZobristKey()) {
             if (node->slot2.getAge() != age)
                 keys++;
             node->slot2.setEntry(b, data);
@@ -107,10 +107,10 @@ void Hash::addPV(Board &b, uint64_t data, int depth, uint8_t age) {
     HashNode *node = &(table[index]);
 
     // A more recent update to the same position should always be chosen
-    if (node->slot1.zobristKey == b.getZobristKey()) {
+    if ((node->slot1.zobristKey ^ node->slot1.data) == b.getZobristKey()) {
         node->slot1.setEntry(b, data);
     }
-    else if (node->slot2.zobristKey == b.getZobristKey()) {
+    else if ((node->slot2.zobristKey ^ node->slot2.data) == b.getZobristKey()) {
         node->slot2.setEntry(b, data);
     }
     // Replace an entry from a previous search space, or the lowest
@@ -134,9 +134,9 @@ HashEntry *Hash::get(Board &b) {
     uint64_t index = h % size;
     HashNode *node = &(table[index]);
 
-    if(node->slot1.zobristKey == b.getZobristKey())
+    if((node->slot1.zobristKey ^ node->slot1.data) == b.getZobristKey())
         return &(node->slot1);
-    else if (node->slot2.zobristKey == b.getZobristKey())
+    else if ((node->slot2.zobristKey ^ node->slot2.data) == b.getZobristKey())
         return &(node->slot2);
 
     return NULL;

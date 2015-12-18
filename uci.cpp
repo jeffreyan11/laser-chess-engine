@@ -24,6 +24,9 @@
 #include <thread>
 #include <random>
 
+#include "common.h"
+#include "board.h"
+#include "search.h"
 #include "uci.h"
 using namespace std;
 
@@ -46,12 +49,6 @@ const vector<string> positions = {
     "8/2b3p1/4knNp/2p4P/1pPp1P2/1P1P1BPK/8/8 w - -"
 };
 
-const int MIN_HASH_SIZE = 1;
-const int MAX_HASH_SIZE = 1024;
-const int DEFAULT_MULTI_PV = 1;
-const int MIN_MULTI_PV = 1;
-const int MAX_MULTI_PV = 256;
-
 void setPosition(string &input, vector<string> &inputVector, Board &board);
 vector<string> split(const string &s, char d);
 Board fenToBoard(string s);
@@ -68,6 +65,7 @@ int main() {
     initInBetweenTable();
 
     setMultiPV(DEFAULT_MULTI_PV);
+    setNumThreads(DEFAULT_THREADS);
 
     string input;
     vector<string> inputVector;
@@ -89,6 +87,8 @@ int main() {
         if (input == "uci") {
             cout << "id name " << name << " " << version << endl;
             cout << "id author " << author << endl;
+            cout << "option name Threads type spin default " << DEFAULT_THREADS
+                 << " min " << MIN_THREADS << " max " << MAX_THREADS << endl;
             cout << "option name Hash type spin default " << DEFAULT_HASH_SIZE
                  << " min " << MIN_HASH_SIZE << " max " << MAX_HASH_SIZE << endl;
             cout << "option name EvalCache type spin default " << DEFAULT_HASH_SIZE
@@ -161,7 +161,15 @@ int main() {
                 cout << "Invalid option format." << endl;
             }
             else {
-                if (inputVector.at(2) == "Hash" || inputVector.at(2) == "hash") {
+                if (inputVector.at(2) == "Threads" || inputVector.at(2) == "threads") {
+                    int threads = stoi(inputVector.at(4));
+                    if (threads < MIN_THREADS)
+                        threads = MIN_THREADS;
+                    if (threads > MAX_THREADS)
+                        threads = MAX_THREADS;
+                    setNumThreads(threads);
+                }
+                else if (inputVector.at(2) == "Hash" || inputVector.at(2) == "hash") {
                     int MB = stoi(inputVector.at(4));
                     if (MB < MIN_HASH_SIZE)
                         MB = MIN_HASH_SIZE;

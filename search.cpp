@@ -24,6 +24,7 @@
 #include "search.h"
 #include "moveorder.h"
 #include "searchparams.h"
+#include "uci.h"
 
 using namespace std;
 
@@ -123,6 +124,7 @@ TwoFoldStack twoFoldPositions;
 extern bool isStop;
 
 unsigned int multiPV;
+int numThreads;
 
 
 // Search functions
@@ -1220,6 +1222,10 @@ uint64_t getNodes() {
 
 void setMultiPV(unsigned int n) {
     multiPV = n;
+}
+
+void setNumThreads(int n) {
+    numThreads = n;
 }
 
 
