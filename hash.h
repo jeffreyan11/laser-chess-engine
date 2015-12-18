@@ -29,6 +29,26 @@ const uint8_t NO_NODE_INFO = 3;
 
 uint64_t packHashData(int depth, Move m, int score, uint8_t nodeType, uint8_t age);
 
+inline int getHashDepth(uint64_t data) {
+    return (int8_t) ((data >> 48) & 0xFF);
+}
+
+inline Move getHashMove(uint64_t data) {
+    return (data >> 16) & 0xFFFF;
+}
+
+inline int getHashScore(uint64_t data) {
+    return (int16_t) (data & 0xFFFF);
+}
+
+inline uint8_t getHashAge(uint64_t data) {
+    return (data >> 40) & 0xFF;
+}
+
+inline uint8_t getHashNodeType(uint64_t data) {
+    return (data >> 32) & 0x3;
+}
+
 /*
  * @brief Struct storing hashed search information
  * Size: 12 bytes
@@ -49,26 +69,6 @@ struct HashEntry {
     void clearEntry() {
         zobristKey = 0;
         data = 0;
-    }
-
-    int getDepth() {
-        return (int8_t) ((data >> 48) & 0xFF);
-    }
-
-    Move getMove() {
-        return (data >> 16) & 0xFFFF;
-    }
-
-    int getScore() {
-        return (int16_t) (data & 0xFFFF);
-    }
-
-    uint8_t getAge() {
-        return (data >> 40) & 0xFF;
-    }
-
-    uint8_t getNodeType() {
-        return (data >> 32) & 0x3;
     }
 
     ~HashEntry() {}
@@ -106,7 +106,7 @@ public:
 
     void add(Board &b, uint64_t data, int depth, uint8_t age);
     void addPV(Board &b, uint64_t data, int depth, uint8_t age);
-    HashEntry *get(Board &b);
+    uint64_t get(Board &b);
     uint64_t getSize();
     void setSize(uint64_t MB);
     void clear();

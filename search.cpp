@@ -477,12 +477,12 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     uint8_t nodeType = NO_NODE_INFO;
     searchStats.hashProbes++;
 
-    HashEntry *entry = transpositionTable.get(b);
-    if (entry != NULL) {
+    uint64_t hashEntry = transpositionTable.get(b);
+    if (hashEntry != 0) {
         searchStats.hashHits++;
-        hashScore = entry->getScore();
-        nodeType = entry->getNodeType();
-        hashDepth = entry->getDepth();
+        hashScore = getHashScore(hashEntry);
+        nodeType = getHashNodeType(hashEntry);
+        hashDepth = getHashDepth(hashEntry);
 
         // Adjust the hash score to mate distance from root if necessary
         if (hashScore >= MATE_SCORE - MAX_DEPTH)
@@ -506,7 +506,7 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         }
 
         // Otherwise, store the hash move for later use
-        hashed = entry->getMove();
+        hashed = getHashMove(hashEntry);
         // Don't use hash moves from too low of a depth
         if ((hashDepth < 1 && depth >= 7)
          || (isPVNode && hashDepth < depth - 3))
@@ -950,9 +950,9 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
         return 0;
 
     // Qsearch hash table probe
-    HashEntry *entry = transpositionTable.get(b);
-    if (entry != NULL) {
-        int hashScore = entry->getScore();
+    uint64_t hashEntry = transpositionTable.get(b);
+    if (hashEntry != 0) {
+        int hashScore = getHashScore(hashEntry);
 
         // Adjust the hash score to mate distance from root if necessary
         if (hashScore >= MATE_SCORE - MAX_DEPTH)
@@ -960,10 +960,10 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
         else if (hashScore <= -MATE_SCORE + MAX_DEPTH)
             hashScore += searchParams.ply + plies;
 
-        uint8_t nodeType = entry->getNodeType();
+        uint8_t nodeType = getHashNodeType(hashEntry);
         // Only used a hashed score if the search depth was at least
         // the current depth
-        if (entry->getDepth() >= -plies) {
+        if (getHashDepth(hashEntry) >= -plies) {
             // Check for the correct node type and bounds
             if ((nodeType == ALL_NODE && hashScore <= alpha)
              || (nodeType == CUT_NODE && hashScore >= beta)

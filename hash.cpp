@@ -67,12 +67,12 @@ void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
     else { // Decide whether to replace the entry
         // A more recent update to the same position should always be chosen
         if ((node->slot1.zobristKey ^ node->slot1.data) == b.getZobristKey()) {
-            if (node->slot1.getAge() != age)
+            if (getHashAge(node->slot1.data) != age)
                 keys++;
             node->slot1.setEntry(b, data);
         }
         else if ((node->slot2.zobristKey ^ node->slot2.data) == b.getZobristKey()) {
-            if (node->slot2.getAge() != age)
+            if (getHashAge(node->slot2.data) != age)
                 keys++;
             node->slot2.setEntry(b, data);
         }
@@ -80,8 +80,10 @@ void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
         // depth entry with the new entry if the new entry's depth is higher
         else {
             HashEntry *toReplace = NULL;
-            int score1 = 128*((int) (age - node->slot1.getAge())) + depth - node->slot1.getDepth();
-            int score2 = 128*((int) (age - node->slot2.getAge())) + depth - node->slot2.getDepth();
+            int score1 = 128*((int) (age - getHashAge(node->slot1.data)))
+                + depth - getHashDepth(node->slot1.data);
+            int score2 = 128*((int) (age - getHashAge(node->slot2.data)))
+                + depth - getHashDepth(node->slot2.data);
             if (score1 >= score2)
                 toReplace = &(node->slot1);
             else
@@ -92,7 +94,7 @@ void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
                 toReplace = NULL;
 
             if (toReplace != NULL) {
-                if (toReplace->getAge() != age)
+                if (getHashAge(toReplace->data) != age)
                     keys++;
                 toReplace->setEntry(b, data);
             }
@@ -117,8 +119,10 @@ void Hash::addPV(Board &b, uint64_t data, int depth, uint8_t age) {
     // depth entry with the new entry if the new entry's depth is higher
     else {
         HashEntry *toReplace = NULL;
-        int score1 = 128*((int) (age - node->slot1.getAge())) + depth - node->slot1.getDepth();
-        int score2 = 128*((int) (age - node->slot2.getAge())) + depth - node->slot2.getDepth();
+        int score1 = 128*((int) (age - getHashAge(node->slot1.data)))
+            + depth - getHashDepth(node->slot1.data);
+        int score2 = 128*((int) (age - getHashAge(node->slot2.data)))
+            + depth - getHashDepth(node->slot2.data);
         if (score1 >= score2)
             toReplace = &(node->slot1);
         else
@@ -129,17 +133,17 @@ void Hash::addPV(Board &b, uint64_t data, int depth, uint8_t age) {
 }
 
 // Get the hash entry, if any, associated with a board b.
-HashEntry *Hash::get(Board &b) {
+uint64_t Hash::get(Board &b) {
     uint64_t h = b.getZobristKey();
     uint64_t index = h % size;
     HashNode *node = &(table[index]);
 
     if((node->slot1.zobristKey ^ node->slot1.data) == b.getZobristKey())
-        return &(node->slot1);
+        return node->slot1.data;
     else if ((node->slot2.zobristKey ^ node->slot2.data) == b.getZobristKey())
-        return &(node->slot2);
+        return node->slot2.data;
 
-    return NULL;
+    return 0;
 }
 
 uint64_t Hash::getSize() {
