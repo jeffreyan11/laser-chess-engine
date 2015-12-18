@@ -23,21 +23,24 @@
 #include "common.h"
 
 
+// Offset so that we can always store a positive value in EvalHashEntry
+const int EVAL_HASH_OFFSET = (1 << 20);
+
 /*
  * @brief Struct storing hashed eval information
  * Size: 8 bytes
  */
 struct EvalHashEntry {
     uint32_t zobristKey;
-    int score;
+    uint32_t score;
 
     EvalHashEntry() {
         clearEntry();
     }
 
     void setEntry(Board &b, int _score) {
-        zobristKey = (uint32_t) (b.getZobristKey() >> 32);
-        score = _score;
+        score = (uint32_t) (_score + EVAL_HASH_OFFSET);
+        zobristKey = ((uint32_t) (b.getZobristKey() >> 32)) ^ score;
     }
 
     void clearEntry() {
@@ -64,7 +67,7 @@ public:
     ~EvalHash();
 
     void add(Board &b, int score);
-    EvalHashEntry *get(Board &b);
+    int get(Board &b);
     void setSize(uint64_t MB);
     void clear();
 };

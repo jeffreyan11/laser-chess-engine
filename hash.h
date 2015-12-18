@@ -50,8 +50,11 @@ inline uint8_t getHashNodeType(uint64_t data) {
 }
 
 /*
- * @brief Struct storing hashed search information
- * Size: 12 bytes
+ * @brief Struct storing hashed search information.
+ * 
+ * Uses Crafty's lockless hashing trick, XORing the key and data to detect
+ * when key and data are not matching as the result of a race.
+ * Size: 16 bytes
  */
 struct HashEntry {
     uint64_t zobristKey;

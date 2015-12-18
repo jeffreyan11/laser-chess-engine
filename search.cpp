@@ -526,10 +526,10 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
     if (!isInCheck) {
         searchStats.evalCacheProbes++;
         // Probe the eval cache for a saved calculation
-        EvalHashEntry *ehe = evalCache.get(b);
-        if (ehe != NULL) {
+        int ehe = evalCache.get(b);
+        if (ehe != 0) {
             searchStats.evalCacheHits++;
-            staticEval = ehe->score;
+            staticEval = ehe - EVAL_HASH_OFFSET;
         }
         else {
             staticEval = (color == WHITE) ? b.evaluate(pml)
@@ -979,10 +979,10 @@ int quiescence(Board &b, int plies, int alpha, int beta) {
     int standPat;
     // Probe the eval cache for a saved calculation
     searchStats.evalCacheProbes++;
-    EvalHashEntry *ehe = evalCache.get(b);
-    if (ehe != NULL) {
+    int ehe = evalCache.get(b);
+    if (ehe != 0) {
         searchStats.evalCacheHits++;
-        standPat = ehe->score;
+        standPat = ehe - EVAL_HASH_OFFSET;
     }
     else {
         standPat = (color == WHITE) ? b.evaluate(pml) : -b.evaluate(pml);

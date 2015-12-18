@@ -44,15 +44,17 @@ void EvalHash::add(Board &b, int score) {
 }
 
 // Get the hash entry, if any, associated with a board b.
-EvalHashEntry *EvalHash::get(Board &b) {
+int EvalHash::get(Board &b) {
     // Use the lower 32 bits of the hash key to index the array
     uint32_t h = (uint32_t) (b.getZobristKey() & 0xFFFFFFFF);
     uint32_t index = h % size;
 
-    if(table[index].zobristKey == (uint32_t) (b.getZobristKey() >> 32))
-        return &(table[index]);
+    if((table[index].zobristKey ^ table[index].score) == (uint32_t) (b.getZobristKey() >> 32))
+        return table[index].score;
 
-    return NULL;
+    // Because of the offset, 0 will not be a valid returned score. Thus we can use
+    // this to indicate no match found.
+    return 0;
 }
 
 void EvalHash::setSize(uint64_t MB) {
