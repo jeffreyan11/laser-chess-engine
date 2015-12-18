@@ -264,7 +264,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
         if (mode == TIME && multiPV == 1
          && timeSoFar * ONE_SECOND > value / 16
-         && timeSoFar * ONE_SECOND < value / 2) {
+         && timeSoFar * ONE_SECOND < value / 2
+         && abs(bestScore) < MATE_SCORE - MAX_DEPTH) {
             if ((*bestMove == easyMoveInfo.prevBest && pvStreak >= 6)
                 || pvStreak >= 9) {
                 int secondBestScore;
@@ -400,6 +401,10 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth) {
             score = -PVS(copy, depth-1, -beta, -alpha, &line);
             searchParams.ply--;
         }
+
+        // Stop condition to break out as quickly as possible
+        if (isStop)
+            return i;
         
         if (score > alpha) {
             alpha = score;
@@ -439,7 +444,6 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
 
 
     // Mate distance pruning
-    /*
     int matingScore = MATE_SCORE - searchParams.ply;
     if (matingScore < beta) {
         beta = matingScore;
@@ -453,7 +457,6 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         if (beta <= matedScore)
             return beta;
     }
-    */
     
     
     int prevAlpha = alpha;
@@ -489,10 +492,10 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
         //   The node is a hashed PV node and we are searching on a null window
         //    (we do not return immediately on full PVS windows since this cuts
         //     short the PV line)
-        if (entry->depth >= depth) {
+        if (!isPVNode && entry->depth >= depth) {
             if ((nodeType == ALL_NODE && hashScore <= alpha)
              || (nodeType == CUT_NODE && hashScore >= beta)
-             || (nodeType == PV_NODE  && !isPVNode)) {
+             || (nodeType == PV_NODE)) {
                 searchStats.hashScoreCuts++;
                 return hashScore;
             }
@@ -796,7 +799,6 @@ int PVS(Board &b, int depth, int alpha, int beta, SearchPV *pvLine) {
                 isSingularExtension = true;
             }
         }
-
 
         // Null-window search, with re-search if applicable
         if (movesSearched != 0) {
