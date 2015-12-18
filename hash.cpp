@@ -18,6 +18,21 @@
 
 #include "hash.h"
 
+uint64_t packHashData(int depth, Move m, int score, uint8_t nodeType, uint8_t age) {
+    uint64_t data = 0;
+    data |= (uint8_t) depth;
+    data <<= 8;
+    data |= age;
+    data <<= 8;
+    data |= nodeType;
+    data <<= 16;
+    data |= m;
+    data <<= 16;
+    data |= (uint16_t) score;
+
+    return data;
+}
+
 Hash::Hash(uint64_t MB) {
     // Convert to bytes
     uint64_t arrSize = MB << 20;
@@ -35,18 +50,18 @@ Hash::~Hash() {
 
 // Adds key and move into the hashtable. This function assumes that the key has
 // been checked with get and is not in the table.
-void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t age) {
+void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
     uint64_t h = b.getZobristKey();
     uint64_t index = h % size;
     HashNode *node = &(table[index]);
     if (node->slot1.zobristKey == 0) {
         keys++;
-        node->slot1.setEntry(b, depth, m, score, nodeType, age);
+        node->slot1.setEntry(b, data);
         return;
     }
     else if (node->slot2.zobristKey == 0) {
         keys++;
-        node->slot2.setEntry(b, depth, m, score, nodeType, age);
+        node->slot2.setEntry(b, data);
         return;
     }
     else { // Decide whether to replace the entry
@@ -54,21 +69,19 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
         if (node->slot1.zobristKey == b.getZobristKey()) {
             if (node->slot1.getAge() != age)
                 keys++;
-            node->slot1.clearEntry();
-            node->slot1.setEntry(b, depth, m, score, nodeType, age);
+            node->slot1.setEntry(b, data);
         }
         else if (node->slot2.zobristKey == b.getZobristKey()) {
             if (node->slot2.getAge() != age)
                 keys++;
-            node->slot2.clearEntry();
-            node->slot2.setEntry(b, depth, m, score, nodeType, age);
+            node->slot2.setEntry(b, data);
         }
         // Replace an entry from a previous search space, or the lowest
         // depth entry with the new entry if the new entry's depth is higher
         else {
             HashEntry *toReplace = NULL;
-            int score1 = 128*((int) (age - node->slot1.getAge())) + depth - node->slot1.depth;
-            int score2 = 128*((int) (age - node->slot2.getAge())) + depth - node->slot2.depth;
+            int score1 = 128*((int) (age - node->slot1.getAge())) + depth - node->slot1.getDepth();
+            int score2 = 128*((int) (age - node->slot2.getAge())) + depth - node->slot2.getDepth();
             if (score1 >= score2)
                 toReplace = &(node->slot1);
             else
@@ -81,41 +94,37 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
             if (toReplace != NULL) {
                 if (toReplace->getAge() != age)
                     keys++;
-                toReplace->clearEntry();
-                toReplace->setEntry(b, depth, m, score, nodeType, age);
+                toReplace->setEntry(b, data);
             }
         }
     }
 }
 
 // Used for feeding the PV back into the TT
-void Hash::addPV(Board &b, int depth, Move m, int score, uint8_t age) {
+void Hash::addPV(Board &b, uint64_t data, int depth, uint8_t age) {
     uint64_t h = b.getZobristKey();
     uint64_t index = h % size;
     HashNode *node = &(table[index]);
 
     // A more recent update to the same position should always be chosen
     if (node->slot1.zobristKey == b.getZobristKey()) {
-        node->slot1.clearEntry();
-        node->slot1.setEntry(b, depth, m, score, PV_NODE, age);
+        node->slot1.setEntry(b, data);
     }
     else if (node->slot2.zobristKey == b.getZobristKey()) {
-        node->slot2.clearEntry();
-        node->slot2.setEntry(b, depth, m, score, PV_NODE, age);
+        node->slot2.setEntry(b, data);
     }
     // Replace an entry from a previous search space, or the lowest
     // depth entry with the new entry if the new entry's depth is higher
     else {
         HashEntry *toReplace = NULL;
-        int score1 = 128*((int) (age - node->slot1.getAge())) + depth - node->slot1.depth;
-        int score2 = 128*((int) (age - node->slot2.getAge())) + depth - node->slot2.depth;
+        int score1 = 128*((int) (age - node->slot1.getAge())) + depth - node->slot1.getDepth();
+        int score2 = 128*((int) (age - node->slot2.getAge())) + depth - node->slot2.getDepth();
         if (score1 >= score2)
             toReplace = &(node->slot1);
         else
             toReplace = &(node->slot2);
 
-        toReplace->clearEntry();
-        toReplace->setEntry(b, depth, m, score, PV_NODE, age);
+        toReplace->setEntry(b, data);
     }
 }
 
