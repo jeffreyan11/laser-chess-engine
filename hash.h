@@ -29,10 +29,10 @@ const uint8_t NO_NODE_INFO = 3;
 
 /*
  * @brief Struct storing hashed search information
- * Size: 10 bytes
+ * Size: 12 bytes
  */
 struct HashEntry {
-    uint32_t zobristKey;
+    uint64_t zobristKey;
     Move m;
     int16_t score;
     uint8_t ageNT;
@@ -43,7 +43,7 @@ struct HashEntry {
     }
 
     void setEntry(Board &b, int _depth, Move _m, int _score, uint8_t nodeType, uint8_t age) {
-        zobristKey = (uint32_t) (b.getZobristKey() >> 32);
+        zobristKey = b.getZobristKey();
         m = _m;
         score = (int16_t) _score;
         ageNT = (age << 2) | nodeType;

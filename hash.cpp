@@ -36,9 +36,8 @@ Hash::~Hash() {
 // Adds key and move into the hashtable. This function assumes that the key has
 // been checked with get and is not in the table.
 void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t age) {
-    // Use the lower 32 bits of the hash key to index the array
-    uint32_t h = (uint32_t) (b.getZobristKey() & 0xFFFFFFFF);
-    uint32_t index = h % size;
+    uint64_t h = b.getZobristKey();
+    uint64_t index = h % size;
     HashNode *node = &(table[index]);
     if (node->slot1.zobristKey == 0) {
         keys++;
@@ -52,13 +51,13 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
     }
     else { // Decide whether to replace the entry
         // A more recent update to the same position should always be chosen
-        if (node->slot1.zobristKey == (uint32_t) (b.getZobristKey() >> 32)) {
+        if (node->slot1.zobristKey == b.getZobristKey()) {
             if (node->slot1.getAge() != age)
                 keys++;
             node->slot1.clearEntry();
             node->slot1.setEntry(b, depth, m, score, nodeType, age);
         }
-        else if (node->slot2.zobristKey == (uint32_t) (b.getZobristKey() >> 32)) {
+        else if (node->slot2.zobristKey == b.getZobristKey()) {
             if (node->slot2.getAge() != age)
                 keys++;
             node->slot2.clearEntry();
@@ -91,17 +90,16 @@ void Hash::add(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t
 
 // Used for feeding the PV back into the TT
 void Hash::addPV(Board &b, int depth, Move m, int score, uint8_t age) {
-    // Use the lower 32 bits of the hash key to index the array
-    uint32_t h = (uint32_t) (b.getZobristKey() & 0xFFFFFFFF);
-    uint32_t index = h % size;
+    uint64_t h = b.getZobristKey();
+    uint64_t index = h % size;
     HashNode *node = &(table[index]);
 
     // A more recent update to the same position should always be chosen
-    if (node->slot1.zobristKey == (uint32_t) (b.getZobristKey() >> 32)) {
+    if (node->slot1.zobristKey == b.getZobristKey()) {
         node->slot1.clearEntry();
         node->slot1.setEntry(b, depth, m, score, PV_NODE, age);
     }
-    else if (node->slot2.zobristKey == (uint32_t) (b.getZobristKey() >> 32)) {
+    else if (node->slot2.zobristKey == b.getZobristKey()) {
         node->slot2.clearEntry();
         node->slot2.setEntry(b, depth, m, score, PV_NODE, age);
     }
@@ -123,14 +121,13 @@ void Hash::addPV(Board &b, int depth, Move m, int score, uint8_t age) {
 
 // Get the hash entry, if any, associated with a board b.
 HashEntry *Hash::get(Board &b) {
-    // Use the lower 32 bits of the hash key to index the array
-    uint32_t h = (uint32_t) (b.getZobristKey() & 0xFFFFFFFF);
-    uint32_t index = h % size;
+    uint64_t h = b.getZobristKey();
+    uint64_t index = h % size;
     HashNode *node = &(table[index]);
 
-    if(node->slot1.zobristKey == (uint32_t) (b.getZobristKey() >> 32))
+    if(node->slot1.zobristKey == b.getZobristKey())
         return &(node->slot1);
-    else if (node->slot2.zobristKey == (uint32_t) (b.getZobristKey() >> 32))
+    else if (node->slot2.zobristKey == b.getZobristKey())
         return &(node->slot2);
 
     return NULL;
