@@ -110,8 +110,8 @@ const unsigned int LMP_MOVE_COUNTS[6] = {0,
     5, 9, 16, 29, 50
 };
 
-static Hash transpositionTable(16);
-static EvalHash evalCache(16);
+static Hash transpositionTable(DEFAULT_HASH_SIZE);
+static EvalHash evalCache(DEFAULT_HASH_SIZE);
 static SearchParameters searchParams;
 static SearchStatistics searchStats;
 static EasyMove easyMoveInfo;

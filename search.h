@@ -74,6 +74,8 @@ void setMultiPV(unsigned int n);
 
 int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth);
 
+const int DEFAULT_HASH_SIZE = 16;
+
 // Search modes
 const int TIME = 1;
 const int DEPTH = 2;

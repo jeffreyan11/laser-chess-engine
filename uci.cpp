@@ -48,6 +48,9 @@ const vector<string> positions = {
 
 const int MIN_HASH_SIZE = 1;
 const int MAX_HASH_SIZE = 1024;
+const int DEFAULT_MULTI_PV = 1;
+const int MIN_MULTI_PV = 1;
+const int MAX_MULTI_PV = 256;
 
 void setPosition(string &input, vector<string> &inputVector, Board &board);
 vector<string> split(const string &s, char d);
@@ -64,7 +67,7 @@ int main() {
     initZobristTable();
     initInBetweenTable();
 
-    setMultiPV(1);
+    setMultiPV(DEFAULT_MULTI_PV);
 
     string input;
     vector<string> inputVector;
@@ -86,12 +89,12 @@ int main() {
         if (input == "uci") {
             cout << "id name " << name << " " << version << endl;
             cout << "id author " << author << endl;
-            cout << "option name Hash type spin default " << 16
+            cout << "option name Hash type spin default " << DEFAULT_HASH_SIZE
                  << " min " << MIN_HASH_SIZE << " max " << MAX_HASH_SIZE << endl;
-            cout << "option name EvalCache type spin default " << 16
+            cout << "option name EvalCache type spin default " << DEFAULT_HASH_SIZE
                  << " min " << MIN_HASH_SIZE << " max " << MAX_HASH_SIZE << endl;
-            cout << "option name MultiPV type spin default " << 1
-                 << " min " << 1 << " max " << 4 << endl;
+            cout << "option name MultiPV type spin default " << DEFAULT_MULTI_PV
+                 << " min " << MIN_MULTI_PV << " max " << MAX_MULTI_PV << endl;
             cout << "uciok" << endl;
         }
         else if (input == "isready") cout << "readyok" << endl;
@@ -176,10 +179,10 @@ int main() {
                 }
                 else if (inputVector.at(2) == "MultiPV" || inputVector.at(2) == "multipv") {
                     int multiPV = stoi(inputVector.at(4));
-                    if (multiPV < 1)
-                        multiPV = 1;
-                    if (multiPV > 4)
-                        multiPV = 4;
+                    if (multiPV < MIN_MULTI_PV)
+                        multiPV = MIN_MULTI_PV;
+                    if (multiPV > MAX_MULTI_PV)
+                        multiPV = MAX_MULTI_PV;
                     setMultiPV((unsigned int) multiPV);
                 }
                 else
