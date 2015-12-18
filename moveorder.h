@@ -32,6 +32,7 @@ struct MoveOrder {
 	Board *b;
 	int color;
 	int depth;
+    int threadID;
 	bool isPVNode;
 	bool isInCheck;
 	SearchParameters *searchParams;
@@ -42,7 +43,7 @@ struct MoveOrder {
     unsigned int quietStart;
 	unsigned int index;
 
-	MoveOrder(Board *_b, int _color, int _depth, bool _isPVNode, bool _isInCheck,
+	MoveOrder(Board *_b, int _color, int _depth, int _threadID, bool _isPVNode, bool _isInCheck,
 		SearchParameters *_searchParams, Move _hashed, MoveList _legalMoves);
 
 	// Node is reducible if not PV node and not in check

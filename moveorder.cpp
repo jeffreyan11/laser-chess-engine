@@ -33,11 +33,12 @@ const int SCORE_LOSING_QUIET = -(1 << 30) - (1 << 29) - (1 << 28);
 const int QUIET_SEE_DEPTH = 2;
 
 
-MoveOrder::MoveOrder(Board *_b, int _color, int _depth, bool _isPVNode, bool _isInCheck,
+MoveOrder::MoveOrder(Board *_b, int _color, int _depth, int _threadID, bool _isPVNode, bool _isInCheck,
 	SearchParameters *_searchParams, Move _hashed, MoveList _legalMoves) {
 	b = _b;
 	color = _color;
 	depth = _depth;
+    threadID = _threadID;
 	isPVNode = _isPVNode;
 	isInCheck = _isInCheck;
 	searchParams = _searchParams;
@@ -197,7 +198,7 @@ void MoveOrder::scoreIIDMove() {
     index = 0;*/
 
     int iidDepth = isPVNode ? depth-2 : (depth - 5) / 2;
-    int bestIndex = getBestMoveForSort(b, legalMoves, iidDepth);
+    int bestIndex = getBestMoveForSort(b, legalMoves, iidDepth, threadID);
 
     // Mate check to prevent crashes
     if (bestIndex == -1) {

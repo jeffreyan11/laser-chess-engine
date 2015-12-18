@@ -73,7 +73,7 @@ uint64_t getNodes();
 void setMultiPV(unsigned int n);
 void setNumThreads(int n);
 
-int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth);
+int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID);
 
 // Search modes
 const int TIME = 1;
