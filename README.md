@@ -7,16 +7,28 @@ After being compiled, the executable can be run with any UCI chess GUI, such as 
 
 A special thanks to the Chess Programming Wiki, which was consulted frequently for this project: https://chessprogramming.wikispaces.com.
 
-A few ideas and inspiration came from Stockfish (https://stockfishchess.org/):
+A few ideas and inspiration came from
+
+Stockfish (https://stockfishchess.org/):
 - "bench" command
 - Using SWAR for midgame/endgame evaluation
 - Razoring implementation
 - Singular extension implementation
 
+Crafty:
+- Lockless hashing by XORing Zobrist keys and hash data
+
+EXChess:
+- Lazy SMP implementation
+
 A thanks also to Cute Chess, the primary tool used for testing: (http://cutechess.com/).
 
 
 ### Engine Strength
+CCRL 40/40
+
+Laser 0.2.1: 92nd, 2641 elo as of Dec 18, 2015
+
 CCRL 40/4
 
 Laser 0.2.1: 103-104th, 2606 elo as of Nov 15, 2015
@@ -36,6 +48,7 @@ Laser 0.2.1: 107th, 2414 elo as of Nov 15, 2015
 
 
 ### Implementation Details
+- Lazy SMP up to 8 threads
 - Fancy magic bitboards for a 5 to 6 sec PERFT 6.
 - Evaluation with piece square tables, basic king safety, isolated/doubled/passed pawns, and mobility
 - A transposition table with Zobrist hashing, a two bucket system, and 16 MB default size
@@ -59,7 +72,11 @@ The code and Makefile support gcc on Linux and MinGW on Windows for Intel Nehale
 
 
 ### Known issues:
-- Gives incorrect mate scores for long mates and stalls in mate positions occasionally
+- Gives incorrect mate scores for long mates
+- SMP bugs:
+  - hashfull goes above 1000
+  - occasionally crashes without playing a move, but if the first move is successfully played then no errors will occur
+  - connection stalls occasionally with more threads than physical cores
 - Hash errors on PV nodes cause strange moves and give illegal PVs, also causing feedPVToTT() to fail
 - tunemagic command leaks a large amount of memory
 - SEE, MVV/LVA scoring functions handle en passant as if no pawn was captured

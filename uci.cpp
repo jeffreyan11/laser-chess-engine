@@ -57,7 +57,7 @@ void clearAll(Board &board);
 
 volatile bool isStop = true;
 
-extern TwoFoldStack twoFoldPositions;
+extern TwoFoldStack twoFoldPositions[MAX_THREADS];
 
 int main() {
     initMagicTables(2563762638929852183ULL);
@@ -266,7 +266,7 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
     }
     
     board = fenToBoard(pos);
-    twoFoldPositions.clear();
+    twoFoldPositions[0].clear();
     
     if (input.find("moves") != string::npos) {
         string moveList = input.substr(input.find("moves") + 6);
@@ -303,11 +303,11 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
                 m = setFlags(m, MOVE_DOUBLE_PAWN);
             
             // Record positions on two fold stack.
-            twoFoldPositions.push(board.getZobristKey());
+            twoFoldPositions[0].push(board.getZobristKey());
             // The stack is cleared for captures, pawn moves, and castles, which are all
             // irreversible
             if (isCapture || isPawnMove || isCastle)
-                twoFoldPositions.clear();
+                twoFoldPositions[0].clear();
 
             board.doMove(m, color);
         }

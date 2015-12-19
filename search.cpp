@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
+#include <mutex>
+#include <thread>
 #include "evalhash.h"
 #include "hash.h"
 #include "search.h"
@@ -118,18 +120,21 @@ static SearchStatistics searchStatsArray[MAX_THREADS];
 static EasyMove easyMoveInfo;
 
 // Accessible from uci.cpp
-TwoFoldStack twoFoldPositions;
+TwoFoldStack twoFoldPositions[MAX_THREADS];
 
 // Used to break out of the search thread if the stop command is given
 extern bool isStop;
+// Used to quit all threads
+static volatile int threadsRunning;
+mutex threadsRunningMutex;
 
 unsigned int multiPV;
 int numThreads;
 
 
 // Search functions
-void getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
-    int *bestMoveIndex, int *bestScore, int startMove, int threadID, SearchPV *pvLine);
+void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth,
+    int *bestMoveIndex, int *bestScore, unsigned int startMove, int threadID, SearchPV *pvLine);
 int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine);
 int quiescence(Board &b, int plies, int alpha, int beta, int threadID);
 int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID);
@@ -203,10 +208,50 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 searchParamsArray[i].reset();
                 searchParamsArray[i].rootDepth = rootDepth;
             }
-            
+
             // Get the index of the best move
-            getBestMoveAtDepth(b, legalMoves, rootDepth,
-                &bestMoveIndex, &bestScore, multiPVNum-1, 0, &pvLine);
+            // If depth >= 7 create threads for SMP
+            if (rootDepth >= 7 && numThreads > 1) {
+                threadsRunning = numThreads;
+
+                // Dummy variables since we don't care about these results
+                int *dummyBestIndex = new int[numThreads-1];
+                int *dummyBestScore = new int[numThreads-1];
+                SearchPV *dummyPVLine = new SearchPV[numThreads-1];
+
+                // Start secondary threads
+                // Start even threads with depth = rootDepth+1
+                //   (idea from Dan Homan, author of ExChess)
+                for (int i = 1; i < numThreads; i++) {
+                    // Copy over the two-fold stack to use
+                    twoFoldPositions[i] = twoFoldPositions[0];
+                    thread searchThread = thread(getBestMoveAtDepth, b,
+                        &legalMoves, rootDepth + (i % 2),
+                        dummyBestIndex+i-1, dummyBestScore+i-1,
+                        multiPVNum-1, i, dummyPVLine+i-1);
+                    // Detach secondary threads
+                    searchThread.detach();
+                }
+
+                // Start the primary result thread
+                getBestMoveAtDepth(b, &legalMoves, rootDepth,
+                    &bestMoveIndex, &bestScore, multiPVNum-1, 0, &pvLine);
+
+                isStop = true;
+                // Wait for all other threads to finish
+                while (threadsRunning > 0)
+                    std::this_thread::yield();
+                isStop = false;
+
+                delete[] dummyBestIndex;
+                delete[] dummyBestScore;
+                delete[] dummyPVLine;
+            }
+            // Otherwise, just search with one thread
+            else {
+                getBestMoveAtDepth(b, &legalMoves, rootDepth,
+                    &bestMoveIndex, &bestScore, multiPVNum-1, 0, &pvLine);
+            }
 
             timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
 
@@ -252,6 +297,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 searchParamsArray[i].ageHistoryTable(rootDepth, false);
         }
 
+        // Record candidate easymoves
         if (multiPV == 1 && pvLine.pvLength >= 3) {
             if (pvLine.pv[2] == easyMoveInfo.streakBest) {
                 easyMoveInfo.pvStreak++;
@@ -270,6 +316,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
             pvStreak = 1;
         }
 
+        // Easymove confirmation
         if (mode == TIME && multiPV == 1
          && timeSoFar * ONE_SECOND > value / 16
          && timeSoFar * ONE_SECOND < value / 2
@@ -278,7 +325,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 || pvStreak >= 9) {
                 int secondBestMove;
                 int secondBestScore;
-                getBestMoveAtDepth(b, legalMoves, rootDepth-5,
+                getBestMoveAtDepth(b, &legalMoves, rootDepth-5,
                     &secondBestMove, &secondBestScore, 1, 0, &pvLine);
                 if (secondBestScore < bestScore - 150)
                     break;
@@ -321,8 +368,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 /**
  * @brief Returns the index of the best move in legalMoves.
  */
-void getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
-        int *bestMoveIndex, int *bestScore, int startMove, int threadID, SearchPV *pvLine) {
+void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth,
+        int *bestMoveIndex, int *bestScore, unsigned int startMove, int threadID, SearchPV *pvLine) {
     SearchParameters *searchParams = &(searchParamsArray[threadID]);
     SearchStatistics *searchStats = &(searchStatsArray[threadID]);
     SearchPV line;
@@ -333,18 +380,18 @@ void getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
     int beta = MATE_SCORE;
     
     // Push current position to two fold stack
-    twoFoldPositions.push(b->getZobristKey());
+    twoFoldPositions[threadID].push(b->getZobristKey());
 
-    for (unsigned int i = startMove; i < legalMoves.size(); i++) {
+    for (unsigned int i = startMove; i < legalMoves->size(); i++) {
         // Output current move info to the GUI. Only do so if 5 seconds of
         // search have elapsed to avoid clutter
         double timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
-        if (timeSoFar * ONE_SECOND > 5 * ONE_SECOND)
-            cout << "info depth " << depth << " currmove " << moveToString(legalMoves.get(i))
+        if (threadID == 0 && timeSoFar * ONE_SECOND > 5 * ONE_SECOND)
+            cout << "info depth " << depth << " currmove " << moveToString(legalMoves->get(i))
                  << " currmovenumber " << i+1 << " nodes " << getNodes() << endl;
 
         Board copy = b->staticCopy();
-        copy.doMove(legalMoves.get(i), color);
+        copy.doMove(legalMoves->get(i), color);
         searchStats->nodes++;
         
         if (i != 0) {
@@ -372,13 +419,18 @@ void getBestMoveAtDepth(Board *b, MoveList &legalMoves, int depth,
             alpha = score;
             *bestScore = score;
             tempMove = i;
-            changePV(legalMoves.get(i), pvLine, &line);
+            changePV(legalMoves->get(i), pvLine, &line);
         }
     }
 
-    twoFoldPositions.pop();
+    twoFoldPositions[threadID].pop();
 
-    *bestMoveIndex = tempMove;
+    *bestMoveIndex = (int) tempMove;
+
+    // This thread is finished running.
+    threadsRunningMutex.lock();
+    threadsRunning--;
+    threadsRunningMutex.unlock();
 }
 
 // Gets a best move to try first when a hash move is not available.
@@ -392,7 +444,7 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID) 
     int beta = MATE_SCORE;
 
     // Push current position to two fold stack
-    twoFoldPositions.push(b->getZobristKey());
+    twoFoldPositions[threadID].push(b->getZobristKey());
     
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Board copy = b->staticCopy();
@@ -425,7 +477,7 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID) 
         }
     }
 
-    twoFoldPositions.pop();
+    twoFoldPositions[threadID].pop();
 
     return tempMove;
 }
@@ -454,7 +506,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
     // Draw check
     if (b.isDraw())
         return 0;
-    if (twoFoldPositions.find(b.getZobristKey()))
+    if (twoFoldPositions[threadID].find(b.getZobristKey()))
         return 0;
 
 
@@ -766,7 +818,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         }
 
         // Record two-fold stack since we may do a search for singular extensions
-        twoFoldPositions.push(b.getZobristKey());
+        twoFoldPositions[threadID].push(b.getZobristKey());
 
         // Singular extensions
         // If one move appears to be much better than all others, extend the move
@@ -847,7 +899,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         }
 
         // Pop the position in case we return early from this search
-        twoFoldPositions.pop();
+        twoFoldPositions[threadID].pop();
 
         // Stop condition to help break out as quickly as possible
         if (isStop)
@@ -1331,6 +1383,7 @@ double getPercentage(uint64_t numerator, uint64_t denominator) {
 
 // Prints the statistics gathered during search
 void printStatistics() {
+    // Aggregate statistics over all threads
     SearchStatistics searchStats;
     for (int i = 0; i < numThreads; i++) {
         searchStats.nodes +=            searchStatsArray[i].nodes;
