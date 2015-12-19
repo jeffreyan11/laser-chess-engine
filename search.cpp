@@ -212,6 +212,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
             // Get the index of the best move
             // If depth >= 7 create threads for SMP
             if (rootDepth >= 7 && numThreads > 1) {
+                thread *threadPool = new thread[numThreads-1];
                 threadsRunning = numThreads;
 
                 // Dummy variables since we don't care about these results
@@ -225,12 +226,12 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 for (int i = 1; i < numThreads; i++) {
                     // Copy over the two-fold stack to use
                     twoFoldPositions[i] = twoFoldPositions[0];
-                    thread searchThread = thread(getBestMoveAtDepth, b,
+                    threadPool[i-1] = thread(getBestMoveAtDepth, b,
                         &legalMoves, rootDepth + (i % 2),
                         dummyBestIndex+i-1, dummyBestScore+i-1,
                         multiPVNum-1, i, dummyPVLine+i-1);
                     // Detach secondary threads
-                    searchThread.detach();
+                    threadPool[i-1].detach();
                 }
 
                 // Start the primary result thread
@@ -243,6 +244,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     std::this_thread::yield();
                 isStop = false;
 
+                delete[] threadPool;
                 delete[] dummyBestIndex;
                 delete[] dummyBestScore;
                 delete[] dummyPVLine;
@@ -381,6 +383,11 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth,
     
     // Push current position to two fold stack
     twoFoldPositions[threadID].push(b->getZobristKey());
+
+    // Helps prevent stalls when using more threads than physical cores,
+    // presumably by preventing this function from completing before the thread
+    // is able to detach.
+    std::this_thread::yield();
 
     for (unsigned int i = startMove; i < legalMoves->size(); i++) {
         // Output current move info to the GUI. Only do so if 5 seconds of

@@ -75,8 +75,6 @@ The code and Makefile support gcc on Linux and MinGW on Windows for Intel Nehale
 - Gives incorrect mate scores for long mates
 - SMP bugs:
   - hashfull goes above 1000
-  - occasionally crashes without playing a move, but if the first move is successfully played then no errors will occur
-  - connection stalls occasionally with more threads than physical cores
 - Hash errors on PV nodes cause strange moves and give illegal PVs, also causing feedPVToTT() to fail
 - tunemagic command leaks a large amount of memory
 - SEE, MVV/LVA scoring functions handle en passant as if no pawn was captured

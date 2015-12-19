@@ -27,6 +27,6 @@ const int MIN_MULTI_PV = 1;
 const int MAX_MULTI_PV = 256;
 const int DEFAULT_THREADS = 1;
 const int MIN_THREADS = 1;
-const int MAX_THREADS = 8;
+const int MAX_THREADS = 32;
 
 #endif
