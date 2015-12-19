@@ -203,11 +203,10 @@ int main() {
         else if (input.substr(0, 5) == "perft" && inputVector.size() == 2) {
             int depth = stoi(inputVector.at(1));
 
-            Board b;
             uint64_t captures = 0;
             auto startTime = ChessClock::now();
             
-            uint64_t nodes = perft(b, WHITE, depth, captures);
+            uint64_t nodes = perft(board, board.getPlayerToMove(), depth, captures);
             
             double time = getTimeElapsed(startTime);
             
