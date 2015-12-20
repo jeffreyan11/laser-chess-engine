@@ -18,6 +18,14 @@
 
 #include "hash.h"
 
+/*
+ * Packs the data into a single 64-bit integer using the following format:
+ * Bits 0-15: score
+ * Bits 16-31: move
+ * Bits 32-39: node type
+ * Bits 40-47: age
+ * Bits 48-55: depth
+ */
 uint64_t packHashData(int depth, Move m, int score, uint8_t nodeType, uint8_t age) {
     uint64_t data = 0;
     data |= (uint8_t) depth;

@@ -62,6 +62,7 @@ int bitScanReverse(uint64_t bb);
 int count(uint64_t bb);
 uint64_t flipAcrossRanks(uint64_t bb);
 
+
 /*
  * Moves are represented as an unsigned 16-bit integer.
  * Bits 0-5: start square
@@ -131,6 +132,7 @@ inline uint16_t getFlags(Move m) {
 }
 
 std::string moveToString(Move m);
+
 
 /**
  * @brief A simple implementation of an ArrayList, used for storing

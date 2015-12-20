@@ -30,6 +30,7 @@
 
 using namespace std;
 
+
 /**
  * @brief Records a bunch of useful statistics from the search,
  * which are printed to std error at the end of the search.
@@ -70,6 +71,9 @@ struct SearchPV {
     }
 };
 
+/**
+ * @brief Stores information about candidate easymoves.
+ */
 struct EasyMove {
     Move prevBest;
     Move streakBest;
@@ -82,6 +86,8 @@ struct EasyMove {
     }
 };
 
+
+//-------------------------------Search Constants-------------------------------
 // Futility pruning margins indexed by depth. If static eval is at least this
 // amount below alpha, we skip quiet moves for this position.
 const int FUTILITY_MARGIN[5] = {0,
@@ -113,6 +119,8 @@ const unsigned int LMP_MOVE_COUNTS[6] = {0,
     5, 9, 16, 29, 50
 };
 
+
+//-----------------------------Global variables---------------------------------
 static Hash transpositionTable(DEFAULT_HASH_SIZE);
 static EvalHash evalCache(DEFAULT_HASH_SIZE);
 static SearchParameters searchParamsArray[MAX_THREADS];
@@ -128,6 +136,7 @@ extern bool isStop;
 static volatile int threadsRunning;
 mutex threadsRunningMutex;
 
+// Values for UCI options
 unsigned int multiPV;
 int numThreads;
 
@@ -163,6 +172,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         searchParamsArray[i].reset();
         searchStatsArray[i].reset();
         searchParamsArray[i].rootMoveNumber = (uint8_t) (b->getMoveNumber());
+        searchParamsArray[i].selectiveDepth = 0;
     }
 
     int color = b->getPlayerToMove();
@@ -191,21 +201,22 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         searchParamsArray[0].timeLimit = min(searchParamsArray[0].timeLimit / 16, ONE_SECOND);
     }
 
-    for (int i = 0; i < numThreads; i++)
-        searchParamsArray[i].selectiveDepth = 0;
 
     int bestScore, bestMoveIndex;
     int rootDepth = 1;
     Move prevBest = NULL_MOVE;
     int pvStreak = 0;
 
+    // Iterative deepening loop
     do {
         // For recording the PV
         SearchPV pvLine;
 
         // Handle multi PV (if multiPV = 1 then the loop is only run once)
-        for (unsigned int multiPVNum = 1; multiPVNum <= multiPV
-                && multiPVNum <= legalMoves.size(); multiPVNum++) {
+        for (unsigned int multiPVNum = 1;
+                          multiPVNum <= multiPV
+                            && multiPVNum <= legalMoves.size();
+                          multiPVNum++) {
             // Reset all search parameters (killers, plies, etc)
             for (int i = 0; i < numThreads; i++)
                 searchParamsArray[i].reset();
@@ -333,7 +344,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 if (secondBestScore < bestScore - 150)
                     break;
                 else
-                    pvStreak = -10;
+                    pvStreak = -128;
             }
         }
 
@@ -341,13 +352,14 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         //    feedPVToTT(b, &pvLine, bestScore);
         rootDepth++;
     }
-
+    // Conditions for iterative deepening loop
     while (!isStop
         && ((mode == TIME && (timeSoFar * ONE_SECOND < value * TIME_FACTOR)
                           && (rootDepth <= MAX_DEPTH))
          || (mode == MOVETIME && timeSoFar < value)
          || (mode == DEPTH && rootDepth <= value)));
 
+    // If we found a candidate easymove for the next ply this search
     if (easyMoveInfo.pvStreak >= 7) {
         easyMoveInfo.prevBest = easyMoveInfo.streakBest;
     }
@@ -355,6 +367,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         easyMoveInfo.reset();
     
     printStatistics();
+
     // Aging for the history heuristic table
     for (int i = 0; i < numThreads; i++)
         searchParamsArray[i].ageHistoryTable(rootDepth, true);
@@ -946,6 +959,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
 
         movesSearched++;
     }
+    // End main search loop
+
 
     // If there were no legal moves
     if (score == -INFTY && movesSearched == 0)
@@ -968,6 +983,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
             moveSorter.reduceBadHistories(toHash);
         }
     }
+
     // Record all-nodes. No best move can be recorded.
     else if (alpha <= prevAlpha) {
         // If we would have done IID, save the hash/IID move so we don't have to
@@ -1177,12 +1193,6 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         }
     }
 
-    // TODO This is too slow to be effective
-/*    if (score == -INFTY) {
-        if (b.isStalemate(color))
-            return 0;
-    }*/
-
     return alpha;
 }
 
@@ -1358,6 +1368,8 @@ void feedPVToTT(Board *b, SearchPV *pvLine, int score) {
     }
 }
 
+// The selective depth in a parallel search is the max selective depth reached
+// by any of the threads
 int getSelectiveDepth() {
     int max = 0;
     for (int i = 0; i < numThreads; i++)

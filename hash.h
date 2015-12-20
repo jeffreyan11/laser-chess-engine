@@ -27,8 +27,11 @@ const uint8_t CUT_NODE = 1;
 const uint8_t ALL_NODE = 2;
 const uint8_t NO_NODE_INFO = 3;
 
+
+// Pack the information stored in a hash entry into a single 64-bit integer
 uint64_t packHashData(int depth, Move m, int score, uint8_t nodeType, uint8_t age);
 
+// Functions for unpacking hash data
 inline int getHashDepth(uint64_t data) {
     return (int8_t) ((data >> 48) & 0xFF);
 }
@@ -84,11 +87,6 @@ public:
     HashEntry slot2;
 
     HashNode() {}
-
-    /*HashNode(Board &b, int depth, Move m, int score, uint8_t nodeType, uint8_t age) {
-        slot1.setEntry(b, depth, m, score, nodeType, age);
-    }*/
-
     ~HashNode() {}
 };
 

@@ -21,6 +21,7 @@
 
 #include "common.h"
 
+
 const uint64_t AFILE = 0x0101010101010101;
 const uint64_t HFILE = 0x8080808080808080;
 const uint64_t FILES[8] = {
@@ -73,6 +74,7 @@ const uint64_t BLACK_QSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[57] | INDEX_TO_BIT[58]
 
 const uint16_t NO_EP_POSSIBLE = 0x8;
 
+
 struct PieceMoveInfo {
     int pieceID;
     int startSq;
@@ -92,12 +94,12 @@ void initMagicTables(uint64_t seed);
 void initZobristTable();
 void initInBetweenTable();
 
+
 /**
  * @brief A chess board and its associated functionality, including get legal
  *        moves and evaluation.
  */
 class Board {
-
 public:
     Board();
     Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
