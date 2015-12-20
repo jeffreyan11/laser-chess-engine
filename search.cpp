@@ -207,10 +207,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         for (unsigned int multiPVNum = 1; multiPVNum <= multiPV
                 && multiPVNum <= legalMoves.size(); multiPVNum++) {
             // Reset all search parameters (killers, plies, etc)
-            for (int i = 0; i < numThreads; i++) {
+            for (int i = 0; i < numThreads; i++)
                 searchParamsArray[i].reset();
-                searchParamsArray[i].rootDepth = rootDepth;
-            }
 
             // Get the index of the best move
             // If depth >= 7 create threads for SMP
@@ -809,14 +807,10 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
 
         int extension = 0;
         // Check extensions
-        bool isCheckExtension = false;
         if (depth >= 2 && reduction == 0
-         && searchParams->extensions <= 2 + searchParams->rootDepth / 2
          && copy.isInCheck(color^1)
          && (isCapture(m) || b.getSEEForMove(color, m) >= 0)) {
             extension++;
-            searchParams->extensions++;
-            isCheckExtension = true;
         }
 
         // Extension for transition into pawn-only endgame
@@ -834,9 +828,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
 
         // Singular extensions
         // If one move appears to be much better than all others, extend the move
-        bool isSingularExtension = false;
         if (depth >= 6 && reduction == 0 && extension == 0
-         && searchParams->singularExtensions <= searchParams->rootDepth
          && m == hashed
          && abs(hashScore) < 2 * QUEEN_VALUE
          && ((hashScore >= beta && (nodeType == CUT_NODE || nodeType == PV_NODE)
@@ -875,11 +867,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
 
             // If all moves other than the hash move failed low, we extend for
             // the singular move
-            if (isSingular) {
+            if (isSingular)
                 extension++;
-                searchParams->singularExtensions++;
-                isSingularExtension = true;
-            }
         }
 
         // Null-window search, with re-search if applicable
@@ -916,13 +905,6 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         // Stop condition to help break out as quickly as possible
         if (isStop)
             return INFTY;
-
-        // Reduce check extension counter
-        if (isCheckExtension)
-            searchParams->extensions -= extension;
-        // If the extension was singular, reset the consecutive singular check
-        else if (isSingularExtension)
-            searchParams->singularExtensions--;
         
         // Beta cutoff
         if (score >= beta) {
