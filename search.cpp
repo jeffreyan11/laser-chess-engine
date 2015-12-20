@@ -446,6 +446,7 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth,
 // Gets a best move to try first when a hash move is not available.
 int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID) {
     SearchParameters *searchParams = &(searchParamsArray[threadID]);
+    SearchStatistics *searchStats = &(searchStatsArray[threadID]);
     SearchPV line;
     int color = b->getPlayerToMove();
     int tempMove = -1;
@@ -460,6 +461,7 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID) 
         Board copy = b->staticCopy();
         if(!copy.doPseudoLegalMove(legalMoves.get(i), color))
             continue;
+        searchStats->nodes++;
         
         if (i != 0) {
             searchParams->ply++;
