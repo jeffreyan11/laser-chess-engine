@@ -191,6 +191,9 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         searchParamsArray[0].timeLimit = min(searchParamsArray[0].timeLimit / 16, ONE_SECOND);
     }
 
+    for (int i = 0; i < numThreads; i++)
+        searchParamsArray[i].selectiveDepth = 0;
+
     int bestScore, bestMoveIndex;
     int rootDepth = 1;
     Move prevBest = NULL_MOVE;
