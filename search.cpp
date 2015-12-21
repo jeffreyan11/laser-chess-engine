@@ -132,6 +132,8 @@ TwoFoldStack twoFoldPositions[MAX_THREADS];
 
 // Used to break out of the search thread if the stop command is given
 extern bool isStop;
+// Additional stop signal to stop helper threads during SMP
+volatile bool stopSignal;
 // Used to quit all threads
 static volatile int threadsRunning;
 mutex threadsRunningMutex;
@@ -206,6 +208,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     int rootDepth = 1;
     Move prevBest = NULL_MOVE;
     int pvStreak = 0;
+    stopSignal = false;
 
     // Iterative deepening loop
     do {
@@ -250,11 +253,11 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 getBestMoveAtDepth(b, &legalMoves, rootDepth,
                     &bestMoveIndex, &bestScore, multiPVNum-1, 0, &pvLine);
 
-                isStop = true;
+                stopSignal = true;
                 // Wait for all other threads to finish
                 while (threadsRunning > 0)
                     std::this_thread::yield();
-                isStop = false;
+                stopSignal = false;
 
                 delete[] threadPool;
                 delete[] dummyBestIndex;
@@ -433,7 +436,7 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth,
 
         // Stop condition. If stopping, return search results from incomplete
         // search, if any.
-        if (isStop)
+        if (isStop || stopSignal)
             break;
 
         if (score > alpha) {
@@ -491,7 +494,7 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID) 
         }
 
         // Stop condition to break out as quickly as possible
-        if (isStop)
+        if (isStop || stopSignal)
             return i;
         
         if (score > alpha) {
@@ -715,9 +718,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         // Check for a timeout
         double timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
         if (timeSoFar * ONE_SECOND > searchParamsArray[0].timeLimit)
-            isStop = true;
+            isStop = stopSignal = true;
         // Stop condition to help break out as quickly as possible
-        if (isStop)
+        if (isStop || stopSignal)
             return INFTY;
 
         bool moveIsPrunable = moveSorter.nodeIsReducible()
@@ -916,7 +919,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         twoFoldPositions[threadID].pop();
 
         // Stop condition to help break out as quickly as possible
-        if (isStop)
+        if (isStop || stopSignal)
             return INFTY;
         
         // Beta cutoff
