@@ -156,7 +156,7 @@ const int endgamePieceValues[6][64] = {
 // Mobility tables, with zero padding for pieces that cannot move up to 27 squares
 const int mobilityScore[4][28] = {
 { // Knights
--25,-15, -6,  2,  8, 13, 17, 21, 25,
+-25,-13, -5,  2,  8, 13, 17, 21, 25,
   0,  0,  0,  0,  0,  0,  0,  0,  0,
   0,  0,  0,  0,  0,  0,  0,  0,  0,  0},
 { // Bishops

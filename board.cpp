@@ -1823,16 +1823,20 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, int egFactor) {
     centerControl += CENTER_BONUS * count(pawnAttackMap & CENTER_SQS);
 
 
+    uint64_t oppPawns = pieces[color^1][PAWNS];
+    uint64_t oppPawnAttackMap = (color == WHITE) ? getBPawnCaptures(oppPawns)
+                                                 : getWPawnCaptures(oppPawns);
+    // We count knight mobility for captures or moves to open squares not controlled
+    // by an opponent's pawn
+    uint64_t knightMobilitySqs = allPieces[color^1] | (openSqs & ~oppPawnAttackMap);
     uint64_t knights = pieces[color][KNIGHTS];
-    uint64_t oppPawnAttackMap = (color == WHITE) ? getBPawnCaptures(pawns)
-                                                 : getWPawnCaptures(pawns);
     while (knights) {
         int stSq = bitScanForward(knights);
         knights &= knights-1;
         uint64_t legal = getKnightSquares(stSq);
 
         // Get mobility score
-        result += mobilityScore[KNIGHTS-1][count(legal & openSqs & ~oppPawnAttackMap)];
+        result += mobilityScore[KNIGHTS-1][count(legal & knightMobilitySqs)];
         // Get center control score
         centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
         centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
