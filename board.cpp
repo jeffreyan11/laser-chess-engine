@@ -616,7 +616,7 @@ PieceMoveList Board::getPieceMoveList(int color) {
     }
 
     uint64_t occ = isMoveGen ? getOccupancy()
-                             : allPieces[color^1] | pieces[color][PAWNS];
+                             : allPieces[color^1] | pieces[color][PAWNS] | pieces[color][KINGS];
     uint64_t bishops = pieces[color][BISHOPS];
     while (bishops) {
         int stSq = bitScanForward(bishops);
