@@ -1822,20 +1822,56 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, int egFactor) {
     centerControl += EXTENDED_CENTER_VAL * count(pawnAttackMap & EXTENDED_CENTER_SQS);
     centerControl += CENTER_BONUS * count(pawnAttackMap & CENTER_SQS);
 
-    // Iterate over piece move information to extract all mobility-related scores
-    for (unsigned int i = 0; i < pml.size(); i++) {
-        PieceMoveInfo pmi = pml.get(i);
 
-        int pieceIndex = pmi.pieceID - 1;
-        // Get all potential legal moves
-        uint64_t legal = pmi.legal;
+    uint64_t knights = pieces[color][KNIGHTS];
+    uint64_t oppPawnAttackMap = (color == WHITE) ? getBPawnCaptures(pawns)
+                                                 : getWPawnCaptures(pawns);
+    while (knights) {
+        int stSq = bitScanForward(knights);
+        knights &= knights-1;
+        uint64_t legal = getKnightSquares(stSq);
+
         // Get mobility score
-        result += mobilityScore[pieceIndex][count(legal & openSqs)];
-
+        result += mobilityScore[KNIGHTS-1][count(legal & openSqs & ~oppPawnAttackMap)];
         // Get center control score
         centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
         centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
     }
+
+    uint64_t occ = allPieces[color^1] | pieces[color][PAWNS];
+    uint64_t bishops = pieces[color][BISHOPS];
+    while (bishops) {
+        int stSq = bitScanForward(bishops);
+        bishops &= bishops-1;
+        uint64_t legal = getBishopSquares(stSq, occ);
+
+        result += mobilityScore[BISHOPS-1][count(legal & openSqs)];
+        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
+        centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
+    }
+
+    uint64_t rooks = pieces[color][ROOKS];
+    while (rooks) {
+        int stSq = bitScanForward(rooks);
+        rooks &= rooks-1;
+        uint64_t legal = getRookSquares(stSq, occ);
+
+        result += mobilityScore[ROOKS-1][count(legal & openSqs)];
+        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
+        centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
+    }
+
+    uint64_t queens = pieces[color][QUEENS];
+    while (queens) {
+        int stSq = bitScanForward(queens);
+        queens &= queens-1;
+        uint64_t legal = getQueenSquares(stSq, occ);
+
+        result += mobilityScore[QUEENS-1][count(legal & openSqs)];
+        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
+        centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
+    }
+
 
     result += centerControl * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
 
