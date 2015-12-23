@@ -74,6 +74,9 @@ const uint64_t BLACK_QSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[57] | INDEX_TO_BIT[58]
 
 const uint16_t NO_EP_POSSIBLE = 0x8;
 
+const bool PML_LEGAL_MOVES = true;
+const bool PML_PSEUDO_MOBILITY = false;
+
 
 struct PieceMoveInfo {
     int pieceID;
@@ -115,7 +118,7 @@ public:
     void doNullMove();
     void undoNullMove(uint16_t _epCaptureFile);
 
-    PieceMoveList getPieceMoveList(int color);
+    template <bool isMoveGen> PieceMoveList getPieceMoveList(int color);
     MoveList getAllLegalMoves(int color);
     MoveList getAllPseudoLegalMoves(int color, PieceMoveList &pml);
     MoveList getPseudoLegalQuiets(int color, PieceMoveList &pml);

@@ -608,7 +608,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
     // Keeps track of the PV to propagate up to root
     SearchPV line;
     // For move generation and eval
-    PieceMoveList pml = b.getPieceMoveList(color);
+    PieceMoveList pml = b.getPieceMoveList<PML_LEGAL_MOVES>(color);
     // Similarly, we do not want to prune if we are in check
     bool isInCheck = b.isInCheck(color);
     // A static evaluation, used to activate null move pruning and futility
@@ -1053,7 +1053,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         }
     }
 
-    PieceMoveList pml = b.getPieceMoveList(color);
+    PieceMoveList pml = b.getPieceMoveList<PML_LEGAL_MOVES>(color);
 
     // Stand pat: if our current position is already way too good or way too bad
     // we can simply stop the search here.
@@ -1207,7 +1207,7 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     SearchParameters *searchParams = &(searchParamsArray[threadID]);
     SearchStatistics *searchStats = &(searchStatsArray[threadID]);
     int color = b.getPlayerToMove();
-    PieceMoveList pml = b.getPieceMoveList(color);
+    PieceMoveList pml = b.getPieceMoveList<PML_LEGAL_MOVES>(color);
     MoveList legalMoves = b.getPseudoLegalCheckEscapes(color, pml);
 
     int score = -INFTY;

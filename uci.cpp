@@ -239,7 +239,7 @@ int main() {
         }
         else if (input == "eval") {
             int color = board.getPlayerToMove();
-            PieceMoveList pml = board.getPieceMoveList(color);
+            PieceMoveList pml = board.getPieceMoveList<PML_LEGAL_MOVES>(color);
             cerr << "Static evaluation: " << board.evaluate(pml) << " cp" << endl;
         }
         

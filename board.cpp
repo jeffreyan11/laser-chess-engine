@@ -230,7 +230,7 @@ uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
 
     uint64_t nodes = 0;
 
-    PieceMoveList pml = b.getPieceMoveList(color);
+    PieceMoveList pml = b.getPieceMoveList<PML_LEGAL_MOVES>(color);
     MoveList pl = b.getAllPseudoLegalMoves(color, pml);
     for (unsigned int i = 0; i < pl.size(); i++) {
         Board copy = b.staticCopy();
@@ -602,44 +602,46 @@ void Board::undoNullMove(uint16_t _epCaptureFile) {
  * @brief Returns a list of structs containing the piece type, start square,
  * and a bitboard of potential legal moves for each knight, bishop, rook, and queen.
  */
+template <bool isMoveGen>
 PieceMoveList Board::getPieceMoveList(int color) {
     PieceMoveList pml;
 
     uint64_t knights = pieces[color][KNIGHTS];
     while (knights) {
-        int stsq = bitScanForward(knights);
+        int stSq = bitScanForward(knights);
         knights &= knights-1;
-        uint64_t nSq = getKnightSquares(stsq);
+        uint64_t nSq = getKnightSquares(stSq);
 
-        pml.add(PieceMoveInfo(KNIGHTS, stsq, nSq));
+        pml.add(PieceMoveInfo(KNIGHTS, stSq, nSq));
     }
 
-    uint64_t occ = getOccupancy();
+    uint64_t occ = isMoveGen ? getOccupancy()
+                             : allPieces[color^1] | pieces[color][PAWNS];
     uint64_t bishops = pieces[color][BISHOPS];
     while (bishops) {
-        int stsq = bitScanForward(bishops);
+        int stSq = bitScanForward(bishops);
         bishops &= bishops-1;
-        uint64_t bSq = getBishopSquares(stsq, occ);
+        uint64_t bSq = getBishopSquares(stSq, occ);
 
-        pml.add(PieceMoveInfo(BISHOPS, stsq, bSq));
+        pml.add(PieceMoveInfo(BISHOPS, stSq, bSq));
     }
 
     uint64_t rooks = pieces[color][ROOKS];
     while (rooks) {
-        int stsq = bitScanForward(rooks);
+        int stSq = bitScanForward(rooks);
         rooks &= rooks-1;
-        uint64_t rSq = getRookSquares(stsq, occ);
+        uint64_t rSq = getRookSquares(stSq, occ);
 
-        pml.add(PieceMoveInfo(ROOKS, stsq, rSq));
+        pml.add(PieceMoveInfo(ROOKS, stSq, rSq));
     }
 
     uint64_t queens = pieces[color][QUEENS];
     while (queens) {
-        int stsq = bitScanForward(queens);
+        int stSq = bitScanForward(queens);
         queens &= queens-1;
-        uint64_t qSq = getQueenSquares(stsq, occ);
+        uint64_t qSq = getQueenSquares(stSq, occ);
 
-        pml.add(PieceMoveInfo(QUEENS, stsq, qSq));
+        pml.add(PieceMoveInfo(QUEENS, stSq, qSq));
     }
 
     return pml;
@@ -647,7 +649,7 @@ PieceMoveList Board::getPieceMoveList(int color) {
 
 // Get all legal moves and captures
 MoveList Board::getAllLegalMoves(int color) {
-    PieceMoveList pml = getPieceMoveList(color);
+    PieceMoveList pml = getPieceMoveList<PML_LEGAL_MOVES>(color);
     MoveList moves = getAllPseudoLegalMoves(color, pml);
 
     for (unsigned int i = 0; i < moves.size(); i++) {
@@ -1571,18 +1573,11 @@ int Board::evaluate(PieceMoveList &pml) {
     int mobilityValue = 0;
     // Scores based on mobility and basic king safety (which is turned off in
     // the endgame)
-    if (getPlayerToMove() == WHITE) {
-        PieceMoveList pmlOther = getPieceMoveList(BLACK);
-        mobilityValue += getPseudoMobility(WHITE, pml, egFactor);
-        mobilityValue -= getPseudoMobility(BLACK, pmlOther, egFactor);
-        mobilityValue += getKingSafety(pml, pmlOther, wksq, bksq, egFactor);
-    }
-    else {
-        PieceMoveList pmlOther = getPieceMoveList(WHITE);
-        mobilityValue += getPseudoMobility(WHITE, pmlOther, egFactor);
-        mobilityValue -= getPseudoMobility(BLACK, pml, egFactor);
-        mobilityValue += getKingSafety(pmlOther, pml, wksq, bksq, egFactor);
-    }
+    PieceMoveList pmlWhite = getPieceMoveList<PML_PSEUDO_MOBILITY>(WHITE);
+    PieceMoveList pmlBlack = getPieceMoveList<PML_PSEUDO_MOBILITY>(BLACK);
+    mobilityValue += getPseudoMobility(WHITE, pmlWhite, egFactor);
+    mobilityValue -= getPseudoMobility(BLACK, pmlBlack, egFactor);
+    mobilityValue += getKingSafety(pmlWhite, pmlBlack, wksq, bksq, egFactor);
 
 
     // Current pawn attacks
@@ -1829,49 +1824,21 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, int egFactor) {
     // We count knight mobility for captures or moves to open squares not controlled
     // by an opponent's pawn
     uint64_t knightMobilitySqs = allPieces[color^1] | (openSqs & ~oppPawnAttackMap);
-    uint64_t knights = pieces[color][KNIGHTS];
-    while (knights) {
-        int stSq = bitScanForward(knights);
-        knights &= knights-1;
-        uint64_t legal = getKnightSquares(stSq);
 
+    // Iterate over piece move information to extract all mobility-related scores
+    for (unsigned int i = 0; i < pml.size(); i++) {
+        PieceMoveInfo pmi = pml.get(i);
+
+        int pieceIndex = pmi.pieceID - 1;
+        // Get all potential legal moves
+        uint64_t legal = pmi.legal;
         // Get mobility score
-        result += mobilityScore[KNIGHTS-1][count(legal & knightMobilitySqs)];
+        if (pieceIndex == KNIGHTS - 1)
+            result += mobilityScore[pieceIndex][count(legal & knightMobilitySqs)];
+        else
+            result += mobilityScore[pieceIndex][count(legal & openSqs)];
+
         // Get center control score
-        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
-        centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
-    }
-
-    uint64_t occ = allPieces[color^1] | pieces[color][PAWNS];
-    uint64_t bishops = pieces[color][BISHOPS];
-    while (bishops) {
-        int stSq = bitScanForward(bishops);
-        bishops &= bishops-1;
-        uint64_t legal = getBishopSquares(stSq, occ);
-
-        result += mobilityScore[BISHOPS-1][count(legal & openSqs)];
-        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
-        centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
-    }
-
-    uint64_t rooks = pieces[color][ROOKS];
-    while (rooks) {
-        int stSq = bitScanForward(rooks);
-        rooks &= rooks-1;
-        uint64_t legal = getRookSquares(stSq, occ);
-
-        result += mobilityScore[ROOKS-1][count(legal & openSqs)];
-        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
-        centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
-    }
-
-    uint64_t queens = pieces[color][QUEENS];
-    while (queens) {
-        int stSq = bitScanForward(queens);
-        queens &= queens-1;
-        uint64_t legal = getQueenSquares(stSq, occ);
-
-        result += mobilityScore[QUEENS-1][count(legal & openSqs)];
         centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
         centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
     }
