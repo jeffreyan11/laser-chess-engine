@@ -148,7 +148,7 @@ public:
     bool isInsufficientMaterial();
 
     // Evaluation
-    int evaluate(PieceMoveList &pml);
+    int evaluate();
     int getPseudoMobility(int color, PieceMoveList &pml, int egFactor);
     int getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
         uint64_t wKingSqs, uint64_t bKingSqs, int egFactor);

@@ -1417,7 +1417,7 @@ bool Board::isInsufficientMaterial() {
  * Evaluates the current board position in hundredths of pawns. White is
  * positive and black is negative in traditional negamax format.
  */
-int Board::evaluate(PieceMoveList &pml) {
+int Board::evaluate() {
     // Material
     int whiteMaterial = getMaterial(WHITE);
     int blackMaterial = getMaterial(BLACK);

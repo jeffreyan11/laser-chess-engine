@@ -238,9 +238,7 @@ int main() {
             cerr << "Nodes/second: " << (uint64_t)(totalNodes / time) << endl;
         }
         else if (input == "eval") {
-            int color = board.getPlayerToMove();
-            PieceMoveList pml = board.getPieceMoveList<PML_LEGAL_MOVES>(color);
-            cerr << "Static evaluation: " << board.evaluate(pml) << " cp" << endl;
+            cerr << "Static evaluation: " << board.evaluate() / PAWN_VALUE_EG << " cp" << endl;
         }
         
         // According to UCI protocol, inputs that do not make sense are ignored

@@ -607,8 +607,6 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
 
     // Keeps track of the PV to propagate up to root
     SearchPV line;
-    // For move generation and eval
-    PieceMoveList pml = b.getPieceMoveList<PML_LEGAL_MOVES>(color);
     // Similarly, we do not want to prune if we are in check
     bool isInCheck = b.isInCheck(color);
     // A static evaluation, used to activate null move pruning and futility
@@ -623,8 +621,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
             staticEval = ehe - EVAL_HASH_OFFSET;
         }
         else {
-            staticEval = (color == WHITE) ? b.evaluate(pml)
-                                          : -b.evaluate(pml);
+            staticEval = (color == WHITE) ? b.evaluate()
+                                          : -b.evaluate();
             evalCache.add(b, staticEval);
         }
     }
@@ -697,6 +695,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
     }
 
 
+    // For move generation
+    PieceMoveList pml = b.getPieceMoveList<PML_LEGAL_MOVES>(color);
     // Create list of legal moves
     MoveList legalMoves = isInCheck ? b.getPseudoLegalCheckEscapes(color, pml)
                                     : b.getAllPseudoLegalMoves(color, pml);
@@ -1053,7 +1053,6 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         }
     }
 
-    PieceMoveList pml = b.getPieceMoveList<PML_LEGAL_MOVES>(color);
 
     // Stand pat: if our current position is already way too good or way too bad
     // we can simply stop the search here.
@@ -1066,7 +1065,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         standPat = ehe - EVAL_HASH_OFFSET;
     }
     else {
-        standPat = (color == WHITE) ? b.evaluate(pml) : -b.evaluate(pml);
+        standPat = (color == WHITE) ? b.evaluate() : -b.evaluate();
         evalCache.add(b, standPat);
     }
     
@@ -1081,6 +1080,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
 
 
     // Generate captures and order by MVV/LVA
+    PieceMoveList pml = b.getPieceMoveList<PML_LEGAL_MOVES>(color);
     MoveList legalCaptures = b.getPseudoLegalCaptures(color, pml, false);
     ScoreList scores;
     for (unsigned int i = 0; i < legalCaptures.size(); i++) {
