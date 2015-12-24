@@ -48,7 +48,7 @@ Laser 0.2.1: 107th, 2414 elo as of Nov 15, 2015
 
 
 ### Implementation Details
-- Lazy SMP up to 8 threads
+- Lazy SMP up to 32 threads
 - Fancy magic bitboards for a 5 to 6 sec PERFT 6.
 - Evaluation with piece square tables, basic king safety, isolated/doubled/passed pawns, and mobility
 - A transposition table with Zobrist hashing, a two bucket system, and 16 MB default size
@@ -76,5 +76,4 @@ The code and Makefile support gcc on Linux and MinGW on Windows for Intel Nehale
 - SMP bugs:
   - hashfull goes above 1000
 - Hash errors on PV nodes cause strange moves and give illegal PVs, also causing feedPVToTT() to fail
-- tunemagic command leaks a large amount of memory
 - SEE, MVV/LVA scoring functions handle en passant as if no pawn was captured
