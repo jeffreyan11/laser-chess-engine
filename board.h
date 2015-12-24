@@ -76,6 +76,8 @@ const uint16_t NO_EP_POSSIBLE = 0x8;
 
 const bool PML_LEGAL_MOVES = true;
 const bool PML_PSEUDO_MOBILITY = false;
+const bool MOVEGEN_CAPTURES = true;
+const bool MOVEGEN_QUIETS = false;
 
 
 struct PieceMoveInfo {

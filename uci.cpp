@@ -83,6 +83,10 @@ int main() {
         getline(cin, input);
         inputVector = split(input, ' ');
         cin.clear();
+
+        // Ignore all input other than "stop" while running a search.
+        if (!isStop && input != "stop")
+            continue;
         
         if (input == "uci") {
             cout << "id name " << name << " " << version << endl;
