@@ -88,8 +88,8 @@ const Score PASSER_BONUS[8] = {encEval(0, 0), encEval(10, 30), encEval(10, 35), 
 const Score BLOCKADED_PASSER_PENALTY = encEval(8, 20);
 
 // Doubled pawns
-const Score DOUBLED_PENALTY[7] = {encEval(0, 0), encEval(0, 0), encEval(11, 16), encEval(36, 51),
-                                  encEval(72, 102), encEval(120, 170), encEval(180, 255)};
+const Score DOUBLED_PENALTY[7] = {encEval(0, 0), encEval(0, 0), encEval(11, 16), encEval(33, 48),
+                                  encEval(80, 120), encEval(150, 230), encEval(250, 350)};
 // Doubled pawns are worse the less pawns you have
 const Score DOUBLED_PENALTY_SCALE[9] = {0, 0, 3, 2, 1, 1, 1, 1, 1};
 // Isolated pawns
@@ -97,6 +97,6 @@ const Score ISOLATED_PENALTY = encEval(13, 15);
 // Isolated, doubled pawns
 const Score ISOLATED_DOUBLED_PENALTY = encEval(13, 13);
 // Backward pawns
-const Score BACKWARD_PENALTY = encEval(11, 12);
+const Score BACKWARD_PENALTY = encEval(12, 13);
 
 #endif
