@@ -70,7 +70,7 @@ int main() {
     string input;
     vector<string> inputVector;
     string name = "Laser";
-    string version = "1.0";
+    string version = "1.1 beta";
     string author = "Jeffrey An and Michael An";
     thread searchThread;
     Move bestMove = NULL_MOVE;

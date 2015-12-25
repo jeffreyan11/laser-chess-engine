@@ -1664,23 +1664,6 @@ int Board::evaluate() {
             value -= ROOK_OPEN_FILE_BONUS;
     }
 
-
-    //------------------------------Queens--------------------------------------
-    // If the queen is too far out, apply a penalty based on how much the
-    // opponent has developed - this is generally bad because the opponent can
-    // gain tempi while developing minor pieces
-    if (pieces[WHITE][QUEENS]
-     && (pieces[WHITE][QUEENS] & ~(RANKS[0] | RANKS[1] | RANKS[2]))
-     && count(allPieces[BLACK] & RANKS[7]) >= 5)
-        value -= QUEEN_EARLY_PENALTY * count(
-            (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & RANKS[7]);
-    if (pieces[BLACK][QUEENS]
-     && (pieces[BLACK][QUEENS] & ~(RANKS[7] | RANKS[6] | RANKS[5]))
-     && count(allPieces[WHITE] & RANKS[0]) >= 5) {
-        value += QUEEN_EARLY_PENALTY * count(
-            (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & RANKS[0]);
-    }
-
     
     //----------------------------Pawn structure--------------------------------
     // Passed pawns
@@ -1824,6 +1807,8 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, int egFactor) {
     // We count knight mobility for captures or moves to open squares not controlled
     // by an opponent's pawn
     uint64_t knightMobilitySqs = allPieces[color^1] | (openSqs & ~oppPawnAttackMap);
+    int undevelopedCount = count(
+        (pieces[color^1][KNIGHTS] | pieces[color^1][BISHOPS]) & RANKS[7-7*color]);
 
     // Iterate over piece move information to extract all mobility-related scores
     for (unsigned int i = 0; i < pml.size(); i++) {
@@ -1835,10 +1820,15 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, int egFactor) {
         // Get mobility score
         if (pieceIndex == KNIGHTS - 1)
             result += mobilityScore[pieceIndex][count(legal & knightMobilitySqs)];
+        else if (pieceIndex == QUEENS - 1)
+            result += mobilityScore[pieceIndex][count(legal & openSqs)]
+                * (6 - undevelopedCount) / 6;
         else
             result += mobilityScore[pieceIndex][count(legal & openSqs)];
 
         // Get center control score
+        if (pieceIndex == QUEENS - 1 && undevelopedCount > 0)
+            continue;
         centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
         centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
     }

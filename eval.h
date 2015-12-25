@@ -81,10 +81,6 @@ const Score KNIGHT_C3_CLOSED_PENALTY = encEval(15, 0);
 // Rooks
 const Score ROOK_OPEN_FILE_BONUS = encEval(8, 8);
 
-// Queens
-// Penalty for bringing the queen out too early
-const Score QUEEN_EARLY_PENALTY = encEval(5, 0);
-
 // Pawn structure
 // Passed pawns
 const Score PASSER_BONUS[8] = {encEval(0, 0), encEval(10, 30), encEval(10, 35), encEval(15, 45),
