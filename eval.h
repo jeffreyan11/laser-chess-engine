@@ -79,7 +79,7 @@ const Score OUTPOST_PAWN_DEF_BONUS = encEval(3, 1);
 const Score KNIGHT_C3_CLOSED_PENALTY = encEval(15, 0);
 
 // Rooks
-const Score ROOK_OPEN_FILE_BONUS = encEval(8, 8);
+const Score ROOK_OPEN_FILE_BONUS = encEval(10, 10);
 
 // Pawn structure
 // Passed pawns
