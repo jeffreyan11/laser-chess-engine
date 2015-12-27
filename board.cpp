@@ -1511,11 +1511,22 @@ int Board::evaluate() {
     
     
     //-----------------------King Safety and Mobility---------------------------
+    int mobilityValue = 0;
+    // Scores based on mobility and basic king safety (which is turned off in
+    // the endgame)
+    PieceMoveList pmlWhite = getPieceMoveList<PML_PSEUDO_MOBILITY>(WHITE);
+    PieceMoveList pmlBlack = getPieceMoveList<PML_PSEUDO_MOBILITY>(BLACK);
+    mobilityValue += getPseudoMobility(WHITE, pmlWhite, egFactor);
+    mobilityValue -= getPseudoMobility(BLACK, pmlBlack, egFactor);
+
+
     // Consider squares near king
     uint64_t wksq = getKingSquares(bitScanForward(pieces[WHITE][KINGS]));
     uint64_t bksq = getKingSquares(bitScanForward(pieces[BLACK][KINGS]));
     // All king safety terms are midgame only, so don't calculate them in the endgame
     if (egFactor < EG_FACTOR_RES) {
+        mobilityValue += getKingSafety(pmlWhite, pmlBlack, wksq, bksq, egFactor);
+
         // Castling rights
         value += CASTLING_RIGHTS_VALUE[count(castlingRights & WHITECASTLE)];
         value -= CASTLING_RIGHTS_VALUE[count(castlingRights & BLACKCASTLE)];
@@ -1569,15 +1580,6 @@ int Board::evaluate() {
         value -= OPEN_PENALTY*count(tempwk & tempwk2 & RANKS[7]);
         value += OPEN_PENALTY*count(tempbk & tempbk2 & RANKS[0]);
     }
-
-    int mobilityValue = 0;
-    // Scores based on mobility and basic king safety (which is turned off in
-    // the endgame)
-    PieceMoveList pmlWhite = getPieceMoveList<PML_PSEUDO_MOBILITY>(WHITE);
-    PieceMoveList pmlBlack = getPieceMoveList<PML_PSEUDO_MOBILITY>(BLACK);
-    mobilityValue += getPseudoMobility(WHITE, pmlWhite, egFactor);
-    mobilityValue -= getPseudoMobility(BLACK, pmlBlack, egFactor);
-    mobilityValue += getKingSafety(pmlWhite, pmlBlack, wksq, bksq, egFactor);
 
 
     // Current pawn attacks
