@@ -1030,6 +1030,8 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
 
     if (b.isInsufficientMaterial())
         return 0;
+    if (plies <= 2 && twoFoldPositions[threadID].find(b.getZobristKey()))
+        return 0;
 
     // Qsearch hash table probe
     uint64_t hashEntry = transpositionTable.get(b);
@@ -1177,8 +1179,12 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             
             searchStats->nodes++;
             searchStats->qsNodes++;
+            twoFoldPositions[threadID].push(b.getZobristKey());
+
             int score = -checkQuiescence(copy, plies+1, -beta, -alpha, threadID);
             
+            twoFoldPositions[threadID].pop();
+
             if (score >= beta) {
                 searchStats->qsFailHighs++;
                 if (j == 0)
@@ -1205,6 +1211,9 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
  * not just captures, necessitating this function.
  */
 int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID) {
+    if (twoFoldPositions[threadID].find(b.getZobristKey()))
+        return 0;
+
     SearchParameters *searchParams = &(searchParamsArray[threadID]);
     SearchStatistics *searchStats = &(searchStatsArray[threadID]);
     int color = b.getPlayerToMove();
@@ -1225,8 +1234,12 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         
         searchStats->nodes++;
         searchStats->qsNodes++;
+        twoFoldPositions[threadID].push(b.getZobristKey());
+
         score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
         
+        twoFoldPositions[threadID].pop();
+
         if (score >= beta) {
             searchStats->qsFailHighs++;
             if (j == 0)
