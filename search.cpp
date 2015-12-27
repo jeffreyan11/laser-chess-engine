@@ -787,7 +787,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
                 moveSorter.generateMoves();
                 continue;
             }
-            searchStats->hashMoveAttempts++;
+            if (nodeType != ALL_NODE)
+                searchStats->hashMoveAttempts++;
             moveSorter.generateMoves();
         }
         else if (!copy.doPseudoLegalMove(m, color))
@@ -927,7 +928,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
             searchStats->failHighs++;
             if (movesSearched == 0)
                 searchStats->firstFailHighs++;
-            if (m == hashed)
+            if (m == hashed && nodeType != ALL_NODE)
                 searchStats->hashMoveCuts++;
 
             // Hash the cut move and score
@@ -971,7 +972,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
     
     // Exact scores indicate a principal variation
     if (prevAlpha < alpha && alpha < beta) {
-        if (toHash == hashed)
+        if (toHash == hashed && nodeType != ALL_NODE)
             searchStats->hashMoveCuts++;
 
         uint64_t hashData = packHashData(depth, toHash,
