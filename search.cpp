@@ -512,8 +512,7 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID) 
 //------------------------------Search functions--------------------------------
 //------------------------------------------------------------------------------
 
-// The standard implementation of a null-window PVS search.
-// The implementation is fail-hard (score returned must be within [alpha, beta])
+// The standard implementation of a fail-soft PVS search.
 int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine) {
     SearchParameters *searchParams = &(searchParamsArray[threadID]);
     SearchStatistics *searchStats = &(searchStatsArray[threadID]);
@@ -643,7 +642,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
     if (!isPVNode && !isInCheck
      && (depth <= 4 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
      && b.getNonPawnMaterial(color))
-        return beta;
+        return staticEval - REVERSE_FUTILITY_MARGIN[depth];
 
 
     // Razoring
@@ -657,6 +656,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
             return quiescence(b, 0, alpha, beta, threadID);
 
         int value = quiescence(b, 0, alpha, beta, threadID);
+        // Fail hard here to be safe
         if (value <= alpha)
             return alpha;
     }
@@ -690,7 +690,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         searchParams->nullMoveCount = 0;
 
         if (nullScore >= beta) {
-            return beta;
+            return nullScore;
         }
     }
 
@@ -709,6 +709,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
     Move toHash = NULL_MOVE;
     // separate counter only incremented when valid move is searched
     unsigned int movesSearched = 0;
+    int bestScore = -INFTY;
     int score = -INFTY;
 
 
@@ -742,7 +743,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         if (moveIsPrunable
          && depth <= 4 && staticEval <= alpha - FUTILITY_MARGIN[depth]
          && !isCapture(m)) {
-            score = alpha;
+            if (bestScore < staticEval + FUTILITY_MARGIN[depth])
+                bestScore = staticEval + FUTILITY_MARGIN[depth];
             continue;
         }
 
@@ -770,7 +772,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
          && m != searchParams->killers[searchParams->ply][1]) {
             int historyValue = searchParams->historyTable[color][pieceID][endSq];
             if (depth < 3 || historyValue < 0) {
-                score = alpha;
+                if (bestScore < alpha)
+                    bestScore = alpha;
                 continue;
             }
         }
@@ -933,7 +936,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
 
             // Hash the cut move and score
             uint64_t hashData = packHashData(depth, m,
-                adjustHashScore(beta, searchParams->ply), CUT_NODE,
+                adjustHashScore(score, searchParams->ply), CUT_NODE,
                 searchParams->rootMoveNumber);
             transpositionTable.add(b, hashData, depth, searchParams->rootMoveNumber);
 
@@ -951,14 +954,17 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
                 moveSorter.reduceBadHistories(m);
             }
 
-            return beta;
+            return score;
         }
 
         // If alpha was raised, we have a new PV
-        if (score > alpha) {
-            alpha = score;
-            toHash = m;
-            changePV(m, pvLine, &line);
+        if (score > bestScore) {
+            bestScore = score;
+            if (score > alpha) {
+                alpha = score;
+                toHash = m;
+                changePV(m, pvLine, &line);
+            }
         }
 
         movesSearched++;
@@ -967,7 +973,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
 
 
     // If there were no legal moves
-    if (score == -INFTY && movesSearched == 0)
+    if (bestScore == -INFTY && movesSearched == 0)
         return scoreMate(moveSorter.isInCheck, searchParams->ply);
     
     // Exact scores indicate a principal variation
@@ -995,20 +1001,20 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         if (!isPVNode && moveSorter.doIID()) {
             uint64_t hashData = packHashData(depth,
                 (hashed == NULL_MOVE) ? moveSorter.legalMoves.get(0) : hashed,
-                adjustHashScore(alpha, searchParams->ply), ALL_NODE,
+                adjustHashScore(bestScore, searchParams->ply), ALL_NODE,
                 searchParams->rootMoveNumber);
             transpositionTable.add(b, hashData, depth, searchParams->rootMoveNumber);
         }
         // Otherwise, just store no best move as expected
         else {
             uint64_t hashData = packHashData(depth, NULL_MOVE,
-                adjustHashScore(alpha, searchParams->ply), ALL_NODE,
+                adjustHashScore(bestScore, searchParams->ply), ALL_NODE,
                 searchParams->rootMoveNumber);
             transpositionTable.add(b, hashData, depth, searchParams->rootMoveNumber);
         }
     }
 
-    return alpha;
+    return bestScore;
 }
 
 
@@ -1017,7 +1023,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
  * This diminishes the horizon effect and greatly improves playing strength.
  * Delta pruning and static-exchange evaluation are used to reduce the time
  * spent here.
- * The search is done within a fail-hard framework.
+ * The search is done within a fail-soft framework.
  */
 int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     SearchParameters *searchParams = &(searchParamsArray[threadID]);
@@ -1072,14 +1078,12 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         evalCache.add(b, standPat);
     }
     
-    if (standPat >= beta)
-        return beta;
+    // The stand pat cutoff
+    if (standPat >= beta || standPat < alpha - MAX_POS_SCORE - QUEEN_VALUE)
+        return standPat;
 
     if (alpha < standPat)
         alpha = standPat;
-    
-    if (standPat < alpha - MAX_POS_SCORE - QUEEN_VALUE)
-        return alpha;
 
 
     // Generate captures and order by MVV/LVA
@@ -1090,6 +1094,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         scores.add(b.getMVVLVAScore(color, legalCaptures.get(i)));
     }
     
+    int bestScore = -INFTY;
     int score = -INFTY;
     unsigned int i = 0;
     unsigned int j = 0; // separate counter only incremented when valid move is searched
@@ -1117,14 +1122,19 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
                 searchStats->qsFirstFailHighs++;
 
             uint64_t hashData = packHashData(-plies, m,
-                adjustHashScore(beta, searchParams->ply + plies), CUT_NODE,
+                adjustHashScore(score, searchParams->ply + plies), CUT_NODE,
                 searchParams->rootMoveNumber);
             transpositionTable.add(b, hashData, -plies, searchParams->rootMoveNumber);
 
-            return beta;
+            return score;
         }
-        if (score > alpha)
-            alpha = score;
+
+        if (score > bestScore) {
+            bestScore = score;
+            if (score > alpha)
+                alpha = score;
+        }
+
         j++;
     }
 
@@ -1151,14 +1161,19 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
                 searchStats->qsFirstFailHighs++;
 
             uint64_t hashData = packHashData(-plies, m,
-                adjustHashScore(beta, searchParams->ply + plies), CUT_NODE,
+                adjustHashScore(score, searchParams->ply + plies), CUT_NODE,
                 searchParams->rootMoveNumber);
             transpositionTable.add(b, hashData, -plies, searchParams->rootMoveNumber);
 
-            return beta;
+            return score;
         }
-        if (score > alpha)
-            alpha = score;
+
+        if (score > bestScore) {
+            bestScore = score;
+            if (score > alpha)
+                alpha = score;
+        }
+
         j++;
     }
 
@@ -1191,19 +1206,28 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
                     searchStats->qsFirstFailHighs++;
 
                 uint64_t hashData = packHashData(-plies, m,
-                    adjustHashScore(beta, searchParams->ply + plies), CUT_NODE,
+                    adjustHashScore(score, searchParams->ply + plies), CUT_NODE,
                     searchParams->rootMoveNumber);
                 transpositionTable.add(b, hashData, -plies, searchParams->rootMoveNumber);
 
-                return beta;
+                return score;
             }
-            if (score > alpha)
-                alpha = score;
+
+            if (score > bestScore) {
+                bestScore = score;
+                if (score > alpha)
+                    alpha = score;
+            }
+
             j++;
         }
     }
 
-    return alpha;
+    // Fail low and hard if there are no captures
+    if (bestScore == -INFTY)
+        bestScore = alpha;
+
+    return bestScore;
 }
 
 /*
@@ -1220,12 +1244,13 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     PieceMoveList pml = b.getPieceMoveList<PML_LEGAL_MOVES>(color);
     MoveList legalMoves = b.getPseudoLegalCheckEscapes(color, pml);
 
+    int bestScore = -INFTY;
     int score = -INFTY;
     unsigned int j = 0; // separate counter only incremented when valid move is searched
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
 
-        if (score != -INFTY && b.getSEEForMove(color, m) < 0)
+        if (bestScore > -INFTY && b.getSEEForMove(color, m) < 0)
             continue;
 
         Board copy = b.staticCopy();
@@ -1244,21 +1269,26 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             searchStats->qsFailHighs++;
             if (j == 0)
                 searchStats->qsFirstFailHighs++;
-            return beta;
+            return score;
         }
-        if (score > alpha)
-            alpha = score;
+
+        if (score > bestScore) {
+            bestScore = score;
+            if (score > alpha)
+                alpha = score;
+        }
+
         j++;
     }
 
     // If there were no legal moves
-    if (score == -INFTY) {
+    if (bestScore == -INFTY) {
         // We already know we are in check, so it must be a checkmate
         // Adjust score so that quicker mates are better
         return (-MATE_SCORE + searchParams->ply + plies);
     }
     
-    return alpha;
+    return bestScore;
 }
 
 
