@@ -224,55 +224,116 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
             int aspAlpha = -MATE_SCORE;
             int aspBeta = MATE_SCORE;
 
-            // Reset all search parameters (killers, plies, etc)
-            for (int i = 0; i < numThreads; i++)
-                searchParamsArray[i].reset();
+            // Set up aspiration windows
+            if (rootDepth >= 10 && multiPV == 1 && abs(bestScore) < 2 * QUEEN_VALUE) {
+                aspAlpha = bestScore - 16;
+                aspBeta = bestScore + 16;
+            }
 
-            // Get the index of the best move
-            // If depth >= 7 create threads for SMP
-            if (rootDepth >= 7 && numThreads > 1) {
-                thread *threadPool = new thread[numThreads-1];
-                threadsRunning = numThreads;
+            int deltaAlpha = 20;
+            int deltaBeta = 20;
 
-                // Dummy variables since we don't care about these results
-                int *dummyBestIndex = new int[numThreads-1];
-                int *dummyBestScore = new int[numThreads-1];
-                SearchPV *dummyPVLine = new SearchPV[numThreads-1];
+            // Aspiration loop
+            while (!isStop) {
+                // Reset all search parameters (killers, plies, etc)
+                for (int i = 0; i < numThreads; i++)
+                    searchParamsArray[i].reset();
+                pvLine.pvLength = 0;
 
-                // Start secondary threads
-                // Start even threads with depth = rootDepth+1
-                //   (idea from Dan Homan, author of ExChess)
-                for (int i = 1; i < numThreads; i++) {
-                    // Copy over the two-fold stack to use
-                    twoFoldPositions[i] = twoFoldPositions[0];
-                    threadPool[i-1] = thread(getBestMoveAtDepth, b,
-                        &legalMoves, rootDepth + (i % 2), aspAlpha, aspBeta,
-                        dummyBestIndex+i-1, dummyBestScore+i-1,
-                        multiPVNum-1, i, dummyPVLine+i-1);
-                    // Detach secondary threads
-                    threadPool[i-1].detach();
+                // Get the index of the best move
+                // If depth >= 7 create threads for SMP
+                if (rootDepth >= 7 && numThreads > 1) {
+                    thread *threadPool = new thread[numThreads-1];
+                    threadsRunning = numThreads;
+
+                    // Dummy variables since we don't care about these results
+                    int *dummyBestIndex = new int[numThreads-1];
+                    int *dummyBestScore = new int[numThreads-1];
+                    SearchPV *dummyPVLine = new SearchPV[numThreads-1];
+
+                    // Start secondary threads
+                    // Start even threads with depth = rootDepth+1
+                    //   (idea from Dan Homan, author of ExChess)
+                    for (int i = 1; i < numThreads; i++) {
+                        // Copy over the two-fold stack to use
+                        twoFoldPositions[i] = twoFoldPositions[0];
+                        threadPool[i-1] = thread(getBestMoveAtDepth, b,
+                            &legalMoves, rootDepth + (i % 2), aspAlpha, aspBeta,
+                            dummyBestIndex+i-1, dummyBestScore+i-1,
+                            multiPVNum-1, i, dummyPVLine+i-1);
+                        // Detach secondary threads
+                        threadPool[i-1].detach();
+                    }
+
+                    // Start the primary result thread
+                    getBestMoveAtDepth(b, &legalMoves, rootDepth, aspAlpha, aspBeta,
+                        &bestMoveIndex, &bestScore, multiPVNum-1, 0, &pvLine);
+
+                    stopSignal = true;
+                    // Wait for all other threads to finish
+                    while (threadsRunning > 0)
+                        std::this_thread::yield();
+                    stopSignal = false;
+
+                    delete[] threadPool;
+                    delete[] dummyBestIndex;
+                    delete[] dummyBestScore;
+                    delete[] dummyPVLine;
+                }
+                // Otherwise, just search with one thread
+                else {
+                    getBestMoveAtDepth(b, &legalMoves, rootDepth, aspAlpha, aspBeta,
+                        &bestMoveIndex, &bestScore, multiPVNum-1, 0, &pvLine);
                 }
 
-                // Start the primary result thread
-                getBestMoveAtDepth(b, &legalMoves, rootDepth, aspAlpha, aspBeta,
-                    &bestMoveIndex, &bestScore, multiPVNum-1, 0, &pvLine);
+                timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
+                // Calculate values for printing
+                uint64_t nps = (uint64_t) ((double) getNodes() / timeSoFar);
+                string pvStr = retrievePV(&pvLine);
 
-                stopSignal = true;
-                // Wait for all other threads to finish
-                while (threadsRunning > 0)
-                    std::this_thread::yield();
-                stopSignal = false;
+                // Handle fail highs and fail lows
+                // Fail low: no best move found
+                if (bestMoveIndex == -1 && !isStop) {
+                    cout << "info depth " << rootDepth;
+                    cout << " seldepth " << getSelectiveDepth();
+                    cout << " score";
+                    cout << " cp " << bestScore * 100 / PAWN_VALUE_EG << " upperbound";
 
-                delete[] threadPool;
-                delete[] dummyBestIndex;
-                delete[] dummyBestScore;
-                delete[] dummyPVLine;
+                    cout << " time " << (int) (timeSoFar * ONE_SECOND)
+                         << " nodes " << getNodes() << " nps " << nps
+                         << " hashfull " << 1000 * transpositionTable.keys
+                                                 / transpositionTable.getSize()
+                         << " pv " << pvStr << endl;
+
+                    aspAlpha = bestScore - deltaAlpha;
+                    deltaAlpha *= 2;
+                    if (aspAlpha < -2 * QUEEN_VALUE)
+                        aspAlpha = -MATE_SCORE;
+                }
+                // Fail high: best score is at least beta
+                else if (bestScore >= aspBeta) {
+                    cout << "info depth " << rootDepth;
+                    cout << " seldepth " << getSelectiveDepth();
+                    cout << " score";
+                    cout << " cp " << bestScore * 100 / PAWN_VALUE_EG << " lowerbound";
+
+                    cout << " time " << (int) (timeSoFar * ONE_SECOND)
+                         << " nodes " << getNodes() << " nps " << nps
+                         << " hashfull " << 1000 * transpositionTable.keys
+                                                 / transpositionTable.getSize()
+                         << " pv " << pvStr << endl;
+
+                    aspBeta = bestScore + deltaBeta;
+                    deltaBeta *= 2;
+                    if (aspBeta > 2 * QUEEN_VALUE)
+                        aspBeta = MATE_SCORE;
+                    legalMoves.swap(multiPVNum-1, bestMoveIndex);
+                    *bestMove = legalMoves.get(0);
+                }
+                // If no fails, we are done
+                else break;
             }
-            // Otherwise, just search with one thread
-            else {
-                getBestMoveAtDepth(b, &legalMoves, rootDepth, aspAlpha, aspBeta,
-                    &bestMoveIndex, &bestScore, multiPVNum-1, 0, &pvLine);
-            }
+            // End aspiration loop
 
             timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
 
@@ -430,6 +491,7 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
             score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, &line);
             searchParams->ply--;
             if (alpha < score && score < beta) {
+                line.pvLength = 0;
                 searchParams->ply++;
                 score = -PVS(copy, depth-1, -beta, -alpha, threadID, &line);
                 searchParams->ply--;
@@ -453,6 +515,9 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
                 tempMove = (int) i;
                 changePV(legalMoves->get(i), pvLine, &line);
             }
+            // To get a PV if failing low
+            else if (i == 0)
+                changePV(legalMoves->get(i), pvLine, &line);
         }
 
         if (score >= beta)
@@ -903,6 +968,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
                 extension++;
         }
 
+        // Reset the PV line just in case
+        line.pvLength = 0;
+
         // Null-window search, with re-search if applicable
         if (movesSearched != 0) {
             searchParams->ply++;
@@ -911,6 +979,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
 
             // LMR re-search if the reduced search did not fail low
             if (reduction > 0 && score > alpha) {
+                line.pvLength = 0;
                 searchParams->ply++;
                 score = -PVS(copy, depth-1+extension, -alpha-1, -alpha, threadID, &line);
                 searchParams->ply--;
@@ -918,6 +987,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
 
             // Re-search for a scout window at PV nodes
             else if (alpha < score && score < beta) {
+                line.pvLength = 0;
                 searchParams->ply++;
                 score = -PVS(copy, depth-1+extension, -beta, -alpha, threadID, &line);
                 searchParams->ply--;
@@ -965,6 +1035,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
                     += depth * depth;
                 moveSorter.reduceBadHistories(m);
             }
+
+            changePV(m, pvLine, &line);
 
             return score;
         }
