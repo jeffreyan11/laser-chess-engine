@@ -144,8 +144,9 @@ int numThreads;
 
 
 // Search functions
-void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth,
-    int *bestMoveIndex, int *bestScore, unsigned int startMove, int threadID, SearchPV *pvLine);
+void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
+    int beta, int *bestMoveIndex, int *bestScore, unsigned int startMove,
+    int threadID, SearchPV *pvLine);
 int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine);
 int quiescence(Board &b, int plies, int alpha, int beta, int threadID);
 int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID);
@@ -200,7 +201,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     // Special case if there is only one legal move: use less search time,
     // only to get a rough PV/score
     if (legalMoves.size() == 1 && mode == TIME) {
-        searchParamsArray[0].timeLimit = min(searchParamsArray[0].timeLimit / 16, ONE_SECOND);
+        searchParamsArray[0].timeLimit = min(searchParamsArray[0].timeLimit / 32, ONE_SECOND);
     }
 
 
@@ -220,6 +221,9 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                           multiPVNum <= multiPV
                             && multiPVNum <= legalMoves.size();
                           multiPVNum++) {
+            int aspAlpha = -MATE_SCORE;
+            int aspBeta = MATE_SCORE;
+
             // Reset all search parameters (killers, plies, etc)
             for (int i = 0; i < numThreads; i++)
                 searchParamsArray[i].reset();
@@ -242,7 +246,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     // Copy over the two-fold stack to use
                     twoFoldPositions[i] = twoFoldPositions[0];
                     threadPool[i-1] = thread(getBestMoveAtDepth, b,
-                        &legalMoves, rootDepth + (i % 2),
+                        &legalMoves, rootDepth + (i % 2), aspAlpha, aspBeta,
                         dummyBestIndex+i-1, dummyBestScore+i-1,
                         multiPVNum-1, i, dummyPVLine+i-1);
                     // Detach secondary threads
@@ -250,7 +254,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 }
 
                 // Start the primary result thread
-                getBestMoveAtDepth(b, &legalMoves, rootDepth,
+                getBestMoveAtDepth(b, &legalMoves, rootDepth, aspAlpha, aspBeta,
                     &bestMoveIndex, &bestScore, multiPVNum-1, 0, &pvLine);
 
                 stopSignal = true;
@@ -266,7 +270,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
             }
             // Otherwise, just search with one thread
             else {
-                getBestMoveAtDepth(b, &legalMoves, rootDepth,
+                getBestMoveAtDepth(b, &legalMoves, rootDepth, aspAlpha, aspBeta,
                     &bestMoveIndex, &bestScore, multiPVNum-1, 0, &pvLine);
             }
 
@@ -338,13 +342,16 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
          && timeSoFar * ONE_SECOND > value / 16
          && timeSoFar * ONE_SECOND < value / 2
          && abs(bestScore) < MATE_SCORE - MAX_DEPTH) {
-            if ((*bestMove == easyMoveInfo.prevBest && pvStreak >= 6)
-                || pvStreak >= 9) {
+            if ((*bestMove == easyMoveInfo.prevBest && pvStreak >= 7)
+                || pvStreak >= 10) {
                 int secondBestMove;
                 int secondBestScore;
-                getBestMoveAtDepth(b, &legalMoves, rootDepth-5,
+                int easymoveWindow = bestScore - EASYMOVE_MARGIN;
+
+                getBestMoveAtDepth(b, &legalMoves, rootDepth-5, easymoveWindow - 1, easymoveWindow,//-MATE_SCORE, MATE_SCORE,
                     &secondBestMove, &secondBestScore, 1, 0, &pvLine);
-                if (secondBestScore < bestScore - 150)
+
+                if (secondBestScore < easymoveWindow)
                     break;
                 else
                     pvStreak = -128;
@@ -363,7 +370,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
          || (mode == DEPTH && rootDepth <= value)));
 
     // If we found a candidate easymove for the next ply this search
-    if (easyMoveInfo.pvStreak >= 7) {
+    if (easyMoveInfo.pvStreak >= 8) {
         easyMoveInfo.prevBest = easyMoveInfo.streakBest;
     }
     else
@@ -387,16 +394,16 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 /**
  * @brief Returns the index of the best move in legalMoves.
  */
-void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth,
-        int *bestMoveIndex, int *bestScore, unsigned int startMove, int threadID, SearchPV *pvLine) {
+void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
+        int beta, int *bestMoveIndex, int *bestScore, unsigned int startMove,
+        int threadID, SearchPV *pvLine) {
     SearchParameters *searchParams = &(searchParamsArray[threadID]);
     SearchStatistics *searchStats = &(searchStatsArray[threadID]);
     SearchPV line;
     int color = b->getPlayerToMove();
-    unsigned int tempMove = -1;
+    int tempMove = -1;
     int score = -MATE_SCORE;
-    int alpha = -MATE_SCORE;
-    int beta = MATE_SCORE;
+    *bestScore = -INFTY;
     
     // Push current position to two fold stack
     twoFoldPositions[threadID].push(b->getZobristKey());
@@ -439,17 +446,22 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth,
         if (isStop || stopSignal)
             break;
 
-        if (score > alpha) {
-            alpha = score;
+        if (score > *bestScore) {
             *bestScore = score;
-            tempMove = i;
-            changePV(legalMoves->get(i), pvLine, &line);
+            if (score > alpha) {
+                alpha = score;
+                tempMove = (int) i;
+                changePV(legalMoves->get(i), pvLine, &line);
+            }
         }
+
+        if (score >= beta)
+            break;
     }
 
     twoFoldPositions[threadID].pop();
 
-    *bestMoveIndex = (int) tempMove;
+    *bestMoveIndex = tempMove;
 
     // This thread is finished running.
     threadsRunningMutex.lock();

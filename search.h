@@ -86,6 +86,7 @@ const uint64_t ONE_SECOND = 1000;
 const uint64_t MAX_TIME = (1ULL << 63) - 1;
 
 // Search parameters
+const int EASYMOVE_MARGIN = 150;
 const int MAX_POS_SCORE = 120;
 
 // Time management constants
