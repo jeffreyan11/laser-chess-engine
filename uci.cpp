@@ -242,7 +242,7 @@ int main() {
             cerr << "Nodes/second: " << (uint64_t)(totalNodes / time) << endl;
         }
         else if (input == "eval") {
-            cerr << "Static evaluation: " << board.evaluate() / PAWN_VALUE_EG << " cp" << endl;
+            cerr << "Static evaluation: " << board.evaluate() * 100 / PAWN_VALUE_EG << " cp" << endl;
         }
         
         // According to UCI protocol, inputs that do not make sense are ignored
