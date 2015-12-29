@@ -1729,6 +1729,7 @@ int Board::evaluate() {
     }
     
     // Isolated pawns
+    // Fill a bitmap of which files have pawns
     uint64_t wp = 0, bp = 0;
     for (int i = 0; i < 8; i++) {
         wp |= (bool) (wPawnCtByFile[i]);
@@ -1736,6 +1737,8 @@ int Board::evaluate() {
         wp <<= 1;
         bp <<= 1;
     }
+    wp >>= 1;
+    bp >>= 1;
     // If there are pawns on either adjacent file, we remove this pawn
     wp &= ~((wp >> 1) | (wp << 1));
     bp &= ~((bp >> 1) | (bp << 1));
@@ -1745,14 +1748,18 @@ int Board::evaluate() {
     value += ISOLATED_PENALTY * blackIsolated;
 
     // Isolated, doubled pawns
-    // -11 for isolated, doubled pawns
-    // -33 for isolated, tripled pawns
+    // x1 for isolated, doubled pawns
+    // x3 for isolated, tripled pawns
     for (int i = 0; i < 8; i++) {
         if ((wPawnCtByFile[i] > 1) && (wp & INDEX_TO_BIT[7-i])) {
             value -= ISOLATED_DOUBLED_PENALTY * ((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2;
+            //if ((bPawnCtByFile[i] == 1) && (bp & INDEX_TO_BIT[7-i]))
+            //    value -= ISOLATED_DOUBLED_WEAK_PENALTY;
         }
         if ((bPawnCtByFile[i] > 1) && (bp & INDEX_TO_BIT[7-i])) {
             value += ISOLATED_DOUBLED_PENALTY * ((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2;
+            //if ((wPawnCtByFile[i] == 1) && (wp & INDEX_TO_BIT[7-i]))
+            //    value += ISOLATED_DOUBLED_WEAK_PENALTY;
         }
     }
 
