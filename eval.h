@@ -83,8 +83,10 @@ const Score ROOK_OPEN_FILE_BONUS = encEval(10, 10);
 
 // Pawn structure
 // Passed pawns
-const Score PASSER_BONUS[8] = {encEval(0, 0), encEval(10, 30), encEval(10, 35), encEval(15, 45),
-                               encEval(20, 65), encEval(30, 95), encEval(55, 140), encEval(0, 0)};
+const Score PASSER_BONUS[8] = {encEval(0, 0), encEval(5, 25), encEval(5, 30), encEval(10, 40),
+                               encEval(15, 60), encEval(25, 90), encEval(50, 135), encEval(0, 0)};
+const Score PASSER_FILE_BONUS[8] = {encEval(10, 8), encEval(5, 4), encEval(2, 1), encEval(0, 0),
+                                    encEval(0, 0), encEval(2, 1), encEval(5, 4), encEval(10, 8)};
 const Score BLOCKADED_PASSER_PENALTY = encEval(8, 20);
 
 // Doubled pawns

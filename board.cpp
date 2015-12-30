@@ -1700,6 +1700,7 @@ int Board::evaluate() {
         uint64_t fileMask = pieces[WHITE][PAWNS] & FILES[file];
         int rank = bitScanReverse(fileMask) >> 3;
         value += PASSER_BONUS[rank];
+        value += PASSER_FILE_BONUS[file];
         if ((fileMask << 8) & whiteBlockaders)
             value -= BLOCKADED_PASSER_PENALTY;
     }
@@ -1709,6 +1710,7 @@ int Board::evaluate() {
         uint64_t fileMask = pieces[BLACK][PAWNS] & FILES[file];
         int rank = 7 - (bitScanForward(fileMask) >> 3);
         value -= PASSER_BONUS[rank];
+        value -= PASSER_FILE_BONUS[file];
         if ((fileMask >> 8) & blackBlockaders)
             value += BLOCKADED_PASSER_PENALTY;
     }
