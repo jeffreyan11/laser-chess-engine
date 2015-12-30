@@ -1753,13 +1753,9 @@ int Board::evaluate() {
     for (int i = 0; i < 8; i++) {
         if ((wPawnCtByFile[i] > 1) && (wp & INDEX_TO_BIT[7-i])) {
             value -= ISOLATED_DOUBLED_PENALTY * ((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2;
-            //if ((bPawnCtByFile[i] == 1) && (bp & INDEX_TO_BIT[7-i]))
-            //    value -= ISOLATED_DOUBLED_WEAK_PENALTY;
         }
         if ((bPawnCtByFile[i] > 1) && (bp & INDEX_TO_BIT[7-i])) {
             value += ISOLATED_DOUBLED_PENALTY * ((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2;
-            //if ((wPawnCtByFile[i] == 1) && (wp & INDEX_TO_BIT[7-i]))
-            //    value += ISOLATED_DOUBLED_WEAK_PENALTY;
         }
     }
 

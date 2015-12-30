@@ -48,20 +48,20 @@ int decEval(Score encodedValue, int egFactor) {
 const Score EVAL_ZERO = 0x80008000;
 
 //-------------------------Material eval constants------------------------------
-const int BISHOP_PAIR_VALUE = 55;
+const int BISHOP_PAIR_VALUE = 58;
 const int TEMPO_VALUE = 10;
 
 //------------------------Positional eval constants-----------------------------
 // King safety
 // The value of having 0, 1, and both castling rights
-const Score CASTLING_RIGHTS_VALUE[3] = {encEval(0, 0), encEval(23, 0), encEval(40, 0)};
+const Score CASTLING_RIGHTS_VALUE[3] = {encEval(0, 0), encEval(24, 0), encEval(40, 0)};
 // The value of a pawn shield per pawn
 const Score PAWN_SHIELD_VALUE = encEval(12, 0);
 // The additional bonus for each pawn in the primary pawn shield, the 3 squares
 // directly in front of the king
-const Score P_PAWN_SHIELD_BONUS = encEval(9, 0);
+const Score P_PAWN_SHIELD_BONUS = encEval(8, 0);
 // The penalty for a semi-open file next to the king where your own pawn is missing
-const Score SEMIOPEN_OWN_PENALTY = encEval(7, 0);
+const Score SEMIOPEN_OWN_PENALTY = encEval(9, 0);
 // The penalty for a semi-open file next to the king where your opponent's pawn is missing
 const Score SEMIOPEN_OPP_PENALTY = encEval(4, 0);
 // An additional penalty for a fully open file next to the king
@@ -96,7 +96,6 @@ const Score DOUBLED_PENALTY_SCALE[9] = {0, 0, 3, 2, 1, 1, 1, 1, 1};
 const Score ISOLATED_PENALTY = encEval(13, 15);
 // Isolated, doubled pawns
 const Score ISOLATED_DOUBLED_PENALTY = encEval(13, 13);
-//const Score ISOLATED_DOUBLED_WEAK_PENALTY = encEval(5, 5);
 // Backward pawns
 const Score BACKWARD_PENALTY = encEval(12, 13);
 
