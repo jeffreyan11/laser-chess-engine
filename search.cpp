@@ -802,6 +802,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
             return INFTY;
 
         bool moveIsPrunable = moveSorter.nodeIsReducible()
+                           && !isCapture(m)
                            && !isPromotion(m)
                            && m != hashed
                            && abs(alpha) < 2 * QUEEN_VALUE
