@@ -106,7 +106,6 @@ public:
     ~Hash();
 
     void add(Board &b, uint64_t data, int depth, uint8_t age);
-    void addPV(Board &b, uint64_t data, int depth, uint8_t age);
     uint64_t get(Board &b);
     uint64_t getSize();
     void setSize(uint64_t MB);

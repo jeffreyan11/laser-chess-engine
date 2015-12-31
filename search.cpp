@@ -159,7 +159,6 @@ int adjustHashScore(int score, int plies);
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 void changePV(Move best, SearchPV *parent, SearchPV *child);
 string retrievePV(SearchPV *pvLine);
-void feedPVToTT(Board *b, SearchPV *pvLine, int score);
 int getSelectiveDepth();
 double getPercentage(uint64_t numerator, uint64_t denominator);
 void printStatistics();
@@ -419,8 +418,6 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
             }
         }
 
-        //if (!isStop)
-        //    feedPVToTT(b, &pvLine, bestScore);
         rootDepth++;
     }
     // Conditions for iterative deepening loop
@@ -819,8 +816,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         // q-searching it.
         // TODO may fail low in some stalemate cases
         if (moveIsPrunable
-         && depth <= 4 && staticEval <= alpha - FUTILITY_MARGIN[depth]
-         && !isCapture(m)) {
+         && depth <= 4 && staticEval <= alpha - FUTILITY_MARGIN[depth]) {
             if (bestScore < staticEval + FUTILITY_MARGIN[depth])
                 bestScore = staticEval + FUTILITY_MARGIN[depth];
             continue;
@@ -845,7 +841,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         // https://chessprogramming.wikispaces.com/Futility+Pruning#MoveCountBasedPruning
         if (moveIsPrunable
          && depth <= 5 && movesSearched > LMP_MOVE_COUNTS[depth]
-         && alpha <= prevAlpha && !isCapture(m)
+         && alpha <= prevAlpha
          && m != searchParams->killers[searchParams->ply][0]
          && m != searchParams->killers[searchParams->ply][1]) {
             int historyValue = searchParams->historyTable[color][pieceID][endSq];
@@ -1478,26 +1474,6 @@ string retrievePV(SearchPV *pvLine) {
     }
 
     return pvStr;
-}
-
-// Feeds the PV to the transposition table so that it will be searched first
-// next time
-void feedPVToTT(Board *b, SearchPV *pvLine, int score) {
-    if (pvLine->pvLength <= 2)
-        return;
-    int color = b->getPlayerToMove();
-    Board copy = b->staticCopy();
-    copy.doMove(pvLine->pv[0], color);
-    copy.doMove(pvLine->pv[1], color^1);
-
-    for (int i = 2; i < pvLine->pvLength; i++) {
-        uint64_t hashData = packHashData(pvLine->pvLength - i,
-            pvLine->pv[i], score, PV_NODE, searchParamsArray[0].rootMoveNumber);
-        transpositionTable.addPV(copy, hashData, pvLine->pvLength - i, searchParamsArray[0].rootMoveNumber);
-        copy.doMove(pvLine->pv[i], color);
-        color = color ^ 1;
-        score = -score;
-    }
 }
 
 // The selective depth in a parallel search is the max selective depth reached

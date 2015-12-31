@@ -110,36 +110,6 @@ void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
     }
 }
 
-// Used for feeding the PV back into the TT
-void Hash::addPV(Board &b, uint64_t data, int depth, uint8_t age) {
-    uint64_t h = b.getZobristKey();
-    uint64_t index = h % size;
-    HashNode *node = &(table[index]);
-
-    // A more recent update to the same position should always be chosen
-    if ((node->slot1.zobristKey ^ node->slot1.data) == b.getZobristKey()) {
-        node->slot1.setEntry(b, data);
-    }
-    else if ((node->slot2.zobristKey ^ node->slot2.data) == b.getZobristKey()) {
-        node->slot2.setEntry(b, data);
-    }
-    // Replace an entry from a previous search space, or the lowest
-    // depth entry with the new entry if the new entry's depth is higher
-    else {
-        HashEntry *toReplace = NULL;
-        int score1 = 128*((int) (age - getHashAge(node->slot1.data)))
-            + depth - getHashDepth(node->slot1.data);
-        int score2 = 128*((int) (age - getHashAge(node->slot2.data)))
-            + depth - getHashDepth(node->slot2.data);
-        if (score1 >= score2)
-            toReplace = &(node->slot1);
-        else
-            toReplace = &(node->slot2);
-
-        toReplace->setEntry(b, data);
-    }
-}
-
 // Get the hash entry, if any, associated with a board b.
 uint64_t Hash::get(Board &b) {
     uint64_t h = b.getZobristKey();
