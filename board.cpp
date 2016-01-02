@@ -1774,8 +1774,25 @@ int Board::evaluate() {
     value -= BACKWARD_PENALTY * count(wBackwards);
     value += BACKWARD_PENALTY * count(bBackwards);
 
+    int totalEval = (16 * materialValue + 17 * decEval(value, egFactor) + 18 * mobilityValue) / 16;
+
+    // Scale factors
+    // Opposite colored bishops
+    if (egFactor > 3 * EG_FACTOR_RES / 4) {
+        if (count(pieces[WHITE][BISHOPS]) == 1
+         && count(pieces[BLACK][BISHOPS]) == 1
+         && (((pieces[WHITE][BISHOPS] & LIGHT) && (pieces[BLACK][BISHOPS] & DARK))
+          || ((pieces[WHITE][BISHOPS] & DARK) && (pieces[BLACK][BISHOPS] & LIGHT)))) {
+            if ((getNonPawnMaterial(WHITE) == pieces[WHITE][BISHOPS])
+             && (getNonPawnMaterial(BLACK) == pieces[BLACK][BISHOPS]))
+                totalEval = totalEval / 2;
+            else
+                totalEval = (384 - 128 * egFactor / EG_FACTOR_RES) * totalEval / 256;
+        }
+    }
+
     
-    return (16 * materialValue + 17 * decEval(value, egFactor) + 18 * mobilityValue) / 16;
+    return totalEval;
 }
 
 /* Scores the board for a player based on estimates of mobility
