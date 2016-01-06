@@ -137,7 +137,7 @@ public:
     // Get all pieces of that color attacking the square
     uint64_t getAttackMap(int color, int sq);
     int getPieceOnSquare(int color, int sq);
-    bool isCheckMove(Move m, int color);
+    bool isCheckMove(int color, Move m);
     uint64_t getRookXRays(int sq, uint64_t occ, uint64_t blockers);
     uint64_t getBishopXRays(int sq, uint64_t occ, uint64_t blockers);
     uint64_t getPinnedMap(int color);

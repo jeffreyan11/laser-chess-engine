@@ -801,7 +801,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
                            && !isPromotion(m)
                            && m != hashed
                            && abs(alpha) < 2 * QUEEN_VALUE
-                           && !b.isCheckMove(m, color);
+                           && !b.isCheckMove(color, m);
 
         int startSq = getStartSq(m);
         int endSq = getEndSq(m);
