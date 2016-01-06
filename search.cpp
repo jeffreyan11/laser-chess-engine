@@ -743,14 +743,12 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
     // Do not do if the side to move has only pawns
     // Do not do more than 2 null moves in a row
     if (!isPVNode && !isInCheck
-     && depth >= 3 && staticEval >= beta
+     && depth >= 2 && staticEval >= beta
      && searchParams->nullMoveCount < 2
      && b.getNonPawnMaterial(color)) {
         int reduction;
-        // Reduce more if we are further ahead, but do not let NMR descend
-        // directly into q-search
-        reduction = min(depth - 2,
-            1 + (int) ((depth + 1.5) / 4.5 + (double) (staticEval - beta) / 118.0));
+        // Reduce more if we are further ahead
+        reduction = 1 + (int) ((depth + 1.5) / 4.5 + (staticEval - beta) / 118.0);
 
         uint16_t epCaptureFile = b.getEPCaptureFile();
         b.doNullMove();
