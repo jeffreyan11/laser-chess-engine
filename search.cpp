@@ -883,7 +883,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
          && m != searchParams->killers[searchParams->ply][1]
          && !copy.isInCheck(color^1)) {
             // Increase reduction with higher depth and later moves
-            reduction = 1 + (int) ((depth - 4.0) / 5.0 + movesSearched / 16.0);
+            reduction = 1 + (int) (sqrt((depth-3) * movesSearched) / 4.0);
             // Reduce more for moves with poor history
             int historyValue = searchParams->historyTable[color][pieceID][endSq];
             if (historyValue < 0)
