@@ -1669,49 +1669,46 @@ int Board::evaluate() {
     
     //----------------------------Pawn structure--------------------------------
     // Passed pawns
-    uint64_t bPassedBlocker = pieces[WHITE][PAWNS];
-    uint64_t wPassedBlocker = pieces[BLACK][PAWNS];
-    // These act as blockers for the flood fill: if opposing pawns are on the
-    // same or an adjacent file, your pawn is not passed.
-    bPassedBlocker |= ((bPassedBlocker >> 1) & NOTH) | ((bPassedBlocker << 1) & NOTA);
+    uint64_t wPassedBlocker = pieces[BLACK][PAWNS] >> 8;
+    uint64_t bPassedBlocker = pieces[WHITE][PAWNS] << 8;
+    // If opposing pawns are on the same or an adjacent file on a pawn's front
+    // span, then the pawn is not passed
     wPassedBlocker |= ((wPassedBlocker >> 1) & NOTH) | ((wPassedBlocker << 1) & NOTA);
-    // Invert to get empty squares for the flood fill
-    bPassedBlocker = ~bPassedBlocker;
-    wPassedBlocker = ~wPassedBlocker;
-    uint64_t tempwp = pieces[WHITE][PAWNS];
-    uint64_t tempbp = pieces[BLACK][PAWNS];
-    // Flood fill to simulate pushing the pawn to the 7th (or 2nd) rank
-    for(int i = 0; i < 6; i++) {
-        tempwp |= (tempwp << 8) & wPassedBlocker;
-        tempbp |= (tempbp >> 8) & bPassedBlocker;
+    bPassedBlocker |= ((bPassedBlocker >> 1) & NOTH) | ((bPassedBlocker << 1) & NOTA);
+    // Include own pawns as blockers to prevent doubled pawns from both being
+    // scored as passers
+    wPassedBlocker |= (pieces[WHITE][PAWNS] >> 8);
+    bPassedBlocker |= (pieces[BLACK][PAWNS] << 8);
+    // Find opposing pawn front spans
+    for(int i = 0; i < 4; i++) {
+        wPassedBlocker |= (wPassedBlocker >> 8);
+        bPassedBlocker |= (bPassedBlocker << 8);
     }
-    // Pawns that made it without being blocked are passed
-    uint64_t whitePassedBits = tempwp & RANKS[6];
-    uint64_t blackPassedBits = tempbp & RANKS[1];
-    // Bring both file passer occupancy sets to the first rank
-    whitePassedBits >>= 48;
-    blackPassedBits >>= 8;
+    // Passers are pawns outside the opposing pawn front span
+    uint64_t wPassedPawns = pieces[WHITE][PAWNS] & ~wPassedBlocker;
+    uint64_t bPassedPawns = pieces[BLACK][PAWNS] & ~bPassedBlocker;
+
     // Give penalties if the passed pawn is blockaded by a knight, bishop, or king
     uint64_t whiteBlockaders = pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS] | pieces[BLACK][KINGS];
     uint64_t blackBlockaders = pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS] | pieces[WHITE][KINGS];
-    while (whitePassedBits) {
-        int file = bitScanForward(whitePassedBits);
-        whitePassedBits &= whitePassedBits - 1;
-        uint64_t fileMask = pieces[WHITE][PAWNS] & FILES[file];
-        int rank = bitScanReverse(fileMask) >> 3;
+    while (wPassedPawns) {
+        int passerSq = bitScanForward(wPassedPawns);
+        wPassedPawns &= wPassedPawns - 1;
+        int file = passerSq & 7;
+        int rank = passerSq >> 3;
         value += PASSER_BONUS[rank];
         value += PASSER_FILE_BONUS[file];
-        if ((fileMask << 8) & whiteBlockaders)
+        if ((INDEX_TO_BIT[passerSq] << 8) & whiteBlockaders)
             value -= BLOCKADED_PASSER_PENALTY;
     }
-    while (blackPassedBits) {
-        int file = bitScanForward(blackPassedBits);
-        blackPassedBits &= blackPassedBits - 1;
-        uint64_t fileMask = pieces[BLACK][PAWNS] & FILES[file];
-        int rank = 7 - (bitScanForward(fileMask) >> 3);
+    while (bPassedPawns) {
+        int passerSq = bitScanForward(bPassedPawns);
+        bPassedPawns &= bPassedPawns - 1;
+        int file = passerSq & 7;
+        int rank = 7 - (passerSq >> 3);
         value -= PASSER_BONUS[rank];
         value -= PASSER_FILE_BONUS[file];
-        if ((fileMask >> 8) & blackBlockaders)
+        if ((INDEX_TO_BIT[passerSq] >> 8) & blackBlockaders)
             value += BLOCKADED_PASSER_PENALTY;
     }
     
