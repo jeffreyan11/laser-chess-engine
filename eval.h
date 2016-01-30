@@ -95,9 +95,10 @@ const Score DOUBLED_PENALTY[7] = {encEval(0, 0), encEval(0, 0), encEval(11, 16),
 // Doubled pawns are worse the less pawns you have
 const Score DOUBLED_PENALTY_SCALE[9] = {0, 0, 3, 2, 1, 1, 1, 1, 1};
 // Isolated pawns
-const Score ISOLATED_PENALTY = encEval(13, 15);
+const Score ISOLATED_PENALTY = encEval(11, 13);
+const Score CENTRAL_ISOLATED_PENALTY = encEval(4, 4);
 // Isolated, doubled pawns
-const Score ISOLATED_DOUBLED_PENALTY = encEval(13, 13);
+const Score ISOLATED_DOUBLED_PENALTY = encEval(8, 8);
 // Backward pawns
 const Score BACKWARD_PENALTY = encEval(12, 13);
 

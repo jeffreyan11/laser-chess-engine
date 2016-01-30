@@ -1745,6 +1745,8 @@ int Board::evaluate() {
     int blackIsolated = count(bp);
     value -= ISOLATED_PENALTY * whiteIsolated;
     value += ISOLATED_PENALTY * blackIsolated;
+    value -= CENTRAL_ISOLATED_PENALTY * count(wp & 0x7E);
+    value += CENTRAL_ISOLATED_PENALTY * count(bp & 0x7E);
 
     // Isolated, doubled pawns
     // x1 for isolated, doubled pawns
