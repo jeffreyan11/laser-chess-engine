@@ -161,6 +161,7 @@ public:
     int getMaterialEG(int color);
     // Useful for turning off some pruning late endgame
     uint64_t getNonPawnMaterial(int color);
+    int getManhattanDistance(int sq1, int sq2);
     // Static exchange evaluation code: for checking material trades on a single square
     uint64_t getLeastValuableAttacker(uint64_t attackers, int color, int &piece);
     int getSEE(int color, int sq);

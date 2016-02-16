@@ -1691,9 +1691,10 @@ int Board::evaluate() {
     // Give penalties if the passed pawn is blockaded by a knight, bishop, or king
     uint64_t whiteBlockaders = pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS] | pieces[BLACK][KINGS];
     uint64_t blackBlockaders = pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS] | pieces[WHITE][KINGS];
-    while (wPassedPawns) {
-        int passerSq = bitScanForward(wPassedPawns);
-        wPassedPawns &= wPassedPawns - 1;
+    uint64_t wPasserTemp = wPassedPawns;
+    while (wPasserTemp) {
+        int passerSq = bitScanForward(wPasserTemp);
+        wPasserTemp &= wPasserTemp - 1;
         int file = passerSq & 7;
         int rank = passerSq >> 3;
         value += PASSER_BONUS[rank];
@@ -1701,9 +1702,10 @@ int Board::evaluate() {
         if ((INDEX_TO_BIT[passerSq] << 8) & whiteBlockaders)
             value -= BLOCKADED_PASSER_PENALTY;
     }
-    while (bPassedPawns) {
-        int passerSq = bitScanForward(bPassedPawns);
-        bPassedPawns &= bPassedPawns - 1;
+    uint64_t bPasserTemp = bPassedPawns;
+    while (bPasserTemp) {
+        int passerSq = bitScanForward(bPasserTemp);
+        bPasserTemp &= bPasserTemp - 1;
         int file = passerSq & 7;
         int rank = 7 - (passerSq >> 3);
         value -= PASSER_BONUS[rank];
@@ -1773,7 +1775,53 @@ int Board::evaluate() {
     value -= BACKWARD_PENALTY * count(wBackwards);
     value += BACKWARD_PENALTY * count(bBackwards);
 
-    int totalEval = (16 * materialValue + 17 * decEval(value, egFactor) + 18 * mobilityValue) / 16;
+
+    // King-pawn tropism
+    int kingPawnTropism = 0;
+    if (egFactor > 0) {
+        uint64_t wPawnTropism = pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS];
+        uint64_t bPawnTropism = pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS];
+        int pawnCount = count(pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS]);
+        int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
+        int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
+
+        int wTropismTotal = 0;
+        while (wPawnTropism) {
+            int pawnSq = bitScanForward(wPawnTropism);
+            int rank = pawnSq >> 3;
+            wPawnTropism &= wPawnTropism - 1;
+            if (INDEX_TO_BIT[pawnSq] & wPassedPawns)
+                wTropismTotal += 4 * getManhattanDistance(pawnSq, wKingSq) * rank;
+            else if (INDEX_TO_BIT[pawnSq] & bPassedPawns)
+                wTropismTotal += 7 * getManhattanDistance(pawnSq, wKingSq) * (7-rank);
+            else if (INDEX_TO_BIT[pawnSq] & (wBackwards | bBackwards))
+                wTropismTotal += 2 * getManhattanDistance(pawnSq, wKingSq);
+            else
+                wTropismTotal += getManhattanDistance(pawnSq, wKingSq);
+        }
+        int bTropismTotal = 0;
+        while (bPawnTropism) {
+            int pawnSq = bitScanForward(bPawnTropism);
+            int rank = pawnSq >> 3;
+            bPawnTropism &= bPawnTropism - 1;
+            if (INDEX_TO_BIT[pawnSq] & wPassedPawns)
+                bTropismTotal += 7 * getManhattanDistance(pawnSq, bKingSq) * rank;
+            else if (INDEX_TO_BIT[pawnSq] & bPassedPawns)
+                bTropismTotal += 4 * getManhattanDistance(pawnSq, bKingSq) * (7-rank);
+            else if (INDEX_TO_BIT[pawnSq] & (wBackwards | bBackwards))
+                bTropismTotal += 2 * getManhattanDistance(pawnSq, bKingSq);
+            else
+                bTropismTotal += getManhattanDistance(pawnSq, bKingSq);
+        }
+        if (pawnCount)
+            kingPawnTropism = (bTropismTotal - wTropismTotal) / pawnCount;
+
+        kingPawnTropism = kingPawnTropism * egFactor / EG_FACTOR_RES;
+    }
+
+
+    int totalEval = (16 * materialValue + 17 * decEval(value, egFactor)
+        + 18 * mobilityValue + 16 * kingPawnTropism) / 16;
 
     // Scale factors
     // Opposite colored bishops
@@ -2053,6 +2101,10 @@ int Board::getMaterialEG(int color) {
 uint64_t Board::getNonPawnMaterial(int color) {
     return pieces[color][KNIGHTS] | pieces[color][BISHOPS]
          | pieces[color][ROOKS]   | pieces[color][QUEENS];
+}
+
+int Board::getManhattanDistance(int sq1, int sq2) {
+    return std::abs((sq1 >> 3) - (sq2 >> 3)) + std::abs((sq1 & 7) - (sq2 & 7));
 }
 
 // Given a bitboard of attackers, finds the least valuable attacker of color and
