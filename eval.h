@@ -73,8 +73,11 @@ const Score BISHOP_PAWN_COLOR_PENALTY = encEval(2, 2);
 // A bonus for each opponent pawn on the board, given once for each knight
 const Score KNIGHT_PAWN_BONUS = encEval(1, 1);
 // A bonus for strong outpost knights
-const Score KNIGHT_OUTPOST_BONUS = encEval(8, 1);
-const Score OUTPOST_PAWN_DEF_BONUS = encEval(3, 1);
+const Score KNIGHT_OUTPOST_BONUS = encEval(22, 6);
+const Score KNIGHT_OUTPOST_PAWN_DEF_BONUS = encEval(11, 4);
+// A smaller bonus for bishops
+const Score BISHOP_OUTPOST_BONUS = encEval(6, 2);
+const Score BISHOP_OUTPOST_PAWN_DEF_BONUS = encEval(3, 1);
 // A penalty for Nc3 blocking c2-c4 in closed openings
 const Score KNIGHT_C3_CLOSED_PENALTY = encEval(15, 0);
 

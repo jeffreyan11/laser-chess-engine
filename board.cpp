@@ -1624,11 +1624,21 @@ int Board::evaluate() {
     if (uint64_t wOutpost = pieces[WHITE][KNIGHTS] & ~bPawnStopAtt & RANKS_456 & FILES_CDEF) {
         value += KNIGHT_OUTPOST_BONUS * count(wOutpost);
         // An additional bonus if the outpost knight is defended by a pawn
-        value += OUTPOST_PAWN_DEF_BONUS * count(wOutpost & wPawnAtt);
+        value += KNIGHT_OUTPOST_PAWN_DEF_BONUS * count(wOutpost & wPawnAtt);
     }
     if (uint64_t bOutpost = pieces[BLACK][KNIGHTS] & ~wPawnStopAtt & RANKS_543 & FILES_CDEF) {
         value -= KNIGHT_OUTPOST_BONUS * count(bOutpost);
-        value -= OUTPOST_PAWN_DEF_BONUS * count(bOutpost & bPawnAtt);
+        value -= KNIGHT_OUTPOST_PAWN_DEF_BONUS * count(bOutpost & bPawnAtt);
+    }
+
+    // Bishop outposts
+    if (uint64_t wOutpost = pieces[WHITE][BISHOPS] & ~bPawnStopAtt & RANKS_456 & FILES_CDEF) {
+        value += BISHOP_OUTPOST_BONUS * count(wOutpost);
+        value += BISHOP_OUTPOST_PAWN_DEF_BONUS * count(wOutpost & wPawnAtt);
+    }
+    if (uint64_t bOutpost = pieces[BLACK][BISHOPS] & ~wPawnStopAtt & RANKS_543 & FILES_CDEF) {
+        value -= BISHOP_OUTPOST_BONUS * count(bOutpost);
+        value -= BISHOP_OUTPOST_PAWN_DEF_BONUS * count(bOutpost & bPawnAtt);
     }
 
     // Special case: Nc3 blocking c2-c4 in closed openings (pawn on d4, no pawn on e4)
