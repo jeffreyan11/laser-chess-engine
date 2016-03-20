@@ -1808,40 +1808,34 @@ int Board::evaluate() {
     // King-pawn tropism
     int kingPawnTropism = 0;
     if (egFactor > 0) {
-        uint64_t wPawnTropism = pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS];
-        uint64_t bPawnTropism = pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS];
+        uint64_t pawnBits = pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS];
         int pawnCount = pieceCounts[WHITE][PAWNS] + pieceCounts[BLACK][PAWNS];
         int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
         int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
 
-        int wTropismTotal = 0;
-        while (wPawnTropism) {
-            int pawnSq = bitScanForward(wPawnTropism);
+        int wTropismTotal = 0, bTropismTotal = 0;
+        while (pawnBits) {
+            int pawnSq = bitScanForward(pawnBits);
             int rank = pawnSq >> 3;
-            wPawnTropism &= wPawnTropism - 1;
-            if (INDEX_TO_BIT[pawnSq] & wPassedPawns)
+            pawnBits &= pawnBits - 1;
+            if (INDEX_TO_BIT[pawnSq] & wPassedPawns) {
                 wTropismTotal += 4 * getManhattanDistance(pawnSq, wKingSq) * rank;
-            else if (INDEX_TO_BIT[pawnSq] & bPassedPawns)
-                wTropismTotal += 7 * getManhattanDistance(pawnSq, wKingSq) * (7-rank);
-            else if (INDEX_TO_BIT[pawnSq] & (wBackwards | bBackwards))
-                wTropismTotal += 2 * getManhattanDistance(pawnSq, wKingSq);
-            else
-                wTropismTotal += getManhattanDistance(pawnSq, wKingSq);
-        }
-        int bTropismTotal = 0;
-        while (bPawnTropism) {
-            int pawnSq = bitScanForward(bPawnTropism);
-            int rank = pawnSq >> 3;
-            bPawnTropism &= bPawnTropism - 1;
-            if (INDEX_TO_BIT[pawnSq] & wPassedPawns)
                 bTropismTotal += 7 * getManhattanDistance(pawnSq, bKingSq) * rank;
-            else if (INDEX_TO_BIT[pawnSq] & bPassedPawns)
+            }
+            else if (INDEX_TO_BIT[pawnSq] & bPassedPawns) {
+                wTropismTotal += 7 * getManhattanDistance(pawnSq, wKingSq) * (7-rank);
                 bTropismTotal += 4 * getManhattanDistance(pawnSq, bKingSq) * (7-rank);
-            else if (INDEX_TO_BIT[pawnSq] & (wBackwards | bBackwards))
+            }
+            else if (INDEX_TO_BIT[pawnSq] & (wBackwards | bBackwards)) {
+                wTropismTotal += 2 * getManhattanDistance(pawnSq, wKingSq);
                 bTropismTotal += 2 * getManhattanDistance(pawnSq, bKingSq);
-            else
+            }
+            else {
+                wTropismTotal += getManhattanDistance(pawnSq, wKingSq);
                 bTropismTotal += getManhattanDistance(pawnSq, bKingSq);
+            }
         }
+
         if (pawnCount)
             kingPawnTropism = (bTropismTotal - wTropismTotal) / pawnCount;
 
