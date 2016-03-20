@@ -158,7 +158,6 @@ public:
     int scoreSimpleKnownWin(int winningColor);
     int getEGFactor();
     int getMaterial(int color);
-    int getMaterialEG(int color);
     // Useful for turning off some pruning late endgame
     uint64_t getNonPawnMaterial(int color);
     int getManhattanDistance(int sq1, int sq2);

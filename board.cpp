@@ -1418,9 +1418,24 @@ bool Board::isInsufficientMaterial() {
  * positive and black is negative in traditional negamax format.
  */
 int Board::evaluate() {
+    // Precompute some values
+    int pieceCounts[2][6];
+    for (int color = 0; color < 2; color++) {
+        for (int pieceID = 0; pieceID < 6; pieceID++)
+            pieceCounts[color][pieceID] = count(pieces[color][pieceID]);
+    }
+
     // Material
-    int whiteMaterial = getMaterial(WHITE);
-    int blackMaterial = getMaterial(BLACK);
+    int whiteMaterial = PAWN_VALUE * pieceCounts[WHITE][PAWNS]
+                    + KNIGHT_VALUE * pieceCounts[WHITE][KNIGHTS]
+                    + BISHOP_VALUE * pieceCounts[WHITE][BISHOPS]
+                    + ROOK_VALUE   * pieceCounts[WHITE][ROOKS]
+                    + QUEEN_VALUE  * pieceCounts[WHITE][QUEENS];
+    int blackMaterial = PAWN_VALUE * pieceCounts[BLACK][PAWNS]
+                    + KNIGHT_VALUE * pieceCounts[BLACK][KNIGHTS]
+                    + BISHOP_VALUE * pieceCounts[BLACK][BISHOPS]
+                    + ROOK_VALUE   * pieceCounts[BLACK][ROOKS]
+                    + QUEEN_VALUE  * pieceCounts[BLACK][QUEENS];
 
     // Compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
     int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
@@ -1441,8 +1456,16 @@ int Board::evaluate() {
 
     valueMg += whiteMaterial;
     valueMg -= blackMaterial;
-    valueEg += getMaterialEG(WHITE);
-    valueEg -= getMaterialEG(BLACK);
+    valueEg += PAWN_VALUE_EG * pieceCounts[WHITE][PAWNS]
+           + KNIGHT_VALUE_EG * pieceCounts[WHITE][KNIGHTS]
+           + BISHOP_VALUE_EG * pieceCounts[WHITE][BISHOPS]
+           + ROOK_VALUE_EG   * pieceCounts[WHITE][ROOKS]
+           + QUEEN_VALUE_EG  * pieceCounts[WHITE][QUEENS];
+    valueEg -= PAWN_VALUE_EG * pieceCounts[BLACK][PAWNS]
+           + KNIGHT_VALUE_EG * pieceCounts[BLACK][KNIGHTS]
+           + BISHOP_VALUE_EG * pieceCounts[BLACK][BISHOPS]
+           + ROOK_VALUE_EG   * pieceCounts[BLACK][ROOKS]
+           + QUEEN_VALUE_EG  * pieceCounts[BLACK][QUEENS];
     
     // Tempo bonus
     valueMg += (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
@@ -1487,19 +1510,17 @@ int Board::evaluate() {
     // ability to promote is gone
     const int PAWN_SCALING_MG[9] = {10, 3, 2, 2, 1, 0, 0, 0, 0};
     const int PAWN_SCALING_EG[9] = {71, 20, 8, 4, 2, 0, 0, 0, 0};
-    int whitePawnCount = count(pieces[WHITE][PAWNS]);
-    int blackPawnCount = count(pieces[BLACK][PAWNS]);
 
-    valueMg -= PAWN_SCALING_MG[whitePawnCount];
-    valueEg -= PAWN_SCALING_EG[whitePawnCount];
-    valueMg += PAWN_SCALING_MG[blackPawnCount];
-    valueEg += PAWN_SCALING_EG[blackPawnCount];
+    valueMg -= PAWN_SCALING_MG[pieceCounts[WHITE][PAWNS]];
+    valueEg -= PAWN_SCALING_EG[pieceCounts[WHITE][PAWNS]];
+    valueMg += PAWN_SCALING_MG[pieceCounts[BLACK][PAWNS]];
+    valueEg += PAWN_SCALING_EG[pieceCounts[BLACK][PAWNS]];
 
     // With queens on the board pawns are a target in the endgame
     if (pieces[WHITE][QUEENS])
-        valueEg += 2 * count(pieces[BLACK][PAWNS]);
+        valueEg += 2 * pieceCounts[BLACK][PAWNS];
     if (pieces[BLACK][QUEENS])
-        valueEg -= 2 * count(pieces[WHITE][PAWNS]);
+        valueEg -= 2 * pieceCounts[WHITE][PAWNS];
     
     
     int materialValue = (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES;
@@ -1614,8 +1635,8 @@ int Board::evaluate() {
     }
 
     // Knights do better when the opponent has many pawns
-    value += KNIGHT_PAWN_BONUS * count(pieces[WHITE][KNIGHTS]) * count(pieces[BLACK][PAWNS]);
-    value -= KNIGHT_PAWN_BONUS * count(pieces[BLACK][KNIGHTS]) * count(pieces[WHITE][PAWNS]);
+    value += KNIGHT_PAWN_BONUS * pieceCounts[WHITE][KNIGHTS] * pieceCounts[BLACK][PAWNS];
+    value -= KNIGHT_PAWN_BONUS * pieceCounts[BLACK][KNIGHTS] * pieceCounts[WHITE][PAWNS];
 
     // Knight outposts: knights that cannot be attacked by opposing pawns
     const uint64_t RANKS_456 = RANKS[3] | RANKS[4] | RANKS[5];
@@ -1732,11 +1753,9 @@ int Board::evaluate() {
     }
     
     // Doubled pawns
-    int numWPawns = count(pieces[WHITE][PAWNS]);
-    int numBPawns = count(pieces[BLACK][PAWNS]);
     for (int i = 0; i < 8; i++) {
-        value -= DOUBLED_PENALTY[wPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[numWPawns];
-        value += DOUBLED_PENALTY[bPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[numBPawns];
+        value -= DOUBLED_PENALTY[wPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[pieceCounts[WHITE][PAWNS]];
+        value += DOUBLED_PENALTY[bPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[pieceCounts[BLACK][PAWNS]];
     }
     
     // Isolated pawns
@@ -1791,7 +1810,7 @@ int Board::evaluate() {
     if (egFactor > 0) {
         uint64_t wPawnTropism = pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS];
         uint64_t bPawnTropism = pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS];
-        int pawnCount = count(pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS]);
+        int pawnCount = pieceCounts[WHITE][PAWNS] + pieceCounts[BLACK][PAWNS];
         int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
         int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
 
@@ -1836,8 +1855,8 @@ int Board::evaluate() {
     // Scale factors
     // Opposite colored bishops
     if (egFactor > 3 * EG_FACTOR_RES / 4) {
-        if (count(pieces[WHITE][BISHOPS]) == 1
-         && count(pieces[BLACK][BISHOPS]) == 1
+        if (pieceCounts[WHITE][BISHOPS] == 1
+         && pieceCounts[BLACK][BISHOPS] == 1
          && (((pieces[WHITE][BISHOPS] & LIGHT) && (pieces[BLACK][BISHOPS] & DARK))
           || ((pieces[WHITE][BISHOPS] & DARK) && (pieces[BLACK][BISHOPS] & LIGHT)))) {
             if ((getNonPawnMaterial(WHITE) == pieces[WHITE][BISHOPS])
@@ -2098,14 +2117,6 @@ int Board::getMaterial(int color) {
          + BISHOP_VALUE * count(pieces[color][BISHOPS])
          + ROOK_VALUE   * count(pieces[color][ROOKS])
          + QUEEN_VALUE  * count(pieces[color][QUEENS]);
-}
-
-int Board::getMaterialEG(int color) {
-    return PAWN_VALUE_EG   * count(pieces[color][PAWNS])
-         + KNIGHT_VALUE_EG * count(pieces[color][KNIGHTS])
-         + BISHOP_VALUE_EG * count(pieces[color][BISHOPS])
-         + ROOK_VALUE_EG   * count(pieces[color][ROOKS])
-         + QUEEN_VALUE_EG  * count(pieces[color][QUEENS]);
 }
 
 uint64_t Board::getNonPawnMaterial(int color) {
