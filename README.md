@@ -27,15 +27,21 @@ A thanks also to Cute Chess, the primary tool used for testing: (http://cuteches
 ### Engine Strength
 CCRL 40/40
 
+Laser 1.0: 74-75th, 2728 elo as of Mar 18, 2016
+
 Laser 0.2.1: 92nd, 2641 elo as of Dec 18, 2015
 
 CCRL 40/4
+
+Laser 1.0: 73rd, 2728 elo as of Mar 18, 2016
 
 Laser 0.2.1: 103-104th, 2606 elo as of Nov 15, 2015
 
 Laser 0.1: 179-180th, 2377 elo as of Oct 11, 2015
 
 CEGT Blitz - Best Single Versions
+
+Laser 1.0: 78th, 2537 elo as of Mar 19, 2016
 
 Laser 0.2.1: 107th, 2414 elo as of Nov 15, 2015
 
@@ -60,7 +66,7 @@ Laser 0.2.1: 107th, 2414 elo as of Nov 15, 2015
   - Razoring
   - Move count based pruning (late move pruning)
   - Check and singular extensions
-- Quiescence search with captures, queen promotions, and checks on the first three plies
+- Quiescence search with captures, queen promotions, and checks on the first two plies
 - Move ordering
   - Internal iterative deepening when a hash move is not available
   - Static exchange evaluation (SEE) and Most Valuable Victim / Least Valuable Attacker (MVV/LVA) to order captures
@@ -72,8 +78,6 @@ The code and Makefile support gcc on Linux and MinGW on Windows for Intel Nehale
 
 
 ### Known issues:
-- Gives incorrect mate scores for long mates
 - SMP bugs:
   - hashfull goes above 1000
-- Hash errors on PV nodes cause strange moves and give illegal PVs, also causing feedPVToTT() to fail
 - SEE, MVV/LVA scoring functions handle en passant as if no pawn was captured
