@@ -1542,11 +1542,13 @@ int Board::evaluate() {
 
 
     // Consider squares near king
-    uint64_t wksq = getKingSquares(bitScanForward(pieces[WHITE][KINGS]));
-    uint64_t bksq = getKingSquares(bitScanForward(pieces[BLACK][KINGS]));
+    int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
+    int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
+    uint64_t wKingNeighborhood = getKingSquares(wKingSq);
+    uint64_t bKingNeighborhood = getKingSquares(bKingSq);
     // All king safety terms are midgame only, so don't calculate them in the endgame
     if (egFactor < EG_FACTOR_RES) {
-        mobilityValue += getKingSafety(pmlWhite, pmlBlack, wksq, bksq, egFactor);
+        mobilityValue += getKingSafety(pmlWhite, pmlBlack, wKingNeighborhood, bKingNeighborhood, egFactor);
 
         // Castling rights
         value += CASTLING_RIGHTS_VALUE[count(castlingRights & WHITECASTLE)];
@@ -1554,11 +1556,11 @@ int Board::evaluate() {
         
         // Pawn shield bonus (files ABC, FGH)
         // Pawns on the second and third ranks are considered part of the shield
-        value += PAWN_SHIELD_VALUE * count((wksq | (wksq << 8)) & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-        value -= PAWN_SHIELD_VALUE * count((bksq | (bksq >> 8)) & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+        value += PAWN_SHIELD_VALUE * count((wKingNeighborhood | (wKingNeighborhood << 8)) & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+        value -= PAWN_SHIELD_VALUE * count((bKingNeighborhood | (bKingNeighborhood >> 8)) & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
         // An extra bonus for pawns on the second rank
-        value += P_PAWN_SHIELD_BONUS * count(wksq & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-        value -= P_PAWN_SHIELD_BONUS * count(bksq & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+        value += P_PAWN_SHIELD_BONUS * count(wKingNeighborhood & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+        value -= P_PAWN_SHIELD_BONUS * count(bKingNeighborhood & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
         
         // Open files next to king
         // To find open files we flood fill the king and its adjacent files up the board
@@ -1580,23 +1582,17 @@ int Board::evaluate() {
         }
         // If the "king" made it across the board without running into a white pawn,
         // then the file is semi-open.
-        int wkNoWhiteOpen = count(tempwk & RANKS[7]);
-        int bkNoWhiteOpen = count(tempbk & RANKS[0]);
         
         // Flood fill: checking for black pawns
         for(int i = 0; i < 7; i++) {
             tempwk2 |= (tempwk2 << 8) & notbp;
             tempbk2 |= (tempbk2 >> 8) & notbp;
         }
-        // If the "king" made it across the board without running into a black pawn,
-        // then the file is semi-open.
-        int wkNoBlackOpen = count(tempwk2 & RANKS[7]);
-        int bkNoBlackOpen = count(tempbk2 & RANKS[0]);
         
-        value -= SEMIOPEN_OWN_PENALTY*wkNoWhiteOpen;
-        value -= SEMIOPEN_OPP_PENALTY*wkNoBlackOpen;
-        value += SEMIOPEN_OPP_PENALTY*bkNoWhiteOpen;
-        value += SEMIOPEN_OWN_PENALTY*bkNoBlackOpen;
+        value -= SEMIOPEN_OWN_PENALTY * count(tempwk & RANKS[7]);
+        value -= SEMIOPEN_OPP_PENALTY * count(tempwk2 & RANKS[7]);
+        value += SEMIOPEN_OPP_PENALTY * count(tempbk & RANKS[0]);
+        value += SEMIOPEN_OWN_PENALTY * count(tempbk2 & RANKS[0]);
         // Fully open files get an additional bonus
         value -= OPEN_PENALTY*count(tempwk & tempwk2 & RANKS[7]);
         value += OPEN_PENALTY*count(tempbk & tempbk2 & RANKS[0]);
@@ -1810,8 +1806,6 @@ int Board::evaluate() {
     if (egFactor > 0) {
         uint64_t pawnBits = pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS];
         int pawnCount = pieceCounts[WHITE][PAWNS] + pieceCounts[BLACK][PAWNS];
-        int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
-        int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
 
         int wTropismTotal = 0, bTropismTotal = 0;
         while (pawnBits) {
