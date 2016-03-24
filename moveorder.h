@@ -46,8 +46,6 @@ struct MoveOrder {
 	MoveOrder(Board *_b, int _color, int _depth, int _threadID, bool _isPVNode, bool _isInCheck,
 		SearchParameters *_searchParams, Move _hashed, MoveList _legalMoves);
 
-	// Node is reducible if not PV node and not in check
-	bool nodeIsReducible();
     bool doIID();
 
 	void generateMoves();

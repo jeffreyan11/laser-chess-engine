@@ -49,10 +49,6 @@ MoveOrder::MoveOrder(Board *_b, int _color, int _depth, int _threadID, bool _isP
     legalMoves = _legalMoves;
 }
 
-bool MoveOrder::nodeIsReducible() {
-	return !isPVNode && !isInCheck;
-}
-
 // Returns true if there are still moves remaining, false if we have
 // generated all moves already
 void MoveOrder::generateMoves() {

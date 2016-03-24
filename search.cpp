@@ -796,7 +796,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         if (isStop || stopSignal)
             return INFTY;
 
-        bool moveIsPrunable = moveSorter.nodeIsReducible()
+        bool moveIsPrunable = !isPVNode
+                           && !isInCheck
                            && !isCapture(m)
                            && !isPromotion(m)
                            && m != hashed
@@ -874,7 +875,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         // If we have not raised alpha in the first few moves, we are probably
         // at an all-node. The later moves are likely worse so we search them
         // to a shallower depth.
-        if (moveSorter.nodeIsReducible()
+        if (!isPVNode && !isInCheck
          && depth >= 3 && movesSearched > 2 && alpha <= prevAlpha
          && !isCapture(m) && !isPromotion(m)
          && m != searchParams->killers[searchParams->ply][0]
