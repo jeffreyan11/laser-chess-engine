@@ -1892,9 +1892,9 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, int egFactor) {
     uint64_t oppPawns = pieces[color^1][PAWNS];
     uint64_t oppPawnAttackMap = (color == WHITE) ? getBPawnCaptures(oppPawns)
                                                  : getWPawnCaptures(oppPawns);
-    // We count knight mobility for captures or moves to open squares not controlled
+    // We count mobility for captures or moves to open squares not controlled
     // by an opponent's pawn
-    uint64_t knightMobilitySqs = allPieces[color^1] | (openSqs & ~oppPawnAttackMap);
+    openSqs = allPieces[color^1] | (openSqs & ~oppPawnAttackMap);
     int undevelopedCount = count(
         (pieces[color^1][KNIGHTS] | pieces[color^1][BISHOPS]) & RANKS[7-7*color]);
 
@@ -1906,9 +1906,7 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, int egFactor) {
         // Get all potential legal moves
         uint64_t legal = pmi.legal;
         // Get mobility score
-        if (pieceIndex == KNIGHTS - 1)
-            result += mobilityScore[pieceIndex][count(legal & knightMobilitySqs)];
-        else if (pieceIndex == QUEENS - 1)
+        if (pieceIndex == QUEENS - 1)
             result += mobilityScore[pieceIndex][count(legal & openSqs)]
                 * (6 - undevelopedCount) / 6;
         else
