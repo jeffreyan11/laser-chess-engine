@@ -225,12 +225,12 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
             // Set up aspiration windows
             if (rootDepth >= 10 && multiPV == 1 && abs(bestScore) < 2 * QUEEN_VALUE) {
-                aspAlpha = bestScore - 16;
-                aspBeta = bestScore + 16;
+                aspAlpha = bestScore - 15;
+                aspBeta = bestScore + 15;
             }
 
-            int deltaAlpha = 20;
-            int deltaBeta = 20;
+            int deltaAlpha = 30;
+            int deltaBeta = 30;
 
             // Aspiration loop
             while (!isStop) {
