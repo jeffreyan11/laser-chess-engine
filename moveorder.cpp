@@ -272,7 +272,11 @@ void MoveOrder::reduceBadHistories(Move bestMove) {
             break;
         if (isCapture(legalMoves.get(i)))
             continue;
-        searchParams->historyTable[color][b->getPieceOnSquare(color, getStartSq(legalMoves.get(i)))][getEndSq(legalMoves.get(i))] -= depth;
+
+        int startSq = getStartSq(legalMoves.get(i));
+        int endSq = getEndSq(legalMoves.get(i));
+        int pieceID = b->getPieceOnSquare(color, startSq);
+        searchParams->historyTable[color][pieceID][endSq] -= depth;
     }
 }
 
