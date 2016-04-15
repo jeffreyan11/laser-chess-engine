@@ -49,15 +49,18 @@ const vector<string> positions = {
     "8/2b3p1/4knNp/2p4P/1pPp1P2/1P1P1BPK/8/8 w - -"
 };
 
+
 void setPosition(string &input, vector<string> &inputVector, Board &board);
 vector<string> split(const string &s, char d);
 Board fenToBoard(string s);
 string boardToString(Board &board);
 void clearAll(Board &board);
 
-volatile bool isStop = true;
 
+static int BUFFER_TIME = 100;
+volatile bool isStop = true;
 extern TwoFoldStack twoFoldPositions[MAX_THREADS];
+
 
 int main() {
     initMagicTables(2563762638929852183ULL);
@@ -99,6 +102,8 @@ int main() {
                  << " min " << MIN_HASH_SIZE << " max " << MAX_HASH_SIZE << endl;
             cout << "option name MultiPV type spin default " << DEFAULT_MULTI_PV
                  << " min " << MIN_MULTI_PV << " max " << MAX_MULTI_PV << endl;
+            cout << "option name BufferTime type spin default " << DEFAULT_BUFFER_TIME
+                 << " min " << MIN_BUFFER_TIME << " max " << MAX_BUFFER_TIME << endl;
             cout << "uciok" << endl;
         }
         else if (input == "isready") cout << "readyok" << endl;
@@ -196,6 +201,13 @@ int main() {
                     if (multiPV > MAX_MULTI_PV)
                         multiPV = MAX_MULTI_PV;
                     setMultiPV((unsigned int) multiPV);
+                }
+                else if (inputVector.at(2) == "BufferTime" || inputVector.at(2) == "buffertime") {
+                    BUFFER_TIME = stoi(inputVector.at(4));
+                    if (BUFFER_TIME < MIN_BUFFER_TIME)
+                        BUFFER_TIME = MIN_BUFFER_TIME;
+                    if (BUFFER_TIME > MAX_BUFFER_TIME)
+                        BUFFER_TIME = MAX_BUFFER_TIME;
                 }
                 else
                     cout << "Invalid option." << endl;

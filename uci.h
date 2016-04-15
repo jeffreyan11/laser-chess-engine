@@ -28,5 +28,8 @@ const int MAX_MULTI_PV = 256;
 const int DEFAULT_THREADS = 1;
 const int MIN_THREADS = 1;
 const int MAX_THREADS = 32;
+const int DEFAULT_BUFFER_TIME = 100;
+const int MIN_BUFFER_TIME = 0;
+const int MAX_BUFFER_TIME = 1024;
 
 #endif
