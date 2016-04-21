@@ -1072,8 +1072,11 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
 
         // Update the history table
         if (!isCapture(toHash)) {
-            searchParams->historyTable[color][b.getPieceOnSquare(color, getStartSq(toHash))][getEndSq(toHash)]
-                += depth * depth;
+            int startSq = getStartSq(toHash);
+            int endSq = getEndSq(toHash);
+            int pieceID = b.getPieceOnSquare(color, startSq);
+
+            searchParams->historyTable[color][pieceID][endSq] += depth * depth;
             moveSorter.reduceBadHistories(toHash);
         }
     }
