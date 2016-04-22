@@ -30,7 +30,7 @@ const int SCORE_LOSING_QUIET = -(1 << 30) - (1 << 29) - (1 << 28);
 // The depth at which we start using SEE on quiet moves. On at least this depth,
 // we place losing captures below non-losing quiets. Below this depth, we place
 // losing captures before all quiets.
-const int QUIET_SEE_DEPTH = 2;
+const int QUIET_SEE_DEPTH = 3;
 
 
 MoveOrder::MoveOrder(Board *_b, int _color, int _depth, int _threadID, bool _isPVNode, bool _isInCheck,
