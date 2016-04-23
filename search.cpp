@@ -372,11 +372,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                  << " hashfull " << 1000 * transpositionTable.keys
                                          / transpositionTable.getSize()
                  << " pv " << pvStr << endl;
-
-            // Aging for the history heuristic table
-            for (int i = 0; i < numThreads; i++)
-                searchParamsArray[i].ageHistoryTable(rootDepth, false);
         }
+        // End multiPV loop
 
         // Record candidate easymoves
         if (multiPV == 1 && pvLine.pvLength >= 3) {
@@ -438,7 +435,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
     // Aging for the history heuristic table
     for (int i = 0; i < numThreads; i++)
-        searchParamsArray[i].ageHistoryTable(rootDepth, true);
+        searchParamsArray[i].ageHistoryTable(rootDepth);
 
     // Reset the hashfull counter
     transpositionTable.keys = 0;
@@ -813,7 +810,6 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         // If we are already a decent amount of material below alpha, a quiet
         // move probably won't raise our prospects much, so don't bother
         // q-searching it.
-        // TODO may fail low in some stalemate cases
         if (moveIsPrunable
          && depth <= 4 && staticEval <= alpha - FUTILITY_MARGIN[depth]) {
             if (bestScore < staticEval + FUTILITY_MARGIN[depth])
