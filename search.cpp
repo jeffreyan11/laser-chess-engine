@@ -115,8 +115,8 @@ const int RAZOR_MARGIN[4] = {0,
 };
 
 // Move count pruning
-const unsigned int LMP_MOVE_COUNTS[6] = {0,
-    5, 9, 16, 29, 50
+const unsigned int LMP_MOVE_COUNTS[7] = {0,
+    5, 8, 14, 24, 40, 64
 };
 
 
@@ -835,16 +835,13 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         // As used in Fruit/Stockfish:
         // https://chessprogramming.wikispaces.com/Futility+Pruning#MoveCountBasedPruning
         if (moveIsPrunable
-         && depth <= 5 && movesSearched > LMP_MOVE_COUNTS[depth]
+         && depth <= 6 && movesSearched > LMP_MOVE_COUNTS[depth]
          && alpha <= prevAlpha
          && m != searchParams->killers[searchParams->ply][0]
          && m != searchParams->killers[searchParams->ply][1]) {
-            int historyValue = searchParams->historyTable[color][pieceID][endSq];
-            if (depth < 3 || historyValue < 0) {
-                if (bestScore < alpha)
-                    bestScore = alpha;
-                continue;
-            }
+            if (bestScore < alpha)
+                bestScore = alpha;
+            continue;
         }
 
 
