@@ -916,9 +916,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
          && m == hashed
          && abs(hashScore) < 2 * QUEEN_VALUE
          && ((hashScore >= beta && (nodeType == CUT_NODE || nodeType == PV_NODE)
-                                && hashDepth >= depth - 4)
+                                && hashDepth >= depth - 3)
           || (isPVNode && nodeType == PV_NODE && hashDepth >= depth - 2))) {
-
             bool isSingular = true;
 
             // Do a reduced depth search with a lowered window for a fail low check
@@ -932,11 +931,10 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
                     continue;
 
                 // The window is lowered more for PV nodes and for higher depths
-                int SEWindow = isPVNode ? hashScore - 50 - 2 * depth
+                int SEWindow = isPVNode ? hashScore - 10 - depth
                                         : alpha - 10 - depth;
                 // Do a reduced search for fail-low confirmation
-                int SEDepth = isPVNode ? 2 * depth / 3 - 1
-                                       : depth / 2 - 1;
+                int SEDepth = depth / 2 - 1;
 
                 searchParams->ply++;
                 score = -PVS(seCopy, SEDepth, -SEWindow - 1, -SEWindow, threadID, &line);
