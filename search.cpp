@@ -745,7 +745,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
      && b.getNonPawnMaterial(color)) {
         int reduction;
         // Reduce more if we are further ahead
-        reduction = 1 + (int) ((depth + 1.5) / 4.5 + (staticEval - beta) / 118.0);
+        reduction = 2 + (int) ((depth - 1) / 5.0 + (staticEval - beta) / 200.0);
 
         uint16_t epCaptureFile = b.getEPCaptureFile();
         b.doNullMove();
