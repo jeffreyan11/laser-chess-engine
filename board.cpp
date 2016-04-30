@@ -2071,6 +2071,40 @@ int Board::checkEndgameCases() {
                 return scoreSimpleKnownWin(WHITE);
             if (count(pieces[BLACK][BISHOPS]) == 2)
                 return scoreSimpleKnownWin(BLACK);
+
+            // Mating with knight and bishop
+            if (pieces[WHITE][KNIGHTS] && pieces[WHITE][BISHOPS]) {
+                int value = KNOWN_WIN;
+                int wKing = bitScanForward(pieces[WHITE][KINGS]);
+                int bKing = bitScanForward(pieces[BLACK][KINGS]);
+                value += endgamePieceValues[KINGS][wKing] - endgamePieceValues[KINGS][bKing];
+
+                // Light squared corners are H1 (7) and A8 (56)
+                if (pieces[WHITE][BISHOPS] & LIGHT) {
+                    value -= 20 * std::min(getManhattanDistance(bKing, 7), getManhattanDistance(bKing, 56));
+                }
+                // Dark squared corners are A1 (0) and H8 (63)
+                else {
+                    value -= 20 * std::min(getManhattanDistance(bKing, 0), getManhattanDistance(bKing, 63));
+                }
+                return value;
+            }
+            if (pieces[BLACK][KNIGHTS] && pieces[BLACK][BISHOPS]) {
+                int value = -KNOWN_WIN;
+                int wKing = bitScanForward(pieces[WHITE][KINGS]);
+                int bKing = bitScanForward(pieces[BLACK][KINGS]);
+                value += endgamePieceValues[KINGS][wKing] - endgamePieceValues[KINGS][bKing];
+
+                // Light squared corners are H1 (7) and A8 (56)
+                if (pieces[BLACK][BISHOPS] & LIGHT) {
+                    value += 20 * std::min(getManhattanDistance(wKing, 7), getManhattanDistance(wKing, 56));
+                }
+                // Dark squared corners are A1 (0) and H8 (63)
+                else {
+                    value += 20 * std::min(getManhattanDistance(wKing, 0), getManhattanDistance(wKing, 63));
+                }
+                return value;
+            }
         }
     }
 
