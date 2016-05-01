@@ -1926,14 +1926,12 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, int egFactor) {
 }
 
 // King safety, based on the number of opponent pieces near the king
+// The lookup table approach is inspired by Ed Schroder's Rebel chess engine
 int Board::getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
     uint64_t wKingSqs, uint64_t bKingSqs, int egFactor) {
     // Scale factor for pieces attacking opposing king
-    const int KING_THREAT_MULTIPLIER[4] = {12, 15, 17, 24};
-    const int KING_THREAT_PIECE_BONUS[16] = {0, 0, 0, 35, 60, 80, 90, 95,
-                                            100, 100, 100, 100, 100, 100, 100, 100};
+    const int KING_THREAT_MULTIPLIER[4] = {2, 3, 3, 4};
 
-    int result = 0;
     // Holds the king safety score
     int wKingSafety = 0, bKingSafety = 0;
     // Counts the number of pieces participating in the king attack
@@ -1951,7 +1949,7 @@ int Board::getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
         int kingSqCount = count(legal & bKingSqs);
         if (kingSqCount) {
             wKingAttackPieces++;
-            wKingSafety += KING_THREAT_MULTIPLIER[pieceIndex] * kingSqCount;
+            wKingSafety += KING_THREAT_MULTIPLIER[pieceIndex] * (kingSqCount+1);
         }
     }
 
@@ -1967,23 +1965,37 @@ int Board::getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
         int kingSqCount = count(legal & wKingSqs);
         if (kingSqCount) {
             bKingAttackPieces++;
-            bKingSafety += KING_THREAT_MULTIPLIER[pieceIndex] * kingSqCount;
+            bKingSafety += KING_THREAT_MULTIPLIER[pieceIndex] * (kingSqCount+1);
         }
     }
 
     // If at least two pieces are involved in the attack, we consider it "serious"
-    if (wKingAttackPieces >= 2) {
+    if (wKingAttackPieces >= 3) {
         // Give a decent bonus for each additional piece participating
-        result += KING_THREAT_PIECE_BONUS[wKingAttackPieces];
-        result += wKingSafety;
+        // wKingSafety += 5 * (wKingAttackPieces-2);
     }
-    if (bKingAttackPieces >= 2) {
-        // Give a decent bonus for each additional piece participating
-        result -= KING_THREAT_PIECE_BONUS[bKingAttackPieces];
-        result -= bKingSafety;
+    else if (wKingAttackPieces == 2)
+        wKingSafety /= 2;
+    else
+        wKingSafety = 0;
+    if (bKingAttackPieces >= 3) {
+        // bKingSafety += 5 * (bKingAttackPieces-2);
     }
+    else if (bKingAttackPieces == 2)
+        bKingSafety /= 2;
+    else
+        bKingSafety = 0;
 
-    return result * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
+    const int KS_TO_SCORE[50] = {
+          0,   0,   1,   3,   6,  11,  17,  24,  31,  38,
+         46,  54,  62,  70,  78,  86,  94, 102, 110, 117,
+        124, 131, 138, 145, 152, 158, 164, 170, 176, 182,
+        187, 192, 197, 202, 207, 212, 216, 220, 224, 228,
+        232, 235, 238, 241, 244, 247, 250, 253, 256, 259
+    };
+
+    return (KS_TO_SCORE[std::min(49, wKingSafety)] - KS_TO_SCORE[std::min(49, bKingSafety)])
+        * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
 }
 
 // Check special endgame cases: where help mate is possible (detecting this
