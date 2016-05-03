@@ -112,12 +112,13 @@ void MoveOrder::scoreCaptures(bool isIIDMove) {
             int see = b->getSEEForMove(color, m);
 
             if (see > 0)
-                scores.add(SCORE_WINNING_CAPTURE + see);
+                scores.add(SCORE_WINNING_CAPTURE + 8 * see + b->getMVVLVAScore(color, m));
             else if (see == 0)
-                scores.add(SCORE_EVEN_CAPTURE);
+                scores.add(SCORE_EVEN_CAPTURE + b->getMVVLVAScore(color, m));
             else
                 // If we are doing SEE on quiets, score losing captures lower
-                scores.add(((depth >= QUIET_SEE_DEPTH) ? 0 : SCORE_LOSING_CAPTURE) + see);
+                scores.add(((depth >= QUIET_SEE_DEPTH) ? 0 : SCORE_LOSING_CAPTURE)
+                    + 8 * see + b->getMVVLVAScore(color, m));
         }
 
         // Otherwise, MVV/LVA for cheaper cutoffs might help
@@ -143,7 +144,8 @@ void MoveOrder::scoreCaptures(bool isIIDMove) {
                 else if (see == 0)
                     scores.add(SCORE_EVEN_CAPTURE + b->getMVVLVAScore(color, m));
                 else
-                    scores.add(((depth >= QUIET_SEE_DEPTH) ? 0 : SCORE_LOSING_CAPTURE) + see);
+                    scores.add(((depth >= QUIET_SEE_DEPTH) ? 0 : SCORE_LOSING_CAPTURE)
+                        + 8 * see + b->getMVVLVAScore(color, m));
             }
         }
     }
