@@ -1837,8 +1837,8 @@ int Board::evaluate() {
     }
 
 
-    int totalEval = (16 * materialValue + 17 * decEval(value, egFactor)
-        + 18 * mobilityValue + 16 * kingPawnTropism) / 16;
+    int totalEval = materialValue + decEval(value, egFactor)
+        + mobilityValue + kingPawnTropism;
 
     // Scale factors
     // Opposite colored bishops
