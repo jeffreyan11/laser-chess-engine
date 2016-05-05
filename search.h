@@ -90,8 +90,8 @@ const int EASYMOVE_MARGIN = 150;
 const int MAX_POS_SCORE = 120;
 
 // Time management constants
-const int MOVE_HORIZON = 40; // expect this many moves left in the game
+const int MOVE_HORIZON = 36; // expect this many moves left in the game
 const double TIME_FACTOR = 0.7; // timeFactor = log b / (b - 1) where b is branch factor
-const double MAX_TIME_FACTOR = 2.5; // do not spend more than this multiple of time over the limit
+const double MAX_TIME_FACTOR = 3.75; // do not spend more than this multiple of time over the limit
 
 #endif
