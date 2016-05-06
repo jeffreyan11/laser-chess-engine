@@ -1975,14 +1975,14 @@ int Board::getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
         // wKingSafety += 5 * (wKingAttackPieces-2);
     }
     else if (wKingAttackPieces == 2)
-        wKingSafety /= 2;
+        wKingSafety = 3 * wKingSafety / 4;
     else
         wKingSafety = 0;
     if (bKingAttackPieces >= 3) {
         // bKingSafety += 5 * (bKingAttackPieces-2);
     }
     else if (bKingAttackPieces == 2)
-        bKingSafety /= 2;
+        bKingSafety = 3 * bKingSafety / 4;
     else
         bKingSafety = 0;
 
