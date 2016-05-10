@@ -19,6 +19,8 @@
 #ifndef __UCI_H__
 #define __UCI_H__
 
+#include <string>
+
 const int DEFAULT_HASH_SIZE = 16;
 const int MIN_HASH_SIZE = 1;
 const int MAX_HASH_SIZE = 16384;
@@ -32,6 +34,6 @@ const int DEFAULT_BUFFER_TIME = 100;
 const int MIN_BUFFER_TIME = 0;
 const int MAX_BUFFER_TIME = 1024;
 
-Board fenToBoard(string s);
+Board fenToBoard(std::string s);
 
 #endif
