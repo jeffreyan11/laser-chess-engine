@@ -32,4 +32,6 @@ const int DEFAULT_BUFFER_TIME = 100;
 const int MIN_BUFFER_TIME = 0;
 const int MAX_BUFFER_TIME = 1024;
 
+Board fenToBoard(string s);
+
 #endif

@@ -52,7 +52,6 @@ const vector<string> positions = {
 
 void setPosition(string &input, vector<string> &inputVector, Board &board);
 vector<string> split(const string &s, char d);
-Board fenToBoard(string s);
 string boardToString(Board &board);
 void clearAll(Board &board);
 
