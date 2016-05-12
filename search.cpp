@@ -90,20 +90,22 @@ struct EasyMove {
 //-------------------------------Search Constants-------------------------------
 // Futility pruning margins indexed by depth. If static eval is at least this
 // amount below alpha, we skip quiet moves for this position.
-const int FUTILITY_MARGIN[5] = {0,
-    125,
-    290,
-    520,
-    880
+const int FUTILITY_MARGIN[6] = {0,
+    110,
+    240,
+    390,
+    580,
+    800
 };
 
 // Reverse futility pruning margins indexed by depth. If static eval is at least
 // this amount above beta, we skip searching the position entirely.
-const int REVERSE_FUTILITY_MARGIN[5] = {0,
-    105,
-    265,
-    490,
-    840
+const int REVERSE_FUTILITY_MARGIN[6] = {0,
+    90,
+    215,
+    360,
+    540,
+    760
 };
 
 // Razor margins indexed by depth. If static eval is far below alpha, use a
@@ -711,7 +713,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
     // probably wouldn't have let us get here (a form of the null-move observation
     // adapted to low depths)
     if (!isPVNode && !isInCheck
-     && (depth <= 4 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
+     && (depth <= 5 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
      && b.getNonPawnMaterial(color))
         return staticEval - REVERSE_FUTILITY_MARGIN[depth];
 
@@ -811,7 +813,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         // move probably won't raise our prospects much, so don't bother
         // q-searching it.
         if (moveIsPrunable
-         && depth <= 4 && staticEval <= alpha - FUTILITY_MARGIN[depth]) {
+         && depth <= 5 && staticEval <= alpha - FUTILITY_MARGIN[depth]) {
             if (bestScore < staticEval + FUTILITY_MARGIN[depth])
                 bestScore = staticEval + FUTILITY_MARGIN[depth];
             continue;
