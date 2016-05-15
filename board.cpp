@@ -1484,7 +1484,7 @@ int Board::evaluate() {
     // Piece square tables
     // White pieces
     for (int pieceID = 0; pieceID < 6; pieceID++) {
-        uint64_t bitboard = pieces[0][pieceID];
+        uint64_t bitboard = pieces[WHITE][pieceID];
         // Invert the board for white side
         bitboard = flipAcrossRanks(bitboard);
         while (bitboard) {
@@ -1496,7 +1496,7 @@ int Board::evaluate() {
     }
     // Black pieces
     for (int pieceID = 0; pieceID < 6; pieceID++)  {
-        uint64_t bitboard = pieces[1][pieceID];
+        uint64_t bitboard = pieces[BLACK][pieceID];
         while (bitboard) {
             int i = bitScanForward(bitboard);
             bitboard &= bitboard - 1;
@@ -1546,21 +1546,38 @@ int Board::evaluate() {
     int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
     uint64_t wKingNeighborhood = getKingSquares(wKingSq);
     uint64_t bKingNeighborhood = getKingSquares(bKingSq);
+
+    // Calculate a separate king safety factor
+    int whiteAttackers = KNIGHT_VALUE * pieceCounts[WHITE][KNIGHTS]
+                       + BISHOP_VALUE * pieceCounts[WHITE][BISHOPS]
+                       + ROOK_VALUE   * pieceCounts[WHITE][ROOKS]
+                   + 2 * QUEEN_VALUE  * pieceCounts[WHITE][QUEENS];
+    int blackAttackers = KNIGHT_VALUE * pieceCounts[BLACK][KNIGHTS]
+                       + BISHOP_VALUE * pieceCounts[BLACK][BISHOPS]
+                       + ROOK_VALUE   * pieceCounts[BLACK][ROOKS]
+                   + 2 * QUEEN_VALUE  * pieceCounts[BLACK][QUEENS];
+    const int FULL_KS_VALUE = 2 * KNIGHT_VALUE + 2 * BISHOP_VALUE + 2 * ROOK_VALUE + 2 * QUEEN_VALUE;
+
+    int ksFactor = EG_FACTOR_RES - (whiteAttackers + blackAttackers - FULL_KS_VALUE / 2) * EG_FACTOR_RES / FULL_KS_VALUE;
+    ksFactor = std::max(0, std::min(EG_FACTOR_RES, ksFactor));
+
     // All king safety terms are midgame only, so don't calculate them in the endgame
-    if (egFactor < EG_FACTOR_RES) {
-        mobilityValue += getKingSafety(pmlWhite, pmlBlack, wKingNeighborhood, bKingNeighborhood, egFactor);
+    if (ksFactor < EG_FACTOR_RES) {
+        int ksValue = 0;
+
+        ksValue += getKingSafety(pmlWhite, pmlBlack, wKingNeighborhood, bKingNeighborhood);
 
         // Castling rights
-        value += CASTLING_RIGHTS_VALUE[count(castlingRights & WHITECASTLE)];
-        value -= CASTLING_RIGHTS_VALUE[count(castlingRights & BLACKCASTLE)];
+        ksValue += CASTLING_RIGHTS_VALUE[count(castlingRights & WHITECASTLE)];
+        ksValue -= CASTLING_RIGHTS_VALUE[count(castlingRights & BLACKCASTLE)];
         
         // Pawn shield bonus (files ABC, FGH)
         // Pawns on the second and third ranks are considered part of the shield
-        value += PAWN_SHIELD_VALUE * count((wKingNeighborhood | (wKingNeighborhood << 8)) & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-        value -= PAWN_SHIELD_VALUE * count((bKingNeighborhood | (bKingNeighborhood >> 8)) & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+        ksValue += PAWN_SHIELD_VALUE * count((wKingNeighborhood | (wKingNeighborhood << 8)) & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+        ksValue -= PAWN_SHIELD_VALUE * count((bKingNeighborhood | (bKingNeighborhood >> 8)) & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
         // An extra bonus for pawns on the second rank
-        value += P_PAWN_SHIELD_BONUS * count(wKingNeighborhood & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-        value -= P_PAWN_SHIELD_BONUS * count(bKingNeighborhood & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+        ksValue += P_PAWN_SHIELD_BONUS * count(wKingNeighborhood & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+        ksValue -= P_PAWN_SHIELD_BONUS * count(bKingNeighborhood & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
         
         // Open files next to king
         // To find open files we flood fill the king and its adjacent files up the board
@@ -1589,13 +1606,15 @@ int Board::evaluate() {
             tempbk2 |= (tempbk2 >> 8) & notbp;
         }
         
-        value -= SEMIOPEN_OWN_PENALTY * count(tempwk & RANKS[7]);
-        value -= SEMIOPEN_OPP_PENALTY * count(tempwk2 & RANKS[7]);
-        value += SEMIOPEN_OPP_PENALTY * count(tempbk & RANKS[0]);
-        value += SEMIOPEN_OWN_PENALTY * count(tempbk2 & RANKS[0]);
+        ksValue -= SEMIOPEN_OWN_PENALTY * count(tempwk & RANKS[7]);
+        ksValue -= SEMIOPEN_OPP_PENALTY * count(tempwk2 & RANKS[7]);
+        ksValue += SEMIOPEN_OPP_PENALTY * count(tempbk & RANKS[0]);
+        ksValue += SEMIOPEN_OWN_PENALTY * count(tempbk2 & RANKS[0]);
         // Fully open files get an additional bonus
-        value -= OPEN_PENALTY*count(tempwk & tempwk2 & RANKS[7]);
-        value += OPEN_PENALTY*count(tempbk & tempbk2 & RANKS[0]);
+        ksValue -= OPEN_PENALTY*count(tempwk & tempwk2 & RANKS[7]);
+        ksValue += OPEN_PENALTY*count(tempbk & tempbk2 & RANKS[0]);
+
+        mobilityValue += ksValue * (EG_FACTOR_RES - ksFactor) / EG_FACTOR_RES;
     }
 
 
@@ -1928,7 +1947,7 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, int egFactor) {
 // King safety, based on the number of opponent pieces near the king
 // The lookup table approach is inspired by Ed Schroder's Rebel chess engine
 int Board::getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
-    uint64_t wKingSqs, uint64_t bKingSqs, int egFactor) {
+    uint64_t wKingSqs, uint64_t bKingSqs) {
     // Scale factor for pieces attacking opposing king
     const int KING_THREAT_MULTIPLIER[4] = {2, 3, 3, 4};
 
@@ -1994,8 +2013,7 @@ int Board::getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
         232, 235, 238, 241, 244, 247, 250, 253, 256, 259
     };
 
-    return (KS_TO_SCORE[std::min(49, wKingSafety)] - KS_TO_SCORE[std::min(49, bKingSafety)])
-        * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
+    return (KS_TO_SCORE[std::min(49, wKingSafety)] - KS_TO_SCORE[std::min(49, bKingSafety)]);
 }
 
 // Check special endgame cases: where help mate is possible (detecting this

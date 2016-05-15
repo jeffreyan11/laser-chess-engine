@@ -54,18 +54,18 @@ const int TEMPO_VALUE = 10;
 //------------------------Positional eval constants-----------------------------
 // King safety
 // The value of having 0, 1, and both castling rights
-const Score CASTLING_RIGHTS_VALUE[3] = {encEval(0, 0), encEval(24, 0), encEval(40, 0)};
+const int CASTLING_RIGHTS_VALUE[3] = {0, 24, 40};
 // The value of a pawn shield per pawn
-const Score PAWN_SHIELD_VALUE = encEval(12, 0);
+const int PAWN_SHIELD_VALUE = 12;
 // The additional bonus for each pawn in the primary pawn shield, the 3 squares
 // directly in front of the king
-const Score P_PAWN_SHIELD_BONUS = encEval(8, 0);
+const int P_PAWN_SHIELD_BONUS = 8;
 // The penalty for a semi-open file next to the king where your own pawn is missing
-const Score SEMIOPEN_OWN_PENALTY = encEval(9, 0);
+const int SEMIOPEN_OWN_PENALTY = 9;
 // The penalty for a semi-open file next to the king where your opponent's pawn is missing
-const Score SEMIOPEN_OPP_PENALTY = encEval(4, 0);
+const int SEMIOPEN_OPP_PENALTY = 4;
 // An additional penalty for a fully open file next to the king
-const Score OPEN_PENALTY = encEval(3, 0);
+const int OPEN_PENALTY = 3;
 
 // Minor pieces
 // A penalty for each own pawn that is on a square of the same color as your bishop
