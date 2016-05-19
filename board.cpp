@@ -1949,12 +1949,38 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, int egFactor) {
 int Board::getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
     uint64_t wKingSqs, uint64_t bKingSqs) {
     // Scale factor for pieces attacking opposing king
-    const int KING_THREAT_MULTIPLIER[4] = {2, 3, 3, 4};
+    const int KING_OUTER_THREAT_MULTIPLIER[4] = {2, 3, 3, 4};
+    const int KING_THREAT_MULTIPLIER[4] = {1, 1, 1, 2};
+    // Total: {3, 4, 4, 6}
+    // const int KING_DEFENSE_MULTIPLIER[4] = {2, 2, 1, 0};
 
     // Holds the king safety score
     int wKingSafety = 0, bKingSafety = 0;
     // Counts the number of pieces participating in the king attack
     int wKingAttackPieces = 0, bKingAttackPieces = 0;
+
+    uint64_t wKingNeighborhood = wKingSqs | (wKingSqs << 8);
+    uint64_t bKingNeighborhood = bKingSqs | (bKingSqs >> 8);
+
+
+    // Analyze undefended squares directly adjacent to king
+    uint64_t wKingDefenseless = 0, bKingDefenseless = 0;
+    for (unsigned int i = 0; i < pmlWhite.size(); i++) {
+        PieceMoveInfo pmi = pmlWhite.get(i);
+        uint64_t legal = pmi.legal;
+
+        wKingDefenseless |= legal & wKingSqs;
+    }
+    wKingDefenseless ^= wKingSqs;
+
+    for (unsigned int i = 0; i < pmlBlack.size(); i++) {
+        PieceMoveInfo pmi = pmlBlack.get(i);
+        uint64_t legal = pmi.legal;
+
+        bKingDefenseless |= legal & bKingSqs;
+    }
+    bKingDefenseless ^= bKingSqs;
+
 
     // Iterate over piece move information to extract all mobility-related scores
     for (unsigned int i = 0; i < pmlWhite.size(); i++) {
@@ -1965,27 +1991,40 @@ int Board::getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
         uint64_t legal = pmi.legal;
 
         // Get king safety score
-        int kingSqCount = count(legal & bKingSqs);
+        int kingSqCount = count(legal & bKingNeighborhood);
         if (kingSqCount) {
             wKingAttackPieces++;
-            wKingSafety += KING_THREAT_MULTIPLIER[pieceIndex] * (kingSqCount+1);
+            // wKingSafety += KING_THREAT_MULTIPLIER[pieceIndex]
+            //              + KING_OUTER_THREAT_MULTIPLIER[pieceIndex];
+            wKingSafety += KING_OUTER_THREAT_MULTIPLIER[pieceIndex] * kingSqCount;
+            wKingSafety += KING_THREAT_MULTIPLIER[pieceIndex] * count(legal & bKingSqs);
+
+            wKingSafety += count(legal & bKingDefenseless);
         }
+
+        // if (legal & wKingNeighborhood)
+        //     wKingSafety -= KING_DEFENSE_MULTIPLIER[pieceIndex];
     }
 
-    // Iterate over piece move information to extract all mobility-related scores
     for (unsigned int i = 0; i < pmlBlack.size(); i++) {
         PieceMoveInfo pmi = pmlBlack.get(i);
 
         int pieceIndex = pmi.pieceID - 1;
-        // Get all potential legal moves
         uint64_t legal = pmi.legal;
 
-        // Get king safety score
-        int kingSqCount = count(legal & wKingSqs);
+        int kingSqCount = count(legal & wKingNeighborhood);
         if (kingSqCount) {
             bKingAttackPieces++;
-            bKingSafety += KING_THREAT_MULTIPLIER[pieceIndex] * (kingSqCount+1);
+            // bKingSafety += KING_THREAT_MULTIPLIER[pieceIndex]
+            //              + KING_OUTER_THREAT_MULTIPLIER[pieceIndex];
+            bKingSafety += KING_OUTER_THREAT_MULTIPLIER[pieceIndex] * kingSqCount;
+            bKingSafety += KING_THREAT_MULTIPLIER[pieceIndex] * count(legal & wKingSqs);
+
+            bKingSafety += count(legal & wKingDefenseless);
         }
+
+        // if (legal & bKingNeighborhood)
+        //     bKingSafety -= KING_DEFENSE_MULTIPLIER[pieceIndex];
     }
 
     // If at least two pieces are involved in the attack, we consider it "serious"
@@ -2005,15 +2044,28 @@ int Board::getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
     else
         bKingSafety = 0;
 
-    const int KS_TO_SCORE[50] = {
-          0,   0,   1,   3,   6,  11,  17,  24,  31,  38,
-         46,  54,  62,  70,  78,  86,  94, 102, 110, 117,
-        124, 131, 138, 145, 152, 158, 164, 170, 176, 182,
-        187, 192, 197, 202, 207, 212, 216, 220, 224, 228,
-        232, 235, 238, 241, 244, 247, 250, 253, 256, 259
+    // Reduce attack slightly if there is a good pawn shield
+    bKingSafety -= count(wKingNeighborhood & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    wKingSafety -= count(bKingNeighborhood & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    // Extra for pawns directly in front of the king
+    bKingSafety -= count(wKingSqs & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+    wKingSafety -= count(bKingSqs & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+
+    const int KS_TO_SCORE[100] = {
+          0,   0,   0,   1,   1,   2,   3,   4,   6,   8,
+         11,  14,  17,  20,  24,  27,  31,  34,  38,  42,
+         46,  50,  54,  58,  62,  66,  70,  74,  78,  82, 
+         86,  90,  94,  98, 102, 106, 110, 114, 117, 121,
+        124, 128, 131, 135, 138, 142, 145, 149, 152, 155,
+        158, 161, 164, 167, 170, 173, 176, 179, 182, 185,
+        187, 190, 192, 195, 197, 200, 202, 205, 207, 210,
+        212, 214, 216, 218, 220, 222, 224, 226, 228, 230,
+        232, 234, 236, 237, 239, 240, 242, 243, 245, 246,
+        247, 249, 250, 251, 252, 253, 254, 255, 256, 257
     };
 
-    return (KS_TO_SCORE[std::min(49, wKingSafety)] - KS_TO_SCORE[std::min(49, bKingSafety)]);
+    return (KS_TO_SCORE[std::max(0, std::min(99, wKingSafety))]
+          - KS_TO_SCORE[std::max(0, std::min(99, bKingSafety))]);
 }
 
 // Check special endgame cases: where help mate is possible (detecting this
