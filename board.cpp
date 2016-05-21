@@ -1949,9 +1949,7 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, int egFactor) {
 int Board::getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
     uint64_t wKingSqs, uint64_t bKingSqs) {
     // Scale factor for pieces attacking opposing king
-    const int KING_OUTER_THREAT_MULTIPLIER[4] = {2, 3, 3, 4};
-    const int KING_THREAT_MULTIPLIER[4] = {1, 1, 1, 2};
-    // Total: {3, 4, 4, 6}
+    const int KING_THREAT_MULTIPLIER[4] = {3, 3, 4, 6};
     // const int KING_DEFENSE_MULTIPLIER[4] = {2, 2, 1, 0};
 
     // Holds the king safety score
@@ -1971,6 +1969,8 @@ int Board::getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
 
         wKingDefenseless |= legal & wKingSqs;
     }
+    // Add in pawns
+    wKingDefenseless |= getWPawnCaptures(pieces[WHITE][PAWNS]) & wKingSqs;
     wKingDefenseless ^= wKingSqs;
 
     for (unsigned int i = 0; i < pmlBlack.size(); i++) {
@@ -1979,7 +1979,11 @@ int Board::getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
 
         bKingDefenseless |= legal & bKingSqs;
     }
+    bKingDefenseless |= getBPawnCaptures(pieces[BLACK][PAWNS]) & bKingSqs;
     bKingDefenseless ^= bKingSqs;
+
+    // wKingSafety += 4 * count(bKingDefenseless);
+    // bKingSafety += 4 * count(wKingDefenseless);
 
 
     // Iterate over piece move information to extract all mobility-related scores
@@ -1996,10 +2000,10 @@ int Board::getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
             wKingAttackPieces++;
             // wKingSafety += KING_THREAT_MULTIPLIER[pieceIndex]
             //              + KING_OUTER_THREAT_MULTIPLIER[pieceIndex];
-            wKingSafety += KING_OUTER_THREAT_MULTIPLIER[pieceIndex] * kingSqCount;
             wKingSafety += KING_THREAT_MULTIPLIER[pieceIndex] * count(legal & bKingSqs);
 
-            wKingSafety += count(legal & bKingDefenseless);
+            // Bonus for overloading on defenseless squares
+            wKingSafety += 5 * count(legal & bKingDefenseless);
         }
 
         // if (legal & wKingNeighborhood)
@@ -2017,27 +2021,29 @@ int Board::getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
             bKingAttackPieces++;
             // bKingSafety += KING_THREAT_MULTIPLIER[pieceIndex]
             //              + KING_OUTER_THREAT_MULTIPLIER[pieceIndex];
-            bKingSafety += KING_OUTER_THREAT_MULTIPLIER[pieceIndex] * kingSqCount;
             bKingSafety += KING_THREAT_MULTIPLIER[pieceIndex] * count(legal & wKingSqs);
 
-            bKingSafety += count(legal & wKingDefenseless);
+            bKingSafety += 5 * count(legal & wKingDefenseless);
         }
 
         // if (legal & bKingNeighborhood)
         //     bKingSafety -= KING_DEFENSE_MULTIPLIER[pieceIndex];
     }
 
+    // Give a decent bonus for each additional piece participating
+    wKingSafety += std::min(20, wKingAttackPieces * (wKingAttackPieces-1) + 6);
+    bKingSafety += std::min(20, bKingAttackPieces * (wKingAttackPieces-1) + 6);
+
     // If at least two pieces are involved in the attack, we consider it "serious"
     if (wKingAttackPieces >= 3) {
-        // Give a decent bonus for each additional piece participating
-        // wKingSafety += 5 * (wKingAttackPieces-2);
+
     }
     else if (wKingAttackPieces == 2)
         wKingSafety = 3 * wKingSafety / 4;
     else
         wKingSafety = 0;
     if (bKingAttackPieces >= 3) {
-        // bKingSafety += 5 * (bKingAttackPieces-2);
+
     }
     else if (bKingAttackPieces == 2)
         bKingSafety = 3 * bKingSafety / 4;
@@ -2054,14 +2060,14 @@ int Board::getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
     const int KS_TO_SCORE[100] = {
           0,   0,   0,   1,   1,   2,   3,   4,   6,   8,
          11,  14,  17,  20,  24,  27,  31,  34,  38,  42,
-         46,  50,  54,  58,  62,  66,  70,  74,  78,  82, 
-         86,  90,  94,  98, 102, 106, 110, 114, 117, 121,
-        124, 128, 131, 135, 138, 142, 145, 149, 152, 155,
-        158, 161, 164, 167, 170, 173, 176, 179, 182, 185,
-        187, 190, 192, 195, 197, 200, 202, 205, 207, 210,
-        212, 214, 216, 218, 220, 222, 224, 226, 228, 230,
-        232, 234, 236, 237, 239, 240, 242, 243, 245, 246,
-        247, 249, 250, 251, 252, 253, 254, 255, 256, 257
+         46,  50,  54,  58,  62,  66,  70,  74,  78,  83, 
+         87,  92,  96, 101, 105, 110, 115, 120, 125, 130,
+        135, 140, 145, 150, 155, 160, 165, 170, 175, 180,
+        185, 190, 195, 200, 205, 210, 215, 220, 225, 230,
+        235, 240, 245, 250, 255, 260, 265, 270, 275, 280,
+        285, 290, 295, 300, 305, 310, 315, 320, 325, 330,
+        335, 340, 345, 350, 355, 360, 365, 370, 375, 380,
+        385, 390, 395, 400, 405, 410, 415, 420, 425, 430
     };
 
     return (KS_TO_SCORE[std::max(0, std::min(99, wKingSafety))]
