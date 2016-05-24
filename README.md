@@ -12,44 +12,34 @@ A few ideas and inspiration came from
 Stockfish (https://stockfishchess.org/):
 - "bench" command
 - Using SWAR for midgame/endgame evaluation
-- Razoring implementation
-- Singular extension implementation
+- Razoring, singular extension implementations
 
-Crafty:
-- Lockless hashing by XORing Zobrist keys and hash data
-
-EXChess:
+Crafty, EXChess:
 - Lazy SMP implementation
 
-A thanks also to Cute Chess, the primary tool used for testing: (http://cutechess.com/).
+Rebel:
+- King safety
+
+This project would not have been possible without Cute Chess, the primary tool used for testing: (http://cutechess.com/).
 
 
 ### Engine Strength
 CCRL 40/40
 
-Laser 1.0: 74-75th, 2728 elo as of Mar 18, 2016
-
-Laser 0.2.1: 92nd, 2641 elo as of Dec 18, 2015
+Laser 1.1: 68th, 2775 elo as of May 21, 2016
 
 CCRL 40/4
 
-Laser 1.0: 73rd, 2728 elo as of Mar 18, 2016
-
-Laser 0.2.1: 103-104th, 2606 elo as of Nov 15, 2015
-
-Laser 0.1: 179-180th, 2377 elo as of Oct 11, 2015
+Laser 1.1: 65-66th, 2770 elo as of May 21, 2016
 
 CEGT Blitz - Best Single Versions
 
-Laser 1.0: 78th, 2537 elo as of Mar 19, 2016
-
-Laser 0.2.1: 107th, 2414 elo as of Nov 15, 2015
+Laser 1.1: 70th, 2596 elo as of May 24, 2016
 
 
 ### Engine Personality
-- Materialistic
-- Overextends pawns, especially in quiet positions
-- Poor endgame play (there is little endgame code)
+- Solid positional play, drawish
+- Misses some king attacks
 - Poor evaluation of material imbalances
 
 
