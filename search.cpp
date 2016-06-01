@@ -328,6 +328,15 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     deltaBeta *= 2;
                     if (aspBeta > 2 * QUEEN_VALUE)
                         aspBeta = MATE_SCORE;
+
+                    // If the best move is still the same, do not necessarily
+                    // resolve the fail high
+                    if ((int) multiPVNum - 1 == bestMoveIndex
+                     && *bestMove == prevBest
+                     && mode == TIME
+                     && (timeSoFar * ONE_SECOND >= value * TIME_FACTOR))
+                        break;
+
                     legalMoves.swap(multiPVNum-1, bestMoveIndex);
                     *bestMove = legalMoves.get(0);
                 }
