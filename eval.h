@@ -56,10 +56,12 @@ const int TEMPO_VALUE = 10;
 // The value of having 0, 1, and both castling rights
 const int CASTLING_RIGHTS_VALUE[3] = {0, 24, 40};
 // The value of a pawn shield per pawn
-const int PAWN_SHIELD_VALUE = 12;
-// The additional bonus for each pawn in the primary pawn shield, the 3 squares
-// directly in front of the king
-const int P_PAWN_SHIELD_BONUS = 8;
+const int PAWN_SHIELD_VALUE[4][8] = {
+    { 0, 20, 14,  3,  0,  0,  0,  0},
+    { 0, 20, 12,  1,  0,  0,  0,  0},
+    { 0, 20, 10,  1,  0,  0,  0,  0},
+    { 0,  0,  0,  0,  0,  0,  0,  0}
+};
 // The penalty for a semi-open file next to the king where your own pawn is missing
 const int SEMIOPEN_OWN_PENALTY = 9;
 // The penalty for a semi-open file next to the king where your opponent's pawn is missing

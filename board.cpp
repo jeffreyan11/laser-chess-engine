@@ -1571,13 +1571,41 @@ int Board::evaluate() {
         ksValue += CASTLING_RIGHTS_VALUE[count(castlingRights & WHITECASTLE)];
         ksValue -= CASTLING_RIGHTS_VALUE[count(castlingRights & BLACKCASTLE)];
         
-        // Pawn shield bonus (files ABC, FGH)
-        // Pawns on the second and third ranks are considered part of the shield
-        ksValue += PAWN_SHIELD_VALUE * count((wKingNeighborhood | (wKingNeighborhood << 8)) & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-        ksValue -= PAWN_SHIELD_VALUE * count((bKingNeighborhood | (bKingNeighborhood >> 8)) & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-        // An extra bonus for pawns on the second rank
-        ksValue += P_PAWN_SHIELD_BONUS * count(wKingNeighborhood & pieces[WHITE][PAWNS] & 0xe7e7e7e7e7e7e7e7);
-        ksValue -= P_PAWN_SHIELD_BONUS * count(bKingNeighborhood & pieces[BLACK][PAWNS] & 0xe7e7e7e7e7e7e7e7);
+        // Pawn shield
+        int wKingFile = wKingSq & 7;
+        int bKingFile = bKingSq & 7;
+
+        // White king
+        for (int i = wKingFile-1; i <= wKingFile+1; i++) {
+            if (i < 0 || i == 3 || i == 4 || i > 7)
+                continue;
+
+            uint64_t wPawnShield = pieces[WHITE][PAWNS] & FILES[i];
+            if (wPawnShield) {
+                int wPawnSq = bitScanForward(wPawnShield);
+                int wr = wPawnSq >> 3;
+                int wf = wPawnSq & 7;
+                wf = std::min(wf, 7-wf);
+
+                ksValue += PAWN_SHIELD_VALUE[wf][wr];
+            }
+        }
+
+        // Black king
+        for (int i = bKingFile-1; i <= bKingFile+1; i++) {
+            if (i < 0 || i == 3 || i == 4 || i > 7)
+                continue;
+
+            uint64_t bPawnShield = pieces[BLACK][PAWNS] & FILES[i];
+            if (bPawnShield) {
+                int bPawnSq = bitScanReverse(bPawnShield);
+                int br = 7 - (bPawnSq >> 3);
+                int bf = bPawnSq & 7;
+                bf = std::min(bf, 7-bf);
+
+                ksValue -= PAWN_SHIELD_VALUE[bf][br];
+            }
+        }
         
         // Open files next to king
         // To find open files we flood fill the king and its adjacent files up the board
