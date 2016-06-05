@@ -1522,9 +1522,6 @@ int Board::evaluate() {
     if (pieces[BLACK][QUEENS])
         valueEg -= 2 * pieceCounts[WHITE][PAWNS];
     
-    
-    int materialValue = (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES;
-
 
     //----------------------------Positional terms------------------------------
     // A 32-bit integer that holds both the midgame and endgame values using SWAR
@@ -1532,13 +1529,12 @@ int Board::evaluate() {
     
     
     //-----------------------King Safety and Mobility---------------------------
-    int mobilityValue = 0;
     // Scores based on mobility and basic king safety (which is turned off in
     // the endgame)
     PieceMoveList pmlWhite = getPieceMoveList<PML_PSEUDO_MOBILITY>(WHITE);
     PieceMoveList pmlBlack = getPieceMoveList<PML_PSEUDO_MOBILITY>(BLACK);
-    mobilityValue += getPseudoMobility(WHITE, pmlWhite, pmlBlack, egFactor);
-    mobilityValue -= getPseudoMobility(BLACK, pmlBlack, pmlWhite, egFactor);
+    getPseudoMobility(WHITE, pmlWhite, pmlBlack, valueMg, valueEg);
+    getPseudoMobility(BLACK, pmlBlack, pmlWhite, valueMg, valueEg);
 
 
     // Consider squares near king
@@ -1637,7 +1633,7 @@ int Board::evaluate() {
                 ksValue += PAWN_STORM_VALUE[0][std::min(i, 7-i)][0];
         }
 
-        mobilityValue += ksValue * (EG_FACTOR_RES - ksFactor) / EG_FACTOR_RES;
+        valueMg += ksValue;
     }
 
 
@@ -1875,12 +1871,13 @@ int Board::evaluate() {
         if (pawnCount)
             kingPawnTropism = (bTropismTotal - wTropismTotal) / pawnCount;
 
-        kingPawnTropism = kingPawnTropism * egFactor / EG_FACTOR_RES;
+        valueEg += kingPawnTropism;
     }
 
 
-    int totalEval = materialValue + decEval(value, egFactor)
-        + mobilityValue + kingPawnTropism;
+    valueMg += decEvalMg(value);
+    valueEg += decEvalEg(value);
+    int totalEval = (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES;
 
     // Scale factors
     // Opposite colored bishops
@@ -1905,7 +1902,8 @@ int Board::evaluate() {
  * This function also provides a bonus for having mobile pieces near the
  * opponent's king, and deals with control of center.
  */
-int Board::getPseudoMobility(int color, PieceMoveList &pml, PieceMoveList &oppPml, int egFactor) {
+void Board::getPseudoMobility(int color, PieceMoveList &pml, PieceMoveList &oppPml,
+    int &valueMg, int &valueEg) {
     // Bitboard of center 4 squares: d4, e4, d5, e5
     const uint64_t CENTER_SQS = 0x0000001818000000;
     // Value of each square in the extended center in cp
@@ -1959,14 +1957,25 @@ int Board::getPseudoMobility(int color, PieceMoveList &pml, PieceMoveList &oppPm
             result += mobilityScore[pieceIndex][count(legal & openSqs)];
 
         // Get center control score
-        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
-        centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
+        if (pieceIndex == QUEENS - 1) {
+            centerControl += count(legal & EXTENDED_CENTER_SQS);
+            centerControl += count(legal & CENTER_SQS);
+        }
+        else {
+            centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
+            centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
+        }
     }
 
 
-    result += centerControl * (EG_FACTOR_RES - egFactor) / EG_FACTOR_RES;
-
-    return result;
+    if (color == WHITE) {
+        valueMg += result + centerControl;
+        valueEg += result;
+    }
+    else {
+        valueMg -= result + centerControl;
+        valueEg -= result;
+    }
 }
 
 // King safety, based on the number of opponent pieces near the king

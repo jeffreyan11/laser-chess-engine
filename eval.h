@@ -36,10 +36,12 @@ typedef uint32_t Score;
 #define encEval(mg, eg) ((Score) ((eg << 16) | mg))
 
 // Retrieves the final evaluation score to return from the packed eval value
-int decEval(Score encodedValue, int egFactor) {
-    int valueMg = (int) (encodedValue & 0xFFFF) - 0x8000;
-    int valueEg = (int) (encodedValue >> 16) - 0x8000;
-    return (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES;
+int decEvalMg(Score encodedValue) {
+    return (int) (encodedValue & 0xFFFF) - 0x8000;
+}
+
+int decEvalEg(Score encodedValue) {
+    return (int) (encodedValue >> 16) - 0x8000;
 }
 
 // Since we can only work with unsigned numbers due to carryover / twos-complement
