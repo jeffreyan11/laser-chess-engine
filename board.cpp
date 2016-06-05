@@ -1912,7 +1912,7 @@ void Board::getPseudoMobility(int color, PieceMoveList &pml, PieceMoveList &oppP
     // to EXTENDED_CENTER_VAL
     const int CENTER_BONUS = 2;
     // Holds the mobility values and the final result
-    int result = 0;
+    int mgMobility = 0, egMobility = 0;
     // Holds the center control score
     int centerControl = 0;
     // All squares the side to move could possibly move to
@@ -1951,10 +1951,14 @@ void Board::getPseudoMobility(int color, PieceMoveList &pml, PieceMoveList &oppP
         // Get all potential legal moves
         uint64_t legal = pmi.legal;
         // Get mobility score
-        if (pieceIndex == QUEENS - 1)
-            result += mobilityScore[pieceIndex][count(legal & openSqs & ~oppAttackMap)];
-        else
-            result += mobilityScore[pieceIndex][count(legal & openSqs)];
+        if (pieceIndex == QUEENS - 1) {
+            mgMobility += mobilityScore[0][pieceIndex][count(legal & openSqs & ~oppAttackMap)];
+            egMobility += mobilityScore[1][pieceIndex][count(legal & openSqs & ~oppAttackMap)];
+        }
+        else {
+            mgMobility += mobilityScore[0][pieceIndex][count(legal & openSqs)];
+            egMobility += mobilityScore[1][pieceIndex][count(legal & openSqs)];
+        }
 
         // Get center control score
         if (pieceIndex == QUEENS - 1) {
@@ -1969,12 +1973,12 @@ void Board::getPseudoMobility(int color, PieceMoveList &pml, PieceMoveList &oppP
 
 
     if (color == WHITE) {
-        valueMg += result + centerControl;
-        valueEg += result;
+        valueMg += mgMobility + centerControl;
+        valueEg += egMobility;
     }
     else {
-        valueMg -= result + centerControl;
-        valueEg -= result;
+        valueMg -= mgMobility + centerControl;
+        valueEg -= egMobility;
     }
 }
 
