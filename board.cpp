@@ -1571,13 +1571,13 @@ int Board::evaluate() {
         ksValue += CASTLING_RIGHTS_VALUE[count(castlingRights & WHITECASTLE)];
         ksValue -= CASTLING_RIGHTS_VALUE[count(castlingRights & BLACKCASTLE)];
         
-        // Pawn shield
+        // Pawn shield and storm values
         int wKingFile = wKingSq & 7;
         int bKingFile = bKingSq & 7;
 
         // White king
         for (int i = wKingFile-1; i <= wKingFile+1; i++) {
-            if (i < 0 || i == 3 || i == 4 || i > 7)
+            if (i < 0 || i > 7)
                 continue;
 
             uint64_t wPawnShield = pieces[WHITE][PAWNS] & FILES[i];
@@ -1589,11 +1589,26 @@ int Board::evaluate() {
 
                 ksValue += PAWN_SHIELD_VALUE[wf][wr];
             }
+            else
+                ksValue += PAWN_SHIELD_VALUE[std::min(i, 7-i)][0];
+
+            uint64_t bPawnStorm = pieces[BLACK][PAWNS] & FILES[i];
+            if (bPawnStorm) {
+                int bPawnSq = bitScanForward(bPawnStorm);
+                int br = bPawnSq >> 3;
+                int bf = bPawnSq & 7;
+                bf = std::min(bf, 7-bf);
+                uint64_t frontSqOcc = pieces[WHITE][PAWNS] & INDEX_TO_BIT[bPawnSq - 8];
+
+                ksValue -= PAWN_STORM_VALUE[(frontSqOcc == 0)][bf][br];
+            }
+            else
+                ksValue -= PAWN_STORM_VALUE[0][std::min(i, 7-i)][0];
         }
 
         // Black king
         for (int i = bKingFile-1; i <= bKingFile+1; i++) {
-            if (i < 0 || i == 3 || i == 4 || i > 7)
+            if (i < 0 || i > 7)
                 continue;
 
             uint64_t bPawnShield = pieces[BLACK][PAWNS] & FILES[i];
@@ -1605,42 +1620,22 @@ int Board::evaluate() {
 
                 ksValue -= PAWN_SHIELD_VALUE[bf][br];
             }
+            else
+                ksValue -= PAWN_SHIELD_VALUE[std::min(i, 7-i)][0];
+
+            uint64_t wPawnStorm = pieces[WHITE][PAWNS] & FILES[i];
+            if (wPawnStorm) {
+                int wPawnSq = bitScanReverse(wPawnStorm);
+                int wr = 7 - (wPawnSq >> 3);
+                int wf = wPawnSq & 7;
+                wf = std::min(wf, 7-wf);
+                uint64_t frontSqOcc = pieces[BLACK][PAWNS] & INDEX_TO_BIT[wPawnSq - 8];
+
+                ksValue += PAWN_STORM_VALUE[(frontSqOcc == 0)][wf][wr];
+            }
+            else
+                ksValue += PAWN_STORM_VALUE[0][std::min(i, 7-i)][0];
         }
-        
-        // Open files next to king
-        // To find open files we flood fill the king and its adjacent files up the board
-        // The inverse of the pawn bitboards act as blockers
-        uint64_t notwp = ~pieces[WHITE][PAWNS];
-        uint64_t notbp = ~pieces[BLACK][PAWNS];
-        // Get king and its adjacent files
-        uint64_t tempwk = pieces[WHITE][KINGS];
-        uint64_t tempbk = pieces[BLACK][KINGS];
-        tempwk |= ((tempwk >> 1) & NOTH) | ((tempwk << 1) & NOTA);
-        tempbk |= ((tempbk >> 1) & NOTH) | ((tempbk << 1) & NOTA);
-        uint64_t tempwk2 = tempwk;
-        uint64_t tempbk2 = tempbk;
-        
-        // Flood fill: checking for white pawns
-        for(int i = 0; i < 7; i++) {
-            tempwk |= (tempwk << 8) & notwp;
-            tempbk |= (tempbk >> 8) & notwp;
-        }
-        // If the "king" made it across the board without running into a white pawn,
-        // then the file is semi-open.
-        
-        // Flood fill: checking for black pawns
-        for(int i = 0; i < 7; i++) {
-            tempwk2 |= (tempwk2 << 8) & notbp;
-            tempbk2 |= (tempbk2 >> 8) & notbp;
-        }
-        
-        ksValue -= SEMIOPEN_OWN_PENALTY * count(tempwk & RANKS[7]);
-        ksValue -= SEMIOPEN_OPP_PENALTY * count(tempwk2 & RANKS[7]);
-        ksValue += SEMIOPEN_OPP_PENALTY * count(tempbk & RANKS[0]);
-        ksValue += SEMIOPEN_OWN_PENALTY * count(tempbk2 & RANKS[0]);
-        // Fully open files get an additional bonus
-        ksValue -= OPEN_PENALTY*count(tempwk & tempwk2 & RANKS[7]);
-        ksValue += OPEN_PENALTY*count(tempbk & tempbk2 & RANKS[0]);
 
         mobilityValue += ksValue * (EG_FACTOR_RES - ksFactor) / EG_FACTOR_RES;
     }

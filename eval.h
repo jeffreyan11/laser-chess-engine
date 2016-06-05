@@ -55,19 +55,34 @@ const int TEMPO_VALUE = 10;
 // King safety
 // The value of having 0, 1, and both castling rights
 const int CASTLING_RIGHTS_VALUE[3] = {0, 24, 40};
-// The value of a pawn shield per pawn
+// The value of a pawn shield per pawn. First rank value is used for the
+// penalty when the pawn is missing.
 const int PAWN_SHIELD_VALUE[4][8] = {
-    { 0, 20, 14,  3,  0,  0,  0,  0},
-    { 0, 20, 12,  1,  0,  0,  0,  0},
-    { 0, 20, 10,  1,  0,  0,  0,  0},
-    { 0,  0,  0,  0,  0,  0,  0,  0}
+    { -8, 20, 14,  3,  0, -1, -2,  0},
+    {-10, 20, 12,  1, -1, -2, -3,  0},
+    { -9, 20, 10,  1,  0, -1, -3,  0},
+    { -6,  0,  0,  0,  0,  0,  0,  0}
 };
-// The penalty for a semi-open file next to the king where your own pawn is missing
-const int SEMIOPEN_OWN_PENALTY = 9;
-// The penalty for a semi-open file next to the king where your opponent's pawn is missing
-const int SEMIOPEN_OPP_PENALTY = 4;
+// Array for pawn storm values. Rank 1 of blocked pawn is used for penalty
+// when there is no pawn
+const int PAWN_STORM_VALUE[2][4][8] = {
+// Blocked pawn
+{
+    { 4,  0,  0,  0,  0,  0,  0,  0},
+    { 5,  0,  0,  0,  0,  0,  0,  0},
+    { 4,  0,  0,  0,  0,  0,  0,  0},
+    { 4,  0,  0,  0,  0,  0,  0,  0}
+},
+// Non-blocked pawn
+{
+    { 0,  0,  0,  0,  0,  0,  0,  0},
+    { 0,  0,  0,  0,  0,  0,  0,  0},
+    { 0,  0,  0,  0,  0,  0,  0,  0},
+    { 0,  0,  0,  0,  0,  0,  0,  0}
+},
+};
 // An additional penalty for a fully open file next to the king
-const int OPEN_PENALTY = 3;
+// const int OPEN_PENALTY = 3;
 
 // Minor pieces
 // A penalty for each own pawn that is on a square of the same color as your bishop
