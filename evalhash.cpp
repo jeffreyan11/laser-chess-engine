@@ -22,15 +22,13 @@ EvalHash::EvalHash(uint64_t MB) {
     // Convert to bytes
     uint64_t arrSize = MB << 20;
     // Calculate how many array slots we can use
-    arrSize /= sizeof(EvalHashEntry);
-    // Create the array
-    table = new EvalHashEntry[arrSize];
-    size = arrSize;
+    size = arrSize / sizeof(EvalHashEntry);
+    table = (EvalHashEntry *)calloc(size, sizeof(EvalHashEntry));
     keys = 0;
 }
 
 EvalHash::~EvalHash() {
-    delete[] table;
+    free(table);
 }
 
 // Adds key and move into the hashtable. This function assumes that the key has
@@ -58,20 +56,18 @@ int EvalHash::get(Board &b) {
 }
 
 void EvalHash::setSize(uint64_t MB) {
-    delete[] table;
+    free(table);
     
     // Convert to bytes
     uint64_t arrSize = MB << 20;
     // Calculate how many array slots we can use
-    arrSize /= sizeof(EvalHashEntry);
-    size = arrSize;
-
-    table = new EvalHashEntry[size];
+    size = arrSize / sizeof(EvalHashEntry);
+    table = (EvalHashEntry *)calloc(size, sizeof(EvalHashEntry));
     keys = 0;
 }
 
 void EvalHash::clear() {
-    delete[] table;
-    table = new EvalHashEntry[size];
+    free(table);
+    table = (EvalHashEntry *)calloc(size, sizeof(EvalHashEntry));
     keys = 0;
 }

@@ -45,15 +45,13 @@ Hash::Hash(uint64_t MB) {
     // Convert to bytes
     uint64_t arrSize = MB << 20;
     // Calculate how many array slots we can use
-    arrSize /= sizeof(HashNode);
-    // Create the array
-    table = new HashNode[arrSize];
-    size = arrSize;
+    size = arrSize / sizeof(HashNode);
+    table = (HashNode *)calloc(size, sizeof(HashNode));
     keys = 0;
 }
 
 Hash::~Hash() {
-    delete[] table;
+    free(table);
 }
 
 // Adds key and move into the hashtable. This function assumes that the key has
@@ -61,7 +59,7 @@ Hash::~Hash() {
 void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
     uint64_t h = b.getZobristKey();
     uint64_t index = h % size;
-    HashNode *node = &(table[index]);
+    HashNode *node = table + index;
     if (node->slot1.zobristKey == 0) {
         keys++;
         node->slot1.setEntry(b, data);
@@ -114,7 +112,7 @@ void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
 uint64_t Hash::get(Board &b) {
     uint64_t h = b.getZobristKey();
     uint64_t index = h % size;
-    HashNode *node = &(table[index]);
+    HashNode *node = table + index;
 
     if((node->slot1.zobristKey ^ node->slot1.data) == b.getZobristKey())
         return node->slot1.data;
@@ -129,20 +127,18 @@ uint64_t Hash::getSize() {
 }
 
 void Hash::setSize(uint64_t MB) {
-    delete[] table;
+    free(table);
     
     // Convert to bytes
     uint64_t arrSize = MB << 20;
     // Calculate how many array slots we can use
-    arrSize /= sizeof(HashNode);
-    size = arrSize;
-
-    table = new HashNode[size];
+    size = arrSize / sizeof(HashNode);
+    table = (HashNode *)calloc(size,  sizeof(HashNode));
     keys = 0;
 }
 
 void Hash::clear() {
-    delete[] table;
-    table = new HashNode[size];
+    free(table);
+    table = (HashNode *)calloc(size, sizeof(HashNode));
     keys = 0;
 }
