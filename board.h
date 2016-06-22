@@ -153,8 +153,8 @@ public:
     int evaluate();
     void getPseudoMobility(int color, PieceMoveList &pml, PieceMoveList &oppPml,
         int &valueMg, int &valueEg);
-    int getKingSafety(PieceMoveList &pmlWhite, PieceMoveList &pmlBlack,
-        uint64_t wKingSqs, uint64_t bKingSqs);
+    template <int attackingColor> int getKingSafety(PieceMoveList &attackers,
+        PieceMoveList &defenders, uint64_t kingSqs);
     int checkEndgameCases();
     int scoreSimpleKnownWin(int winningColor);
     int getEGFactor();
