@@ -1533,8 +1533,8 @@ int Board::evaluate() {
     // the endgame)
     PieceMoveList pmlWhite = getPieceMoveList<PML_PSEUDO_MOBILITY>(WHITE);
     PieceMoveList pmlBlack = getPieceMoveList<PML_PSEUDO_MOBILITY>(BLACK);
-    getPseudoMobility(WHITE, pmlWhite, pmlBlack, valueMg, valueEg);
-    getPseudoMobility(BLACK, pmlBlack, pmlWhite, valueMg, valueEg);
+    getPseudoMobility<WHITE>(pmlWhite, pmlBlack, valueMg, valueEg);
+    getPseudoMobility<BLACK>(pmlBlack, pmlWhite, valueMg, valueEg);
 
 
     // Consider squares near king
@@ -1903,7 +1903,8 @@ int Board::evaluate() {
  * This function also provides a bonus for having mobile pieces near the
  * opponent's king, and deals with control of center.
  */
-void Board::getPseudoMobility(int color, PieceMoveList &pml, PieceMoveList &oppPml,
+template <int color>
+void Board::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml,
     int &valueMg, int &valueEg) {
     // Bitboard of center 4 squares: d4, e4, d5, e5
     const uint64_t CENTER_SQS = 0x0000001818000000;
@@ -1971,7 +1972,6 @@ void Board::getPseudoMobility(int color, PieceMoveList &pml, PieceMoveList &oppP
             centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
         }
     }
-
 
     if (color == WHITE) {
         valueMg += mgMobility + centerControl;

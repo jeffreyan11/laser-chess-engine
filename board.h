@@ -151,17 +151,10 @@ public:
 
     // Evaluation
     int evaluate();
-    void getPseudoMobility(int color, PieceMoveList &pml, PieceMoveList &oppPml,
-        int &valueMg, int &valueEg);
-    template <int attackingColor> int getKingSafety(PieceMoveList &attackers,
-        PieceMoveList &defenders, uint64_t kingSqs);
-    int checkEndgameCases();
-    int scoreSimpleKnownWin(int winningColor);
     int getEGFactor();
     int getMaterial(int color);
     // Useful for turning off some pruning late endgame
     uint64_t getNonPawnMaterial(int color);
-    int getManhattanDistance(int sq1, int sq2);
     // Static exchange evaluation code: for checking material trades on a single square
     uint64_t getLeastValuableAttacker(uint64_t attackers, int color, int &piece);
     int getSEE(int color, int sq);
@@ -221,6 +214,15 @@ private:
     template <bool isCapture> void addPromotionsToList(MoveList &moves,
         int stSq, int endSq);
     void addCastlesToList(MoveList &moves, int color);
+
+    // Eval helpers
+    template <int color> void getPseudoMobility(PieceMoveList &pml,
+        PieceMoveList &oppPml, int &valueMg, int &valueEg);
+    template <int attackingColor> int getKingSafety(PieceMoveList &attackers,
+        PieceMoveList &defenders, uint64_t kingSqs);
+    int checkEndgameCases();
+    int scoreSimpleKnownWin(int winningColor);
+    int getManhattanDistance(int sq1, int sq2);
 
     // Move generation
     // Takes into account blocking for sliders, but otherwise leaves
