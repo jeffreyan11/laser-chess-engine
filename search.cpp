@@ -345,19 +345,27 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
             }
             // End aspiration loop
 
+            // Calculate values for printing
             timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
+            uint64_t nps = (uint64_t) ((double) getNodes() / timeSoFar);
+            string pvStr = retrievePV(&pvLine);
 
-            if (bestMoveIndex == -1)
+            // If we broke out before getting any new results, end the search
+            if (bestMoveIndex == -1) {
+                cout << "info depth " << rootDepth-1;
+                cout << " seldepth " << getSelectiveDepth();
+                cout << " time " << (int) (timeSoFar * ONE_SECOND)
+                     << " nodes " << getNodes() << " nps " << nps
+                     << " hashfull " << 1000 * transpositionTable.keys
+                                             / transpositionTable.getSize()
+                     << endl;
                 break;
+            }
+
             // Swap the PV to be searched first next iteration
             legalMoves.swap(multiPVNum-1, bestMoveIndex);
             *bestMove = legalMoves.get(0);
-            
 
-            // Calculate values for printing
-            uint64_t nps = (uint64_t) ((double) getNodes() / timeSoFar);
-            string pvStr = retrievePV(&pvLine);
-            
             // Output info using UCI protocol
             cout << "info depth " << rootDepth;
             cout << " seldepth " << getSelectiveDepth();
