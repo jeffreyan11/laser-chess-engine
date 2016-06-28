@@ -251,9 +251,9 @@ uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
 
 struct EvalDebug {
     int totalEval;
-    int whiteMaterialMg, whiteMaterialEg, blackMaterialMg, blackMaterialEg;
+    int totalMaterialMg, totalMaterialEg;
     int whiteMobilityMg, whiteMobilityEg, blackMobilityMg, blackMobilityEg;
-    int whiteKingSafetyMg, whiteKingSafetyEg, blackKingSafetyMg, blackKingSafetyEg;
+    int whiteKingSafety, blackKingSafety;
     int whitePawnsMg, whitePawnsEg, blackPawnsMg, blackPawnsEg;
 
     EvalDebug() {
@@ -262,38 +262,40 @@ struct EvalDebug {
 
     void clear() {
         totalEval = 0;
-        whiteMaterialMg = whiteMaterialEg = blackMaterialMg = blackMaterialEg = 0;
+        totalMaterialMg = totalMaterialEg = 0;
         whiteMobilityMg = whiteMobilityEg = blackMobilityMg = blackMobilityEg = 0;
-        whiteKingSafetyMg = whiteKingSafetyEg = blackKingSafetyMg = blackKingSafetyEg = 0;
+        whiteKingSafety = blackKingSafety = 0;
         whitePawnsMg = whitePawnsEg = blackPawnsMg = blackPawnsEg = 0;
     }
 
     void print() {
         std::cerr << std::endl;
-        std::cerr << "    Component     |        White        |        Black" << std::endl;
-        std::cerr << "                  |     MG       EG     |     MG       EG" << std::endl;
-        std::cerr << std::string(60, '-') << std::endl;
+        std::cerr << "    Component     |      White      |      Black      |      Total" << std::endl;
+        std::cerr << "                  |    MG     EG    |    MG     EG    |    MG     EG" << std::endl;
+        std::cerr << std::string(70, '-') << std::endl;
         std::cerr << "    Material      |   "
-                  << std::setw(4) << S(whiteMaterialMg) << "     "
-                  << std::setw(4) << S(whiteMaterialEg) << "     |   "
-                  << std::setw(4) << S(blackMaterialMg) << "     "
-                  << std::setw(4) << S(blackMaterialEg) << std::endl;
+                  << " -- " << "   "
+                  << " -- " << "   |   "
+                  << " -- " << "   "
+                  << " -- " << "   |   "
+                  << std::setw(4) << S(totalMaterialMg) << "   "
+                  << std::setw(4) << S(totalMaterialEg) << std::endl;
         std::cerr << "    Mobility      |   "
-                  << std::setw(4) << S(whiteMobilityMg) << "     "
-                  << std::setw(4) << S(whiteMobilityEg) << "     |   "
-                  << std::setw(4) << S(blackMobilityMg) << "     "
+                  << std::setw(4) << S(whiteMobilityMg) << "   "
+                  << std::setw(4) << S(whiteMobilityEg) << "   |   "
+                  << std::setw(4) << S(blackMobilityMg) << "   "
                   << std::setw(4) << S(blackMobilityEg) << std::endl;
         std::cerr << "    King Safety   |   "
-                  << std::setw(4) << S(whiteKingSafetyMg) << "     "
-                  << std::setw(4) << S(whiteKingSafetyEg) << "     |   "
-                  << std::setw(4) << S(blackKingSafetyMg) << "     "
-                  << std::setw(4) << S(blackKingSafetyEg) << std::endl;
+                  << std::setw(4) << S(whiteKingSafety) << "   "
+                  << " -- " << "   |   "
+                  << std::setw(4) << S(blackKingSafety) << "   "
+                  << " -- " << std::endl;
         std::cerr << "    Pawns         |   "
-                  << std::setw(4) << S(whitePawnsMg) << "     "
-                  << std::setw(4) << S(whitePawnsEg) << "     |   "
-                  << std::setw(4) << S(blackPawnsMg) << "     "
+                  << std::setw(4) << S(whitePawnsMg) << "   "
+                  << std::setw(4) << S(whitePawnsEg) << "   |   "
+                  << std::setw(4) << S(blackPawnsMg) << "   "
                   << std::setw(4) << S(blackPawnsEg) << std::endl;
-        std::cerr << std::string(60, '-') << std::endl;
+        std::cerr << std::string(70, '-') << std::endl;
         std::cerr << "Static evaluation: " << S(totalEval) << std::endl;
         std::cerr << std::endl;
     }
@@ -1582,6 +1584,11 @@ int Board::evaluate() {
         valueEg += 2 * pieceCounts[BLACK][PAWNS];
     if (pieces[BLACK][QUEENS])
         valueEg -= 2 * pieceCounts[WHITE][PAWNS];
+
+    if (debug) {
+        evalDebugStats.totalMaterialMg = valueMg;
+        evalDebugStats.totalMaterialEg = valueEg;
+    }
     
 
     //----------------------------Positional terms------------------------------
@@ -1594,8 +1601,19 @@ int Board::evaluate() {
     // the endgame)
     PieceMoveList pmlWhite = getPieceMoveList<PML_PSEUDO_MOBILITY>(WHITE);
     PieceMoveList pmlBlack = getPieceMoveList<PML_PSEUDO_MOBILITY>(BLACK);
-    getPseudoMobility<WHITE>(pmlWhite, pmlBlack, valueMg, valueEg);
-    getPseudoMobility<BLACK>(pmlBlack, pmlWhite, valueMg, valueEg);
+    int whiteMobilityMg, whiteMobilityEg;
+    int blackMobilityMg, blackMobilityEg;
+    getPseudoMobility<WHITE>(pmlWhite, pmlBlack, whiteMobilityMg, whiteMobilityEg);
+    getPseudoMobility<BLACK>(pmlBlack, pmlWhite, blackMobilityMg, blackMobilityEg);
+    valueMg += whiteMobilityMg - blackMobilityMg;
+    valueEg += whiteMobilityEg - blackMobilityEg;
+
+    if (debug) {
+        evalDebugStats.whiteMobilityMg = whiteMobilityMg;
+        evalDebugStats.whiteMobilityEg = whiteMobilityEg;
+        evalDebugStats.blackMobilityMg = blackMobilityMg;
+        evalDebugStats.blackMobilityEg = blackMobilityEg;
+    }
 
 
     // Consider squares near king
@@ -1620,14 +1638,14 @@ int Board::evaluate() {
 
     // All king safety terms are midgame only, so don't calculate them in the endgame
     if (ksFactor < EG_FACTOR_RES) {
-        int ksValue = 0;
+        int wKsValue = 0, bKsValue = 0;
 
-        ksValue += getKingSafety<WHITE>(pmlWhite, pmlBlack, bKingNeighborhood);
-        ksValue -= getKingSafety<BLACK>(pmlBlack, pmlWhite, wKingNeighborhood);
+        bKsValue -= getKingSafety<WHITE>(pmlWhite, pmlBlack, bKingNeighborhood);
+        wKsValue -= getKingSafety<BLACK>(pmlBlack, pmlWhite, wKingNeighborhood);
 
         // Castling rights
-        ksValue += CASTLING_RIGHTS_VALUE[count(castlingRights & WHITECASTLE)];
-        ksValue -= CASTLING_RIGHTS_VALUE[count(castlingRights & BLACKCASTLE)];
+        wKsValue += CASTLING_RIGHTS_VALUE[count(castlingRights & WHITECASTLE)];
+        bKsValue += CASTLING_RIGHTS_VALUE[count(castlingRights & BLACKCASTLE)];
         
         // Pawn shield and storm values
         int wKingFile = wKingSq & 7;
@@ -1645,10 +1663,10 @@ int Board::evaluate() {
                 int wf = wPawnSq & 7;
                 wf = std::min(wf, 7-wf);
 
-                ksValue += PAWN_SHIELD_VALUE[wf][wr];
+                wKsValue += PAWN_SHIELD_VALUE[wf][wr];
             }
             else
-                ksValue += PAWN_SHIELD_VALUE[std::min(i, 7-i)][0];
+                wKsValue += PAWN_SHIELD_VALUE[std::min(i, 7-i)][0];
 
             uint64_t bPawnStorm = pieces[BLACK][PAWNS] & FILES[i];
             if (bPawnStorm) {
@@ -1658,10 +1676,10 @@ int Board::evaluate() {
                 bf = std::min(bf, 7-bf);
                 uint64_t frontSqOcc = pieces[WHITE][PAWNS] & INDEX_TO_BIT[bPawnSq - 8];
 
-                ksValue -= PAWN_STORM_VALUE[(frontSqOcc == 0)][bf][br];
+                wKsValue -= PAWN_STORM_VALUE[(frontSqOcc == 0)][bf][br];
             }
             else
-                ksValue -= PAWN_STORM_VALUE[0][std::min(i, 7-i)][0];
+                wKsValue -= PAWN_STORM_VALUE[0][std::min(i, 7-i)][0];
         }
 
         // Black king
@@ -1676,10 +1694,10 @@ int Board::evaluate() {
                 int bf = bPawnSq & 7;
                 bf = std::min(bf, 7-bf);
 
-                ksValue -= PAWN_SHIELD_VALUE[bf][br];
+                bKsValue += PAWN_SHIELD_VALUE[bf][br];
             }
             else
-                ksValue -= PAWN_SHIELD_VALUE[std::min(i, 7-i)][0];
+                bKsValue += PAWN_SHIELD_VALUE[std::min(i, 7-i)][0];
 
             uint64_t wPawnStorm = pieces[WHITE][PAWNS] & FILES[i];
             if (wPawnStorm) {
@@ -1689,13 +1707,17 @@ int Board::evaluate() {
                 wf = std::min(wf, 7-wf);
                 uint64_t frontSqOcc = pieces[BLACK][PAWNS] & INDEX_TO_BIT[wPawnSq - 8];
 
-                ksValue += PAWN_STORM_VALUE[(frontSqOcc == 0)][wf][wr];
+                bKsValue -= PAWN_STORM_VALUE[(frontSqOcc == 0)][wf][wr];
             }
             else
-                ksValue += PAWN_STORM_VALUE[0][std::min(i, 7-i)][0];
+                bKsValue -= PAWN_STORM_VALUE[0][std::min(i, 7-i)][0];
         }
 
-        valueMg += ksValue;
+        valueMg += wKsValue - bKsValue;
+        if (debug) {
+            evalDebugStats.whiteKingSafety = wKsValue;
+            evalDebugStats.blackKingSafety = bKsValue;
+        }
     }
 
 
@@ -2044,14 +2066,8 @@ void Board::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml,
         }
     }
 
-    if (color == WHITE) {
-        valueMg += mgMobility + centerControl;
-        valueEg += egMobility;
-    }
-    else {
-        valueMg -= mgMobility + centerControl;
-        valueEg -= egMobility;
-    }
+    valueMg = mgMobility + centerControl;
+    valueEg = egMobility;
 }
 
 // King safety, based on the number of opponent pieces near the king
