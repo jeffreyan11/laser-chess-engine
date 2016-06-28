@@ -17,8 +17,10 @@
 */
 
 #include <algorithm>
+#include <iomanip>
 #include <iostream>
 #include <random>
+#include <string>
 #include "board.h"
 #include "btables.h"
 #include "eval.h"
@@ -245,6 +247,64 @@ uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
 
     return nodes;
 }
+
+
+struct EvalDebug {
+    int totalEval;
+    int whiteMaterialMg, whiteMaterialEg, blackMaterialMg, blackMaterialEg;
+    int whiteMobilityMg, whiteMobilityEg, blackMobilityMg, blackMobilityEg;
+    int whiteKingSafetyMg, whiteKingSafetyEg, blackKingSafetyMg, blackKingSafetyEg;
+    int whitePawnsMg, whitePawnsEg, blackPawnsMg, blackPawnsEg;
+
+    EvalDebug() {
+        clear();
+    }
+
+    void clear() {
+        totalEval = 0;
+        whiteMaterialMg = whiteMaterialEg = blackMaterialMg = blackMaterialEg = 0;
+        whiteMobilityMg = whiteMobilityEg = blackMobilityMg = blackMobilityEg = 0;
+        whiteKingSafetyMg = whiteKingSafetyEg = blackKingSafetyMg = blackKingSafetyEg = 0;
+        whitePawnsMg = whitePawnsEg = blackPawnsMg = blackPawnsEg = 0;
+    }
+
+    void print() {
+        std::cerr << std::endl;
+        std::cerr << "    Component     |        White        |        Black" << std::endl;
+        std::cerr << "                  |     MG       EG     |     MG       EG" << std::endl;
+        std::cerr << std::string(60, '-') << std::endl;
+        std::cerr << "    Material      |   "
+                  << std::setw(4) << S(whiteMaterialMg) << "     "
+                  << std::setw(4) << S(whiteMaterialEg) << "     |   "
+                  << std::setw(4) << S(blackMaterialMg) << "     "
+                  << std::setw(4) << S(blackMaterialEg) << std::endl;
+        std::cerr << "    Mobility      |   "
+                  << std::setw(4) << S(whiteMobilityMg) << "     "
+                  << std::setw(4) << S(whiteMobilityEg) << "     |   "
+                  << std::setw(4) << S(blackMobilityMg) << "     "
+                  << std::setw(4) << S(blackMobilityEg) << std::endl;
+        std::cerr << "    King Safety   |   "
+                  << std::setw(4) << S(whiteKingSafetyMg) << "     "
+                  << std::setw(4) << S(whiteKingSafetyEg) << "     |   "
+                  << std::setw(4) << S(blackKingSafetyMg) << "     "
+                  << std::setw(4) << S(blackKingSafetyEg) << std::endl;
+        std::cerr << "    Pawns         |   "
+                  << std::setw(4) << S(whitePawnsMg) << "     "
+                  << std::setw(4) << S(whitePawnsEg) << "     |   "
+                  << std::setw(4) << S(blackPawnsMg) << "     "
+                  << std::setw(4) << S(blackPawnsEg) << std::endl;
+        std::cerr << std::string(60, '-') << std::endl;
+        std::cerr << "Static evaluation: " << S(totalEval) << std::endl;
+        std::cerr << std::endl;
+    }
+
+    // Scales the internal score representation into centipawns
+    int S(int v) {
+        return (int) (v * 100 / PAWN_VALUE_EG);
+    }
+};
+
+static EvalDebug evalDebugStats;
 
 
 //------------------------------------------------------------------------------
@@ -1417,6 +1477,7 @@ bool Board::isInsufficientMaterial() {
  * Evaluates the current board position in hundredths of pawns. White is
  * positive and black is negative in traditional negamax format.
  */
+template <bool debug>
 int Board::evaluate() {
     // Precompute some values
     int pieceCounts[2][6];
@@ -1896,8 +1957,18 @@ int Board::evaluate() {
     }
 
     
+    if (debug) {
+        evalDebugStats.totalEval = totalEval;
+        evalDebugStats.print();
+    }
+
     return totalEval;
 }
+
+// Explicitly instantiate templates
+template int Board::evaluate<true>();
+template int Board::evaluate<false>();
+
 
 /* Scores the board for a player based on estimates of mobility
  * This function also provides a bonus for having mobile pieces near the
