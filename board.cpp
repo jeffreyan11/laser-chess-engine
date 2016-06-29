@@ -1848,8 +1848,13 @@ int Board::evaluate() {
         int rank = passerSq >> 3;
         value += PASSER_BONUS[rank];
         value += PASSER_FILE_BONUS[file];
+
         if ((INDEX_TO_BIT[passerSq] << 8) & whiteBlockaders)
             value -= BLOCKADED_PASSER_PENALTY;
+
+        int rFactor = rank * (rank-1) / 4 + 1;
+        value -= OWN_KING_DIST * getManhattanDistance(passerSq, wKingSq) * rFactor;
+        value += OPP_KING_DIST * getManhattanDistance(passerSq, bKingSq) * rFactor;
     }
     uint64_t bPasserTemp = bPassedPawns;
     while (bPasserTemp) {
@@ -1859,8 +1864,13 @@ int Board::evaluate() {
         int rank = 7 - (passerSq >> 3);
         value -= PASSER_BONUS[rank];
         value -= PASSER_FILE_BONUS[file];
+
         if ((INDEX_TO_BIT[passerSq] >> 8) & blackBlockaders)
             value += BLOCKADED_PASSER_PENALTY;
+
+        int rFactor = rank * (rank-1) / 4 + 1;
+        value -= OPP_KING_DIST * getManhattanDistance(passerSq, wKingSq) * rFactor;
+        value += OWN_KING_DIST * getManhattanDistance(passerSq, bKingSq) * rFactor;
     }
     
     int wPawnCtByFile[8];
@@ -1932,8 +1942,9 @@ int Board::evaluate() {
         int wTropismTotal = 0, bTropismTotal = 0;
         while (pawnBits) {
             int pawnSq = bitScanForward(pawnBits);
-            int rank = pawnSq >> 3;
+            // int rank = pawnSq >> 3;
             pawnBits &= pawnBits - 1;
+            /*
             if (INDEX_TO_BIT[pawnSq] & wPassedPawns) {
                 wTropismTotal += 4 * getManhattanDistance(pawnSq, wKingSq) * rank;
                 bTropismTotal += 7 * getManhattanDistance(pawnSq, bKingSq) * rank;
@@ -1942,7 +1953,7 @@ int Board::evaluate() {
                 wTropismTotal += 7 * getManhattanDistance(pawnSq, wKingSq) * (7-rank);
                 bTropismTotal += 4 * getManhattanDistance(pawnSq, bKingSq) * (7-rank);
             }
-            else if (INDEX_TO_BIT[pawnSq] & (wBackwards | bBackwards)) {
+            else */if (INDEX_TO_BIT[pawnSq] & (wBackwards | bBackwards)) {
                 wTropismTotal += 2 * getManhattanDistance(pawnSq, wKingSq);
                 bTropismTotal += 2 * getManhattanDistance(pawnSq, bKingSq);
             }

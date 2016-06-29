@@ -110,6 +110,8 @@ const Score PASSER_BONUS[8] = {encEval(0, 0), encEval(5, 15), encEval(5, 16), en
 const Score PASSER_FILE_BONUS[8] = {encEval(10, 8), encEval(5, 4), encEval(2, 1), encEval(0, 0),
                                     encEval(0, 0), encEval(2, 1), encEval(5, 4), encEval(10, 8)};
 const Score BLOCKADED_PASSER_PENALTY = encEval(8, 20);
+const Score OWN_KING_DIST = encEval(0, 2);
+const Score OPP_KING_DIST = encEval(0, 4);
 
 // Doubled pawns
 const Score DOUBLED_PENALTY[7] = {encEval(0, 0), encEval(0, 0), encEval(11, 16), encEval(33, 48),
