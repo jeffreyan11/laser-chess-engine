@@ -1622,22 +1622,8 @@ int Board::evaluate() {
     uint64_t wKingNeighborhood = getKingSquares(wKingSq);
     uint64_t bKingNeighborhood = getKingSquares(bKingSq);
 
-    // Calculate a separate king safety factor
-    int whiteAttackers = KNIGHT_VALUE * pieceCounts[WHITE][KNIGHTS]
-                       + BISHOP_VALUE * pieceCounts[WHITE][BISHOPS]
-                       + ROOK_VALUE   * pieceCounts[WHITE][ROOKS]
-                   + 2 * QUEEN_VALUE  * pieceCounts[WHITE][QUEENS];
-    int blackAttackers = KNIGHT_VALUE * pieceCounts[BLACK][KNIGHTS]
-                       + BISHOP_VALUE * pieceCounts[BLACK][BISHOPS]
-                       + ROOK_VALUE   * pieceCounts[BLACK][ROOKS]
-                   + 2 * QUEEN_VALUE  * pieceCounts[BLACK][QUEENS];
-    const int FULL_KS_VALUE = 2 * KNIGHT_VALUE + 2 * BISHOP_VALUE + 2 * ROOK_VALUE + 2 * QUEEN_VALUE;
-
-    int ksFactor = EG_FACTOR_RES - (whiteAttackers + blackAttackers - FULL_KS_VALUE / 2) * EG_FACTOR_RES / FULL_KS_VALUE;
-    ksFactor = std::max(0, std::min(EG_FACTOR_RES, ksFactor));
-
     // All king safety terms are midgame only, so don't calculate them in the endgame
-    if (ksFactor < EG_FACTOR_RES) {
+    if (egFactor < EG_FACTOR_RES) {
         int wKsValue = 0, bKsValue = 0;
 
         bKsValue -= getKingSafety<WHITE>(pmlWhite, pmlBlack, bKingNeighborhood);
