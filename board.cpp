@@ -254,7 +254,7 @@ struct EvalDebug {
     int totalMaterialMg, totalMaterialEg;
     int whiteMobilityMg, whiteMobilityEg, blackMobilityMg, blackMobilityEg;
     int whiteKingSafety, blackKingSafety;
-    int whitePawnsMg, whitePawnsEg, blackPawnsMg, blackPawnsEg;
+    Score whitePawnScore, blackPawnScore;
 
     EvalDebug() {
         clear();
@@ -265,7 +265,7 @@ struct EvalDebug {
         totalMaterialMg = totalMaterialEg = 0;
         whiteMobilityMg = whiteMobilityEg = blackMobilityMg = blackMobilityEg = 0;
         whiteKingSafety = blackKingSafety = 0;
-        whitePawnsMg = whitePawnsEg = blackPawnsMg = blackPawnsEg = 0;
+        whitePawnScore = blackPawnScore = EVAL_ZERO;
     }
 
     void print() {
@@ -291,10 +291,10 @@ struct EvalDebug {
                   << std::setw(4) << S(blackKingSafety) << "   "
                   << " -- " << std::endl;
         std::cerr << "    Pawns         |   "
-                  << std::setw(4) << S(whitePawnsMg) << "   "
-                  << std::setw(4) << S(whitePawnsEg) << "   |   "
-                  << std::setw(4) << S(blackPawnsMg) << "   "
-                  << std::setw(4) << S(blackPawnsEg) << std::endl;
+                  << std::setw(4) << S(decEvalMg(whitePawnScore)) << "   "
+                  << std::setw(4) << S(decEvalEg(whitePawnScore)) << "   |   "
+                  << std::setw(4) << S(decEvalMg(blackPawnScore)) << "   "
+                  << std::setw(4) << S(decEvalEg(blackPawnScore)) << std::endl;
         std::cerr << std::string(70, '-') << std::endl;
         std::cerr << "Static evaluation: " << S(totalEval) << std::endl;
         std::cerr << std::endl;
@@ -1803,6 +1803,7 @@ int Board::evaluate() {
 
     
     //----------------------------Pawn structure--------------------------------
+    Score whitePawnScore = EVAL_ZERO, blackPawnScore = EVAL_ZERO;
     // Passed pawns
     uint64_t wPassedBlocker = pieces[BLACK][PAWNS] >> 8;
     uint64_t bPassedBlocker = pieces[WHITE][PAWNS] << 8;
@@ -1832,15 +1833,15 @@ int Board::evaluate() {
         wPasserTemp &= wPasserTemp - 1;
         int file = passerSq & 7;
         int rank = passerSq >> 3;
-        value += PASSER_BONUS[rank];
-        value += PASSER_FILE_BONUS[file];
+        whitePawnScore += PASSER_BONUS[rank];
+        whitePawnScore += PASSER_FILE_BONUS[file];
 
         if ((INDEX_TO_BIT[passerSq] << 8) & whiteBlockaders)
-            value -= BLOCKADED_PASSER_PENALTY;
+            whitePawnScore -= BLOCKADED_PASSER_PENALTY;
 
         int rFactor = rank * (rank-1) / 4 + 1;
-        value -= OWN_KING_DIST * getManhattanDistance(passerSq, wKingSq) * rFactor;
-        value += OPP_KING_DIST * getManhattanDistance(passerSq, bKingSq) * rFactor;
+        whitePawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq, wKingSq) * rFactor;
+        whitePawnScore += OPP_KING_DIST * getManhattanDistance(passerSq, bKingSq) * rFactor;
     }
     uint64_t bPasserTemp = bPassedPawns;
     while (bPasserTemp) {
@@ -1848,15 +1849,15 @@ int Board::evaluate() {
         bPasserTemp &= bPasserTemp - 1;
         int file = passerSq & 7;
         int rank = 7 - (passerSq >> 3);
-        value -= PASSER_BONUS[rank];
-        value -= PASSER_FILE_BONUS[file];
+        blackPawnScore += PASSER_BONUS[rank];
+        blackPawnScore += PASSER_FILE_BONUS[file];
 
         if ((INDEX_TO_BIT[passerSq] >> 8) & blackBlockaders)
-            value += BLOCKADED_PASSER_PENALTY;
+            blackPawnScore -= BLOCKADED_PASSER_PENALTY;
 
         int rFactor = rank * (rank-1) / 4 + 1;
-        value -= OPP_KING_DIST * getManhattanDistance(passerSq, wKingSq) * rFactor;
-        value += OWN_KING_DIST * getManhattanDistance(passerSq, bKingSq) * rFactor;
+        blackPawnScore += OPP_KING_DIST * getManhattanDistance(passerSq, wKingSq) * rFactor;
+        blackPawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq, bKingSq) * rFactor;
     }
     
     int wPawnCtByFile[8];
@@ -1868,8 +1869,8 @@ int Board::evaluate() {
     
     // Doubled pawns
     for (int i = 0; i < 8; i++) {
-        value -= DOUBLED_PENALTY[wPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[pieceCounts[WHITE][PAWNS]];
-        value += DOUBLED_PENALTY[bPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[pieceCounts[BLACK][PAWNS]];
+        whitePawnScore -= DOUBLED_PENALTY[wPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[pieceCounts[WHITE][PAWNS]];
+        blackPawnScore -= DOUBLED_PENALTY[bPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[pieceCounts[BLACK][PAWNS]];
     }
     
     // Isolated pawns
@@ -1888,20 +1889,20 @@ int Board::evaluate() {
     bp &= ~((bp >> 1) | (bp << 1));
     int whiteIsolated = count(wp);
     int blackIsolated = count(bp);
-    value -= ISOLATED_PENALTY * whiteIsolated;
-    value += ISOLATED_PENALTY * blackIsolated;
-    value -= CENTRAL_ISOLATED_PENALTY * count(wp & 0x7E);
-    value += CENTRAL_ISOLATED_PENALTY * count(bp & 0x7E);
+    whitePawnScore -= ISOLATED_PENALTY * whiteIsolated;
+    blackPawnScore -= ISOLATED_PENALTY * blackIsolated;
+    whitePawnScore -= CENTRAL_ISOLATED_PENALTY * count(wp & 0x7E);
+    blackPawnScore -= CENTRAL_ISOLATED_PENALTY * count(bp & 0x7E);
 
     // Isolated, doubled pawns
     // x1 for isolated, doubled pawns
     // x3 for isolated, tripled pawns
     for (int i = 0; i < 8; i++) {
         if ((wPawnCtByFile[i] > 1) && (wp & INDEX_TO_BIT[7-i])) {
-            value -= ISOLATED_DOUBLED_PENALTY * ((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2;
+            whitePawnScore -= ISOLATED_DOUBLED_PENALTY * ((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2;
         }
         if ((bPawnCtByFile[i] > 1) && (bp & INDEX_TO_BIT[7-i])) {
-            value += ISOLATED_DOUBLED_PENALTY * ((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2;
+            blackPawnScore -= ISOLATED_DOUBLED_PENALTY * ((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2;
         }
     }
 
@@ -1915,8 +1916,16 @@ int Board::evaluate() {
 
     uint64_t wBackwards = wBadStopSqs & pieces[WHITE][PAWNS];
     uint64_t bBackwards = bBadStopSqs & pieces[BLACK][PAWNS];
-    value -= BACKWARD_PENALTY * count(wBackwards);
-    value += BACKWARD_PENALTY * count(bBackwards);
+    whitePawnScore -= BACKWARD_PENALTY * count(wBackwards);
+    blackPawnScore -= BACKWARD_PENALTY * count(bBackwards);
+
+    valueMg += decEvalMg(whitePawnScore) - decEvalMg(blackPawnScore);
+    valueEg += decEvalEg(whitePawnScore) - decEvalEg(blackPawnScore);
+
+    if (debug) {
+        evalDebugStats.whitePawnScore = whitePawnScore;
+        evalDebugStats.blackPawnScore = blackPawnScore;
+    }
 
 
     // King-pawn tropism
