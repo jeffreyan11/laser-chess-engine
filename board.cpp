@@ -2162,14 +2162,9 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     // Give a decent bonus for each additional piece participating
     kingSafetyPts += std::min(20, kingAttackPieces * (kingAttackPieces-1) + 6);
 
-    // If at least two pieces are involved in the attack, we consider it "serious"
-    if (kingAttackPieces >= 3) {
-
-    }
-    else if (kingAttackPieces == 2)
-        kingSafetyPts = 3 * kingSafetyPts / 4;
-    else
-        kingSafetyPts = 0;
+    // If only one piece is in the "attack" then reduce the bonus
+    if (kingAttackPieces < 2)
+        kingSafetyPts /= 3;
 
     // Reduce attack slightly if there is a good pawn shield
     kingSafetyPts -= count(kingNeighborhood & defendingPawns & 0xe7e7e7e7e7e7e7e7);
@@ -2177,16 +2172,16 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     kingSafetyPts -= count(kingSqs & defendingPawns & 0xe7e7e7e7e7e7e7e7);
 
     const int KS_TO_SCORE[100] = {
-          0,   0,   0,   1,   1,   2,   3,   4,   6,   8,
-         11,  14,  17,  20,  24,  27,  31,  34,  38,  42,
-         46,  50,  54,  58,  62,  66,  70,  74,  78,  83, 
-         87,  92,  96, 101, 105, 110, 115, 120, 125, 130,
-        135, 140, 145, 150, 155, 160, 165, 170, 175, 180,
-        185, 190, 195, 200, 205, 210, 215, 220, 225, 230,
-        235, 240, 245, 250, 255, 260, 265, 270, 275, 280,
-        285, 290, 295, 300, 305, 310, 315, 320, 325, 330,
-        335, 340, 345, 350, 355, 360, 365, 370, 375, 380,
-        385, 390, 395, 400, 405, 410, 415, 420, 425, 430
+          0,   0,   1,   2,   3,   5,   6,   8,   9,  11,
+         13,  15,  18,  20,  23,  26,  29,  33,  36,  40,
+         43,  47,  50,  54,  58,  62,  66,  70,  74,  78, 
+         82,  86,  90,  95, 100, 105, 110, 115, 120, 125,
+        130, 135, 140, 145, 150, 155, 160, 165, 170, 175,
+        180, 185, 190, 195, 200, 205, 210, 215, 220, 225,
+        230, 235, 240, 245, 250, 255, 260, 265, 270, 275,
+        280, 285, 290, 295, 300, 305, 310, 315, 320, 325,
+        330, 335, 340, 345, 350, 355, 360, 365, 370, 375,
+        380, 385, 390, 395, 400, 405, 410, 415, 420, 425
     };
 
     return KS_TO_SCORE[std::max(0, std::min(99, kingSafetyPts))];
