@@ -16,6 +16,7 @@
     along with Laser.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <cstring>
 #include "hash.h"
 
 /*
@@ -43,10 +44,10 @@ uint64_t packHashData(int depth, Move m, int score, uint8_t nodeType, uint8_t ag
 
 Hash::Hash(uint64_t MB) {
     // Convert to bytes
-    uint64_t arrSize = MB << 20;
+    uint64_t bytes = MB << 20;
     // Calculate how many array slots we can use
-    size = arrSize / sizeof(HashNode);
-    table = (HashNode *)calloc(size, sizeof(HashNode));
+    size = bytes / sizeof(HashNode);
+    table = (HashNode *) calloc(size, sizeof(HashNode));
     keys = 0;
 }
 
@@ -130,15 +131,14 @@ void Hash::setSize(uint64_t MB) {
     free(table);
     
     // Convert to bytes
-    uint64_t arrSize = MB << 20;
+    uint64_t bytes = MB << 20;
     // Calculate how many array slots we can use
-    size = arrSize / sizeof(HashNode);
-    table = (HashNode *)calloc(size,  sizeof(HashNode));
+    size = bytes / sizeof(HashNode);
+    table = (HashNode *) calloc(size,  sizeof(HashNode));
     keys = 0;
 }
 
 void Hash::clear() {
-    free(table);
-    table = (HashNode *)calloc(size, sizeof(HashNode));
+    std::memset(table, 0, size * sizeof(HashNode));
     keys = 0;
 }

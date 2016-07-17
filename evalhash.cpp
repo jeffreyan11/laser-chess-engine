@@ -16,14 +16,15 @@
     along with Laser.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <cstring>
 #include "evalhash.h"
 
 EvalHash::EvalHash(uint64_t MB) {
     // Convert to bytes
-    uint64_t arrSize = MB << 20;
+    uint64_t bytes = MB << 20;
     // Calculate how many array slots we can use
-    size = arrSize / sizeof(EvalHashEntry);
-    table = (EvalHashEntry *)calloc(size, sizeof(EvalHashEntry));
+    size = bytes / sizeof(EvalHashEntry);
+    table = (EvalHashEntry *) calloc(size, sizeof(EvalHashEntry));
     keys = 0;
 }
 
@@ -59,15 +60,14 @@ void EvalHash::setSize(uint64_t MB) {
     free(table);
     
     // Convert to bytes
-    uint64_t arrSize = MB << 20;
+    uint64_t bytes = MB << 20;
     // Calculate how many array slots we can use
-    size = arrSize / sizeof(EvalHashEntry);
-    table = (EvalHashEntry *)calloc(size, sizeof(EvalHashEntry));
+    size = bytes / sizeof(EvalHashEntry);
+    table = (EvalHashEntry *) calloc(size, sizeof(EvalHashEntry));
     keys = 0;
 }
 
 void EvalHash::clear() {
-    free(table);
-    table = (EvalHashEntry *)calloc(size, sizeof(EvalHashEntry));
+    std::memset(table, 0, size * sizeof(EvalHashEntry));
     keys = 0;
 }
