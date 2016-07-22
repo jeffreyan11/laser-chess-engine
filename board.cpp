@@ -1660,9 +1660,10 @@ int Board::evaluate() {
                 int br = bPawnSq >> 3;
                 int bf = bPawnSq & 7;
                 bf = std::min(bf, 7-bf);
-                uint64_t frontSqOcc = pieces[WHITE][PAWNS] & INDEX_TO_BIT[bPawnSq - 8];
 
-                wKsValue -= PAWN_STORM_VALUE[(frontSqOcc == 0)][bf][br];
+                wKsValue -= PAWN_STORM_VALUE[
+                    (pieces[WHITE][PAWNS] & FILES[i]) == 0                  ? 0 :
+                    (pieces[WHITE][PAWNS] & INDEX_TO_BIT[bPawnSq - 8]) != 0 ? 1 : 2][bf][br];
             }
             else
                 wKsValue -= PAWN_STORM_VALUE[0][std::min(i, 7-i)][0];
@@ -1691,9 +1692,10 @@ int Board::evaluate() {
                 int wr = 7 - (wPawnSq >> 3);
                 int wf = wPawnSq & 7;
                 wf = std::min(wf, 7-wf);
-                uint64_t frontSqOcc = pieces[BLACK][PAWNS] & INDEX_TO_BIT[wPawnSq - 8];
 
-                bKsValue -= PAWN_STORM_VALUE[(frontSqOcc == 0)][wf][wr];
+                bKsValue -= PAWN_STORM_VALUE[
+                    (pieces[BLACK][PAWNS] & FILES[i]) == 0                  ? 0 :
+                    (pieces[BLACK][PAWNS] & INDEX_TO_BIT[wPawnSq + 8]) != 0 ? 1 : 2][wf][wr];
             }
             else
                 bKsValue -= PAWN_STORM_VALUE[0][std::min(i, 7-i)][0];

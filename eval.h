@@ -65,15 +65,22 @@ const int PAWN_SHIELD_VALUE[4][8] = {
     { -9, 20, 10,  1,  0, -1, -3,  0},
     { -6,  0,  0,  0,  0,  0,  0,  0}
 };
-// Array for pawn storm values. Rank 1 of blocked pawn is used for penalty
-// when there is no pawn
-const int PAWN_STORM_VALUE[2][4][8] = {
-// Blocked pawn
+// Array for pawn storm values. Rank 1 of open is used for penalty
+// when there is no opposing pawn
+const int PAWN_STORM_VALUE[3][4][8] = {
+// Open file
 {
     { 4,  0,  0,  0,  0,  0,  0,  0},
     { 5,  0,  0,  0,  0,  0,  0,  0},
     { 4,  0,  0,  0,  0,  0,  0,  0},
     { 4,  0,  0,  0,  0,  0,  0,  0}
+},
+// Blocked pawn
+{
+    { 0,  0,  0,  0,  0,  0,  0,  0},
+    { 0,  0,  0,  0,  0,  0,  0,  0},
+    { 0,  0,  0,  0,  0,  0,  0,  0},
+    { 0,  0,  0,  0,  0,  0,  0,  0}
 },
 // Non-blocked pawn
 {
