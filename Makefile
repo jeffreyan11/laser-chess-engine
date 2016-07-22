@@ -15,7 +15,7 @@
 # along with Laser.  If not, see <http://www.gnu.org/licenses/>.
 
 CC          = g++
-CFLAGS      = -Wall -ansi -pedantic -ggdb -std=c++0x -g -O3
+CFLAGS      = -Wall -ansi -pedantic -ggdb -std=c++0x -g -O3 -fno-tree-pre
 LDFLAGS     = -lpthread
 OBJS        = board.o common.o evalhash.o hash.o search.o moveorder.o
 ENGINENAME  = laser

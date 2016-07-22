@@ -1641,64 +1641,58 @@ int Board::evaluate() {
         for (int i = wKingFile-1; i <= wKingFile+1; i++) {
             if (i < 0 || i > 7)
                 continue;
+            int f = std::min(i, 7-i);
 
             uint64_t wPawnShield = pieces[WHITE][PAWNS] & FILES[i];
             if (wPawnShield) {
                 int wPawnSq = bitScanForward(wPawnShield);
                 int wr = wPawnSq >> 3;
-                int wf = wPawnSq & 7;
-                wf = std::min(wf, 7-wf);
 
-                wKsValue += PAWN_SHIELD_VALUE[wf][wr];
+                wKsValue += PAWN_SHIELD_VALUE[f][wr];
             }
             else
-                wKsValue += PAWN_SHIELD_VALUE[std::min(i, 7-i)][0];
+                wKsValue += PAWN_SHIELD_VALUE[f][0];
 
             uint64_t bPawnStorm = pieces[BLACK][PAWNS] & FILES[i];
             if (bPawnStorm) {
                 int bPawnSq = bitScanForward(bPawnStorm);
                 int br = bPawnSq >> 3;
-                int bf = bPawnSq & 7;
-                bf = std::min(bf, 7-bf);
 
                 wKsValue -= PAWN_STORM_VALUE[
                     (pieces[WHITE][PAWNS] & FILES[i]) == 0                  ? 0 :
-                    (pieces[WHITE][PAWNS] & INDEX_TO_BIT[bPawnSq - 8]) != 0 ? 1 : 2][bf][br];
+                    (pieces[WHITE][PAWNS] & INDEX_TO_BIT[bPawnSq - 8]) != 0 ? 1 : 2][f][br];
             }
             else
-                wKsValue -= PAWN_STORM_VALUE[0][std::min(i, 7-i)][0];
+                wKsValue -= PAWN_STORM_VALUE[0][f][0];
         }
 
         // Black king
         for (int i = bKingFile-1; i <= bKingFile+1; i++) {
             if (i < 0 || i > 7)
                 continue;
+            int f = std::min(i, 7-i);
 
             uint64_t bPawnShield = pieces[BLACK][PAWNS] & FILES[i];
             if (bPawnShield) {
                 int bPawnSq = bitScanReverse(bPawnShield);
                 int br = 7 - (bPawnSq >> 3);
-                int bf = bPawnSq & 7;
-                bf = std::min(bf, 7-bf);
 
-                bKsValue += PAWN_SHIELD_VALUE[bf][br];
+                bKsValue += PAWN_SHIELD_VALUE[f][br];
             }
             else
-                bKsValue += PAWN_SHIELD_VALUE[std::min(i, 7-i)][0];
+                bKsValue += PAWN_SHIELD_VALUE[f][0];
 
             uint64_t wPawnStorm = pieces[WHITE][PAWNS] & FILES[i];
             if (wPawnStorm) {
                 int wPawnSq = bitScanReverse(wPawnStorm);
                 int wr = 7 - (wPawnSq >> 3);
-                int wf = wPawnSq & 7;
-                wf = std::min(wf, 7-wf);
 
                 bKsValue -= PAWN_STORM_VALUE[
                     (pieces[BLACK][PAWNS] & FILES[i]) == 0                  ? 0 :
-                    (pieces[BLACK][PAWNS] & INDEX_TO_BIT[wPawnSq + 8]) != 0 ? 1 : 2][wf][wr];
+                    (pieces[BLACK][PAWNS] & INDEX_TO_BIT[wPawnSq + 8]) != 0 ? 1 : 2][f][wr];
             }
             else
-                bKsValue -= PAWN_STORM_VALUE[0][std::min(i, 7-i)][0];
+                bKsValue -= PAWN_STORM_VALUE[0][f][0];
         }
 
         valueMg += wKsValue - bKsValue;
