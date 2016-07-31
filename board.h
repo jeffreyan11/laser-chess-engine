@@ -219,7 +219,7 @@ private:
     template <int color> void getPseudoMobility(PieceMoveList &pml,
         PieceMoveList &oppPml, int &valueMg, int &valueEg);
     template <int attackingColor> int getKingSafety(PieceMoveList &attackers,
-        PieceMoveList &defenders, uint64_t kingSqs);
+        PieceMoveList &defenders, uint64_t kingSqs, int pawnScore);
     int checkEndgameCases();
     int scoreSimpleKnownWin(int winningColor);
     int getManhattanDistance(int sq1, int sq2);

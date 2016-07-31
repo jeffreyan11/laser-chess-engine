@@ -1625,13 +1625,6 @@ int Board::evaluate() {
     // All king safety terms are midgame only, so don't calculate them in the endgame
     if (egFactor < EG_FACTOR_RES) {
         int wKsValue = 0, bKsValue = 0;
-
-        bKsValue -= getKingSafety<WHITE>(pmlWhite, pmlBlack, bKingNeighborhood);
-        wKsValue -= getKingSafety<BLACK>(pmlBlack, pmlWhite, wKingNeighborhood);
-
-        // Castling rights
-        wKsValue += CASTLING_RIGHTS_VALUE[count(castlingRights & WHITECASTLE)];
-        bKsValue += CASTLING_RIGHTS_VALUE[count(castlingRights & BLACKCASTLE)];
         
         // Pawn shield and storm values
         int wKingFile = wKingSq & 7;
@@ -1694,6 +1687,14 @@ int Board::evaluate() {
             else
                 bKsValue -= PAWN_STORM_VALUE[0][f][0];
         }
+
+        // Piece attacks
+        bKsValue -= getKingSafety<WHITE>(pmlWhite, pmlBlack, bKingNeighborhood, bKsValue);
+        wKsValue -= getKingSafety<BLACK>(pmlBlack, pmlWhite, wKingNeighborhood, wKsValue);
+
+        // Castling rights
+        wKsValue += CASTLING_RIGHTS_VALUE[count(castlingRights & WHITECASTLE)];
+        bKsValue += CASTLING_RIGHTS_VALUE[count(castlingRights & BLACKCASTLE)];
 
         valueMg += wKsValue - bKsValue;
         if (debug) {
@@ -2107,7 +2108,7 @@ void Board::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml,
 // The lookup table approach is inspired by Ed Schroder's Rebel chess engine
 template <int attackingColor>
 int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
-    uint64_t kingSqs) {
+    uint64_t kingSqs, int pawnScore) {
     // Scale factor for pieces attacking opposing king
     const int KING_THREAT_MULTIPLIER[4] = {3, 3, 4, 6};
     // const int KING_DEFENSE_MULTIPLIER[4] = {2, 2, 1, 0};
@@ -2162,10 +2163,8 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     if (kingAttackPieces < 2)
         kingSafetyPts /= 3;
 
-    // Reduce attack slightly if there is a good pawn shield
-    kingSafetyPts -= count(kingNeighborhood & defendingPawns & 0xe7e7e7e7e7e7e7e7);
-    // Extra for pawns directly in front of the king
-    kingSafetyPts -= count(kingSqs & defendingPawns & 0xe7e7e7e7e7e7e7e7);
+    // Adjust based on pawn shield and pawn storms
+    kingSafetyPts -= pawnScore / 8;
 
     const int KS_TO_SCORE[100] = {
           0,   0,   1,   2,   3,   5,   6,   8,   9,  11,
