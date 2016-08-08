@@ -56,42 +56,6 @@ extern MagicInfo magicRooks[64];
 // Precalculated bitboard tables
 extern uint64_t inBetweenSqs[64][64];
 
-/*
- * Performs a PERFT (performance test). Useful for testing/debugging
- * PERFT n counts the number of possible positions after n moves by either side,
- * ex. PERFT 4 = # of positions after 2 moves from each side
- * 
- * 7/8/15: PERFT 5, 1.46 s (i5-2450m)
- * 7/11/15: PERFT 5, 1.22 s (i5-2450m)
- * 7/13/15: PERFT 5, 1.08 s (i5-2450m)
- * 7/14/15: PERFT 5, 0.86 s (i5-2450m)
- * 7/17/15: PERFT 5, 0.32 s (i5-2450m)
- * 8/7/15: PERFT 5, 0.25 s, PERFT 6, 6.17 s (i5-5200u)
- * 8/8/15: PERFT 6, 5.90 s (i5-5200u)
- * 8/11/15: PERFT 6, 5.20 s (i5-5200u)
- */
-uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
-    if (depth == 0)
-        return 1;
-
-    uint64_t nodes = 0;
-
-    PieceMoveList pml = b.getPieceMoveList<PML_LEGAL_MOVES>(color);
-    MoveList pl = b.getAllPseudoLegalMoves(color, pml);
-    for (unsigned int i = 0; i < pl.size(); i++) {
-        Board copy = b.staticCopy();
-        if (!copy.doPseudoLegalMove(pl.get(i), color))
-            continue;
-
-        if (isCapture(pl.get(i)))
-            captures++;
-
-        nodes += perft(copy, color^1, depth-1, captures);
-    }
-
-    return nodes;
-}
-
 
 struct EvalDebug {
     int totalEval;

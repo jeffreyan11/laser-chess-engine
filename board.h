@@ -209,6 +209,4 @@ private:
     uint64_t antiDiagAttacks(uint64_t occ, int single);
 };
 
-uint64_t perft(Board &b, int color, int depth, uint64_t &captures);
-
 #endif
