@@ -918,8 +918,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
 
         // Extension for transition into pawn-only endgame
         if (depth >= 3 && reduction == 0) {
-            uint64_t nonPawns = b.getNonPawnMaterial(color^1);
-            if (INDEX_TO_BIT[getEndSq(m)] == nonPawns) {
+            if (b.isNonpawnTransition(color, m)) {
                 extension += 1;
                 if (!b.getNonPawnMaterial(color))
                     extension += 2;

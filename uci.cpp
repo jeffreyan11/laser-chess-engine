@@ -24,6 +24,7 @@
 #include <random>
 
 #include "common.h"
+#include "bbinit.h"
 #include "board.h"
 #include "search.h"
 #include "uci.h"
