@@ -471,8 +471,8 @@ void Board::undoNullMove(uint16_t _epCaptureFile) {
 /*
  * @brief Returns a list of structs containing the piece type, start square,
  * and a bitboard of potential legal moves for each knight, bishop, rook, and queen.
+ * Used for mobility evaluation of pieces.
  */
-template <bool isMoveGen>
 PieceMoveList Board::getPieceMoveList(int color) {
     PieceMoveList pml;
 
@@ -485,8 +485,7 @@ PieceMoveList Board::getPieceMoveList(int color) {
         pml.add(PieceMoveInfo(KNIGHTS, stSq, nSq));
     }
 
-    uint64_t occ = isMoveGen ? getOccupancy()
-                             : allPieces[color^1] | pieces[color][PAWNS] | pieces[color][KINGS];
+    uint64_t occ = allPieces[color^1] | pieces[color][PAWNS] | pieces[color][KINGS];
     uint64_t bishops = pieces[color][BISHOPS];
     while (bishops) {
         int stSq = bitScanForward(bishops);
@@ -519,8 +518,7 @@ PieceMoveList Board::getPieceMoveList(int color) {
 
 // Get all legal moves and captures
 MoveList Board::getAllLegalMoves(int color) {
-    PieceMoveList pml = getPieceMoveList<PML_LEGAL_MOVES>(color);
-    MoveList moves = getAllPseudoLegalMoves(color, pml);
+    MoveList moves = getAllPseudoLegalMoves(color);
 
     for (unsigned int i = 0; i < moves.size(); i++) {
         Board b = staticCopy();
@@ -542,9 +540,9 @@ MoveList Board::getAllLegalMoves(int color) {
  * Get the legal moves as a bitboard, then bitscan this to get the destination
  * square and store as a Move object.
  */
-MoveList Board::getAllPseudoLegalMoves(int color, PieceMoveList &pml) {
-    MoveList quiets = getPseudoLegalQuiets(color, pml);
-    MoveList captures = getPseudoLegalCaptures(color, pml, true);
+MoveList Board::getAllPseudoLegalMoves(int color) {
+    MoveList quiets = getPseudoLegalQuiets(color);
+    MoveList captures = getPseudoLegalCaptures(color, true);
 
     // Put captures before quiet moves
     for (unsigned int i = 0; i < quiets.size(); i++) {
@@ -563,15 +561,12 @@ MoveList Board::getAllPseudoLegalMoves(int color, PieceMoveList &pml) {
  * Pawn moves
  * King moves
  */
-MoveList Board::getPseudoLegalQuiets(int color, PieceMoveList &pml) {
+MoveList Board::getPseudoLegalQuiets(int color) {
     MoveList quiets;
 
     addCastlesToList(quiets, color);
 
-    for (unsigned int i = 0; i < pml.size(); i++) {
-        PieceMoveInfo pmi = pml.get(i);
-        addMovesToList<MOVEGEN_QUIETS>(quiets, pmi.startSq, pmi.legal);
-    }
+    addPieceMovesToList<MOVEGEN_QUIETS>(quiets, color);
 
     addPawnMovesToList(quiets, color);
 
@@ -592,7 +587,7 @@ MoveList Board::getPseudoLegalQuiets(int color, PieceMoveList &pml) {
  * Rook captures
  * Queen captures
  */
-MoveList Board::getPseudoLegalCaptures(int color, PieceMoveList &pml, bool includePromotions) {
+MoveList Board::getPseudoLegalCaptures(int color, bool includePromotions) {
     MoveList captures;
 
     uint64_t otherPieces = allPieces[color^1];
@@ -603,10 +598,7 @@ MoveList Board::getPseudoLegalCaptures(int color, PieceMoveList &pml, bool inclu
 
     addPawnCapturesToList(captures, color, otherPieces, includePromotions);
 
-    for (unsigned int i = 0; i < pml.size(); i++) {
-        PieceMoveInfo pmi = pml.get(i);
-        addMovesToList<MOVEGEN_CAPTURES>(captures, pmi.startSq, pmi.legal, otherPieces);
-    }
+    addPieceMovesToList<MOVEGEN_CAPTURES>(captures, color, otherPieces);
 
     return captures;
 }
@@ -807,7 +799,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
 // This can only be used if we know the side to move is in check
 // Optimizations include looking for double check (king moves only),
 // otherwise we can only capture the checker or block if it is an xray piece
-MoveList Board::getPseudoLegalCheckEscapes(int color, PieceMoveList &pml) {
+MoveList Board::getPseudoLegalCheckEscapes(int color) {
     MoveList captures, blocks;
 
     int kingSq = bitScanForward(pieces[color][KINGS]);
@@ -841,11 +833,42 @@ MoveList Board::getPseudoLegalCheckEscapes(int color, PieceMoveList &pml) {
     else if (attackerType == QUEENS)
         xraySqs = getQueenSquares(attackerSq, occ);
 
-    for (unsigned int i = 0; i < pml.size(); i++) {
-        PieceMoveInfo pmi = pml.get(i);
-        addMovesToList<MOVEGEN_QUIETS>(blocks, pmi.startSq, pmi.legal & xraySqs);
-        addMovesToList<MOVEGEN_CAPTURES>(captures, pmi.startSq, pmi.legal, otherPieces);
+    uint64_t knights = pieces[color][KNIGHTS];
+    while (knights) {
+        int stSq = bitScanForward(knights);
+        knights &= knights-1;
+        uint64_t nSq = getKnightSquares(stSq);
+
+        addMovesToList<MOVEGEN_QUIETS>(blocks, stSq, nSq & xraySqs);
     }
+
+    uint64_t bishops = pieces[color][BISHOPS];
+    while (bishops) {
+        int stSq = bitScanForward(bishops);
+        bishops &= bishops-1;
+        uint64_t bSq = getBishopSquares(stSq, occ);
+
+        addMovesToList<MOVEGEN_QUIETS>(blocks, stSq, bSq & xraySqs);
+    }
+
+    uint64_t rooks = pieces[color][ROOKS];
+    while (rooks) {
+        int stSq = bitScanForward(rooks);
+        rooks &= rooks-1;
+        uint64_t rSq = getRookSquares(stSq, occ);
+
+        addMovesToList<MOVEGEN_QUIETS>(blocks, stSq, rSq & xraySqs);
+    }
+
+    uint64_t queens = pieces[color][QUEENS];
+    while (queens) {
+        int stSq = bitScanForward(queens);
+        queens &= queens-1;
+        uint64_t qSq = getQueenSquares(stSq, occ);
+
+        addMovesToList<MOVEGEN_QUIETS>(blocks, stSq, qSq & xraySqs);
+    }
+    addPieceMovesToList<MOVEGEN_CAPTURES>(captures, color, otherPieces);
 
     int stsqK = bitScanForward(pieces[color][KINGS]);
     uint64_t kingSqs = getKingSquares(stsqK);
@@ -970,6 +993,46 @@ void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherP
             m = setFlags(m, MOVE_EP);
             captures.add(m);
         }
+    }
+}
+
+template <bool isCapture>
+void Board::addPieceMovesToList(MoveList &moves, int color, uint64_t otherPieces) {
+    uint64_t knights = pieces[color][KNIGHTS];
+    while (knights) {
+        int stSq = bitScanForward(knights);
+        knights &= knights-1;
+        uint64_t nSq = getKnightSquares(stSq);
+
+        addMovesToList<isCapture>(moves, stSq, nSq, otherPieces);
+    }
+
+    uint64_t occ = getOccupancy();
+    uint64_t bishops = pieces[color][BISHOPS];
+    while (bishops) {
+        int stSq = bitScanForward(bishops);
+        bishops &= bishops-1;
+        uint64_t bSq = getBishopSquares(stSq, occ);
+
+        addMovesToList<isCapture>(moves, stSq, bSq, otherPieces);
+    }
+
+    uint64_t rooks = pieces[color][ROOKS];
+    while (rooks) {
+        int stSq = bitScanForward(rooks);
+        rooks &= rooks-1;
+        uint64_t rSq = getRookSquares(stSq, occ);
+
+        addMovesToList<isCapture>(moves, stSq, rSq, otherPieces);
+    }
+
+    uint64_t queens = pieces[color][QUEENS];
+    while (queens) {
+        int stSq = bitScanForward(queens);
+        queens &= queens-1;
+        uint64_t qSq = getQueenSquares(stSq, occ);
+
+        addMovesToList<isCapture>(moves, stSq, qSq, otherPieces);
     }
 }
 
@@ -1407,8 +1470,8 @@ int Board::evaluate() {
     //-----------------------King Safety and Mobility---------------------------
     // Scores based on mobility and basic king safety (which is turned off in
     // the endgame)
-    PieceMoveList pmlWhite = getPieceMoveList<PML_PSEUDO_MOBILITY>(WHITE);
-    PieceMoveList pmlBlack = getPieceMoveList<PML_PSEUDO_MOBILITY>(BLACK);
+    PieceMoveList pmlWhite = getPieceMoveList(WHITE);
+    PieceMoveList pmlBlack = getPieceMoveList(BLACK);
     int whiteMobilityMg, whiteMobilityEg;
     int blackMobilityMg, blackMobilityEg;
     getPseudoMobility<WHITE>(pmlWhite, pmlBlack, whiteMobilityMg, whiteMobilityEg);

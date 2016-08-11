@@ -31,8 +31,6 @@ const uint8_t BLACKCASTLE = 0xC;
 
 const uint16_t NO_EP_POSSIBLE = 0x8;
 
-const bool PML_LEGAL_MOVES = true;
-const bool PML_PSEUDO_MOBILITY = false;
 const bool MOVEGEN_CAPTURES = true;
 const bool MOVEGEN_QUIETS = false;
 
@@ -75,14 +73,14 @@ public:
     void doNullMove();
     void undoNullMove(uint16_t _epCaptureFile);
 
-    template <bool isMoveGen> PieceMoveList getPieceMoveList(int color);
+    PieceMoveList getPieceMoveList(int color);
     MoveList getAllLegalMoves(int color);
-    MoveList getAllPseudoLegalMoves(int color, PieceMoveList &pml);
-    MoveList getPseudoLegalQuiets(int color, PieceMoveList &pml);
-    MoveList getPseudoLegalCaptures(int color, PieceMoveList &pml, bool includePromotions);
+    MoveList getAllPseudoLegalMoves(int color);
+    MoveList getPseudoLegalQuiets(int color);
+    MoveList getPseudoLegalCaptures(int color, bool includePromotions);
     MoveList getPseudoLegalPromotions(int color);
     MoveList getPseudoLegalChecks(int color);
-    MoveList getPseudoLegalCheckEscapes(int color, PieceMoveList &pml);
+    MoveList getPseudoLegalCheckEscapes(int color);
 
     // Get a bitboard of all xray-ers attacking a square if a blocker has been moved or removed
     uint64_t getXRayPieceMap(int color, int sq, int blockerColor,
@@ -165,17 +163,19 @@ private:
 
     void addPawnMovesToList(MoveList &quiets, int color);
     void addPawnCapturesToList(MoveList &captures, int color, uint64_t otherPieces, bool includePromotions);
-    template <bool isCapture> void addMovesToList(MoveList &moves, int stSq,
-        uint64_t allEndSqs, uint64_t otherPieces = 0);
-    template <bool isCapture> void addPromotionsToList(MoveList &moves,
-        int stSq, int endSq);
+    template <bool isCapture>
+    void addPieceMovesToList(MoveList &moves, int color, uint64_t otherPieces = 0);
+    template <bool isCapture>
+    void addMovesToList(MoveList &moves, int stSq, uint64_t allEndSqs, uint64_t otherPieces = 0);
+    template <bool isCapture>
+    void addPromotionsToList(MoveList &moves, int stSq, int endSq);
     void addCastlesToList(MoveList &moves, int color);
 
     // Eval helpers
-    template <int color> void getPseudoMobility(PieceMoveList &pml,
-        PieceMoveList &oppPml, int &valueMg, int &valueEg);
-    template <int attackingColor> int getKingSafety(PieceMoveList &attackers,
-        PieceMoveList &defenders, uint64_t kingSqs, int pawnScore);
+    template <int color>
+    void getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg);
+    template <int attackingColor>
+    int getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders, uint64_t kingSqs, int pawnScore);
     int checkEndgameCases();
     int scoreSimpleKnownWin(int winningColor);
     int getManhattanDistance(int sq1, int sq2);

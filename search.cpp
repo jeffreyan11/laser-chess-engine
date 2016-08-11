@@ -783,11 +783,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
     }
 
 
-    // For move generation
-    PieceMoveList pml = b.getPieceMoveList<PML_LEGAL_MOVES>(color);
     // Create list of legal moves
-    MoveList legalMoves = isInCheck ? b.getPseudoLegalCheckEscapes(color, pml)
-                                    : b.getAllPseudoLegalMoves(color, pml);
+    MoveList legalMoves = isInCheck ? b.getPseudoLegalCheckEscapes(color)
+                                    : b.getAllPseudoLegalMoves(color);
     // Initialize the module for move ordering
     MoveOrder moveSorter(&b, color, depth, threadID, isPVNode, isInCheck,
         searchParams, hashed, legalMoves);
@@ -1183,8 +1181,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
 
 
     // Generate captures and order by MVV/LVA
-    PieceMoveList pml = b.getPieceMoveList<PML_LEGAL_MOVES>(color);
-    MoveList legalCaptures = b.getPseudoLegalCaptures(color, pml, false);
+    MoveList legalCaptures = b.getPseudoLegalCaptures(color, false);
     ScoreList scores;
     for (unsigned int i = 0; i < legalCaptures.size(); i++) {
         scores.add(b.getMVVLVAScore(color, legalCaptures.get(i)));
@@ -1337,8 +1334,7 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     SearchParameters *searchParams = &(searchParamsArray[threadID]);
     SearchStatistics *searchStats = &(searchStatsArray[threadID]);
     int color = b.getPlayerToMove();
-    PieceMoveList pml = b.getPieceMoveList<PML_LEGAL_MOVES>(color);
-    MoveList legalMoves = b.getPseudoLegalCheckEscapes(color, pml);
+    MoveList legalMoves = b.getPseudoLegalCheckEscapes(color);
 
     int bestScore = -INFTY;
     int score = -INFTY;
