@@ -32,7 +32,7 @@ EvalHash::~EvalHash() {
 void EvalHash::add(Board &b, int score) {
     // Use the lower 32 bits of the hash key to index the array
     uint32_t h = (uint32_t) (b.getZobristKey() & 0xFFFFFFFF);
-    uint32_t index = h % size;
+    uint32_t index = h & (size-1);
 
     table[index].setEntry(b, score);
 }
@@ -41,7 +41,7 @@ void EvalHash::add(Board &b, int score) {
 int EvalHash::get(Board &b) {
     // Use the lower 32 bits of the hash key to index the array
     uint32_t h = (uint32_t) (b.getZobristKey() & 0xFFFFFFFF);
-    uint32_t index = h % size;
+    uint32_t index = h & (size-1);
 
     if((table[index].zobristKey ^ table[index].score) == (uint32_t) (b.getZobristKey() >> 32))
         return table[index].score;
@@ -60,7 +60,14 @@ void EvalHash::init(uint64_t MB) {
     // Convert to bytes
     uint64_t bytes = MB << 20;
     // Calculate how many array slots we can use
-    size = bytes / sizeof(EvalHashEntry);
+    uint64_t maxSize = bytes / sizeof(EvalHashEntry);
+
+    size = 1;
+    while(size <= maxSize) {
+        size <<= 1;
+    }
+    size >>= 1;
+
     table = (EvalHashEntry *) calloc(size, sizeof(EvalHashEntry));
     keys = 0;
 }

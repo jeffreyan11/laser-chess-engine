@@ -54,7 +54,7 @@ Hash::~Hash() {
 // been checked with get and is not in the table.
 void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
     uint64_t h = b.getZobristKey();
-    uint64_t index = h % size;
+    uint64_t index = h & (size-1);
     HashNode *node = table + index;
     if (node->slot1.zobristKey == 0) {
         keys++;
@@ -107,7 +107,7 @@ void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
 // Get the hash entry, if any, associated with a board b.
 uint64_t Hash::get(Board &b) {
     uint64_t h = b.getZobristKey();
-    uint64_t index = h % size;
+    uint64_t index = h & (size-1);
     HashNode *node = table + index;
 
     if((node->slot1.zobristKey ^ node->slot1.data) == b.getZobristKey())
@@ -131,7 +131,14 @@ void Hash::init(uint64_t MB) {
     // Convert to bytes
     uint64_t bytes = MB << 20;
     // Calculate how many array slots we can use
-    size = bytes / sizeof(HashNode);
+    uint64_t maxSize = bytes / sizeof(HashNode);
+
+    size = 1;
+    while (size <= maxSize) {
+        size <<= 1;
+    }
+    size >>= 1;
+
     table = (HashNode *) calloc(size,  sizeof(HashNode));
     keys = 0;
 }
