@@ -17,6 +17,7 @@
 */
 
 #include <algorithm>
+#include <cstring>
 #include <iomanip>
 #include <iostream>
 #include <random>
@@ -184,28 +185,10 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
 
 Board::~Board() {}
 
-// Creates a copy of a board
-// Private constructor used only with staticCopy()
-Board::Board(Board *b) {
-    allPieces[WHITE] = b->allPieces[WHITE];
-    allPieces[BLACK] = b->allPieces[BLACK];
-    for (int i = 0; i < 6; i++) {
-        pieces[0][i] = b->pieces[0][i];
-    }
-    for (int i = 0; i < 6; i++) {
-        pieces[1][i] = b->pieces[1][i];
-    }
-
-    zobristKey = b->zobristKey;
-    epCaptureFile = b->epCaptureFile;
-    playerToMove = b->playerToMove;
-    moveNumber = b->moveNumber;
-    castlingRights = b->castlingRights;
-    fiftyMoveCounter = b->fiftyMoveCounter;
-}
-
 Board Board::staticCopy() {
-    return Board(this);
+    Board b;
+    std::memcpy(&b, this, sizeof(Board));
+    return b;
 }
 
 
