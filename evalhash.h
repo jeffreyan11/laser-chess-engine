@@ -56,14 +56,14 @@ private:
     EvalHashEntry *table;
     uint64_t size;
 
-    // Prevent direct copying and assignment
-    EvalHash(const EvalHash &other);
-    EvalHash& operator=(const EvalHash &other);
+    void init(uint64_t MB);
 
 public:
     uint64_t keys;
 
     EvalHash(uint64_t MB);
+    EvalHash(const EvalHash &other) = delete;
+    EvalHash& operator=(const EvalHash &other) = delete;
     ~EvalHash();
 
     void add(Board &b, int score);

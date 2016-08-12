@@ -20,12 +20,7 @@
 #include "evalhash.h"
 
 EvalHash::EvalHash(uint64_t MB) {
-    // Convert to bytes
-    uint64_t bytes = MB << 20;
-    // Calculate how many array slots we can use
-    size = bytes / sizeof(EvalHashEntry);
-    table = (EvalHashEntry *) calloc(size, sizeof(EvalHashEntry));
-    keys = 0;
+    init(MB);
 }
 
 EvalHash::~EvalHash() {
@@ -58,7 +53,10 @@ int EvalHash::get(Board &b) {
 
 void EvalHash::setSize(uint64_t MB) {
     free(table);
-    
+    init(MB);
+}
+
+void EvalHash::init(uint64_t MB) {
     // Convert to bytes
     uint64_t bytes = MB << 20;
     // Calculate how many array slots we can use

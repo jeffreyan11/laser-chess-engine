@@ -95,14 +95,14 @@ private:
     HashNode *table;
     uint64_t size;
 
-    // Prevent direct copying and assignment
-    Hash(const Hash &other);
-    Hash& operator=(const Hash &other);
+    void init(uint64_t MB);
 
 public:
     uint64_t keys;
 
     Hash(uint64_t MB);
+    Hash(const Hash &other) = delete;
+    Hash& operator=(const Hash &other) = delete;
     ~Hash();
 
     void add(Board &b, uint64_t data, int depth, uint8_t age);

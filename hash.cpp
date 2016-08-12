@@ -43,12 +43,7 @@ uint64_t packHashData(int depth, Move m, int score, uint8_t nodeType, uint8_t ag
 }
 
 Hash::Hash(uint64_t MB) {
-    // Convert to bytes
-    uint64_t bytes = MB << 20;
-    // Calculate how many array slots we can use
-    size = bytes / sizeof(HashNode);
-    table = (HashNode *) calloc(size, sizeof(HashNode));
-    keys = 0;
+    init(MB);
 }
 
 Hash::~Hash() {
@@ -129,7 +124,10 @@ uint64_t Hash::getSize() {
 
 void Hash::setSize(uint64_t MB) {
     free(table);
-    
+    init(MB);
+}
+
+void Hash::init(uint64_t MB) {
     // Convert to bytes
     uint64_t bytes = MB << 20;
     // Calculate how many array slots we can use
