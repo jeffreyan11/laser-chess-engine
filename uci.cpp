@@ -412,7 +412,8 @@ uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
 
     uint64_t nodes = 0;
 
-    MoveList pl = b.getAllPseudoLegalMoves(color);
+    MoveList pl;
+    b.getAllPseudoLegalMoves(pl, color);
     for (unsigned int i = 0; i < pl.size(); i++) {
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(pl.get(i), color))

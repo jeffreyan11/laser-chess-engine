@@ -784,8 +784,11 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
 
 
     // Create list of legal moves
-    MoveList legalMoves = isInCheck ? b.getPseudoLegalCheckEscapes(color)
-                                    : b.getAllPseudoLegalMoves(color);
+    MoveList legalMoves;
+    if(isInCheck)
+        b.getPseudoLegalCheckEscapes(legalMoves, color);
+    else
+        b.getAllPseudoLegalMoves(legalMoves, color);
     // Initialize the module for move ordering
     MoveOrder moveSorter(&b, color, depth, threadID, isPVNode, isInCheck,
         searchParams, hashed, legalMoves);
@@ -1181,18 +1184,19 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
 
 
     // Generate captures and order by MVV/LVA
-    MoveList legalCaptures = b.getPseudoLegalCaptures(color, false);
+    MoveList legalMoves;
+    b.getPseudoLegalCaptures(legalMoves, color, false);
     ScoreList scores;
-    for (unsigned int i = 0; i < legalCaptures.size(); i++) {
-        scores.add(b.getMVVLVAScore(color, legalCaptures.get(i)));
+    for (unsigned int i = 0; i < legalMoves.size(); i++) {
+        scores.add(b.getMVVLVAScore(color, legalMoves.get(i)));
     }
     
     int bestScore = -INFTY;
     int score = -INFTY;
     unsigned int i = 0;
     unsigned int j = 0; // separate counter only incremented when valid move is searched
-    for (Move m = nextMove(legalCaptures, scores, i); m != NULL_MOVE;
-              m = nextMove(legalCaptures, scores, ++i)) {
+    for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
+              m = nextMove(legalMoves, scores, ++i)) {
         // Delta prune
         if (standPat + b.valueOfPiece(b.getPieceOnSquare(color^1, getEndSq(m))) < alpha - MAX_POS_SCORE)
             continue;
@@ -1232,9 +1236,10 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     }
 
     // Generate and search promotions
-    MoveList legalPromotions = b.getPseudoLegalPromotions(color);
-    for (unsigned int i = 0; i < legalPromotions.size(); i++) {
-        Move m = legalPromotions.get(i);
+    legalMoves.clear();
+    b.getPseudoLegalPromotions(legalMoves, color);
+    for (unsigned int i = 0; i < legalMoves.size(); i++) {
+        Move m = legalMoves.get(i);
 
         // Static exchange evaluation pruning
         if (b.getSEEForMove(color, m) < 0)
@@ -1272,7 +1277,8 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
 
     // Checks: only on the first two plies of q-search
     if (plies <= 1) {
-        MoveList legalMoves = b.getPseudoLegalChecks(color);
+        legalMoves.clear();
+        b.getPseudoLegalChecks(legalMoves, color);
 
         for (unsigned int i = 0; i < legalMoves.size(); i++) {
             Move m = legalMoves.get(i);
@@ -1334,7 +1340,8 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     SearchParameters *searchParams = &(searchParamsArray[threadID]);
     SearchStatistics *searchStats = &(searchStatsArray[threadID]);
     int color = b.getPlayerToMove();
-    MoveList legalMoves = b.getPseudoLegalCheckEscapes(color);
+    MoveList legalMoves;
+    b.getPseudoLegalCheckEscapes(legalMoves, color);
 
     int bestScore = -INFTY;
     int score = -INFTY;

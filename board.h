@@ -75,12 +75,12 @@ public:
 
     PieceMoveList getPieceMoveList(int color);
     MoveList getAllLegalMoves(int color);
-    MoveList getAllPseudoLegalMoves(int color);
-    MoveList getPseudoLegalQuiets(int color);
-    MoveList getPseudoLegalCaptures(int color, bool includePromotions);
-    MoveList getPseudoLegalPromotions(int color);
-    MoveList getPseudoLegalChecks(int color);
-    MoveList getPseudoLegalCheckEscapes(int color);
+    void getAllPseudoLegalMoves(MoveList &legalMoves, int color);
+    void getPseudoLegalQuiets(MoveList &quiets, int color);
+    void getPseudoLegalCaptures(MoveList &captures, int color, bool includePromotions);
+    void getPseudoLegalPromotions(MoveList &moves, int color);
+    void getPseudoLegalChecks(MoveList &checks, int color);
+    void getPseudoLegalCheckEscapes(MoveList &escapes, int color);
 
     // Get a bitboard of all xray-ers attacking a square if a blocker has been moved or removed
     uint64_t getXRayPieceMap(int color, int sq, int blockerColor,

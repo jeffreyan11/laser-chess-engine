@@ -518,7 +518,8 @@ PieceMoveList Board::getPieceMoveList(int color) {
 
 // Get all legal moves and captures
 MoveList Board::getAllLegalMoves(int color) {
-    MoveList moves = getAllPseudoLegalMoves(color);
+    MoveList moves;
+    getAllPseudoLegalMoves(moves, color);
 
     for (unsigned int i = 0; i < moves.size(); i++) {
         Board b = staticCopy();
@@ -540,15 +541,9 @@ MoveList Board::getAllLegalMoves(int color) {
  * Get the legal moves as a bitboard, then bitscan this to get the destination
  * square and store as a Move object.
  */
-MoveList Board::getAllPseudoLegalMoves(int color) {
-    MoveList quiets = getPseudoLegalQuiets(color);
-    MoveList captures = getPseudoLegalCaptures(color, true);
-
-    // Put captures before quiet moves
-    for (unsigned int i = 0; i < quiets.size(); i++) {
-        captures.add(quiets.get(i));
-    }
-    return captures;
+void Board::getAllPseudoLegalMoves(MoveList &legalMoves, int color) {
+    getPseudoLegalCaptures(legalMoves, color, true);
+    getPseudoLegalQuiets(legalMoves, color);
 }
 
 /*
@@ -561,9 +556,7 @@ MoveList Board::getAllPseudoLegalMoves(int color) {
  * Pawn moves
  * King moves
  */
-MoveList Board::getPseudoLegalQuiets(int color) {
-    MoveList quiets;
-
+void Board::getPseudoLegalQuiets(MoveList &quiets, int color) {
     addCastlesToList(quiets, color);
 
     addPieceMovesToList<MOVEGEN_QUIETS>(quiets, color);
@@ -573,8 +566,6 @@ MoveList Board::getPseudoLegalQuiets(int color) {
     int stsqK = bitScanForward(pieces[color][KINGS]);
     uint64_t kingSqs = getKingSquares(stsqK);
     addMovesToList<MOVEGEN_QUIETS>(quiets, stsqK, kingSqs);
-
-    return quiets;
 }
 
 /*
@@ -587,9 +578,7 @@ MoveList Board::getPseudoLegalQuiets(int color) {
  * Rook captures
  * Queen captures
  */
-MoveList Board::getPseudoLegalCaptures(int color, bool includePromotions) {
-    MoveList captures;
-
+void Board::getPseudoLegalCaptures(MoveList &captures, int color, bool includePromotions) {
     uint64_t otherPieces = allPieces[color^1];
 
     int kingStSq = bitScanForward(pieces[color][KINGS]);
@@ -599,13 +588,10 @@ MoveList Board::getPseudoLegalCaptures(int color, bool includePromotions) {
     addPawnCapturesToList(captures, color, otherPieces, includePromotions);
 
     addPieceMovesToList<MOVEGEN_CAPTURES>(captures, color, otherPieces);
-
-    return captures;
 }
 
 // Generates all queen promotions for quiescence search
-MoveList Board::getPseudoLegalPromotions(int color) {
-    MoveList moves;
+void Board::getPseudoLegalPromotions(MoveList &moves, int color) {
     uint64_t otherPieces = allPieces[color^1];
 
     uint64_t pawns = pieces[color][PAWNS];
@@ -659,8 +645,6 @@ MoveList Board::getPseudoLegalPromotions(int color) {
         mq = setFlags(mq, MOVE_PROMO_Q);
         moves.add(mq);
     }
-
-    return moves;
 }
 
 /*
@@ -672,8 +656,7 @@ MoveList Board::getPseudoLegalPromotions(int color) {
  *
  * For simplicity, promotions and en passant are left out of this function.
  */
-MoveList Board::getPseudoLegalChecks(int color) {
-    MoveList checks;
+void Board::getPseudoLegalChecks(MoveList &checks, int color) {
     int kingSq = bitScanForward(pieces[color^1][KINGS]);
     // Square parity for knight and bishop moves
     uint64_t kingParity = (pieces[color^1][KINGS] & LIGHT) ? LIGHT : DARK;
@@ -791,17 +774,13 @@ MoveList Board::getPseudoLegalChecks(int color) {
 
         addMovesToList<MOVEGEN_QUIETS>(checks, stsq, qSq);
     }
-
-    return checks;
 }
 
 // Generate moves that (sort of but not really) get out of check
 // This can only be used if we know the side to move is in check
 // Optimizations include looking for double check (king moves only),
 // otherwise we can only capture the checker or block if it is an xray piece
-MoveList Board::getPseudoLegalCheckEscapes(int color) {
-    MoveList escapes;
-
+void Board::getPseudoLegalCheckEscapes(MoveList &escapes, int color) {
     int kingSq = bitScanForward(pieces[color][KINGS]);
     uint64_t otherPieces = allPieces[color^1];
     uint64_t attackMap = getAttackMap(color^1, kingSq);
@@ -814,7 +793,7 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
 
         addMovesToList<MOVEGEN_CAPTURES>(escapes, kingSq, kingSqs, allPieces[color^1]);
         addMovesToList<MOVEGEN_QUIETS>(escapes, kingSq, kingSqs);
-        return escapes;
+        return;
     }
 
     addPawnCapturesToList(escapes, color, otherPieces, true);
@@ -876,8 +855,6 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
     }
 
     addMovesToList<MOVEGEN_QUIETS>(escapes, stsqK, kingSqs);
-
-    return escapes;
 }
 
 //------------------------------------------------------------------------------
