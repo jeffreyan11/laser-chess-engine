@@ -800,7 +800,7 @@ MoveList Board::getPseudoLegalChecks(int color) {
 // Optimizations include looking for double check (king moves only),
 // otherwise we can only capture the checker or block if it is an xray piece
 MoveList Board::getPseudoLegalCheckEscapes(int color) {
-    MoveList captures, blocks;
+    MoveList escapes;
 
     int kingSq = bitScanForward(pieces[color][KINGS]);
     uint64_t otherPieces = allPieces[color^1];
@@ -812,13 +812,12 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
     if (count(otherPieces) >= 2) {
         uint64_t kingSqs = getKingSquares(kingSq);
 
-        addMovesToList<MOVEGEN_CAPTURES>(captures, kingSq, kingSqs, allPieces[color^1]);
-        addMovesToList<MOVEGEN_QUIETS>(captures, kingSq, kingSqs);
-        return captures;
+        addMovesToList<MOVEGEN_CAPTURES>(escapes, kingSq, kingSqs, allPieces[color^1]);
+        addMovesToList<MOVEGEN_QUIETS>(escapes, kingSq, kingSqs);
+        return escapes;
     }
 
-    addPawnMovesToList(blocks, color);
-    addPawnCapturesToList(captures, color, otherPieces, true);
+    addPawnCapturesToList(escapes, color, otherPieces, true);
 
     uint64_t occ = getOccupancy();
     // If bishops, rooks, or queens, get bitboard of attack path so we
@@ -833,13 +832,20 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
     else if (attackerType == QUEENS)
         xraySqs = getQueenSquares(attackerSq, occ);
 
+    addPieceMovesToList<MOVEGEN_CAPTURES>(escapes, color, otherPieces);
+
+    int stsqK = bitScanForward(pieces[color][KINGS]);
+    uint64_t kingSqs = getKingSquares(stsqK);
+    addMovesToList<MOVEGEN_CAPTURES>(escapes, stsqK, kingSqs, allPieces[color^1]);
+
+    addPawnMovesToList(escapes, color);
     uint64_t knights = pieces[color][KNIGHTS];
     while (knights) {
         int stSq = bitScanForward(knights);
         knights &= knights-1;
         uint64_t nSq = getKnightSquares(stSq);
 
-        addMovesToList<MOVEGEN_QUIETS>(blocks, stSq, nSq & xraySqs);
+        addMovesToList<MOVEGEN_QUIETS>(escapes, stSq, nSq & xraySqs);
     }
 
     uint64_t bishops = pieces[color][BISHOPS];
@@ -848,7 +854,7 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
         bishops &= bishops-1;
         uint64_t bSq = getBishopSquares(stSq, occ);
 
-        addMovesToList<MOVEGEN_QUIETS>(blocks, stSq, bSq & xraySqs);
+        addMovesToList<MOVEGEN_QUIETS>(escapes, stSq, bSq & xraySqs);
     }
 
     uint64_t rooks = pieces[color][ROOKS];
@@ -857,7 +863,7 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
         rooks &= rooks-1;
         uint64_t rSq = getRookSquares(stSq, occ);
 
-        addMovesToList<MOVEGEN_QUIETS>(blocks, stSq, rSq & xraySqs);
+        addMovesToList<MOVEGEN_QUIETS>(escapes, stSq, rSq & xraySqs);
     }
 
     uint64_t queens = pieces[color][QUEENS];
@@ -866,21 +872,12 @@ MoveList Board::getPseudoLegalCheckEscapes(int color) {
         queens &= queens-1;
         uint64_t qSq = getQueenSquares(stSq, occ);
 
-        addMovesToList<MOVEGEN_QUIETS>(blocks, stSq, qSq & xraySqs);
-    }
-    addPieceMovesToList<MOVEGEN_CAPTURES>(captures, color, otherPieces);
-
-    int stsqK = bitScanForward(pieces[color][KINGS]);
-    uint64_t kingSqs = getKingSquares(stsqK);
-    addMovesToList<MOVEGEN_QUIETS>(blocks, stsqK, kingSqs);
-    addMovesToList<MOVEGEN_CAPTURES>(captures, stsqK, kingSqs, allPieces[color^1]);
-
-    // Put captures before blocking moves
-    for (unsigned int i = 0; i < blocks.size(); i++) {
-        captures.add(blocks.get(i));
+        addMovesToList<MOVEGEN_QUIETS>(escapes, stSq, qSq & xraySqs);
     }
 
-    return captures;
+    addMovesToList<MOVEGEN_QUIETS>(escapes, stsqK, kingSqs);
+
+    return escapes;
 }
 
 //------------------------------------------------------------------------------
