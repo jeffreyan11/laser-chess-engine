@@ -674,7 +674,7 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
     }
     */
 
-    uint64_t pAttackMap = (color == WHITE) 
+    uint64_t pAttackMap = (color == WHITE)
             ? getBPawnCaptures(INDEX_TO_BIT[kingSq])
             : getWPawnCaptures(INDEX_TO_BIT[kingSq]);
     uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
@@ -1155,7 +1155,7 @@ bool Board::isCheckMove(int color, Move m) {
     uint64_t occ = getOccupancy();
     switch (getPieceOnSquare(color, getStartSq(m))) {
         case PAWNS:
-            attackMap = (color == WHITE) 
+            attackMap = (color == WHITE)
                 ? getBPawnCaptures(INDEX_TO_BIT[kingSq])
                 : getWPawnCaptures(INDEX_TO_BIT[kingSq]);
             break;
@@ -1281,7 +1281,7 @@ bool Board::isDraw() {
 
     if (isInsufficientMaterial())
         return true;
-    
+
     return false;
 }
 
@@ -1357,10 +1357,10 @@ int Board::evaluate() {
            + BISHOP_VALUE_EG * pieceCounts[BLACK][BISHOPS]
            + ROOK_VALUE_EG   * pieceCounts[BLACK][ROOKS]
            + QUEEN_VALUE_EG  * pieceCounts[BLACK][QUEENS];
-    
+
     // Tempo bonus
     valueMg += (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
-    
+
     // Bishop pair bonus
     if ((pieces[WHITE][BISHOPS] & LIGHT) && (pieces[WHITE][BISHOPS] & DARK)) {
         valueMg += BISHOP_PAIR_VALUE;
@@ -1371,7 +1371,7 @@ int Board::evaluate() {
         valueEg -= BISHOP_PAIR_VALUE;
     }
 
-    
+
     // Piece square tables
     // White pieces
     for (int pieceID = 0; pieceID < 6; pieceID++) {
@@ -1417,13 +1417,13 @@ int Board::evaluate() {
         evalDebugStats.totalMaterialMg = valueMg;
         evalDebugStats.totalMaterialEg = valueEg;
     }
-    
+
 
     //----------------------------Positional terms------------------------------
     // A 32-bit integer that holds both the midgame and endgame values using SWAR
     Score value = EVAL_ZERO;
-    
-    
+
+
     //-----------------------King Safety and Mobility---------------------------
     // Scores based on mobility and basic king safety (which is turned off in
     // the endgame)
@@ -1453,7 +1453,7 @@ int Board::evaluate() {
     // All king safety terms are midgame only, so don't calculate them in the endgame
     if (egFactor < EG_FACTOR_RES) {
         int wKsValue = 0, bKsValue = 0;
-        
+
         // Pawn shield and storm values
         int wKingFile = wKingSq & 7;
         int bKingFile = bKingSq & 7;
@@ -1626,7 +1626,7 @@ int Board::evaluate() {
             value -= ROOK_OPEN_FILE_BONUS;
     }
 
-    
+
     //----------------------------Pawn structure--------------------------------
     Score whitePawnScore = EVAL_ZERO, blackPawnScore = EVAL_ZERO;
     // Passed pawns
@@ -1715,20 +1715,20 @@ int Board::evaluate() {
         blackPawnScore += OPP_KING_DIST * getManhattanDistance(passerSq, wKingSq) * rFactor;
         blackPawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq, bKingSq) * rFactor;
     }
-    
+
     int wPawnCtByFile[8];
     int bPawnCtByFile[8];
     for (int i = 0; i < 8; i++) {
         wPawnCtByFile[i] = count(pieces[WHITE][PAWNS] & FILES[i]);
         bPawnCtByFile[i] = count(pieces[BLACK][PAWNS] & FILES[i]);
     }
-    
+
     // Doubled pawns
     for (int i = 0; i < 8; i++) {
         whitePawnScore -= DOUBLED_PENALTY[wPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[pieceCounts[WHITE][PAWNS]];
         blackPawnScore -= DOUBLED_PENALTY[bPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[pieceCounts[BLACK][PAWNS]];
     }
-    
+
     // Isolated pawns
     // Fill a bitmap of which files have pawns
     uint64_t wp = 0, bp = 0;
@@ -1840,7 +1840,7 @@ int Board::evaluate() {
         }
     }
 
-    
+
     if (debug) {
         evalDebugStats.totalEval = totalEval;
         evalDebugStats.print();
@@ -1997,7 +1997,7 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     const int KS_TO_SCORE[100] = {
           0,   0,   1,   2,   3,   5,   6,   8,   9,  11,
          13,  15,  18,  20,  23,  26,  29,  33,  36,  40,
-         43,  47,  50,  54,  58,  62,  66,  70,  74,  78, 
+         43,  47,  50,  54,  58,  62,  66,  70,  74,  78,
          82,  86,  90,  95, 100, 105, 110, 115, 120, 125,
         130, 135, 140, 145, 150, 155, 160, 165, 170, 175,
         180, 185, 190, 195, 200, 205, 210, 215, 220, 225,
