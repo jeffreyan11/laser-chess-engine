@@ -20,26 +20,18 @@
 #include "hash.h"
 
 /*
- * Packs the data into a single 64-bit integer using the following format:
- * Bits 0-15: score
- * Bits 16-31: move
- * Bits 32-39: node type
- * Bits 40-47: age
- * Bits 48-55: depth
+ * Packs the data into a single 64-bit integer using the HashData struct.
  */
 uint64_t packHashData(int depth, Move m, int score, uint8_t nodeType, uint8_t age) {
-    uint64_t data = 0;
-    data |= (uint8_t) depth;
-    data <<= 8;
-    data |= age;
-    data <<= 8;
-    data |= nodeType;
-    data <<= 16;
-    data |= m;
-    data <<= 16;
-    data |= (uint16_t) score;
+    HashData data;
+    std::memset(&data, 0, sizeof(HashData));
+    data.m = m;
+    data.score = (int16_t) score;
+    data.depth = (int8_t) depth;
+    data.nodeType = nodeType;
+    data.age = age;
 
-    return data;
+    return *reinterpret_cast<uint64_t *>(&data);
 }
 
 Hash::Hash(uint64_t MB) {
