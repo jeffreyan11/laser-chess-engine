@@ -28,37 +28,28 @@ const uint8_t ALL_NODE = 2;
 const uint8_t NO_NODE_INFO = 3;
 
 
-struct HashData {
-    Move m;
-    int16_t score;
-    int8_t depth;
-    uint8_t nodeType;
-    uint8_t age;
-    uint8_t pad;
-};
-
 // Pack the information stored in a hash entry into a single 64-bit integer
 uint64_t packHashData(int depth, Move m, int score, uint8_t nodeType, uint8_t age);
 
 // Functions for unpacking hash data
+inline int getHashDepth(uint64_t data) {
+    return (int8_t) ((data >> 48) & 0xFF);
+}
+
 inline Move getHashMove(uint64_t data) {
-    return reinterpret_cast<HashData *>(&data)->m;
+    return (data >> 16) & 0xFFFF;
 }
 
 inline int getHashScore(uint64_t data) {
-    return (int) (reinterpret_cast<HashData *>(&data)->score);
-}
-
-inline int getHashDepth(uint64_t data) {
-    return (int) (reinterpret_cast<HashData *>(&data)->depth);
-}
-
-inline uint8_t getHashNodeType(uint64_t data) {
-    return reinterpret_cast<HashData *>(&data)->nodeType;
+    return (int16_t) (data & 0xFFFF);
 }
 
 inline uint8_t getHashAge(uint64_t data) {
-    return reinterpret_cast<HashData *>(&data)->age;
+    return (data >> 40) & 0xFF;
+}
+
+inline uint8_t getHashNodeType(uint64_t data) {
+    return (data >> 32) & 0x3;
 }
 
 /*
