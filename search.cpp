@@ -191,7 +191,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     }
 
     *bestMove = legalMoves.get(0);
-    
+
     // Set up timing
     searchParamsArray[0].timeLimit = (mode == TIME) ? (uint64_t) (MAX_TIME_FACTOR * value)
                                                     : (mode == MOVETIME) ? value
@@ -449,7 +449,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     }
     else
         easyMoveInfo.reset();
-    
+
     printStatistics();
 
     // Aging for the history heuristic table
@@ -458,7 +458,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
     // Reset the hashfull counter
     transpositionTable.keys = 0;
-    
+
     // Output best move to UCI interface
     isStop = true;
     cout << "bestmove " << moveToString(*bestMove) << endl;
@@ -478,7 +478,7 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
     int tempMove = -1;
     int score = -MATE_SCORE;
     *bestScore = -INFTY;
-    
+
     // Push current position to two fold stack
     twoFoldPositions[threadID].push(b->getZobristKey());
 
@@ -498,7 +498,7 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
         Board copy = b->staticCopy();
         copy.doMove(legalMoves->get(i), color);
         searchStats->nodes++;
-        
+
         if (i != 0) {
             searchParams->ply++;
             score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, &line);
@@ -560,13 +560,13 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID) 
 
     // Push current position to two fold stack
     twoFoldPositions[threadID].push(b->getZobristKey());
-    
+
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Board copy = b->staticCopy();
         if(!copy.doPseudoLegalMove(legalMoves.get(i), color))
             continue;
         searchStats->nodes++;
-        
+
         if (i != 0) {
             searchParams->ply++;
             score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, &line);
@@ -586,7 +586,7 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID) 
         // Stop condition to break out as quickly as possible
         if (isStop || stopSignal)
             return i;
-        
+
         if (score > alpha) {
             alpha = score;
             tempMove = i;
@@ -639,8 +639,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         if (beta <= matedScore)
             return beta;
     }
-    
-    
+
+
     int prevAlpha = alpha;
     int color = b.getPlayerToMove();
     // For PVS, the node is a PV node if beta - alpha != 1 (i.e. not a null window)
@@ -723,7 +723,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
          || (nodeType == PV_NODE))
             staticEval = hashScore;
     }
-    
+
 
     // Reverse futility pruning
     // If we are already doing really well and it's our turn, our opponent
@@ -1011,7 +1011,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         // Stop condition to help break out as quickly as possible
         if (isStop || stopSignal)
             return INFTY;
-        
+
         // Beta cutoff
         if (score >= beta) {
             searchStats->failHighs++;
@@ -1066,7 +1066,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
     // If there were no legal moves
     if (bestScore == -INFTY && movesSearched == 0)
         return scoreMate(moveSorter.isInCheck, searchParams->ply);
-    
+
     // Exact scores indicate a principal variation
     if (prevAlpha < alpha && alpha < beta) {
         if (hashed != NULL_MOVE && nodeType != ALL_NODE) {
@@ -1174,7 +1174,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         standPat = (color == WHITE) ? b.evaluate() : -b.evaluate();
         evalCache.add(b, standPat);
     }
-    
+
     // The stand pat cutoff
     if (standPat >= beta || standPat < alpha - MAX_POS_SCORE - QUEEN_VALUE)
         return standPat;
@@ -1190,7 +1190,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         scores.add(b.getMVVLVAScore(color, legalMoves.get(i)));
     }
-    
+
     int bestScore = -INFTY;
     int score = -INFTY;
     unsigned int i = 0;
@@ -1203,16 +1203,16 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         // Static exchange evaluation pruning
         if (b.getExchangeScore(color, m) < 0 && b.getSEEForMove(color, m) < -MAX_POS_SCORE)
             continue;
-        
+
 
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(m, color))
             continue;
-        
+
         searchStats->nodes++;
         searchStats->qsNodes++;
         score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
-        
+
         if (score >= beta) {
             searchStats->qsFailHighs++;
             if (j == 0)
@@ -1248,11 +1248,11 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(m, color))
             continue;
-        
+
         searchStats->nodes++;
         searchStats->qsNodes++;
         score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
-        
+
         if (score >= beta) {
             searchStats->qsFailHighs++;
             if (j == 0)
@@ -1290,13 +1290,13 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             Board copy = b.staticCopy();
             if (!copy.doPseudoLegalMove(m, color))
                 continue;
-            
+
             searchStats->nodes++;
             searchStats->qsNodes++;
             twoFoldPositions[threadID].push(b.getZobristKey());
 
             int score = -checkQuiescence(copy, plies+1, -beta, -alpha, threadID);
-            
+
             twoFoldPositions[threadID].pop();
 
             if (score >= beta) {
@@ -1355,13 +1355,13 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         Board copy = b.staticCopy();
         if (!copy.doPseudoLegalMove(m, color))
             continue;
-        
+
         searchStats->nodes++;
         searchStats->qsNodes++;
         twoFoldPositions[threadID].push(b.getZobristKey());
 
         score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
-        
+
         twoFoldPositions[threadID].pop();
 
         if (score >= beta) {
@@ -1386,7 +1386,7 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         // Adjust score so that quicker mates are better
         return (-MATE_SCORE + searchParams->ply + plies);
     }
-    
+
     return bestScore;
 }
 

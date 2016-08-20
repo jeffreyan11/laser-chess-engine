@@ -49,7 +49,7 @@ int bitScanReverse(uint64_t bb) {
         return (int) bb;
     #else
         uint64_t debruijn64 = 0x03f79d71b4cb0a89;
-        bb |= bb >> 1; 
+        bb |= bb >> 1;
         bb |= bb >> 2;
         bb |= bb >> 4;
         bb |= bb >> 8;

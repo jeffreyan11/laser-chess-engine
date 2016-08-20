@@ -77,11 +77,11 @@ int main() {
     string author = "Jeffrey An and Michael An";
     thread searchThread;
     Move bestMove = NULL_MOVE;
-    
+
     Board board = fenToBoard(STARTPOS);
-    
+
     cout << name << " " << version << " by " << author << endl;
-    
+
     while (input != "quit") {
         getline(cin, input);
         inputVector = split(input, ' ');
@@ -90,7 +90,7 @@ int main() {
         // Ignore all input other than "stop" while running a search.
         if (!isStop && input != "stop")
             continue;
-        
+
         if (input == "uci") {
             cout << "id name " << name << " " << version << endl;
             cout << "id author " << author << endl;
@@ -112,7 +112,7 @@ int main() {
         else if (input.substr(0, 2) == "go" && isStop) {
             int mode = DEPTH, value = 1;
             vector<string>::iterator it;
-            
+
             if (input.find("movetime") != string::npos && inputVector.size() > 2) {
                 mode = MOVETIME;
                 value = stoi(inputVector.at(2));
@@ -136,7 +136,7 @@ int main() {
                 it++;
                 value = stoi(*it);
                 value -= BUFFER_TIME;
-                
+
                 int maxValue = value / MAX_TIME_FACTOR;
 
                 // recurring time controls
@@ -147,7 +147,7 @@ int main() {
                     value /= max(movesToGo, (int)MAX_TIME_FACTOR + 1);
                 }
                 else value /= MOVE_HORIZON;
-                
+
                 // increment time controls
                 it = find(inputVector.begin(), inputVector.end(),
                         (color == WHITE) ? "winc" : "binc");
@@ -157,13 +157,13 @@ int main() {
                     value = min(value, maxValue);
                 }
             }
-            
+
             bestMove = NULL_MOVE;
             isStop = false;
             searchThread = thread(getBestMove, &board, mode, value, &bestMove);
             searchThread.detach();
         }
-        
+
         else if (input == "stop") isStop = true;
         else if (input.substr(0, 9) == "setoption" && inputVector.size() == 5) {
             if (inputVector.at(1) != "name" || inputVector.at(3) != "value") {
@@ -221,11 +221,11 @@ int main() {
 
             uint64_t captures = 0;
             auto startTime = ChessClock::now();
-            
+
             uint64_t nodes = perft(board, board.getPlayerToMove(), depth, captures);
-            
+
             double time = getTimeElapsed(startTime);
-            
+
             cerr << "Nodes: " << nodes << endl;
             cerr << "Captures: " << captures << endl;
             cerr << "Time: " << (int)(time * ONE_SECOND) << endl;
@@ -234,21 +234,21 @@ int main() {
         else if (input == "bench") {
             auto startTime = ChessClock::now();
             uint64_t totalNodes = 0;
-            
+
             for (unsigned int i = 0; i < positions.size(); i++) {
                 clearAll(board);
                 board = fenToBoard(positions.at(i));
                 bestMove = NULL_MOVE;
                 isStop = false;
-                
+
                 getBestMove(&board, DEPTH, 10, &bestMove);
                 totalNodes += getNodes();
             }
-            
+
             double time = getTimeElapsed(startTime);
-                
+
             clearAll(board);
-            
+
             cerr << "Nodes: " << totalNodes << endl;
             cerr << "Time: " << (int)(time * ONE_SECOND) << endl;
             cerr << "Nodes/second: " << (uint64_t)(totalNodes / time) << endl;
@@ -256,7 +256,7 @@ int main() {
         else if (input == "eval") {
             board.evaluate<true>();
         }
-        
+
         // According to UCI protocol, inputs that do not make sense are ignored
     }
 }
@@ -266,7 +266,7 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
 
     if (input.find("startpos") != string::npos)
         pos = STARTPOS;
-    
+
     if (input.find("fen") != string::npos) {
         if (inputVector.size() < 7 || inputVector.at(6) == "moves") {
             pos = inputVector.at(2) + ' ' + inputVector.at(3) + ' ' + inputVector.at(4) + ' '
@@ -277,33 +277,33 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
                 + inputVector.at(5) + ' ' + inputVector.at(6) + ' ' + inputVector.at(7);
         }
     }
-    
+
     board = fenToBoard(pos);
     twoFoldPositions[0].clear();
-    
+
     if (input.find("moves") != string::npos) {
         string moveList = input.substr(input.find("moves") + 6);
         vector<string> moveVector = split(moveList, ' ');
-        
+
         for (unsigned i = 0; i < moveVector.size(); i++) {
             // moveStr contains the move in long algebraic notation
             string moveStr = moveVector.at(i);
-            
+
             int startSq = 8 * (moveStr.at(1) - '1') + (moveStr.at(0) - 'a');
             int endSq = 8 * (moveStr.at(3) - '1') + (moveStr.at(2) - 'a');
-            
+
             int color = board.getPlayerToMove();
             bool isCapture = (bool)(INDEX_TO_BIT[endSq] & board.getAllPieces(color ^ 1));
             bool isPawnMove = (bool)(INDEX_TO_BIT[startSq] & board.getPieces(color, PAWNS));
             bool isKingMove = (bool)(INDEX_TO_BIT[startSq] & board.getPieces(color, KINGS));
-            
+
             bool isEP = (isPawnMove && !isCapture && ((endSq - startSq) & 1));
             bool isDoublePawn = (isPawnMove && abs(endSq - startSq) == 16);
             bool isCastle = (isKingMove && abs(endSq - startSq) == 2);
             string promotionString = " nbrq";
             int promotion = (moveStr.length() == 5)
                 ? promotionString.find(moveStr.at(4)) : 0;
-            
+
             Move m = encodeMove(startSq, endSq);
             m = setCapture(m, isCapture);
             m = setCastle(m, isCastle);
@@ -314,7 +314,7 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
             }
             else if (isDoublePawn)
                 m = setFlags(m, MOVE_DOUBLE_PAWN);
-            
+
             // Record positions on two fold stack.
             twoFoldPositions[0].push(board.getZobristKey());
             // The stack is cleared for captures, pawn moves, and castles, which are all
@@ -344,18 +344,18 @@ Board fenToBoard(string s) {
     int mailbox[64];
     int sqCounter = -1;
     string pieceString = "PNBRQKpnbrqk";
-    
+
     // iterate through rows backwards (because mailbox goes a1 -> h8), converting into mailbox format
     for (int elem = 7; elem >= 0; elem--) {
         string rowAtElem = rows.at(elem);
-        
+
         for (unsigned col = 0; col < rowAtElem.length(); col++) {
             char sq = rowAtElem.at(col);
             do mailbox[++sqCounter] = pieceString.find(sq--);
             while ('0' < sq && sq < '8');
         }
     }
-    
+
     int playerToMove = (components.at(1) == "w") ? WHITE : BLACK;
     bool whiteCanKCastle = (components.at(2).find("K") != string::npos);
     bool whiteCanQCastle = (components.at(2).find("Q") != string::npos);
@@ -396,7 +396,7 @@ void clearAll(Board &board) {
  * Performs a PERFT (performance test). Useful for testing/debugging
  * PERFT n counts the number of possible positions after n moves by either side,
  * ex. PERFT 4 = # of positions after 2 moves from each side
- * 
+ *
  * 7/8/15: PERFT 5, 1.46 s (i5-2450m)
  * 7/11/15: PERFT 5, 1.22 s (i5-2450m)
  * 7/13/15: PERFT 5, 1.08 s (i5-2450m)

@@ -96,9 +96,6 @@ public:
     uint64_t getPinnedMap(int color);
 
     bool isInCheck(int color);
-    bool isWInMate();
-    bool isBInMate();
-    bool isStalemate(int sideToMove);
     bool isDraw();
     bool isInsufficientMaterial();
 
