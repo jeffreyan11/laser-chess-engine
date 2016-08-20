@@ -1240,40 +1240,13 @@ uint64_t Board::getPinnedMap(int color) {
 
 
 //------------------------------------------------------------------------------
-//----------------------King: check, checkmate, stalemate-----------------------
+//-------------------King: check, draw, insufficient material-------------------
 //------------------------------------------------------------------------------
 
 bool Board::isInCheck(int color) {
     int sq = bitScanForward(pieces[color][KINGS]);
 
     return getAttackMap(color^1, sq);
-}
-
-// Checks for mate: white is in check and has no legal moves
-bool Board::isWInMate() {
-    if (!isInCheck(WHITE))
-        return false;
-
-    MoveList moves = getAllLegalMoves(WHITE);
-    return (moves.size() == 0);
-}
-
-// Checks for mate: black is in check and has no legal moves
-bool Board::isBInMate() {
-    if (!isInCheck(BLACK))
-        return false;
-
-    MoveList moves = getAllLegalMoves(BLACK);
-    return (moves.size() == 0);
-}
-
-// Checks for stalemate: side to move is not in check, but has no legal moves
-bool Board::isStalemate(int sideToMove) {
-    if (isInCheck(sideToMove))
-        return false;
-
-    MoveList moves = getAllLegalMoves(sideToMove);
-    return (moves.size() == 0);
 }
 
 bool Board::isDraw() {
