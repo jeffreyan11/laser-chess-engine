@@ -23,13 +23,13 @@
 
 const int DEFAULT_HASH_SIZE = 16;
 const int MIN_HASH_SIZE = 1;
-const int MAX_HASH_SIZE = 65536;
+const int MAX_HASH_SIZE = 1024 * 1024;
 const int DEFAULT_MULTI_PV = 1;
 const int MIN_MULTI_PV = 1;
 const int MAX_MULTI_PV = 256;
 const int DEFAULT_THREADS = 1;
 const int MIN_THREADS = 1;
-const int MAX_THREADS = 32;
+const int MAX_THREADS = 128;
 const int DEFAULT_BUFFER_TIME = 100;
 const int MIN_BUFFER_TIME = 0;
 const int MAX_BUFFER_TIME = 1024;
