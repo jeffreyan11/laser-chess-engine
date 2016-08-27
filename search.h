@@ -35,7 +35,7 @@
  */
 struct TwoFoldStack {
 public:
-    uint64_t keys[128];
+    uint64_t keys[256];
     unsigned int length;
 
     TwoFoldStack() {
