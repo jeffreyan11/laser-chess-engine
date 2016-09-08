@@ -2031,7 +2031,7 @@ int Board::checkEndgameCases() {
             if (pieces[WHITE][PAWNS]) {
                 int value = KNOWN_WIN / 2;
                 // White pieces
-                for (int pieceID = 0; pieceID < 6; pieceID++) {
+                for (int pieceID = 0; pieceID < 5; pieceID++) {
                     uint64_t bitboard = pieces[0][pieceID];
                     // Invert the board for white side
                     bitboard = flipAcrossRanks(bitboard);
@@ -2041,14 +2041,15 @@ int Board::checkEndgameCases() {
                         value += getPSQTValue(1, pieceID, sq);
                     }
                 }
-                int bKing = bitScanForward(pieces[BLACK][KINGS]);
-                value -= getPSQTValue(1, KINGS, bKing);
+                int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
+                int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
+                value += scoreCornerDistance(WHITE, wKingSq, bKingSq);
                 return value;
             }
             if (pieces[BLACK][PAWNS]) {
                 int value = -KNOWN_WIN / 2;
                 // Black pieces
-                for (int pieceID = 0; pieceID < 6; pieceID++)  {
+                for (int pieceID = 0; pieceID < 5; pieceID++)  {
                     uint64_t bitboard = pieces[1][pieceID];
                     while (bitboard) {
                         int sq = bitScanForward(bitboard);
@@ -2056,8 +2057,9 @@ int Board::checkEndgameCases() {
                         value -= getPSQTValue(1, pieceID, sq);
                     }
                 }
-                int wKing = bitScanForward(pieces[WHITE][KINGS]);
-                value += getPSQTValue(1, KINGS, wKing);
+                int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
+                int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
+                value += scoreCornerDistance(BLACK, wKingSq, bKingSq);
                 return value;
             }
             // Two knights is a draw
@@ -2072,34 +2074,30 @@ int Board::checkEndgameCases() {
             // Mating with knight and bishop
             if (pieces[WHITE][KNIGHTS] && pieces[WHITE][BISHOPS]) {
                 int value = KNOWN_WIN;
-                int wKing = bitScanForward(pieces[WHITE][KINGS]);
-                int bKing = bitScanForward(pieces[BLACK][KINGS]);
-                value += getPSQTValue(1, KINGS, wKing) - getPSQTValue(1, KINGS, bKing);
+                int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
+                int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
+                value += scoreCornerDistance(WHITE, wKingSq, bKingSq);
 
                 // Light squared corners are H1 (7) and A8 (56)
-                if (pieces[WHITE][BISHOPS] & LIGHT) {
-                    value -= 20 * std::min(getManhattanDistance(bKing, 7), getManhattanDistance(bKing, 56));
-                }
+                if (pieces[WHITE][BISHOPS] & LIGHT)
+                    value -= 20 * std::min(getManhattanDistance(bKingSq, 7), getManhattanDistance(bKingSq, 56));
                 // Dark squared corners are A1 (0) and H8 (63)
-                else {
-                    value -= 20 * std::min(getManhattanDistance(bKing, 0), getManhattanDistance(bKing, 63));
-                }
+                else
+                    value -= 20 * std::min(getManhattanDistance(bKingSq, 0), getManhattanDistance(bKingSq, 63));
                 return value;
             }
             if (pieces[BLACK][KNIGHTS] && pieces[BLACK][BISHOPS]) {
                 int value = -KNOWN_WIN;
-                int wKing = bitScanForward(pieces[WHITE][KINGS]);
-                int bKing = bitScanForward(pieces[BLACK][KINGS]);
-                value += getPSQTValue(1, KINGS, wKing) - getPSQTValue(1, KINGS, bKing);
+                int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
+                int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
+                value += scoreCornerDistance(BLACK, wKingSq, bKingSq);
 
                 // Light squared corners are H1 (7) and A8 (56)
-                if (pieces[BLACK][BISHOPS] & LIGHT) {
-                    value += 20 * std::min(getManhattanDistance(wKing, 7), getManhattanDistance(wKing, 56));
-                }
+                if (pieces[BLACK][BISHOPS] & LIGHT)
+                    value += 20 * std::min(getManhattanDistance(wKingSq, 7), getManhattanDistance(wKingSq, 56));
                 // Dark squared corners are A1 (0) and H8 (63)
-                else {
-                    value += 20 * std::min(getManhattanDistance(wKing, 0), getManhattanDistance(wKing, 63));
-                }
+                else
+                    value += 20 * std::min(getManhattanDistance(wKingSq, 0), getManhattanDistance(wKingSq, 63));
                 return value;
             }
         }
@@ -2112,11 +2110,20 @@ int Board::checkEndgameCases() {
 // A function for scoring the most basic mating cases, when it is only necessary
 // to get the opposing king into a corner.
 int Board::scoreSimpleKnownWin(int winningColor) {
-    int wKing = bitScanForward(pieces[WHITE][KINGS]);
-    int bKing = bitScanForward(pieces[BLACK][KINGS]);
+    int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
+    int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
     int winScore = (winningColor == WHITE) ? KNOWN_WIN : -KNOWN_WIN;
-    return winScore + getPSQTValue(1, KINGS, wKing)
-                    - getPSQTValue(1, KINGS, bKing);
+    return winScore + scoreCornerDistance(winningColor, wKingSq, bKingSq);
+}
+
+inline int Board::scoreCornerDistance(int winningColor, int wKingSq, int bKingSq) {
+    int wf = wKingSq & 7;
+    int wr = wKingSq >> 3;
+    int bf = bKingSq & 7;
+    int br = bKingSq >> 3;
+    int wDist = std::min(wf, 7-wf) + std::min(wr, 7-wr);
+    int bDist = std::min(bf, 7-bf) + std::min(br, 7-br);
+    return (winningColor == WHITE) ? wDist - 2*bDist : 2*wDist - bDist;
 }
 
 // Gets the endgame factor, which adjusts the evaluation based on how much

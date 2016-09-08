@@ -172,6 +172,7 @@ private:
     int getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders, uint64_t kingSqs, int pawnScore);
     int checkEndgameCases();
     int scoreSimpleKnownWin(int winningColor);
+    int scoreCornerDistance(int winningColor, int wKingSq, int bKingSq);
     int getManhattanDistance(int sq1, int sq2);
     int getPSQTValue(int isEndgame, int pieceID, int sq);
 
