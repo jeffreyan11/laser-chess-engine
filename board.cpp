@@ -24,7 +24,6 @@
 #include <string>
 #include "board.h"
 #include "bbinit.h"
-#include "btables.h"
 #include "eval.h"
 
 

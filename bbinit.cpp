@@ -17,7 +17,6 @@
 */
 
 #include "bbinit.h"
-#include "btables.h"
 
 
 /**
