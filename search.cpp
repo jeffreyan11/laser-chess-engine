@@ -28,7 +28,9 @@
 #include "searchparams.h"
 #include "uci.h"
 
-using namespace std;
+using std::cout;
+using std::cerr;
+using std::endl;
 
 
 /**
@@ -138,7 +140,7 @@ extern bool isStop;
 volatile bool stopSignal;
 // Used to quit all threads
 static volatile int threadsRunning;
-mutex threadsRunningMutex;
+std::mutex threadsRunningMutex;
 
 // Values for UCI options
 unsigned int multiPV;
@@ -160,7 +162,7 @@ int adjustHashScore(int score, int plies);
 // Other utility functions
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
 void changePV(Move best, SearchPV *parent, SearchPV *child);
-string retrievePV(SearchPV *pvLine);
+std::string retrievePV(SearchPV *pvLine);
 int getSelectiveDepth();
 double getPercentage(uint64_t numerator, uint64_t denominator);
 void printStatistics();
@@ -202,7 +204,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     // Special case if there is only one legal move: use less search time,
     // only to get a rough PV/score
     if (legalMoves.size() == 1 && mode == TIME) {
-        searchParamsArray[0].timeLimit = min(searchParamsArray[0].timeLimit / 32, ONE_SECOND);
+        searchParamsArray[0].timeLimit = std::min(searchParamsArray[0].timeLimit / 32, ONE_SECOND);
     }
 
 
@@ -244,7 +246,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 // Get the index of the best move
                 // If depth >= 7 create threads for SMP
                 if (rootDepth >= 7 && numThreads > 1) {
-                    thread *threadPool = new thread[numThreads-1];
+                    std::thread *threadPool = new std::thread[numThreads-1];
                     threadsRunning = numThreads;
 
                     // Dummy variables since we don't care about these results
@@ -258,7 +260,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     for (int i = 1; i < numThreads; i++) {
                         // Copy over the two-fold stack to use
                         twoFoldPositions[i] = twoFoldPositions[0];
-                        threadPool[i-1] = thread(getBestMoveAtDepth, b,
+                        threadPool[i-1] = std::thread(getBestMoveAtDepth, b,
                             &legalMoves, rootDepth + (i % 2), aspAlpha, aspBeta,
                             dummyBestIndex+i-1, dummyBestScore+i-1,
                             multiPVNum-1, i, dummyPVLine+i-1);
@@ -290,7 +292,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
                 // Calculate values for printing
                 uint64_t nps = (uint64_t) ((double) getNodes() / timeSoFar);
-                string pvStr = retrievePV(&pvLine);
+                std::string pvStr = retrievePV(&pvLine);
 
                 // Handle fail highs and fail lows
                 // Fail low: no best move found
@@ -348,7 +350,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
             // Calculate values for printing
             timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
             uint64_t nps = (uint64_t) ((double) getNodes() / timeSoFar);
-            string pvStr = retrievePV(&pvLine);
+            std::string pvStr = retrievePV(&pvLine);
 
             // If we broke out before getting any new results, end the search
             if (bestMoveIndex == -1) {
@@ -491,9 +493,10 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
         // Output current move info to the GUI. Only do so if 5 seconds of
         // search have elapsed to avoid clutter
         double timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
+        uint64_t nps = (uint64_t) ((double) getNodes() / timeSoFar);
         if (threadID == 0 && timeSoFar * ONE_SECOND > 5 * ONE_SECOND)
             cout << "info depth " << depth << " currmove " << moveToString(legalMoves->get(i))
-                 << " currmovenumber " << i+1 << " nodes " << getNodes() << endl;
+                 << " currmovenumber " << i+1 << " nodes " << getNodes() << " nps " << nps << endl;
 
         Board copy = b->staticCopy();
         copy.doMove(legalMoves->get(i), color);
@@ -902,10 +905,10 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
                 reduction++;
 
             // Do not let search descend directly into q-search
-            reduction = min(reduction, depth - 2);
+            reduction = std::min(reduction, depth - 2);
             // Always start from a reduction of 1 and increase at most 1 depth
             // every 2 moves
-            reduction = min(reduction, 1 + (int) (movesSearched - 3) / 2);
+            reduction = std::min(reduction, 1 + (int) (movesSearched - 3) / 2);
         }
 
 
@@ -1485,8 +1488,8 @@ void changePV(Move best, SearchPV *parent, SearchPV *child) {
 }
 
 // Recover PV for outputting to terminal / GUI
-string retrievePV(SearchPV *pvLine) {
-    string pvStr = moveToString(pvLine->pv[0]);
+std::string retrievePV(SearchPV *pvLine) {
+    std::string pvStr = moveToString(pvLine->pv[0]);
     for (int i = 1; i < pvLine->pvLength; i++) {
         pvStr += " " + moveToString(pvLine->pv[i]);
     }
@@ -1533,18 +1536,18 @@ void printStatistics() {
         searchStats.evalCacheHits +=    searchStatsArray[i].evalCacheHits;
     }
 
-    cerr << setw(22) << "Hash hit rate: " << getPercentage(searchStats.hashHits, searchStats.hashProbes)
+    cerr << std::setw(22) << "Hash hit rate: " << getPercentage(searchStats.hashHits, searchStats.hashProbes)
          << '%' << " of " << searchStats.hashProbes << " probes" << endl;
-    cerr << setw(22) << "Hash score cut rate: " << getPercentage(searchStats.hashScoreCuts, searchStats.hashHits)
+    cerr << std::setw(22) << "Hash score cut rate: " << getPercentage(searchStats.hashScoreCuts, searchStats.hashHits)
          << '%' << " of " << searchStats.hashHits << " hash hits" << endl;
-    cerr << setw(22) << "Hash move cut rate: " << getPercentage(searchStats.hashMoveCuts, searchStats.hashMoveAttempts)
+    cerr << std::setw(22) << "Hash move cut rate: " << getPercentage(searchStats.hashMoveCuts, searchStats.hashMoveAttempts)
          << '%' << " of " << searchStats.hashMoveAttempts << " hash moves" << endl;
-    cerr << setw(22) << "First fail high rate: " << getPercentage(searchStats.firstFailHighs, searchStats.failHighs)
+    cerr << std::setw(22) << "First fail high rate: " << getPercentage(searchStats.firstFailHighs, searchStats.failHighs)
          << '%' << " of " << searchStats.failHighs << " fail highs" << endl;
-    cerr << setw(22) << "QS Nodes: " << searchStats.qsNodes << " ("
+    cerr << std::setw(22) << "QS Nodes: " << searchStats.qsNodes << " ("
          << getPercentage(searchStats.qsNodes, searchStats.nodes) << '%' << ")" << endl;
-    cerr << setw(22) << "QS FFH rate: " << getPercentage(searchStats.qsFirstFailHighs, searchStats.qsFailHighs)
+    cerr << std::setw(22) << "QS FFH rate: " << getPercentage(searchStats.qsFirstFailHighs, searchStats.qsFailHighs)
          << '%' << " of " << searchStats.qsFailHighs << " qs fail highs" << endl;
-    cerr << setw(22) << "Eval cache hit rate: " << getPercentage(searchStats.evalCacheHits, searchStats.evalCacheProbes)
+    cerr << std::setw(22) << "Eval cache hit rate: " << getPercentage(searchStats.evalCacheHits, searchStats.evalCacheProbes)
          << '%' << " of " << searchStats.evalCacheProbes << " probes" << endl;
 }

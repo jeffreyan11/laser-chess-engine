@@ -28,10 +28,14 @@
 #include "board.h"
 #include "search.h"
 #include "uci.h"
-using namespace std;
+
+using std::cout;
+using std::cerr;
+using std::endl;
+using std::string;
 
 const string STARTPOS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-const vector<string> positions = {
+const std::vector<string> positions = {
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
     "r2q4/pp1k1pp1/2p1r1np/5p2/2N5/1P5Q/5PPP/3RR1K1 b - -",
     "5k2/1qr2pp1/2Np1n1r/QB2p3/2R4p/3PPRPb/PP2P2P/6K1 w - -",
@@ -50,8 +54,8 @@ const vector<string> positions = {
 };
 
 
-void setPosition(string &input, vector<string> &inputVector, Board &board);
-vector<string> split(const string &s, char d);
+void setPosition(string &input, std::vector<string> &inputVector, Board &board);
+std::vector<string> split(const string &s, char d);
 string boardToString(Board &board);
 void clearAll(Board &board);
 uint64_t perft(Board &b, int color, int depth, uint64_t &captures);
@@ -71,11 +75,11 @@ int main() {
     setNumThreads(DEFAULT_THREADS);
 
     string input;
-    vector<string> inputVector;
+    std::vector<string> inputVector;
     string name = "Laser";
     string version = "1.2 beta";
     string author = "Jeffrey An and Michael An";
-    thread searchThread;
+    std::thread searchThread;
     Move bestMove = NULL_MOVE;
 
     Board board = fenToBoard(STARTPOS);
@@ -83,9 +87,9 @@ int main() {
     cout << name << " " << version << " by " << author << endl;
 
     while (input != "quit") {
-        getline(cin, input);
+        getline(std::cin, input);
         inputVector = split(input, ' ');
-        cin.clear();
+        std::cin.clear();
 
         // Ignore all input other than "stop" while running a search.
         if (!isStop && input != "stop")
@@ -111,17 +115,17 @@ int main() {
         else if (input.substr(0, 8) == "position") setPosition(input, inputVector, board);
         else if (input.substr(0, 2) == "go" && isStop) {
             int mode = DEPTH, value = 1;
-            vector<string>::iterator it;
+            std::vector<string>::iterator it;
 
             if (input.find("movetime") != string::npos && inputVector.size() > 2) {
                 mode = MOVETIME;
-                value = stoi(inputVector.at(2));
+                value = std::stoi(inputVector.at(2));
             }
             else if (input.find("depth") != string::npos && inputVector.size() > 2) {
                 mode = DEPTH;
                 it = find(inputVector.begin(), inputVector.end(), "depth");
                 it++;
-                value = min(MAX_DEPTH, stoi(*it));
+                value = std::min(MAX_DEPTH, std::stoi(*it));
             }
             else if (input.find("infinite") != string::npos) {
                 mode = DEPTH;
@@ -134,7 +138,7 @@ int main() {
                 it = find(inputVector.begin(), inputVector.end(),
                         (color == WHITE) ? "wtime" : "btime");
                 it++;
-                value = stoi(*it);
+                value = std::stoi(*it);
                 value -= BUFFER_TIME;
 
                 int maxValue = value / MAX_TIME_FACTOR;
@@ -143,8 +147,8 @@ int main() {
                 it = find(inputVector.begin(), inputVector.end(), "movestogo");
                 if (it != inputVector.end()) {
                     it++;
-                    int movesToGo = stoi(*it);
-                    value /= max(movesToGo, (int)MAX_TIME_FACTOR + 1);
+                    int movesToGo = std::stoi(*it);
+                    value /= std::max(movesToGo, (int)MAX_TIME_FACTOR + 1);
                 }
                 else value /= MOVE_HORIZON;
 
@@ -153,14 +157,14 @@ int main() {
                         (color == WHITE) ? "winc" : "binc");
                 if (it != inputVector.end()) {
                     it++;
-                    value += stoi(*it);
-                    value = min(value, maxValue);
+                    value += std::stoi(*it);
+                    value = std::min(value, maxValue);
                 }
             }
 
             bestMove = NULL_MOVE;
             isStop = false;
-            searchThread = thread(getBestMove, &board, mode, value, &bestMove);
+            searchThread = std::thread(getBestMove, &board, mode, value, &bestMove);
             searchThread.detach();
         }
 
@@ -171,7 +175,7 @@ int main() {
             }
             else {
                 if (inputVector.at(2) == "Threads" || inputVector.at(2) == "threads") {
-                    int threads = stoi(inputVector.at(4));
+                    int threads = std::stoi(inputVector.at(4));
                     if (threads < MIN_THREADS)
                         threads = MIN_THREADS;
                     if (threads > MAX_THREADS)
@@ -179,7 +183,7 @@ int main() {
                     setNumThreads(threads);
                 }
                 else if (inputVector.at(2) == "Hash" || inputVector.at(2) == "hash") {
-                    int MB = stoi(inputVector.at(4));
+                    int MB = std::stoi(inputVector.at(4));
                     if (MB < MIN_HASH_SIZE)
                         MB = MIN_HASH_SIZE;
                     if (MB > MAX_HASH_SIZE)
@@ -187,7 +191,7 @@ int main() {
                     setHashSize((uint64_t) MB);
                 }
                 else if (inputVector.at(2) == "EvalCache" || inputVector.at(2) == "evalcache") {
-                    int MB = stoi(inputVector.at(4));
+                    int MB = std::stoi(inputVector.at(4));
                     if (MB < MIN_HASH_SIZE)
                         MB = MIN_HASH_SIZE;
                     if (MB > MAX_HASH_SIZE)
@@ -195,7 +199,7 @@ int main() {
                     setEvalCacheSize((uint64_t) MB);
                 }
                 else if (inputVector.at(2) == "MultiPV" || inputVector.at(2) == "multipv") {
-                    int multiPV = stoi(inputVector.at(4));
+                    int multiPV = std::stoi(inputVector.at(4));
                     if (multiPV < MIN_MULTI_PV)
                         multiPV = MIN_MULTI_PV;
                     if (multiPV > MAX_MULTI_PV)
@@ -203,7 +207,7 @@ int main() {
                     setMultiPV((unsigned int) multiPV);
                 }
                 else if (inputVector.at(2) == "BufferTime" || inputVector.at(2) == "buffertime") {
-                    BUFFER_TIME = stoi(inputVector.at(4));
+                    BUFFER_TIME = std::stoi(inputVector.at(4));
                     if (BUFFER_TIME < MIN_BUFFER_TIME)
                         BUFFER_TIME = MIN_BUFFER_TIME;
                     if (BUFFER_TIME > MAX_BUFFER_TIME)
@@ -217,7 +221,7 @@ int main() {
         //----------------------------Non-UCI Commands--------------------------
         else if (input == "board") cerr << boardToString(board);
         else if (input.substr(0, 5) == "perft" && inputVector.size() == 2) {
-            int depth = stoi(inputVector.at(1));
+            int depth = std::stoi(inputVector.at(1));
 
             uint64_t captures = 0;
             auto startTime = ChessClock::now();
@@ -261,7 +265,7 @@ int main() {
     }
 }
 
-void setPosition(string &input, vector<string> &inputVector, Board &board) {
+void setPosition(string &input, std::vector<string> &inputVector, Board &board) {
     string pos;
 
     if (input.find("startpos") != string::npos)
@@ -283,7 +287,7 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
 
     if (input.find("moves") != string::npos) {
         string moveList = input.substr(input.find("moves") + 6);
-        vector<string> moveVector = split(moveList, ' ');
+        std::vector<string> moveVector = split(moveList, ' ');
 
         for (unsigned i = 0; i < moveVector.size(); i++) {
             // moveStr contains the move in long algebraic notation
@@ -328,9 +332,9 @@ void setPosition(string &input, vector<string> &inputVector, Board &board) {
 }
 
 // Splits a string s with delimiter d.
-vector<string> split(const string &s, char d) {
-    vector<string> v;
-    stringstream ss(s);
+std::vector<string> split(const string &s, char d) {
+    std::vector<string> v;
+    std::stringstream ss(s);
     string item;
     while (getline(ss, item, d)) {
         v.push_back(item);
@@ -339,8 +343,8 @@ vector<string> split(const string &s, char d) {
 }
 
 Board fenToBoard(string s) {
-    vector<string> components = split(s, ' ');
-    vector<string> rows = split(components.at(0), '/');
+    std::vector<string> components = split(s, ' ');
+    std::vector<string> rows = split(components.at(0), '/');
     int mailbox[64];
     int sqCounter = -1;
     string pieceString = "PNBRQKpnbrqk";
@@ -363,8 +367,8 @@ Board fenToBoard(string s) {
     bool blackCanQCastle = (components.at(2).find("q") != string::npos);
     int epCaptureFile = (components.at(3) == "-") ? NO_EP_POSSIBLE
         : components.at(3).at(0) - 'a';
-    int fiftyMoveCounter = (components.size() == 6) ? stoi(components.at(4)) : 0;
-    int moveNumber = (components.size() == 6) ? stoi(components.at(5)) : 1;
+    int fiftyMoveCounter = (components.size() == 6) ? std::stoi(components.at(4)) : 0;
+    int moveNumber = (components.size() == 6) ? std::stoi(components.at(5)) : 1;
     return Board(mailbox, whiteCanKCastle, blackCanKCastle, whiteCanQCastle,
             blackCanQCastle, epCaptureFile, fiftyMoveCounter, moveNumber,
             playerToMove);
