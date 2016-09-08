@@ -89,12 +89,12 @@ uint64_t flipAcrossRanks(uint64_t bb) {
 
 // Given a start time_point, returns the seconds elapsed using C++11's
 // std::chrono::high_resolution_clock
-double getTimeElapsed(ChessTime startTime) {
+uint64_t getTimeElapsed(ChessTime startTime) {
     auto endTime = ChessClock::now();
-    std::chrono::duration<double> timeSpan =
-        std::chrono::duration_cast<std::chrono::duration<double>>(
+    std::chrono::milliseconds timeSpan =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
         endTime-startTime);
-    return timeSpan.count();
+    return (uint64_t) timeSpan.count() + 1;
 }
 
 std::string moveToString(Move m) {

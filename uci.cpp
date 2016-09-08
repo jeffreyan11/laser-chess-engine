@@ -228,12 +228,12 @@ int main() {
 
             uint64_t nodes = perft(board, board.getPlayerToMove(), depth, captures);
 
-            double time = getTimeElapsed(startTime);
+            uint64_t time = getTimeElapsed(startTime);
 
             cerr << "Nodes: " << nodes << endl;
             cerr << "Captures: " << captures << endl;
-            cerr << "Time: " << (int)(time * ONE_SECOND) << endl;
-            cerr << "Nodes/second: " << (uint64_t)(nodes / time) << endl;
+            cerr << "Time: " << time << endl;
+            cerr << "Nodes/second: " << 1000 * nodes / time << endl;
         }
         else if (input == "bench") {
             auto startTime = ChessClock::now();
@@ -249,13 +249,13 @@ int main() {
                 totalNodes += getNodes();
             }
 
-            double time = getTimeElapsed(startTime);
+            uint64_t time = getTimeElapsed(startTime);
 
             clearAll(board);
 
             cerr << "Nodes: " << totalNodes << endl;
-            cerr << "Time: " << (int)(time * ONE_SECOND) << endl;
-            cerr << "Nodes/second: " << (uint64_t)(totalNodes / time) << endl;
+            cerr << "Time: " << time << endl;
+            cerr << "Nodes/second: " << 1000 * totalNodes / time << endl;
         }
         else if (input == "eval") {
             board.evaluate<true>();

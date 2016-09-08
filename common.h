@@ -54,7 +54,7 @@ const int MAX_MOVES = 256;
 typedef std::chrono::high_resolution_clock ChessClock;
 typedef std::chrono::high_resolution_clock::time_point ChessTime;
 
-double getTimeElapsed(ChessTime startTime);
+uint64_t getTimeElapsed(ChessTime startTime);
 
 // Bitboard methods
 int bitScanForward(uint64_t bb);

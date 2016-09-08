@@ -199,7 +199,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                                                     : (mode == MOVETIME) ? value
                                                                          : MAX_TIME;
     searchParamsArray[0].startTime = ChessClock::now();
-    double timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
+    uint64_t timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
 
     // Special case if there is only one legal move: use less search time,
     // only to get a rough PV/score
@@ -291,7 +291,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
                 timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
                 // Calculate values for printing
-                uint64_t nps = (uint64_t) ((double) getNodes() / timeSoFar);
+                uint64_t nps = 1000 * getNodes() / timeSoFar;
                 std::string pvStr = retrievePV(&pvLine);
 
                 // Handle fail highs and fail lows
@@ -302,7 +302,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     cout << " score";
                     cout << " cp " << bestScore * 100 / PAWN_VALUE_EG << " upperbound";
 
-                    cout << " time " << (int) (timeSoFar * ONE_SECOND)
+                    cout << " time " << timeSoFar
                          << " nodes " << getNodes() << " nps " << nps
                          << " hashfull " << 1000 * transpositionTable.keys
                                                  / transpositionTable.getSize()
@@ -320,7 +320,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     cout << " score";
                     cout << " cp " << bestScore * 100 / PAWN_VALUE_EG << " lowerbound";
 
-                    cout << " time " << (int) (timeSoFar * ONE_SECOND)
+                    cout << " time " << timeSoFar
                          << " nodes " << getNodes() << " nps " << nps
                          << " hashfull " << 1000 * transpositionTable.keys
                                                  / transpositionTable.getSize()
@@ -336,7 +336,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     if ((int) multiPVNum - 1 == bestMoveIndex
                      && *bestMove == prevBest
                      && mode == TIME
-                     && (timeSoFar * ONE_SECOND >= value * TIME_FACTOR))
+                     && (timeSoFar >= value * TIME_FACTOR))
                         break;
 
                     legalMoves.swap(multiPVNum-1, bestMoveIndex);
@@ -349,14 +349,14 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
             // Calculate values for printing
             timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
-            uint64_t nps = (uint64_t) ((double) getNodes() / timeSoFar);
+            uint64_t nps = 1000 * getNodes() / timeSoFar;
             std::string pvStr = retrievePV(&pvLine);
 
             // If we broke out before getting any new results, end the search
             if (bestMoveIndex == -1) {
                 cout << "info depth " << rootDepth-1;
                 cout << " seldepth " << getSelectiveDepth();
-                cout << " time " << (int) (timeSoFar * ONE_SECOND)
+                cout << " time " << timeSoFar
                      << " nodes " << getNodes() << " nps " << nps
                      << " hashfull " << 1000 * transpositionTable.keys
                                              / transpositionTable.getSize()
@@ -388,7 +388,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 // Scale score into centipawns using our internal pawn value
                 cout << " cp " << bestScore * 100 / PAWN_VALUE_EG;
 
-            cout << " time " << (int) (timeSoFar * ONE_SECOND)
+            cout << " time " << timeSoFar
                  << " nodes " << getNodes() << " nps " << nps
                  << " hashfull " << 1000 * transpositionTable.keys
                                          / transpositionTable.getSize()
@@ -417,8 +417,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
         // Easymove confirmation
         if (mode == TIME && multiPV == 1
-         && timeSoFar * ONE_SECOND > value / 16
-         && timeSoFar * ONE_SECOND < value / 2
+         && timeSoFar > (uint64_t) value / 16
+         && timeSoFar < (uint64_t) value / 2
          && abs(bestScore) < MATE_SCORE - MAX_DEPTH) {
             if ((*bestMove == easyMoveInfo.prevBest && pvStreak >= 7)
                 || pvStreak >= 10) {
@@ -440,9 +440,9 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     }
     // Conditions for iterative deepening loop
     while (!isStop
-        && ((mode == TIME && (timeSoFar * ONE_SECOND < value * TIME_FACTOR)
+        && ((mode == TIME && (timeSoFar < (uint64_t) value * TIME_FACTOR)
                           && (rootDepth <= MAX_DEPTH))
-         || (mode == MOVETIME && timeSoFar < value)
+         || (mode == MOVETIME && timeSoFar < (uint64_t) value)
          || (mode == DEPTH && rootDepth <= value)));
 
     // If we found a candidate easymove for the next ply this search
@@ -492,9 +492,9 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
     for (unsigned int i = startMove; i < legalMoves->size(); i++) {
         // Output current move info to the GUI. Only do so if 5 seconds of
         // search have elapsed to avoid clutter
-        double timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
-        uint64_t nps = (uint64_t) ((double) getNodes() / timeSoFar);
-        if (threadID == 0 && timeSoFar * ONE_SECOND > 5 * ONE_SECOND)
+        uint64_t timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
+        uint64_t nps = 1000 * getNodes() / timeSoFar;
+        if (threadID == 0 && timeSoFar > 5 * ONE_SECOND)
             cout << "info depth " << depth << " currmove " << moveToString(legalMoves->get(i))
                  << " currmovenumber " << i+1 << " nodes " << getNodes() << " nps " << nps << endl;
 
@@ -809,8 +809,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
     for (Move m = moveSorter.nextMove(); m != NULL_MOVE;
               m = moveSorter.nextMove()) {
         // Check for a timeout
-        double timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
-        if (timeSoFar * ONE_SECOND > searchParamsArray[0].timeLimit)
+        uint64_t timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
+        if (timeSoFar > searchParamsArray[0].timeLimit)
             isStop = stopSignal = true;
         // Stop condition to help break out as quickly as possible
         if (isStop || stopSignal)
