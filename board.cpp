@@ -1352,20 +1352,20 @@ int Board::evaluate() {
         // Invert the board for white side
         bitboard = flipAcrossRanks(bitboard);
         while (bitboard) {
-            int i = bitScanForward(bitboard);
+            int sq = bitScanForward(bitboard);
             bitboard &= bitboard - 1;
-            valueMg += midgamePieceValues[pieceID][i];
-            valueEg += endgamePieceValues[pieceID][i];
+            valueMg += getPSQTValue(0, pieceID, sq);
+            valueEg += getPSQTValue(1, pieceID, sq);
         }
     }
     // Black pieces
     for (int pieceID = 0; pieceID < 6; pieceID++)  {
         uint64_t bitboard = pieces[BLACK][pieceID];
         while (bitboard) {
-            int i = bitScanForward(bitboard);
+            int sq = bitScanForward(bitboard);
             bitboard &= bitboard - 1;
-            valueMg -= midgamePieceValues[pieceID][i];
-            valueEg -= endgamePieceValues[pieceID][i];
+            valueMg -= getPSQTValue(0, pieceID, sq);
+            valueEg -= getPSQTValue(1, pieceID, sq);
         }
     }
 
@@ -2002,11 +2002,11 @@ int Board::checkEndgameCases() {
     if (numPieces == 1) {
         if (pieces[WHITE][PAWNS]) {
             int wPawn = bitScanForward(flipAcrossRanks(pieces[WHITE][PAWNS]));
-            return 3 * PAWN_VALUE_EG / 2 + endgamePieceValues[PAWNS][wPawn];
+            return 3 * PAWN_VALUE_EG / 2 + getPSQTValue(1, PAWNS, wPawn);
         }
         if (pieces[BLACK][PAWNS]) {
             int bPawn = bitScanForward(pieces[BLACK][PAWNS]);
-            return -3 * PAWN_VALUE_EG / 2 - endgamePieceValues[PAWNS][bPawn];
+            return -3 * PAWN_VALUE_EG / 2 - getPSQTValue(1, PAWNS, bPawn);
         }
     }
 
@@ -2036,13 +2036,13 @@ int Board::checkEndgameCases() {
                     // Invert the board for white side
                     bitboard = flipAcrossRanks(bitboard);
                     while (bitboard) {
-                        int i = bitScanForward(bitboard);
+                        int sq = bitScanForward(bitboard);
                         bitboard &= bitboard - 1;
-                        value += endgamePieceValues[pieceID][i];
+                        value += getPSQTValue(1, pieceID, sq);
                     }
                 }
                 int bKing = bitScanForward(pieces[BLACK][KINGS]);
-                value -= endgamePieceValues[KINGS][bKing];
+                value -= getPSQTValue(1, KINGS, bKing);
                 return value;
             }
             if (pieces[BLACK][PAWNS]) {
@@ -2051,13 +2051,13 @@ int Board::checkEndgameCases() {
                 for (int pieceID = 0; pieceID < 6; pieceID++)  {
                     uint64_t bitboard = pieces[1][pieceID];
                     while (bitboard) {
-                        int i = bitScanForward(bitboard);
+                        int sq = bitScanForward(bitboard);
                         bitboard &= bitboard - 1;
-                        value -= endgamePieceValues[pieceID][i];
+                        value -= getPSQTValue(1, pieceID, sq);
                     }
                 }
                 int wKing = bitScanForward(pieces[WHITE][KINGS]);
-                value += endgamePieceValues[KINGS][wKing];
+                value += getPSQTValue(1, KINGS, wKing);
                 return value;
             }
             // Two knights is a draw
@@ -2074,7 +2074,7 @@ int Board::checkEndgameCases() {
                 int value = KNOWN_WIN;
                 int wKing = bitScanForward(pieces[WHITE][KINGS]);
                 int bKing = bitScanForward(pieces[BLACK][KINGS]);
-                value += endgamePieceValues[KINGS][wKing] - endgamePieceValues[KINGS][bKing];
+                value += getPSQTValue(1, KINGS, wKing) - getPSQTValue(1, KINGS, bKing);
 
                 // Light squared corners are H1 (7) and A8 (56)
                 if (pieces[WHITE][BISHOPS] & LIGHT) {
@@ -2090,7 +2090,7 @@ int Board::checkEndgameCases() {
                 int value = -KNOWN_WIN;
                 int wKing = bitScanForward(pieces[WHITE][KINGS]);
                 int bKing = bitScanForward(pieces[BLACK][KINGS]);
-                value += endgamePieceValues[KINGS][wKing] - endgamePieceValues[KINGS][bKing];
+                value += getPSQTValue(1, KINGS, wKing) - getPSQTValue(1, KINGS, bKing);
 
                 // Light squared corners are H1 (7) and A8 (56)
                 if (pieces[BLACK][BISHOPS] & LIGHT) {
@@ -2115,8 +2115,8 @@ int Board::scoreSimpleKnownWin(int winningColor) {
     int wKing = bitScanForward(pieces[WHITE][KINGS]);
     int bKing = bitScanForward(pieces[BLACK][KINGS]);
     int winScore = (winningColor == WHITE) ? KNOWN_WIN : -KNOWN_WIN;
-    return winScore + endgamePieceValues[KINGS][wKing]
-                    - endgamePieceValues[KINGS][bKing];
+    return winScore + getPSQTValue(1, KINGS, wKing)
+                    - getPSQTValue(1, KINGS, bKing);
 }
 
 // Gets the endgame factor, which adjusts the evaluation based on how much
@@ -2143,6 +2143,12 @@ uint64_t Board::getNonPawnMaterial(int color) {
 
 int Board::getManhattanDistance(int sq1, int sq2) {
     return std::abs((sq1 >> 3) - (sq2 >> 3)) + std::abs((sq1 & 7) - (sq2 & 7));
+}
+
+inline int Board::getPSQTValue(int isEndgame, int pieceID, int sq) {
+    int f = sq & 7;
+    sq = ((sq >> 3) << 2) + std::min(f, 7-f);
+    return pieceSquareTable[isEndgame][pieceID][sq];
 }
 
 // Given a bitboard of attackers, finds the least valuable attacker of color and

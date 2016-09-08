@@ -173,6 +173,7 @@ private:
     int checkEndgameCases();
     int scoreSimpleKnownWin(int winningColor);
     int getManhattanDistance(int sq1, int sq2);
+    int getPSQTValue(int isEndgame, int pieceID, int sq);
 
     // Move generation
     // Takes into account blocking for sliders, but otherwise leaves
