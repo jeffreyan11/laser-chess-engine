@@ -2027,39 +2027,53 @@ int Board::checkEndgameCases() {
         // Otherwise, one side has both pieces
         else {
             // Pawn + anything is a win
-            // TODO Not always true, also needs code simplification
+            // TODO bishop can block losing king's path to queen square
             if (pieces[WHITE][PAWNS]) {
-                int value = KNOWN_WIN / 2;
-                // White pieces
-                for (int pieceID = 0; pieceID < 5; pieceID++) {
-                    uint64_t bitboard = pieces[0][pieceID];
-                    // Invert the board for white side
-                    bitboard = flipAcrossRanks(bitboard);
-                    while (bitboard) {
-                        int sq = bitScanForward(bitboard);
-                        bitboard &= bitboard - 1;
-                        value += getPSQTValue(1, pieceID, sq);
-                    }
-                }
+                int value = KNOWN_WIN;
                 int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
                 int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
+                int wPawnSq = bitScanForward(pieces[WHITE][PAWNS]);
+                int wf = wPawnSq & 7;
+                int wr = wPawnSq >> 3;
+                if ((wf == 0 || wf == 7) && count(pieces[WHITE][PAWNS]) == 1
+                 && pieces[WHITE][BISHOPS]
+                 && ((wf == 0 && (pieces[WHITE][BISHOPS] & DARK))
+                  || (wf == 7 && (pieces[WHITE][BISHOPS] & LIGHT)))) {
+                    int wDist = std::max(7 - (wKingSq >> 3), std::abs((wKingSq & 7) - wf));
+                    int bDist = std::max(7 - (bKingSq >> 3), std::abs((bKingSq & 7) - wf));
+                    int wQueenDist = std::min(7-wr, 5) + 1;
+                    if (playerToMove == BLACK)
+                        bDist--;
+                    if (bDist < std::min(wDist, wQueenDist))
+                        return 0;
+                }
+
+                value += 8 * wr * wr;
                 value += scoreCornerDistance(WHITE, wKingSq, bKingSq);
                 return value;
             }
             if (pieces[BLACK][PAWNS]) {
-                int value = -KNOWN_WIN / 2;
-                // Black pieces
-                for (int pieceID = 0; pieceID < 5; pieceID++)  {
-                    uint64_t bitboard = pieces[1][pieceID];
-                    while (bitboard) {
-                        int sq = bitScanForward(bitboard);
-                        bitboard &= bitboard - 1;
-                        value -= getPSQTValue(1, pieceID, sq);
-                    }
-                }
+                int value = KNOWN_WIN;
                 int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
                 int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
-                value += scoreCornerDistance(BLACK, wKingSq, bKingSq);
+                int bPawnSq = bitScanForward(pieces[BLACK][PAWNS]);
+                int bf = bPawnSq & 7;
+                int br = bPawnSq >> 3;
+                if ((bf == 0 || bf == 7) && count(pieces[BLACK][PAWNS]) == 1
+                 && pieces[BLACK][BISHOPS]
+                 && ((bf == 0 && (pieces[BLACK][BISHOPS] & DARK))
+                  || (bf == 7 && (pieces[BLACK][BISHOPS] & LIGHT)))) {
+                    int wDist = std::max((wKingSq >> 3), std::abs((wKingSq & 7) - bf));
+                    int bDist = std::max((bKingSq >> 3), std::abs((bKingSq & 7) - bf));
+                    int bQueenDist = std::min(br, 5) + 1;
+                    if (playerToMove == WHITE)
+                        wDist--;
+                    if (wDist < std::min(bDist, bQueenDist))
+                        return 0;
+                }
+
+                value -= 8 * br * br;
+                value += scoreCornerDistance(WHITE, wKingSq, bKingSq);
                 return value;
             }
             // Two knights is a draw
