@@ -2035,8 +2035,7 @@ int Board::checkEndgameCases() {
                 int wPawnSq = bitScanForward(pieces[WHITE][PAWNS]);
                 int wf = wPawnSq & 7;
                 int wr = wPawnSq >> 3;
-                if ((wf == 0 || wf == 7) && count(pieces[WHITE][PAWNS]) == 1
-                 && pieces[WHITE][BISHOPS]
+                if (pieces[WHITE][BISHOPS]
                  && ((wf == 0 && (pieces[WHITE][BISHOPS] & DARK))
                   || (wf == 7 && (pieces[WHITE][BISHOPS] & LIGHT)))) {
                     int wDist = std::max(7 - (wKingSq >> 3), std::abs((wKingSq & 7) - wf));
@@ -2053,16 +2052,15 @@ int Board::checkEndgameCases() {
                 return value;
             }
             if (pieces[BLACK][PAWNS]) {
-                int value = KNOWN_WIN;
+                int value = -KNOWN_WIN;
                 int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
                 int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
                 int bPawnSq = bitScanForward(pieces[BLACK][PAWNS]);
                 int bf = bPawnSq & 7;
                 int br = bPawnSq >> 3;
-                if ((bf == 0 || bf == 7) && count(pieces[BLACK][PAWNS]) == 1
-                 && pieces[BLACK][BISHOPS]
-                 && ((bf == 0 && (pieces[BLACK][BISHOPS] & DARK))
-                  || (bf == 7 && (pieces[BLACK][BISHOPS] & LIGHT)))) {
+                if (pieces[BLACK][BISHOPS]
+                 && ((bf == 0 && (pieces[BLACK][BISHOPS] & LIGHT))
+                  || (bf == 7 && (pieces[BLACK][BISHOPS] & DARK)))) {
                     int wDist = std::max((wKingSq >> 3), std::abs((wKingSq & 7) - bf));
                     int bDist = std::max((bKingSq >> 3), std::abs((bKingSq & 7) - bf));
                     int bQueenDist = std::min(br, 5) + 1;
