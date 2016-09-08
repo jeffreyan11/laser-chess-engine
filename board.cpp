@@ -1524,16 +1524,16 @@ int Board::evaluate() {
     //------------------------------Minor Pieces--------------------------------
     // Bishops tend to be worse if too many pawns are on squares of their color
     if (pieces[WHITE][BISHOPS] & LIGHT) {
-        value -= BISHOP_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & LIGHT);
+        value += BISHOP_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & LIGHT);
     }
     if (pieces[WHITE][BISHOPS] & DARK) {
-        value -= BISHOP_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & DARK);
+        value += BISHOP_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & DARK);
     }
     if (pieces[BLACK][BISHOPS] & LIGHT) {
-        value += BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & LIGHT);
+        value -= BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & LIGHT);
     }
     if (pieces[BLACK][BISHOPS] & DARK) {
-        value += BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & DARK);
+        value -= BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & DARK);
     }
 
     // Knights do better when the opponent has many pawns
@@ -1569,12 +1569,12 @@ int Board::evaluate() {
      && (pieces[WHITE][PAWNS] & 0x400)
      && (pieces[WHITE][PAWNS] & 0x8000000)
     && !(pieces[WHITE][PAWNS] & 0x10000000))
-        value -= KNIGHT_C3_CLOSED_PENALTY;
+        value += KNIGHT_C3_CLOSED_PENALTY;
     if ((pieces[BLACK][KNIGHTS] & 0x40000000000)
      && (pieces[BLACK][PAWNS] & 0x4000000000000)
      && (pieces[BLACK][PAWNS] & 0x800000000)
     && !(pieces[BLACK][PAWNS] & 0x1000000000))
-        value += KNIGHT_C3_CLOSED_PENALTY;
+        value -= KNIGHT_C3_CLOSED_PENALTY;
 
 
     //-------------------------------Rooks--------------------------------------
@@ -1650,7 +1650,7 @@ int Board::evaluate() {
         if (!(pathToQueen & wBlock))
             whitePawnScore += rFactor * FREE_PROMOTION_BONUS;
         else if ((INDEX_TO_BIT[passerSq] << 8) & wBlock)
-            whitePawnScore -= rFactor * BLOCKADED_PASSER_PENALTY;
+            whitePawnScore += rFactor * BLOCKADED_PASSER_PENALTY;
         if ((pathToQueen & wAttackMap) == pathToQueen)
             whitePawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
         else if ((INDEX_TO_BIT[passerSq] << 8) & wAttackMap)
@@ -1679,7 +1679,7 @@ int Board::evaluate() {
         if (!(pathToQueen & bBlock))
             blackPawnScore += rFactor * FREE_PROMOTION_BONUS;
         else if ((INDEX_TO_BIT[passerSq] >> 8) & bBlock)
-            blackPawnScore -= rFactor * BLOCKADED_PASSER_PENALTY;
+            blackPawnScore += rFactor * BLOCKADED_PASSER_PENALTY;
         if ((pathToQueen & bAttackMap) == pathToQueen)
             blackPawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
         else if ((INDEX_TO_BIT[passerSq] >> 8) & bAttackMap)
@@ -1698,8 +1698,8 @@ int Board::evaluate() {
 
     // Doubled pawns
     for (int i = 0; i < 8; i++) {
-        whitePawnScore -= DOUBLED_PENALTY[wPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[pieceCounts[WHITE][PAWNS]];
-        blackPawnScore -= DOUBLED_PENALTY[bPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[pieceCounts[BLACK][PAWNS]];
+        whitePawnScore += DOUBLED_PENALTY[wPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[pieceCounts[WHITE][PAWNS]];
+        blackPawnScore += DOUBLED_PENALTY[bPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[pieceCounts[BLACK][PAWNS]];
     }
 
     // Isolated pawns
@@ -1718,20 +1718,20 @@ int Board::evaluate() {
     bp &= ~((bp >> 1) | (bp << 1));
     int whiteIsolated = count(wp);
     int blackIsolated = count(bp);
-    whitePawnScore -= ISOLATED_PENALTY * whiteIsolated;
-    blackPawnScore -= ISOLATED_PENALTY * blackIsolated;
-    whitePawnScore -= CENTRAL_ISOLATED_PENALTY * count(wp & 0x7E);
-    blackPawnScore -= CENTRAL_ISOLATED_PENALTY * count(bp & 0x7E);
+    whitePawnScore += ISOLATED_PENALTY * whiteIsolated;
+    blackPawnScore += ISOLATED_PENALTY * blackIsolated;
+    whitePawnScore += CENTRAL_ISOLATED_PENALTY * count(wp & 0x7E);
+    blackPawnScore += CENTRAL_ISOLATED_PENALTY * count(bp & 0x7E);
 
     // Isolated, doubled pawns
     // x1 for isolated, doubled pawns
     // x3 for isolated, tripled pawns
     for (int i = 0; i < 8; i++) {
         if ((wPawnCtByFile[i] > 1) && (wp & INDEX_TO_BIT[7-i])) {
-            whitePawnScore -= ISOLATED_DOUBLED_PENALTY * ((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2;
+            whitePawnScore += ISOLATED_DOUBLED_PENALTY * (((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2);
         }
         if ((bPawnCtByFile[i] > 1) && (bp & INDEX_TO_BIT[7-i])) {
-            blackPawnScore -= ISOLATED_DOUBLED_PENALTY * ((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2;
+            blackPawnScore += ISOLATED_DOUBLED_PENALTY * (((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2);
         }
     }
 
@@ -1745,8 +1745,8 @@ int Board::evaluate() {
 
     uint64_t wBackwards = wBadStopSqs & pieces[WHITE][PAWNS];
     uint64_t bBackwards = bBadStopSqs & pieces[BLACK][PAWNS];
-    whitePawnScore -= BACKWARD_PENALTY * count(wBackwards);
-    blackPawnScore -= BACKWARD_PENALTY * count(bBackwards);
+    whitePawnScore += BACKWARD_PENALTY * count(wBackwards);
+    blackPawnScore += BACKWARD_PENALTY * count(bBackwards);
 
     valueMg += decEvalMg(whitePawnScore) - decEvalMg(blackPawnScore);
     valueEg += decEvalEg(whitePawnScore) - decEvalEg(blackPawnScore);

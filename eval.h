@@ -33,7 +33,7 @@ const int KNOWN_WIN = PAWN_VALUE_EG * 100;
 typedef uint32_t Score;
 
 // Encodes 16-bit midgame and endgame evaluation scores into a single int
-#define encEval(mg, eg) ((Score) ((eg << 16) | mg))
+#define encEval(mg, eg) ((Score) ((((int32_t) eg) << 16) + ((int32_t) mg)))
 
 // Retrieves the final evaluation score to return from the packed eval value
 int decEvalMg(Score encodedValue) {
@@ -95,7 +95,7 @@ const int PAWN_STORM_VALUE[3][4][8] = {
 
 // Minor pieces
 // A penalty for each own pawn that is on a square of the same color as your bishop
-const Score BISHOP_PAWN_COLOR_PENALTY = encEval(2, 2);
+const Score BISHOP_PAWN_COLOR_PENALTY = encEval(-2, -2);
 // A bonus for each opponent pawn on the board, given once for each knight
 const Score KNIGHT_PAWN_BONUS = encEval(1, 1);
 // A bonus for strong outpost knights
@@ -105,7 +105,7 @@ const Score KNIGHT_OUTPOST_PAWN_DEF_BONUS = encEval(11, 4);
 const Score BISHOP_OUTPOST_BONUS = encEval(6, 2);
 const Score BISHOP_OUTPOST_PAWN_DEF_BONUS = encEval(3, 1);
 // A penalty for Nc3 blocking c2-c4 in closed openings
-const Score KNIGHT_C3_CLOSED_PENALTY = encEval(15, 0);
+const Score KNIGHT_C3_CLOSED_PENALTY = encEval(-15, 0);
 
 // Rooks
 const Score ROOK_OPEN_FILE_BONUS = encEval(10, 10);
@@ -116,7 +116,7 @@ const Score PASSER_BONUS[8] = {encEval(0, 0), encEval(5, 12), encEval(5, 14), en
                                encEval(20, 45), encEval(45, 70), encEval(80, 105), encEval(0, 0)};
 const Score PASSER_FILE_BONUS[8] = {encEval(10, 8), encEval(5, 4), encEval(2, 1), encEval(0, 0),
                                     encEval(0, 0), encEval(2, 1), encEval(5, 4), encEval(10, 8)};
-const Score BLOCKADED_PASSER_PENALTY = encEval(2, 2);
+const Score BLOCKADED_PASSER_PENALTY = encEval(-2, -2);
 const Score FREE_PROMOTION_BONUS = encEval(4, 5);
 const Score FULLY_DEFENDED_PASSER_BONUS = encEval(3, 3);
 const Score DEFENDED_PASSER_BONUS = encEval(2, 2);
@@ -124,16 +124,16 @@ const Score OWN_KING_DIST = encEval(0, 2);
 const Score OPP_KING_DIST = encEval(0, 4);
 
 // Doubled pawns
-const Score DOUBLED_PENALTY[7] = {encEval(0, 0), encEval(0, 0), encEval(11, 16), encEval(33, 48),
-                                  encEval(80, 120), encEval(150, 230), encEval(250, 350)};
+const Score DOUBLED_PENALTY[7] = {encEval(0, 0), encEval(0, 0), encEval(-11, -16), encEval(-33, -48),
+                                  encEval(-80, -120), encEval(-150, -230), encEval(-250, -350)};
 // Doubled pawns are worse the less pawns you have
 const Score DOUBLED_PENALTY_SCALE[9] = {0, 0, 3, 2, 1, 1, 1, 1, 1};
 // Isolated pawns
-const Score ISOLATED_PENALTY = encEval(11, 13);
-const Score CENTRAL_ISOLATED_PENALTY = encEval(4, 4);
+const Score ISOLATED_PENALTY = encEval(-11, -13);
+const Score CENTRAL_ISOLATED_PENALTY = encEval(-4, -4);
 // Isolated, doubled pawns
-const Score ISOLATED_DOUBLED_PENALTY = encEval(8, 8);
+const Score ISOLATED_DOUBLED_PENALTY = encEval(-8, -8);
 // Backward pawns
-const Score BACKWARD_PENALTY = encEval(12, 13);
+const Score BACKWARD_PENALTY = encEval(-12, -13);
 
 #endif
