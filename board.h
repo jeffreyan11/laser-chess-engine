@@ -101,7 +101,6 @@ public:
 
     // Evaluation
     template <bool debug = false> int evaluate();
-    int getEGFactor();
     int getMaterial(int color);
     // Useful for turning off some pruning late endgame
     uint64_t getNonPawnMaterial(int color);

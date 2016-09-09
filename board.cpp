@@ -2137,15 +2137,6 @@ inline int Board::scoreCornerDistance(int winningColor, int wKingSq, int bKingSq
     return (winningColor == WHITE) ? wDist - 2*bDist : 2*wDist - bDist;
 }
 
-// Gets the endgame factor, which adjusts the evaluation based on how much
-// material is left on the board.
-int Board::getEGFactor() {
-    int whiteMaterial = getMaterial(WHITE);
-    int blackMaterial = getMaterial(BLACK);
-    int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
-    return std::max(0, std::min(EG_FACTOR_RES, egFactor));
-}
-
 int Board::getMaterial(int color) {
     return PAWN_VALUE   * count(pieces[color][PAWNS])
          + KNIGHT_VALUE * count(pieces[color][KNIGHTS])

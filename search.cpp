@@ -440,9 +440,10 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     }
     // Conditions for iterative deepening loop
     while (!isStop
-        && ((mode == TIME && (timeSoFar < (uint64_t) value * TIME_FACTOR)
-                          && (rootDepth <= MAX_DEPTH))
-         || (mode == MOVETIME && timeSoFar < (uint64_t) value)
+        && ((mode == TIME && timeSoFar < (uint64_t) value * TIME_FACTOR
+                          && rootDepth <= MAX_DEPTH)
+         || (mode == MOVETIME && timeSoFar < (uint64_t) value
+                              && rootDepth <= MAX_DEPTH)
          || (mode == DEPTH && rootDepth <= value)));
 
     // If we found a candidate easymove for the next ply this search
