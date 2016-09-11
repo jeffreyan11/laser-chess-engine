@@ -227,10 +227,10 @@ const int CASTLING_RIGHTS_VALUE[3] = {0, 24, 40};
 // The value of a pawn shield per pawn. First rank value is used for the
 // penalty when the pawn is missing.
 const int PAWN_SHIELD_VALUE[4][8] = {
-    { -8, 20, 14,  3,  0, -1, -2,  0},
-    {-10, 20, 12,  1, -1, -2, -3,  0},
-    { -9, 20, 10,  1,  0, -1, -3,  0},
-    { -6,  8,  5,  1,  0, -1, -2,  0}
+    { -8, 20, 14,  3,  0, -1, -2,  0}, // open h file, h2, h3, ...
+    {-10, 20, 12,  1, -1, -2, -3,  0}, // g/b file
+    { -9, 20, 10,  1,  0, -1, -3,  0}, // f/c file
+    { -6,  8,  5,  1,  0, -1, -2,  0}  // d/e file
 };
 // Array for pawn storm values. Rank 1 of open is used for penalty
 // when there is no opposing pawn
@@ -257,8 +257,6 @@ const int PAWN_STORM_VALUE[3][4][8] = {
     { 0, 12,  9,  5,  4,  0,  0,  0}
 },
 };
-// An additional penalty for a fully open file next to the king
-// const int OPEN_PENALTY = 3;
 
 // Minor pieces
 // A penalty for each own pawn that is on a square of the same color as your bishop

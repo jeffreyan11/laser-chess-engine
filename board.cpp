@@ -1443,6 +1443,7 @@ int Board::evaluate() {
 
                 wKsValue += PAWN_SHIELD_VALUE[f][wr];
             }
+            // Semi-open file: no pawn shield
             else
                 wKsValue += PAWN_SHIELD_VALUE[f][0];
 
@@ -1455,6 +1456,7 @@ int Board::evaluate() {
                     (pieces[WHITE][PAWNS] & FILES[i]) == 0                  ? 0 :
                     (pieces[WHITE][PAWNS] & INDEX_TO_BIT[bPawnSq - 8]) != 0 ? 1 : 2][f][br];
             }
+            // Semi-open file: no pawn for attacker
             else
                 wKsValue -= PAWN_STORM_VALUE[0][f][0];
         }
@@ -1645,13 +1647,18 @@ int Board::evaluate() {
         pathToQueen |= pathToQueen << 16;
         pathToQueen |= pathToQueen << 32;
 
+        // Non-linear bonus based on rank
         int rFactor = (rank-1) * (rank-2) / 2;
+        // Path to queen is completely undefended by opponent
         if (!(pathToQueen & wBlock))
             whitePawnScore += rFactor * FREE_PROMOTION_BONUS;
+        // Stop square is defended or blockaded by opponent
         else if ((INDEX_TO_BIT[passerSq] << 8) & wBlock)
             whitePawnScore += rFactor * BLOCKADED_PASSER_PENALTY;
+        // Path to queen is completely defended by own pieces
         if ((pathToQueen & wAttackMap) == pathToQueen)
             whitePawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
+        // Stop square is defended by own pieces
         else if ((INDEX_TO_BIT[passerSq] << 8) & wAttackMap)
             whitePawnScore += rFactor * DEFENDED_PASSER_BONUS;
 
@@ -1767,16 +1774,7 @@ int Board::evaluate() {
             int pawnSq = bitScanForward(pawnBits);
             // int rank = pawnSq >> 3;
             pawnBits &= pawnBits - 1;
-            /*
-            if (INDEX_TO_BIT[pawnSq] & wPassedPawns) {
-                wTropismTotal += 4 * getManhattanDistance(pawnSq, wKingSq) * rank;
-                bTropismTotal += 7 * getManhattanDistance(pawnSq, bKingSq) * rank;
-            }
-            else if (INDEX_TO_BIT[pawnSq] & bPassedPawns) {
-                wTropismTotal += 7 * getManhattanDistance(pawnSq, wKingSq) * (7-rank);
-                bTropismTotal += 4 * getManhattanDistance(pawnSq, bKingSq) * (7-rank);
-            }
-            else */if (INDEX_TO_BIT[pawnSq] & (wBackwards | bBackwards)) {
+            if (INDEX_TO_BIT[pawnSq] & (wBackwards | bBackwards)) {
                 wTropismTotal += 2 * getManhattanDistance(pawnSq, wKingSq);
                 bTropismTotal += 2 * getManhattanDistance(pawnSq, bKingSq);
             }
@@ -1911,7 +1909,6 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     uint64_t kingSqs, int pawnScore) {
     // Scale factor for pieces attacking opposing king
     const int KING_THREAT_MULTIPLIER[4] = {3, 3, 4, 6};
-    // const int KING_DEFENSE_MULTIPLIER[4] = {2, 2, 1, 0};
 
     // Holds the king safety score
     int kingSafetyPts = 0;
@@ -1947,8 +1944,6 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
         int kingSqCount = count(legal & kingNeighborhood);
         if (kingSqCount) {
             kingAttackPieces++;
-            // kingSafetyPts += KING_THREAT_MULTIPLIER[pieceIndex]
-            //              + KING_OUTER_THREAT_MULTIPLIER[pieceIndex];
             kingSafetyPts += KING_THREAT_MULTIPLIER[pieceIndex] * count(legal & kingSqs);
 
             // Bonus for overloading on defenseless squares
