@@ -2028,7 +2028,7 @@ int Board::checkEndgameCases() {
             // Pawn + anything is a win
             // TODO bishop can block losing king's path to queen square
             if (pieces[WHITE][PAWNS]) {
-                int value = KNOWN_WIN;
+                int value = KNOWN_WIN / 2;
                 int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
                 int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
                 int wPawnSq = bitScanForward(pieces[WHITE][PAWNS]);
@@ -2051,7 +2051,7 @@ int Board::checkEndgameCases() {
                 return value;
             }
             if (pieces[BLACK][PAWNS]) {
-                int value = -KNOWN_WIN;
+                int value = -KNOWN_WIN / 2;
                 int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
                 int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
                 int bPawnSq = bitScanForward(pieces[BLACK][PAWNS]);
