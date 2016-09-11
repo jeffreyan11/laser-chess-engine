@@ -284,7 +284,7 @@ const Score PASSER_BONUS[8] = {E(  0,   0), E(  5,  12), E(  5,  14), E( 10,  25
 const Score PASSER_FILE_BONUS[8] = {E(10,  8), E( 5,  4), E( 2,  1), E( 0,  0),
                                     E( 0,  0), E( 2,  1), E( 5,  4), E(10,  8)};
 const Score BLOCKADED_PASSER_PENALTY = E(-2, -2);
-const Score FREE_PROMOTION_BONUS = E(4, 5);
+const Score FREE_PROMOTION_BONUS = E(6, 7);
 const Score FULLY_DEFENDED_PASSER_BONUS = E(3, 3);
 const Score DEFENDED_PASSER_BONUS = E(2, 2);
 const Score OWN_KING_DIST = E(0, 2);

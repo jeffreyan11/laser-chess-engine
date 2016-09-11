@@ -1645,7 +1645,7 @@ int Board::evaluate() {
         pathToQueen |= pathToQueen << 16;
         pathToQueen |= pathToQueen << 32;
 
-        int rFactor = rank * (rank-1) / 4 + 1;
+        int rFactor = (rank-1) * (rank-2) / 2;
         if (!(pathToQueen & wBlock))
             whitePawnScore += rFactor * FREE_PROMOTION_BONUS;
         else if ((INDEX_TO_BIT[passerSq] << 8) & wBlock)
@@ -1674,7 +1674,7 @@ int Board::evaluate() {
         pathToQueen |= pathToQueen >> 16;
         pathToQueen |= pathToQueen >> 32;
 
-        int rFactor = rank * (rank-1) / 4 + 1;
+        int rFactor = (rank-1) * (rank-2) / 2;
         if (!(pathToQueen & bBlock))
             blackPawnScore += rFactor * FREE_PROMOTION_BONUS;
         else if ((INDEX_TO_BIT[passerSq] >> 8) & bBlock)
