@@ -26,6 +26,13 @@
  */
 
 const int SEE_PIECE_VALS[6] = {100, 400, 400, 600, 1150, MATE_SCORE};
+const int EG_FACTOR_PIECE_VALS[5] = {80, 400, 400, 700, 1800};
+const int START_VALUE = 8 * EG_FACTOR_PIECE_VALS[PAWNS]
+                      + 2 * EG_FACTOR_PIECE_VALS[KNIGHTS]
+                      + 2 * EG_FACTOR_PIECE_VALS[BISHOPS]
+                      + 2 * EG_FACTOR_PIECE_VALS[ROOKS]
+                      +     EG_FACTOR_PIECE_VALS[QUEENS];
+const int EG_FACTOR_RES = 1000;
 const int KNOWN_WIN = PAWN_VALUE_EG * 100;
 
 // Eval scores are packed into an unsigned 32-bit integer during calculations

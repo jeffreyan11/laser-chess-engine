@@ -1300,8 +1300,14 @@ int Board::evaluate() {
                     + ROOK_VALUE   * pieceCounts[BLACK][ROOKS]
                     + QUEEN_VALUE  * pieceCounts[BLACK][QUEENS];
 
+    int whiteEGFactorMat = 0, blackEGFactorMat = 0;
+    for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
+        whiteEGFactorMat += EG_FACTOR_PIECE_VALS[pieceID] * pieceCounts[WHITE][pieceID];
+    for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
+        blackEGFactorMat += EG_FACTOR_PIECE_VALS[pieceID] * pieceCounts[BLACK][pieceID];
+
     // Compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
-    int egFactor = EG_FACTOR_RES - (whiteMaterial + blackMaterial - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
+    int egFactor = EG_FACTOR_RES - (whiteEGFactorMat + blackEGFactorMat - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
     egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
 
 

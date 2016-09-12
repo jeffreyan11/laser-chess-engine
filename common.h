@@ -43,9 +43,6 @@ const int QUEEN_VALUE = 1249, QUEEN_VALUE_EG = 1253;
 const int MATE_SCORE = 32766;
 const int INFTY = 32767;
 
-const int START_VALUE = 8 * PAWN_VALUE + 2 * KNIGHT_VALUE + 2 * BISHOP_VALUE + 2 * ROOK_VALUE + QUEEN_VALUE;
-const int EG_FACTOR_RES = 1000;
-
 // Other values
 const int MAX_DEPTH = 127;
 const int MAX_MOVES = 256;
