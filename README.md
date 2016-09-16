@@ -37,16 +37,10 @@ CEGT Blitz - Best Single Versions
 Laser 1.1: 70th, 2596 elo as of May 24, 2016
 
 
-### Engine Personality
-- Solid positional play, drawish
-- Misses some king attacks
-- Poor evaluation of material imbalances
-
-
 ### Implementation Details
 - Lazy SMP up to 32 threads
-- Fancy magic bitboards for a 5 to 6 sec PERFT 6.
-- Evaluation with piece square tables, basic king safety, isolated/doubled/passed pawns, and mobility
+- Fancy magic bitboards for a 4.5 sec PERFT 6.
+- Evaluation with piece square tables, basic king safety, isolated/doubled/passed/backwards pawns, and mobility
 - A transposition table with Zobrist hashing, a two bucket system, and 16 MB default size
 - An evaluation cache
 - Fail-hard principal variation search
@@ -65,9 +59,3 @@ Laser 1.1: 70th, 2596 elo as of May 24, 2016
 
 ### Notes
 The code and Makefile support gcc on Linux and MinGW on Windows for Intel Nehalem (2008-2010) and later processors only (due to popcnt instruction support). For older or 32-bit systems, set the preprocessor flag USE_INLINE_ASM in common.h to false.
-
-
-### Known issues:
-- SMP bugs:
-  - hashfull goes above 1000
-- SEE, MVV/LVA scoring functions handle en passant as if no pawn was captured
