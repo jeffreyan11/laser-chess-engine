@@ -38,7 +38,7 @@ Laser 1.1: 70th, 2596 elo as of May 24, 2016
 
 
 ### Implementation Details
-- Lazy SMP up to 32 threads
+- Lazy SMP up to 128 threads
 - Fancy magic bitboards for a 4.5 sec PERFT 6.
 - Evaluation with piece square tables, basic king safety, isolated/doubled/passed/backwards pawns, and mobility
 - A transposition table with Zobrist hashing, a two bucket system, and 16 MB default size
