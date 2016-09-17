@@ -110,7 +110,7 @@ struct EvalDebug {
 
     // Scales the internal score representation into centipawns
     int S(int v) {
-        return (int) (v * 100 / PAWN_VALUE_EG);
+        return (int) (v * 100 / PIECE_VALUES[EG][PAWNS]);
     }
 };
 
@@ -1289,16 +1289,11 @@ int Board::evaluate() {
     }
 
     // Material
-    int whiteMaterial = PAWN_VALUE * pieceCounts[WHITE][PAWNS]
-                    + KNIGHT_VALUE * pieceCounts[WHITE][KNIGHTS]
-                    + BISHOP_VALUE * pieceCounts[WHITE][BISHOPS]
-                    + ROOK_VALUE   * pieceCounts[WHITE][ROOKS]
-                    + QUEEN_VALUE  * pieceCounts[WHITE][QUEENS];
-    int blackMaterial = PAWN_VALUE * pieceCounts[BLACK][PAWNS]
-                    + KNIGHT_VALUE * pieceCounts[BLACK][KNIGHTS]
-                    + BISHOP_VALUE * pieceCounts[BLACK][BISHOPS]
-                    + ROOK_VALUE   * pieceCounts[BLACK][ROOKS]
-                    + QUEEN_VALUE  * pieceCounts[BLACK][QUEENS];
+    int whiteMaterial = 0, blackMaterial = 0;
+    for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
+        whiteMaterial += PIECE_VALUES[MG][pieceID] * pieceCounts[WHITE][pieceID];
+    for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
+        blackMaterial += PIECE_VALUES[MG][pieceID] * pieceCounts[BLACK][pieceID];
 
     int whiteEGFactorMat = 0, blackEGFactorMat = 0;
     for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
@@ -1325,16 +1320,10 @@ int Board::evaluate() {
 
     valueMg += whiteMaterial;
     valueMg -= blackMaterial;
-    valueEg += PAWN_VALUE_EG * pieceCounts[WHITE][PAWNS]
-           + KNIGHT_VALUE_EG * pieceCounts[WHITE][KNIGHTS]
-           + BISHOP_VALUE_EG * pieceCounts[WHITE][BISHOPS]
-           + ROOK_VALUE_EG   * pieceCounts[WHITE][ROOKS]
-           + QUEEN_VALUE_EG  * pieceCounts[WHITE][QUEENS];
-    valueEg -= PAWN_VALUE_EG * pieceCounts[BLACK][PAWNS]
-           + KNIGHT_VALUE_EG * pieceCounts[BLACK][KNIGHTS]
-           + BISHOP_VALUE_EG * pieceCounts[BLACK][BISHOPS]
-           + ROOK_VALUE_EG   * pieceCounts[BLACK][ROOKS]
-           + QUEEN_VALUE_EG  * pieceCounts[BLACK][QUEENS];
+    for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
+        valueEg += PIECE_VALUES[EG][pieceID] * pieceCounts[WHITE][pieceID];
+    for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
+        valueEg -= PIECE_VALUES[EG][pieceID] * pieceCounts[BLACK][pieceID];
 
     // Tempo bonus
     valueMg += (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
@@ -1359,8 +1348,8 @@ int Board::evaluate() {
         while (bitboard) {
             int sq = bitScanForward(bitboard);
             bitboard &= bitboard - 1;
-            valueMg += getPSQTValue(0, pieceID, sq);
-            valueEg += getPSQTValue(1, pieceID, sq);
+            valueMg += getPSQTValue(MG, pieceID, sq);
+            valueEg += getPSQTValue(EG, pieceID, sq);
         }
     }
     // Black pieces
@@ -1369,8 +1358,8 @@ int Board::evaluate() {
         while (bitboard) {
             int sq = bitScanForward(bitboard);
             bitboard &= bitboard - 1;
-            valueMg -= getPSQTValue(0, pieceID, sq);
-            valueEg -= getPSQTValue(1, pieceID, sq);
+            valueMg -= getPSQTValue(MG, pieceID, sq);
+            valueEg -= getPSQTValue(EG, pieceID, sq);
         }
     }
 
@@ -2002,11 +1991,11 @@ int Board::checkEndgameCases() {
     if (numPieces == 1) {
         if (pieces[WHITE][PAWNS]) {
             int wPawn = bitScanForward(flipAcrossRanks(pieces[WHITE][PAWNS]));
-            return 3 * PAWN_VALUE_EG / 2 + getPSQTValue(1, PAWNS, wPawn);
+            return 3 * PIECE_VALUES[EG][PAWNS] / 2 + getPSQTValue(EG, PAWNS, wPawn);
         }
         if (pieces[BLACK][PAWNS]) {
             int bPawn = bitScanForward(pieces[BLACK][PAWNS]);
-            return -3 * PAWN_VALUE_EG / 2 - getPSQTValue(1, PAWNS, bPawn);
+            return -3 * PIECE_VALUES[EG][PAWNS] / 2 - getPSQTValue(EG, PAWNS, bPawn);
         }
     }
 
@@ -2139,11 +2128,10 @@ inline int Board::scoreCornerDistance(int winningColor, int wKingSq, int bKingSq
 }
 
 int Board::getMaterial(int color) {
-    return PAWN_VALUE   * count(pieces[color][PAWNS])
-         + KNIGHT_VALUE * count(pieces[color][KNIGHTS])
-         + BISHOP_VALUE * count(pieces[color][BISHOPS])
-         + ROOK_VALUE   * count(pieces[color][ROOKS])
-         + QUEEN_VALUE  * count(pieces[color][QUEENS]);
+    int material = 0;
+    for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
+        material += PIECE_VALUES[MG][pieceID] * count(pieces[color][pieceID]);
+    return material;
 }
 
 uint64_t Board::getNonPawnMaterial(int color) {
@@ -2222,7 +2210,7 @@ int Board::getSEEForMove(int color, Move m) {
 
     // TODO temporary hack for EP captures
     if (isEP(m))
-        return -PAWN_VALUE;
+        return -PIECE_VALUES[MG][PAWNS];
 
     // Do the move temporarily
     pieces[color][pieceID] &= ~INDEX_TO_BIT[startSq];
@@ -2254,20 +2242,20 @@ int Board::getSEEForMove(int color, Move m) {
     return value;
 }
 
-int Board::valueOfPiece(int piece) {
-    switch(piece) {
+int Board::valueOfPiece(int pieceID) {
+    switch(pieceID) {
         case -1:
             return 0;
         case PAWNS:
-            return PAWN_VALUE;
+            return PIECE_VALUES[MG][PAWNS];
         case KNIGHTS:
-            return KNIGHT_VALUE;
+            return PIECE_VALUES[MG][KNIGHTS];
         case BISHOPS:
-            return BISHOP_VALUE;
+            return PIECE_VALUES[MG][BISHOPS];
         case ROOKS:
-            return ROOK_VALUE;
+            return PIECE_VALUES[MG][ROOKS];
         case QUEENS:
-            return QUEEN_VALUE;
+            return PIECE_VALUES[MG][QUEENS];
         case KINGS:
             return MATE_SCORE;
     }

@@ -34,12 +34,7 @@ const int ROOKS = 3;
 const int QUEENS = 4;
 const int KINGS = 5;
 
-// Material constants
-const int PAWN_VALUE = 100, PAWN_VALUE_EG = 125;
-const int KNIGHT_VALUE = 396, KNIGHT_VALUE_EG = 402;
-const int BISHOP_VALUE = 420, BISHOP_VALUE_EG = 421;
-const int ROOK_VALUE = 647, ROOK_VALUE_EG = 654;
-const int QUEEN_VALUE = 1249, QUEEN_VALUE_EG = 1253;
+// Search scores
 const int MATE_SCORE = 32766;
 const int INFTY = 32767;
 

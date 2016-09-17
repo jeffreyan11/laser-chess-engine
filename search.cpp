@@ -21,6 +21,7 @@
 #include <iostream>
 #include <mutex>
 #include <thread>
+#include "eval.h"
 #include "evalhash.h"
 #include "hash.h"
 #include "search.h"
@@ -228,7 +229,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
             int aspBeta = MATE_SCORE;
 
             // Set up aspiration windows
-            if (rootDepth >= 10 && multiPV == 1 && abs(bestScore) < 2 * QUEEN_VALUE) {
+            if (rootDepth >= 10 && multiPV == 1 && abs(bestScore) < NEAR_MATE_SCORE) {
                 aspAlpha = bestScore - 15;
                 aspBeta = bestScore + 15;
             }
@@ -300,7 +301,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     cout << "info depth " << rootDepth;
                     cout << " seldepth " << getSelectiveDepth();
                     cout << " score";
-                    cout << " cp " << bestScore * 100 / PAWN_VALUE_EG << " upperbound";
+                    cout << " cp " << bestScore * 100 / PIECE_VALUES[EG][PAWNS] << " upperbound";
 
                     cout << " time " << timeSoFar
                          << " nodes " << getNodes() << " nps " << nps
@@ -310,7 +311,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
                     aspAlpha = bestScore - deltaAlpha;
                     deltaAlpha *= 2;
-                    if (aspAlpha < -2 * QUEEN_VALUE)
+                    if (aspAlpha < -NEAR_MATE_SCORE)
                         aspAlpha = -MATE_SCORE;
                 }
                 // Fail high: best score is at least beta
@@ -318,7 +319,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     cout << "info depth " << rootDepth;
                     cout << " seldepth " << getSelectiveDepth();
                     cout << " score";
-                    cout << " cp " << bestScore * 100 / PAWN_VALUE_EG << " lowerbound";
+                    cout << " cp " << bestScore * 100 / PIECE_VALUES[EG][PAWNS] << " lowerbound";
 
                     cout << " time " << timeSoFar
                          << " nodes " << getNodes() << " nps " << nps
@@ -328,7 +329,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
                     aspBeta = bestScore + deltaBeta;
                     deltaBeta *= 2;
-                    if (aspBeta > 2 * QUEEN_VALUE)
+                    if (aspBeta > NEAR_MATE_SCORE)
                         aspBeta = MATE_SCORE;
 
                     // If the best move is still the same, do not necessarily
@@ -386,7 +387,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 cout << " mate " << (-MATE_SCORE - bestScore) / 2;
             else
                 // Scale score into centipawns using our internal pawn value
-                cout << " cp " << bestScore * 100 / PAWN_VALUE_EG;
+                cout << " cp " << bestScore * 100 / PIECE_VALUES[EG][PAWNS];
 
             cout << " time " << timeSoFar
                  << " nodes " << getNodes() << " nps " << nps
@@ -744,7 +745,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
     // Do a qsearch just to confirm. If the qsearch fails high, a capture gained back
     // the material and trust its result since a quiet move probably can't gain
     // as much.
-    if (!isPVNode && !isInCheck && abs(alpha) < 2 * QUEEN_VALUE
+    if (!isPVNode && !isInCheck && abs(alpha) < NEAR_MATE_SCORE
      && depth <= 3 && staticEval <= alpha - RAZOR_MARGIN[depth]) {
         if (depth == 1)
             return quiescence(b, 0, alpha, beta, threadID);
@@ -822,7 +823,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
                            && !isCapture(m)
                            && !isPromotion(m)
                            && m != hashed
-                           && abs(alpha) < 2 * QUEEN_VALUE
+                           && abs(alpha) < NEAR_MATE_SCORE
                            && !b.isCheckMove(color, m);
 
         int startSq = getStartSq(m);
@@ -937,7 +938,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         // If one move appears to be much better than all others, extend the move
         if (depth >= 6 && reduction == 0 && extension == 0
          && m == hashed
-         && abs(hashScore) < 2 * QUEEN_VALUE
+         && abs(hashScore) < NEAR_MATE_SCORE
          && ((hashScore >= beta && (nodeType == CUT_NODE || nodeType == PV_NODE)
                                 && hashDepth >= depth - 3)
           || (isPVNode && nodeType == PV_NODE && hashDepth >= depth - 2))) {
@@ -1180,7 +1181,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     }
 
     // The stand pat cutoff
-    if (standPat >= beta || standPat < alpha - MAX_POS_SCORE - QUEEN_VALUE)
+    if (standPat >= beta || standPat < alpha - MAX_POS_SCORE - PIECE_VALUES[MG][QUEENS])
         return standPat;
 
     if (alpha < standPat)

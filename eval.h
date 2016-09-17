@@ -33,7 +33,6 @@ const int START_VALUE = 8 * EG_FACTOR_PIECE_VALS[PAWNS]
                       + 2 * EG_FACTOR_PIECE_VALS[ROOKS]
                       +     EG_FACTOR_PIECE_VALS[QUEENS];
 const int EG_FACTOR_RES = 1000;
-const int KNOWN_WIN = PAWN_VALUE_EG * 100;
 
 // Eval scores are packed into an unsigned 32-bit integer during calculations
 // (the SWAR technique)
@@ -55,6 +54,16 @@ inline int decEvalEg(Score encodedValue) {
 // negative number issues, we make 2^15 the 0 point for each of the two 16-bit
 // halves of Score
 const Score EVAL_ZERO = 0x80008000;
+
+const int MG = 0;
+const int EG = 1;
+
+// Material constants
+const int PIECE_VALUES[2][5] = {
+  {100, 396, 420, 647, 1249},
+  {125, 402, 421, 654, 1253}
+};
+const int KNOWN_WIN = PIECE_VALUES[EG][PAWNS] * 100;
 
 //------------------------------Piece tables--------------------------------
 const int pieceSquareTable[2][6][32] = {

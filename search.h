@@ -88,6 +88,7 @@ const uint64_t MAX_TIME = (1ULL << 63) - 1;
 // Search parameters
 const int EASYMOVE_MARGIN = 150;
 const int MAX_POS_SCORE = 120;
+const int NEAR_MATE_SCORE = 2500;
 
 // Time management constants
 const int MOVE_HORIZON = 36; // expect this many moves left in the game
