@@ -1749,6 +1749,28 @@ int Board::evaluate() {
     whitePawnScore += BACKWARD_PENALTY * count(wBackwards);
     blackPawnScore += BACKWARD_PENALTY * count(bBackwards);
 
+    // Semi-open files with backwards pawns
+    while (wBackwards) {
+        int pawnSq = bitScanForward(wBackwards);
+        wBackwards &= wBackwards - 1;
+        int f = pawnSq & 7;
+        if (!(FILES[f] & pieces[BLACK][PAWNS])) {
+            whitePawnScore += BACKWARD_SEMIOPEN_PENALTY;
+            // if (FILES[f] & pieces[BLACK][ROOKS])
+            //     blackPawnScore += BACKWARD_SEMIOPEN_ROOK_BONUS;
+        }
+    }
+    while (bBackwards) {
+        int pawnSq = bitScanForward(bBackwards);
+        bBackwards &= bBackwards - 1;
+        int f = pawnSq & 7;
+        if (!(FILES[f] & pieces[WHITE][PAWNS])) {
+            blackPawnScore += BACKWARD_SEMIOPEN_PENALTY;
+            // if (FILES[f] & pieces[WHITE][ROOKS])
+            //     whitePawnScore += BACKWARD_SEMIOPEN_ROOK_BONUS;
+        }
+    }
+
     valueMg += decEvalMg(whitePawnScore) - decEvalMg(blackPawnScore);
     valueEg += decEvalEg(whitePawnScore) - decEvalEg(blackPawnScore);
 
