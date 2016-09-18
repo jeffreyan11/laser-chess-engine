@@ -1896,12 +1896,12 @@ void Board::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml,
         uint64_t legal = pmi.legal;
         // Get mobility score
         if (pieceIndex == QUEENS - 1) {
-            mgMobility += mobilityScore[0][pieceIndex][count(legal & openSqs & ~oppAttackMap)];
-            egMobility += mobilityScore[1][pieceIndex][count(legal & openSqs & ~oppAttackMap)];
+            mgMobility += mobilityScore[MG][pieceIndex][count(legal & openSqs & ~oppAttackMap)];
+            egMobility += mobilityScore[EG][pieceIndex][count(legal & openSqs & ~oppAttackMap)];
         }
         else {
-            mgMobility += mobilityScore[0][pieceIndex][count(legal & openSqs)];
-            egMobility += mobilityScore[1][pieceIndex][count(legal & openSqs)];
+            mgMobility += mobilityScore[MG][pieceIndex][count(legal & openSqs)];
+            egMobility += mobilityScore[EG][pieceIndex][count(legal & openSqs)];
         }
 
         // Get center control score

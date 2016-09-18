@@ -55,6 +55,7 @@ inline int decEvalEg(Score encodedValue) {
 // halves of Score
 const Score EVAL_ZERO = 0x80008000;
 
+// Array indexing constants
 const int MG = 0;
 const int EG = 1;
 
