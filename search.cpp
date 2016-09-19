@@ -922,15 +922,6 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
             extension++;
         }
 
-        // Extension for transition into pawn-only endgame
-        if (depth >= 3 && reduction == 0) {
-            if (b.isNonpawnTransition(color, m)) {
-                extension += 1;
-                if (!b.getNonPawnMaterial(color))
-                    extension += 2;
-            }
-        }
-
         // Record two-fold stack since we may do a search for singular extensions
         twoFoldPositions[threadID].push(b.getZobristKey());
 

@@ -112,7 +112,6 @@ public:
     // Most Valuable Victim / Least Valuable Attacker
     int getMVVLVAScore(int color, Move m);
     int getExchangeScore(int color, Move m);
-    bool isNonpawnTransition(int color, Move m);
 
     // Getter methods
     bool getWhiteCanKCastle();

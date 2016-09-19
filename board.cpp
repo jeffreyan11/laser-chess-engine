@@ -2310,10 +2310,6 @@ int Board::getExchangeScore(int color, Move m) {
     return victim - attacker;
 }
 
-bool Board::isNonpawnTransition(int color, Move m) {
-    return (INDEX_TO_BIT[getEndSq(m)] == getNonPawnMaterial(color^1));
-}
-
 
 //------------------------------------------------------------------------------
 //-----------------------------MOVE GENERATION----------------------------------
