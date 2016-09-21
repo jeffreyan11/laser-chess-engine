@@ -32,6 +32,15 @@ const uint64_t WHITE_QSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[1] | INDEX_TO_BIT[2] |
 const uint64_t BLACK_KSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[61] | INDEX_TO_BIT[62];
 const uint64_t BLACK_QSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[57] | INDEX_TO_BIT[58] | INDEX_TO_BIT[59];
 
+static int KS_TO_SCORE[100];
+
+void initKSArray() {
+    for (int i = 0; i < 100; i++) {
+        double x = (double) i;
+        KS_TO_SCORE[i] = (int) std::min(x * x / 9.0, 500.0);
+    }
+}
+
 // Zobrist hashing table and the start position key, both initialized at startup
 static uint64_t zobristTable[794];
 static uint64_t startPosZobristKey = 0;
@@ -1971,25 +1980,8 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     // Give a decent bonus for each additional piece participating
     kingSafetyPts += std::min(20, kingAttackPieces * (kingAttackPieces-1) + 6);
 
-    // If only one piece is in the "attack" then reduce the bonus
-    if (kingAttackPieces < 2)
-        kingSafetyPts /= 3;
-
     // Adjust based on pawn shield and pawn storms
     kingSafetyPts -= pawnScore / 8;
-
-    const int KS_TO_SCORE[100] = {
-          0,   0,   1,   2,   3,   5,   6,   8,   9,  11,
-         13,  15,  18,  20,  23,  26,  29,  33,  36,  40,
-         43,  47,  50,  54,  58,  62,  66,  70,  74,  78,
-         82,  86,  90,  95, 100, 105, 110, 115, 120, 125,
-        130, 135, 140, 145, 150, 155, 160, 165, 170, 175,
-        180, 185, 190, 195, 200, 205, 210, 215, 220, 225,
-        230, 235, 240, 245, 250, 255, 260, 265, 270, 275,
-        280, 285, 290, 295, 300, 305, 310, 315, 320, 325,
-        330, 335, 340, 345, 350, 355, 360, 365, 370, 375,
-        380, 385, 390, 395, 400, 405, 410, 415, 420, 425
-    };
 
     return KS_TO_SCORE[std::max(0, std::min(99, kingSafetyPts))];
 }

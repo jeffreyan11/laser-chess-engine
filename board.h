@@ -50,6 +50,7 @@ struct PieceMoveInfo {
 
 typedef SearchArrayList<PieceMoveInfo> PieceMoveList;
 
+void initKSArray();
 void initZobristTable();
 
 
