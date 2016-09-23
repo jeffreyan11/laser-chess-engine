@@ -1632,9 +1632,11 @@ int Board::evaluate() {
     for (unsigned int i = 0; i < pmlWhite.size(); i++) {
         wAttackMap |= pmlWhite.get(i).legal;
     }
+    wAttackMap |= getWPawnCaptures(pieces[WHITE][PAWNS]);
     for (unsigned int i = 0; i < pmlBlack.size(); i++) {
         bAttackMap |= pmlBlack.get(i).legal;
     }
+    bAttackMap |= getBPawnCaptures(pieces[BLACK][PAWNS]);
 
     uint64_t wPasserTemp = wPassedPawns;
     uint64_t wBlock = allPieces[BLACK] | bAttackMap;
@@ -1656,9 +1658,9 @@ int Board::evaluate() {
         // Path to queen is completely undefended by opponent
         if (!(pathToQueen & wBlock))
             whitePawnScore += rFactor * FREE_PROMOTION_BONUS;
-        // Stop square is defended or blockaded by opponent
-        else if ((INDEX_TO_BIT[passerSq] << 8) & wBlock)
-            whitePawnScore += rFactor * BLOCKADED_PASSER_PENALTY;
+        // Stop square is undefended by opponent
+        else if (!((INDEX_TO_BIT[passerSq] << 8) & wBlock))
+            whitePawnScore += rFactor * FREE_STOP_BONUS;
         // Path to queen is completely defended by own pieces
         if ((pathToQueen & wAttackMap) == pathToQueen)
             whitePawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
@@ -1688,8 +1690,8 @@ int Board::evaluate() {
         int rFactor = (rank-1) * (rank-2) / 2;
         if (!(pathToQueen & bBlock))
             blackPawnScore += rFactor * FREE_PROMOTION_BONUS;
-        else if ((INDEX_TO_BIT[passerSq] >> 8) & bBlock)
-            blackPawnScore += rFactor * BLOCKADED_PASSER_PENALTY;
+        else if (!((INDEX_TO_BIT[passerSq] >> 8) & bBlock))
+            blackPawnScore += rFactor * FREE_STOP_BONUS;
         if ((pathToQueen & bAttackMap) == pathToQueen)
             blackPawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
         else if ((INDEX_TO_BIT[passerSq] >> 8) & bAttackMap)

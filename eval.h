@@ -294,12 +294,12 @@ const Score ROOK_OPEN_FILE_BONUS = E(10, 10);
 
 // Pawn structure
 // Passed pawns
-const Score PASSER_BONUS[8] = {E(  0,   0), E(  5,  12), E(  5,  14), E( 10,  25),
-                               E( 20,  45), E( 45,  70), E( 80, 105), E(  0,   0)};
+const Score PASSER_BONUS[8] = {E(  0,   0), E(  5,  10), E(  5,  12), E( 10,  20),
+                               E( 20,  35), E( 45,  65), E( 80, 100), E(  0,   0)};
 const Score PASSER_FILE_BONUS[8] = {E(10,  8), E( 5,  4), E( 2,  1), E( 0,  0),
                                     E( 0,  0), E( 2,  1), E( 5,  4), E(10,  8)};
-const Score BLOCKADED_PASSER_PENALTY = E(-2, -2);
-const Score FREE_PROMOTION_BONUS = E(6, 7);
+const Score FREE_PROMOTION_BONUS = E(10, 10);
+const Score FREE_STOP_BONUS = E(3, 3);
 const Score FULLY_DEFENDED_PASSER_BONUS = E(3, 3);
 const Score DEFENDED_PASSER_BONUS = E(2, 2);
 const Score OWN_KING_DIST = E(0, 2);
