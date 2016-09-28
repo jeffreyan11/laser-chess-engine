@@ -1890,11 +1890,11 @@ void Board::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml,
     // We count mobility for captures or moves to open squares not controlled
     // by an opponent's pawn
     openSqs = allPieces[color^1] | (openSqs & ~oppPawnAttackMap);
-    // Or for a queen, squares not controlled by an opponent's pawn or minor
+    // Or for a queen, squares not controlled by an opponent's pawn, minor, or rook
     uint64_t oppAttackMap = 0;
     for (unsigned int i = 0; i < oppPml.size(); i++) {
         PieceMoveInfo pmi = oppPml.get(i);
-        if (pmi.pieceID <= BISHOPS)
+        if (pmi.pieceID <= ROOKS)
             oppAttackMap |= pmi.legal;
     }
 
