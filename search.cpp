@@ -425,7 +425,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 || pvStreak >= 10) {
                 int secondBestMove;
                 int secondBestScore;
-                int easymoveWindow = bestScore - EASYMOVE_MARGIN;
+                int easymoveWindow = bestScore - EASYMOVE_MARGIN - abs(bestScore) / 3;
 
                 getBestMoveAtDepth(b, &legalMoves, rootDepth-5, easymoveWindow - 1, easymoveWindow,//-MATE_SCORE, MATE_SCORE,
                     &secondBestMove, &secondBestScore, 1, 0, &pvLine);
