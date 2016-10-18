@@ -200,6 +200,13 @@ const int pieceSquareTable[2][6][32] = {
 const int BISHOP_PAIR_VALUE = 58;
 const int TEMPO_VALUE = 10;
 
+// Pawn value scaling: incur a penalty for having no pawns since the
+// ability to promote is gone
+const int PAWN_SCALING_MG[9] = {10, 3, 2, 2, 1, 0, 0, 0, 0};
+const int PAWN_SCALING_EG[9] = {71, 20, 8, 4, 2, 0, 0, 0, 0};
+// Pawns are a target for the queen in the endgame
+const int QUEEN_PAWN_PENALTY = -2;
+
 //------------------------Positional eval constants-----------------------------
 // Mobility tables, with zero padding for pieces that cannot move up to 27 squares
 const int mobilityScore[2][4][28] = {
@@ -238,6 +245,12 @@ const int mobilityScore[2][4][28] = {
 }
 };
 
+// Value of each square in the extended center in cp
+const int EXTENDED_CENTER_VAL = 2;
+// Additional bonus for squares in the center four squares in cp, in addition
+// to EXTENDED_CENTER_VAL
+const int CENTER_BONUS = 2;
+
 // King safety
 // The value of having 0, 1, and both castling rights
 const int CASTLING_RIGHTS_VALUE[3] = {0, 24, 40};
@@ -274,6 +287,11 @@ const int PAWN_STORM_VALUE[3][4][8] = {
     { 0, 12,  9,  5,  4,  0,  0,  0}
 },
 };
+
+// Scale factor for pieces attacking opposing king
+const double KS_ARRAY_FACTOR = 9.0;
+const int KING_THREAT_MULTIPLIER[4] = {3, 3, 4, 6};
+const int KING_DEFENSELESS_SQUARE = 5;
 
 // Minor pieces
 // A penalty for each own pawn that is on a square of the same color as your bishop

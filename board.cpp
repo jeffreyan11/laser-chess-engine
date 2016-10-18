@@ -37,7 +37,7 @@ static int KS_TO_SCORE[100];
 void initKSArray() {
     for (int i = 0; i < 100; i++) {
         double x = (double) i;
-        KS_TO_SCORE[i] = (int) std::min(x * x / 9.0, 500.0);
+        KS_TO_SCORE[i] = (int) std::min(x * x / KS_ARRAY_FACTOR, 500.0);
     }
 }
 
@@ -1373,11 +1373,7 @@ int Board::evaluate() {
     }
 
 
-    // Pawn value scaling: incur a penalty for having no pawns since the
-    // ability to promote is gone
-    const int PAWN_SCALING_MG[9] = {10, 3, 2, 2, 1, 0, 0, 0, 0};
-    const int PAWN_SCALING_EG[9] = {71, 20, 8, 4, 2, 0, 0, 0, 0};
-
+    // Pawn scaling: a penalty for having too few pawns
     valueMg -= PAWN_SCALING_MG[pieceCounts[WHITE][PAWNS]];
     valueEg -= PAWN_SCALING_EG[pieceCounts[WHITE][PAWNS]];
     valueMg += PAWN_SCALING_MG[pieceCounts[BLACK][PAWNS]];
@@ -1385,9 +1381,9 @@ int Board::evaluate() {
 
     // With queens on the board pawns are a target in the endgame
     if (pieces[WHITE][QUEENS])
-        valueEg += 2 * pieceCounts[BLACK][PAWNS];
+        valueEg -= QUEEN_PAWN_PENALTY * pieceCounts[BLACK][PAWNS];
     if (pieces[BLACK][QUEENS])
-        valueEg -= 2 * pieceCounts[WHITE][PAWNS];
+        valueEg += QUEEN_PAWN_PENALTY * pieceCounts[WHITE][PAWNS];
 
     if (debug) {
         evalDebugStats.totalMaterialMg = valueMg;
@@ -1861,11 +1857,6 @@ void Board::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml,
     int &valueMg, int &valueEg) {
     // Bitboard of center 4 squares: d4, e4, d5, e5
     const uint64_t CENTER_SQS = 0x0000001818000000;
-    // Value of each square in the extended center in cp
-    const int EXTENDED_CENTER_VAL = 2;
-    // Additional bonus for squares in the center four squares in cp, in addition
-    // to EXTENDED_CENTER_VAL
-    const int CENTER_BONUS = 2;
     // Holds the mobility values and the final result
     int mgMobility = 0, egMobility = 0;
     // Holds the center control score
@@ -1935,8 +1926,6 @@ void Board::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml,
 template <int attackingColor>
 int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     uint64_t kingSqs, int pawnScore) {
-    // Scale factor for pieces attacking opposing king
-    const int KING_THREAT_MULTIPLIER[4] = {3, 3, 4, 6};
 
     // Holds the king safety score
     int kingSafetyPts = 0;
@@ -1975,7 +1964,7 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
             kingSafetyPts += KING_THREAT_MULTIPLIER[pieceIndex] * count(legal & kingSqs);
 
             // Bonus for overloading on defenseless squares
-            kingSafetyPts += 5 * count(legal & kingDefenseless);
+            kingSafetyPts += KING_DEFENSELESS_SQUARE * count(legal & kingDefenseless);
         }
     }
 
