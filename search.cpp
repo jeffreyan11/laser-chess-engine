@@ -227,15 +227,17 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                           multiPVNum++) {
             int aspAlpha = -MATE_SCORE;
             int aspBeta = MATE_SCORE;
+            int deltaAlpha = 20 - std::min(rootDepth/3, 10) + abs(bestScore) / 20;
+            int deltaBeta = deltaAlpha;
 
             // Set up aspiration windows
-            if (rootDepth >= 10 && multiPV == 1 && abs(bestScore) < NEAR_MATE_SCORE) {
-                aspAlpha = bestScore - 15;
-                aspBeta = bestScore + 15;
+            if (rootDepth >= 6 && multiPV == 1 && abs(bestScore) < NEAR_MATE_SCORE) {
+                aspAlpha = bestScore - deltaAlpha;
+                aspBeta = bestScore + deltaBeta;
             }
 
-            int deltaAlpha = 30;
-            int deltaBeta = 30;
+            deltaAlpha *= 2;
+            deltaBeta *= 2;
 
             // Aspiration loop
             while (!isStop) {
