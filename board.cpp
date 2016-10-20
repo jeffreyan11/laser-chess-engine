@@ -1969,7 +1969,7 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     }
 
     // Give a decent bonus for each additional piece participating
-    kingSafetyPts += std::min(20, kingAttackPieces * (kingAttackPieces-1) + 6);
+    kingSafetyPts += std::min(30, kingAttackPieces * (kingAttackPieces+1));
 
     // Adjust based on pawn shield and pawn storms
     kingSafetyPts -= pawnScore / 8;
