@@ -1857,15 +1857,14 @@ void Board::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml,
     int &valueMg, int &valueEg) {
     // Bitboard of center 4 squares: d4, e4, d5, e5
     const uint64_t CENTER_SQS = 0x0000001818000000;
+    // Extended center: center, plus c4, f4, c5, f5, and d6/d3, e6/e3
+    const uint64_t EXTENDED_CENTER_SQS = 0x0000183C3C180000;
     // Holds the mobility values and the final result
     int mgMobility = 0, egMobility = 0;
     // Holds the center control score
     int centerControl = 0;
     // All squares the side to move could possibly move to
     uint64_t openSqs = ~allPieces[color];
-    // Extended center: center, plus c4, f4, c5, f5, and d6/d3, e6/e3
-    uint64_t EXTENDED_CENTER_SQS = (color == WHITE) ? 0x0000183C3C000000
-                                                    : 0x0000003C3C180000;
 
     // Calculate center control only for pawns
     uint64_t pawns = pieces[color][PAWNS];
@@ -1908,12 +1907,12 @@ void Board::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml,
 
         // Get center control score
         if (pieceIndex == QUEENS - 1) {
-            centerControl += count(legal & EXTENDED_CENTER_SQS);
-            centerControl += count(legal & CENTER_SQS);
+            centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS & ~oppPawnAttackMap & ~oppAttackMap);
+            centerControl += CENTER_BONUS * count(legal & CENTER_SQS & ~oppPawnAttackMap & ~oppAttackMap);
         }
         else {
-            centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS);
-            centerControl += CENTER_BONUS * count(legal & CENTER_SQS);
+            centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS & ~oppPawnAttackMap);
+            centerControl += CENTER_BONUS * count(legal & CENTER_SQS & ~oppPawnAttackMap);
         }
     }
 
