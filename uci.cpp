@@ -375,6 +375,61 @@ Board fenToBoard(string s) {
             playerToMove);
 }
 
+string boardToFEN(Board &board) {
+    int *mailbox = board.getMailbox();
+    string pieceString = "PNBRQKpnbrqk";
+    string fenString;
+    int emptyCt = 0;
+
+    for (int r = 7; r >= 0; r--) {
+        for (int f = 0; f < 8; f++) {
+            int sq = 8*r + f;
+            if (mailbox[sq] == -1)
+                emptyCt++;
+            else {
+                if (emptyCt) {
+                    fenString += std::to_string(emptyCt);
+                    emptyCt = 0;
+                }
+                fenString += pieceString[mailbox[sq]];
+            }
+        }
+
+        if (emptyCt) {
+            fenString += std::to_string(emptyCt);
+            emptyCt = 0;
+        }
+        if (r != 0)
+            fenString += '/';
+    }
+
+    fenString += ' ';
+    fenString += (board.getPlayerToMove() == WHITE) ? 'w' : 'b';
+    fenString += ' ';
+    bool hasCastles = false;
+    if (board.getWhiteCanKCastle()) { hasCastles = true; fenString += 'K'; }
+    if (board.getWhiteCanQCastle()) { hasCastles = true; fenString += 'Q'; }
+    if (board.getBlackCanKCastle()) { hasCastles = true; fenString += 'k'; }
+    if (board.getBlackCanQCastle()) { hasCastles = true; fenString += 'q'; }
+    if (!hasCastles) fenString += '-';
+    fenString += ' ';
+
+    uint16_t epCaptureFile = board.getEPCaptureFile();
+    if (epCaptureFile == NO_EP_POSSIBLE)
+        fenString += '-';
+    else {
+        fenString += 'a' + epCaptureFile;
+        fenString += (board.getPlayerToMove() == WHITE) ? '6' : '3';
+    }
+
+    fenString += ' ';
+    fenString += std::to_string(board.getFiftyMoveCounter());
+    fenString += ' ';
+    fenString += std::to_string(board.getMoveNumber());
+
+    return fenString;
+}
+
 string boardToString(Board &board) {
     int *mailbox = board.getMailbox();
     string pieceString = " PNBRQKpnbrqk";
