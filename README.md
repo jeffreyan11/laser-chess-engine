@@ -5,36 +5,34 @@ For the latest release and previous versions, check https://github.com/jeffreyan
 
 After being compiled, the executable can be run with any UCI chess GUI, such as Arena (http://www.playwitharena.com/) or Tarrasch (http://www.triplehappy.com/).
 
-A special thanks to the Chess Programming Wiki, which was consulted frequently for this project: https://chessprogramming.wikispaces.com.
 
-A few ideas and inspiration came from
+### Thanks To:
+- The Chess Programming Wiki, which is a great resource for beginning chess programmers, and was consulted frequently for this project: https://chessprogramming.wikispaces.com
+- The authors of Stockfish, Crafty, EXChess, Rebel, and all other open-source engines for providing inspiration for many parts of this project
+- The engine testers, for uncovering bugs, providing high quality games and ratings, and giving us motivation to improve
+- Cute Chess, the primary tool used for testing: (http://cutechess.com/)
 
-Stockfish (https://stockfishchess.org/):
-- "bench" command
-- Using SWAR for midgame/endgame evaluation
-- Razoring, singular extension implementations
 
-Crafty, EXChess:
-- Lazy SMP implementation
-
-Rebel:
-- King safety
-
-This project would not have been possible without Cute Chess, the primary tool used for testing: (http://cutechess.com/).
+### To Dos
+ - Automatic tuning of evaluation with machine learning
+ - Syzygy tablebase support
+ - Chess960 support
+ - Improved pruning rules
+ - More efficient PERFT and eval
 
 
 ### Engine Strength
 CCRL 40/40
 
-Laser 1.1: 68th, 2775 elo as of May 21, 2016
+Laser 1.2: 57th, 2868 elo as of Oct 22, 2016
 
 CCRL 40/4
 
-Laser 1.1: 65-66th, 2770 elo as of May 21, 2016
+Laser 1.2: 54th, 2873 elo as of Oct 22, 2016
 
 CEGT Blitz - Best Single Versions
 
-Laser 1.1: 70th, 2596 elo as of May 24, 2016
+Laser 1.2: 59th, 2702 elo as of Oct 16, 2016
 
 
 ### Implementation Details
