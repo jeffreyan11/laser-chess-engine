@@ -1311,7 +1311,7 @@ int Board::evaluate() {
         blackEGFactorMat += EG_FACTOR_PIECE_VALS[pieceID] * pieceCounts[BLACK][pieceID];
 
     // Compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
-    int egFactor = EG_FACTOR_RES - (whiteEGFactorMat + blackEGFactorMat - START_VALUE / 2) * EG_FACTOR_RES / START_VALUE;
+    int egFactor = EG_FACTOR_RES - (whiteEGFactorMat + blackEGFactorMat - EG_FACTOR_ALPHA) * EG_FACTOR_RES / EG_FACTOR_BETA;
     egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
 
 
