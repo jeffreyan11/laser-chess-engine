@@ -32,10 +32,10 @@ const uint64_t WHITE_QSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[1] | INDEX_TO_BIT[2] |
 const uint64_t BLACK_KSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[61] | INDEX_TO_BIT[62];
 const uint64_t BLACK_QSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[57] | INDEX_TO_BIT[58] | INDEX_TO_BIT[59];
 
-static int KS_TO_SCORE[100];
+static int KS_TO_SCORE[200];
 
 void initKSArray() {
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 200; i++) {
         double x = (double) i;
         KS_TO_SCORE[i] = (int) std::min(x * x / KS_ARRAY_FACTOR, 500.0);
     }
@@ -1968,12 +1968,12 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     }
 
     // Give a decent bonus for each additional piece participating
-    kingSafetyPts += std::min(30, kingAttackPieces * (kingAttackPieces+1));
+    kingSafetyPts += std::min(60, 2 * kingAttackPieces * (kingAttackPieces+1));
 
     // Adjust based on pawn shield and pawn storms
-    kingSafetyPts -= pawnScore / 8;
+    kingSafetyPts -= pawnScore / 4;
 
-    return KS_TO_SCORE[std::max(0, std::min(99, kingSafetyPts))];
+    return KS_TO_SCORE[std::max(0, std::min(199, kingSafetyPts))];
 }
 
 // Check special endgame cases: where help mate is possible (detecting this
