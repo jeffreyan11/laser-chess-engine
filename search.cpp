@@ -114,9 +114,9 @@ const int REVERSE_FUTILITY_MARGIN[6] = {0,
 // Razor margins indexed by depth. If static eval is far below alpha, use a
 // qsearch to confirm fail low and then return.
 const int RAZOR_MARGIN[4] = {0,
-    350,
-    500,
-    600
+    300,
+    360,
+    400
 };
 
 // Move count pruning
@@ -739,7 +739,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
     if (!isPVNode && !isInCheck
      && (depth <= 5 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
      && b.getNonPawnMaterial(color))
-        return staticEval - REVERSE_FUTILITY_MARGIN[depth];
+        return staticEval;
 
 
     // Razoring
@@ -747,15 +747,17 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
     // Do a qsearch just to confirm. If the qsearch fails high, a capture gained back
     // the material and trust its result since a quiet move probably can't gain
     // as much.
-    if (!isPVNode && !isInCheck && abs(alpha) < NEAR_MATE_SCORE
+    if (!isPVNode && !isInCheck
+     && nodeType != CUT_NODE && nodeType != PV_NODE && abs(alpha) < NEAR_MATE_SCORE
      && depth <= 3 && staticEval <= alpha - RAZOR_MARGIN[depth]) {
         if (depth == 1)
             return quiescence(b, 0, alpha, beta, threadID);
 
-        int value = quiescence(b, 0, alpha, beta, threadID);
+        int rWindow = alpha - RAZOR_MARGIN[depth];
+        int value = quiescence(b, 0, rWindow, rWindow+1, threadID);
         // Fail hard here to be safe
-        if (value <= alpha)
-            return alpha;
+        if (value <= rWindow)
+            return value;
     }
 
 
@@ -837,12 +839,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         // If we are already a decent amount of material below alpha, a quiet
         // move probably won't raise our prospects much, so don't bother
         // q-searching it.
-        if (moveIsPrunable
-         && depth <= 5 && staticEval <= alpha - FUTILITY_MARGIN[depth]) {
-            if (bestScore < staticEval + FUTILITY_MARGIN[depth])
-                bestScore = staticEval + FUTILITY_MARGIN[depth];
+        if (moveIsPrunable && bestScore > -INFTY
+         && depth <= 5 && staticEval <= alpha - FUTILITY_MARGIN[depth])
             continue;
-        }
 
 
         // Futility pruning using SEE
@@ -861,15 +860,12 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         // At low depths, moves late in the list with poor history are pruned
         // As used in Fruit/Stockfish:
         // https://chessprogramming.wikispaces.com/Futility+Pruning#MoveCountBasedPruning
-        if (moveIsPrunable
+        if (moveIsPrunable && bestScore > -INFTY
          && depth <= 7 && movesSearched > LMP_MOVE_COUNTS[depth]
          && alpha <= prevAlpha
          && m != searchParams->killers[searchParams->ply][0]
-         && m != searchParams->killers[searchParams->ply][1]) {
-            if (bestScore < alpha)
-                bestScore = alpha;
+         && m != searchParams->killers[searchParams->ply][1])
             continue;
-        }
 
 
         // Copy the board and do the move
