@@ -17,6 +17,7 @@
 */
 
 #include <algorithm>
+#include <cmath>
 #include <iomanip>
 #include <iostream>
 #include <mutex>
@@ -152,7 +153,7 @@ int numThreads;
 void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
     int beta, int *bestMoveIndex, int *bestScore, unsigned int startMove,
     int threadID, SearchPV *pvLine);
-int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine);
+int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, SearchPV *pvLine);
 int quiescence(Board &b, int plies, int alpha, int beta, int threadID);
 int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID);
 
@@ -508,18 +509,18 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
 
         if (i != 0) {
             searchParams->ply++;
-            score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, &line);
+            score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, true, &line);
             searchParams->ply--;
             if (alpha < score && score < beta) {
                 line.pvLength = 0;
                 searchParams->ply++;
-                score = -PVS(copy, depth-1, -beta, -alpha, threadID, &line);
+                score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, &line);
                 searchParams->ply--;
             }
         }
         else {
             searchParams->ply++;
-            score = -PVS(copy, depth-1, -beta, -alpha, threadID, &line);
+            score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, &line);
             searchParams->ply--;
         }
 
@@ -576,17 +577,17 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID) 
 
         if (i != 0) {
             searchParams->ply++;
-            score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, &line);
+            score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, true, &line);
             searchParams->ply--;
             if (alpha < score && score < beta) {
                 searchParams->ply++;
-                score = -PVS(copy, depth-1, -beta, -alpha, threadID, &line);
+                score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, &line);
                 searchParams->ply--;
             }
         }
         else {
             searchParams->ply++;
-            score = -PVS(copy, depth-1, -beta, -alpha, threadID, &line);
+            score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, &line);
             searchParams->ply--;
         }
 
@@ -610,7 +611,7 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID) 
 //------------------------------------------------------------------------------
 
 // The standard implementation of a fail-soft PVS search.
-int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine) {
+int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, SearchPV *pvLine) {
     SearchParameters *searchParams = &(searchParamsArray[threadID]);
     SearchStatistics *searchStats = &(searchStatsArray[threadID]);
     // When the standard search is done, enter quiescence search.
@@ -779,7 +780,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         b.doNullMove();
         searchParams->nullMoveCount++;
         searchParams->ply++;
-        int nullScore = -PVS(b, depth-1-reduction, -beta, -alpha, threadID, &line);
+        int nullScore = -PVS(b, depth-1-reduction, -beta, -alpha, threadID, !isCutNode, &line);
         searchParams->ply--;
 
         // Undo the null move
@@ -888,27 +889,29 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
 
         int reduction = 0;
         // Late move reduction
-        // If we have not raised alpha in the first few moves, we are probably
-        // at an all-node. The later moves are likely worse so we search them
-        // to a shallower depth.
-        if (!isPVNode && !isInCheck
-         && depth >= 3 && movesSearched > 2 && alpha <= prevAlpha
+        // With good move ordering, later moves are less likely to increase
+        // alpha, so we search them to a shallower depth hoping for a quick
+        // fail-low.
+        if (!isInCheck && depth >= 3 && movesSearched > (isPVNode ? 4 : 2)
          && !isCapture(m) && !isPromotion(m)
          && m != searchParams->killers[searchParams->ply][0]
          && m != searchParams->killers[searchParams->ply][1]
          && !copy.isInCheck(color^1)) {
             // Increase reduction with higher depth and later moves
-            reduction = 1 + (int) (sqrt((depth-3) * movesSearched) / 4.0);
+            reduction = (int) (0.5 + log(depth) * log(movesSearched) / 2.1);
             // Reduce more for moves with poor history
             int historyValue = searchParams->historyTable[color][pieceID][endSq];
             if (historyValue < 0)
                 reduction++;
+            // Reduce more for expected cut nodes
+            if (isCutNode)
+                reduction++;
+            // Reduce less at PV nodes
+            if (isPVNode)
+                reduction--;
 
             // Do not let search descend directly into q-search
-            reduction = std::min(reduction, depth - 2);
-            // Always start from a reduction of 1 and increase at most 1 depth
-            // every 2 moves
-            reduction = std::min(reduction, 1 + (int) (movesSearched - 3) / 2);
+            reduction = std::max(0, std::min(reduction, depth - 2));
         }
 
 
@@ -950,7 +953,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
                 int SEDepth = depth / 2 - 1;
 
                 searchParams->ply++;
-                score = -PVS(seCopy, SEDepth, -SEWindow - 1, -SEWindow, threadID, &line);
+                score = -PVS(seCopy, SEDepth, -SEWindow - 1, -SEWindow, threadID, !isCutNode, &line);
                 searchParams->ply--;
 
                 // If a move did not fail low, no singular extension
@@ -972,22 +975,22 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         // Null-window search, with re-search if applicable
         if (movesSearched != 0) {
             searchParams->ply++;
-            score = -PVS(copy, depth-1-reduction+extension, -alpha-1, -alpha, threadID, &line);
+            score = -PVS(copy, depth-1-reduction+extension, -alpha-1, -alpha, threadID, true, &line);
             searchParams->ply--;
 
             // LMR re-search if the reduced search did not fail low
             if (reduction > 0 && score > alpha) {
                 line.pvLength = 0;
                 searchParams->ply++;
-                score = -PVS(copy, depth-1+extension, -alpha-1, -alpha, threadID, &line);
+                score = -PVS(copy, depth-1+extension, -alpha-1, -alpha, threadID, !isCutNode, &line);
                 searchParams->ply--;
             }
 
             // Re-search for a scout window at PV nodes
-            else if (alpha < score && score < beta) {
+            if (alpha < score && score < beta) {
                 line.pvLength = 0;
                 searchParams->ply++;
-                score = -PVS(copy, depth-1+extension, -beta, -alpha, threadID, &line);
+                score = -PVS(copy, depth-1+extension, -beta, -alpha, threadID, false, &line);
                 searchParams->ply--;
             }
         }
@@ -995,7 +998,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, SearchPV *pvLine
         // The first move is always searched at a normal depth
         else {
             searchParams->ply++;
-            score = -PVS(copy, depth-1+extension, -beta, -alpha, threadID, &line);
+            score = -PVS(copy, depth-1+extension, -beta, -alpha, threadID, (isPVNode ? false : !isCutNode), &line);
             searchParams->ply--;
         }
 
