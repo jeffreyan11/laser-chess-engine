@@ -34,13 +34,16 @@ const int QUIET_SEE_DEPTH = 3;
 
 
 MoveOrder::MoveOrder(Board *_b, int _color, int _depth, int _threadID, bool _isPVNode, bool _isInCheck,
-	SearchParameters *_searchParams, Move _hashed, MoveList _legalMoves) {
+	bool _isCutNode, int _staticEval, int _beta, SearchParameters *_searchParams, Move _hashed, MoveList _legalMoves) {
 	b = _b;
 	color = _color;
 	depth = _depth;
     threadID = _threadID;
 	isPVNode = _isPVNode;
 	isInCheck = _isInCheck;
+    isCutNode = _isCutNode;
+    staticEval = _staticEval;
+    beta = _beta;
 	searchParams = _searchParams;
     mgStage = STAGE_NONE;
     quietStart = 0;
@@ -184,7 +187,14 @@ void MoveOrder::scoreQuiets() {
 }
 
 bool MoveOrder::doIID() {
-    return depth >= (isPVNode ? 4 : 6);
+    if (isPVNode) {
+        return (depth >= 4);
+    }
+    if (depth >= 6
+     && (isCutNode || staticEval >= beta - 50 - 10*depth)) {
+        return true;
+    }
+    return false;
 }
 
 // IID: get a best move (hoping for a first move cutoff) if we don't
