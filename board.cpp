@@ -1588,6 +1588,8 @@ int Board::evaluate() {
 
         if (!(FILES[file] & (pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS])))
             value += ROOK_OPEN_FILE_BONUS;
+        else if (!(FILES[file] & pieces[WHITE][PAWNS]))
+            value += ROOK_SEMIOPEN_FILE_BONUS;
     }
 
     uint64_t bRooksOpen = pieces[BLACK][ROOKS];
@@ -1598,6 +1600,8 @@ int Board::evaluate() {
 
         if (!(FILES[file] & (pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS])))
             value -= ROOK_OPEN_FILE_BONUS;
+        else if (!(FILES[file] & pieces[BLACK][PAWNS]))
+            value -= ROOK_SEMIOPEN_FILE_BONUS;
     }
 
 

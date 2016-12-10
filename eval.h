@@ -306,6 +306,7 @@ const Score KNIGHT_C3_CLOSED_PENALTY = E(-15, 0);
 
 // Rooks
 const Score ROOK_OPEN_FILE_BONUS = E(20, 12);
+const Score ROOK_SEMIOPEN_FILE_BONUS = E(8, 4);
 
 // Pawn structure
 // Passed pawns
