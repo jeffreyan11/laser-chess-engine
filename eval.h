@@ -197,10 +197,6 @@ const int pieceSquareTable[2][6][32] = {
 const int BISHOP_PAIR_VALUE = 51;
 const int TEMPO_VALUE = 8;
 
-// Pawn value scaling: incur a penalty for having no pawns since the
-// ability to promote is gone
-const int PAWN_SCALING_MG[9] = {33, 11,  0,  0,  0, 0, 0, 0, 0};
-const int PAWN_SCALING_EG[9] = {40, 32, 25, 18, 12, 6, 0, 0, 0};
 // Pawns are a target for the queen in the endgame
 const int QUEEN_PAWN_PENALTY = -15;
 

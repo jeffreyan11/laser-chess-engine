@@ -1373,12 +1373,6 @@ int Board::evaluate() {
     }
 
 
-    // Pawn scaling: a penalty for having too few pawns
-    valueMg -= PAWN_SCALING_MG[pieceCounts[WHITE][PAWNS]];
-    valueEg -= PAWN_SCALING_EG[pieceCounts[WHITE][PAWNS]];
-    valueMg += PAWN_SCALING_MG[pieceCounts[BLACK][PAWNS]];
-    valueEg += PAWN_SCALING_EG[pieceCounts[BLACK][PAWNS]];
-
     // With queens on the board pawns are a target in the endgame
     if (pieces[WHITE][QUEENS])
         valueEg -= QUEEN_PAWN_PENALTY * pieceCounts[BLACK][PAWNS];
@@ -1836,6 +1830,25 @@ int Board::evaluate() {
             else
                 totalEval = (384 - 128 * egFactor / EG_FACTOR_RES) * totalEval / 256;
         }
+    }
+    // Reduce eval for lack of pawns
+    if (totalEval > 0 && totalEval < PIECE_VALUES[MG][BISHOPS] + 50
+     && pieceCounts[WHITE][PAWNS] <= 1) {
+        if (whiteMaterial < PIECE_VALUES[MG][BISHOPS] + 50)
+            totalEval /= 16;
+        else if (pieceCounts[WHITE][PAWNS] == 0)
+            totalEval /= 8;
+        else
+            totalEval /= 2;
+    }
+    if (totalEval < 0 && totalEval > -PIECE_VALUES[MG][BISHOPS] - 50
+     && pieceCounts[BLACK][PAWNS] <= 1) {
+        if (blackMaterial < PIECE_VALUES[MG][BISHOPS] + 50)
+            totalEval /= 16;
+        else if (pieceCounts[BLACK][PAWNS] == 0)
+            totalEval /= 8;
+        else
+            totalEval /= 2;
     }
 
 
