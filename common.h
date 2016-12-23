@@ -162,6 +162,10 @@ public:
         return deleted;
     }
 
+    void resize(int l) {
+        length = l;
+    }
+
     void swap(int i, int j) {
         T temp = arrayList[i];
         arrayList[i] = arrayList[j];

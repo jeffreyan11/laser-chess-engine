@@ -29,6 +29,7 @@
 #include "moveorder.h"
 #include "searchparams.h"
 #include "uci.h"
+#include "syzygy/tbprobe.h"
 
 using std::cout;
 using std::cerr;
@@ -147,6 +148,9 @@ std::mutex threadsRunningMutex;
 // Values for UCI options
 unsigned int multiPV;
 int numThreads;
+
+// Accessible from tbcore.c
+int TBlargest = 0;
 
 
 // Search functions
@@ -795,7 +799,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
     // Create list of legal moves
     MoveList legalMoves;
-    if(isInCheck)
+    if (isInCheck)
         b.getPseudoLegalCheckEscapes(legalMoves, color);
     else
         b.getAllPseudoLegalMoves(legalMoves, color);

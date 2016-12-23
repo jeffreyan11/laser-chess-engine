@@ -17,6 +17,7 @@
 */
 
 #include <algorithm>
+#include <cstring>
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -28,6 +29,7 @@
 #include "board.h"
 #include "search.h"
 #include "uci.h"
+#include "syzygy/tbprobe.h"
 
 using std::cout;
 using std::cerr;
@@ -109,6 +111,7 @@ int main() {
                  << " min " << MIN_MULTI_PV << " max " << MAX_MULTI_PV << endl;
             cout << "option name BufferTime type spin default " << DEFAULT_BUFFER_TIME
                  << " min " << MIN_BUFFER_TIME << " max " << MAX_BUFFER_TIME << endl;
+            cout << "option name SyzygyPath type string default <empty>" << endl;
             cout << "uciok" << endl;
         }
         else if (input == "isready") cout << "readyok" << endl;
@@ -213,6 +216,15 @@ int main() {
                         BUFFER_TIME = MIN_BUFFER_TIME;
                     if (BUFFER_TIME > MAX_BUFFER_TIME)
                         BUFFER_TIME = MAX_BUFFER_TIME;
+                }
+                else if (inputVector.at(2) == "SyzygyPath" || inputVector.at(2) == "syzygypath") {
+                    string path = inputVector.at(4);
+                    for (unsigned int i = 5; i < inputVector.size(); i++)
+                        path += " " + inputVector.at(i);
+                    char *c_path = (char *) malloc(path.length() + 1);
+                    std::strcpy(c_path, path.c_str());
+                    init_tablebases(c_path);
+                    free(c_path);
                 }
                 else
                     cout << "Invalid option." << endl;

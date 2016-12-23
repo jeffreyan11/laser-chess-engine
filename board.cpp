@@ -42,7 +42,7 @@ void initKSArray() {
 }
 
 // Zobrist hashing table and the start position key, both initialized at startup
-static uint64_t zobristTable[794];
+uint64_t zobristTable[794];
 static uint64_t startPosZobristKey = 0;
 
 void initZobristTable() {
