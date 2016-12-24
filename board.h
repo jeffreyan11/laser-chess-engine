@@ -119,6 +119,7 @@ public:
     bool getBlackCanKCastle();
     bool getWhiteCanQCastle();
     bool getBlackCanQCastle();
+    bool getAnyCanCastle();
     uint16_t getEPCaptureFile();
     uint8_t getFiftyMoveCounter();
     uint16_t getMoveNumber();

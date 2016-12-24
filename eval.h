@@ -62,6 +62,7 @@ const int PIECE_VALUES[2][5] = {
   {137, 375, 424, 660, 1284}
 };
 const int KNOWN_WIN = PIECE_VALUES[EG][PAWNS] * 100;
+const int TB_WIN = PIECE_VALUES[EG][PAWNS] * 125;
 
 //------------------------------Piece tables--------------------------------
 const int pieceSquareTable[2][6][32] = {

@@ -2417,6 +2417,10 @@ bool Board::getBlackCanQCastle() {
     return castlingRights & BLACKQSIDE;
 }
 
+bool Board::getAnyCanCastle() {
+    return (castlingRights != 0);
+}
+
 uint16_t Board::getEPCaptureFile() {
     return epCaptureFile;
 }

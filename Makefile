@@ -33,4 +33,4 @@ uci: $(OBJS) uci.o
 	$(CC) -c $(CFLAGS) -x c++ $< -o $@
 
 clean:
-	rm -f *.o $(ENGINENAME)$(EXT).exe $(ENGINENAME)$(EXT)
+	rm -f *.o syzygy/*.o $(ENGINENAME)$(EXT).exe $(ENGINENAME)$(EXT)

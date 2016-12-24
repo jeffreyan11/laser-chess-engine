@@ -22,9 +22,9 @@
 // Define DECOMP64 when compiling for a 64-bit platform.
 // 32-bit is only supported for 5-piece tables, because tables are mmap()ed
 // into memory.
-#ifdef IS_64BIT
+// #ifdef IS_64BIT
 #define DECOMP64
-#endif
+// #endif
 
 #include "../bbinit.h"
 #include "../board.h"
@@ -48,16 +48,17 @@ extern TwoFoldStack twoFoldPositions[MAX_THREADS];
 // mirror == 0 and the black pieces if mirror == 1.
 // No need to make this very efficient.
 static void prt_str(Board &b, char *str, int mirror) {
-    int color = !mirror ? WHITE : BLACK;
+    int color = (mirror == 0) ? WHITE : BLACK;
     for (int pt = KINGS; pt >= PAWNS; pt--)
         for (int i = count(b.getPieces(color, pt)); i > 0; i--)
             *str++ = pchr[5 - pt];
     *str++ = 'v';
-    color = ~color;
+    color = color^1;
     for (int pt = KINGS; pt >= PAWNS; pt--)
         for (int i = count(b.getPieces(color, pt)); i > 0; i--)
             *str++ = pchr[5 - pt];
     *str++ = 0;
+    printf("%s\n", str);
 }
 
 // Given a position, produce a 64-bit material signature key.
@@ -65,12 +66,12 @@ static void prt_str(Board &b, char *str, int mirror) {
 // Again no need to make this very efficient.
 static uint64 calc_key(Board &b, int mirror) {
     uint64 key = 0;
-    int color = !mirror ? WHITE : BLACK;
+    int color = (mirror == 0) ? WHITE : BLACK;
 
     for (int pt = PAWNS; pt <= KINGS; pt++)
         for (int i = count(b.getPieces(color, pt))-1; i >= 0; i--)
             key ^= zobristTable[64*pt+i];
-    color = ~color;
+    color = color^1;
     for (int pt = PAWNS; pt <= KINGS; pt++)
         for (int i = count(b.getPieces(color, pt))-1; i >= 0; i--)
             key ^= zobristTable[384+64*pt+i];
@@ -85,14 +86,14 @@ static uint64 calc_key(Board &b, int mirror) {
 // Again no need to be efficient here.
 static uint64 calc_key_from_pcs(int *pcs, int mirror) {
     uint64 key = 0;
-    int color = !mirror ? 0 : 8;
+    int color = (mirror == 0) ? 0 : 8;
 
     for (int pt = PAWNS; pt <= KINGS; pt++)
-        for (int i = 0; i < pcs[color + pt]; i++)
+        for (int i = 0; i < pcs[color + pt + 1]; i++)
             key ^= zobristTable[64*pt+i];
     color ^= 8;
     for (int pt = PAWNS; pt <= KINGS; pt++)
-        for (int i = 0; i < pcs[color + pt]; i++)
+        for (int i = 0; i < pcs[color + pt + 1]; i++)
             key ^= zobristTable[384+64*pt+i];
 
     return key;
@@ -165,7 +166,7 @@ static int probe_wdl_table(Board &b, int *success) {
         ubyte *pc = entry->pieces[bside];
         for (i = 0; i < entry->num;) {
             uint64_t bb = b.getPieces((int)((pc[i] ^ cmirror) >> 3),
-                            (int)(pc[i] & 0x07));
+                            (int)(pc[i] & 0x07) - 1);
             do {
                 p[i++] = bitScanForward(bb);
                 bb &= bb-1;
@@ -176,7 +177,7 @@ static int probe_wdl_table(Board &b, int *success) {
     } else {
         struct TBEntry_pawn *entry = (struct TBEntry_pawn *)ptr;
         int k = entry->file[0].pieces[0][0] ^ cmirror;
-        uint64_t bb = b.getPieces((int)(k >> 3), (int)(k & 0x07));
+        uint64_t bb = b.getPieces((int)(k >> 3), (int)(k & 0x07) - 1);
         i = 0;
         do {
             p[i++] = bitScanForward(bb) ^ mirror;
@@ -186,7 +187,7 @@ static int probe_wdl_table(Board &b, int *success) {
         ubyte *pc = entry->file[f].pieces[bside];
         for (; i < entry->num;) {
             bb = b.getPieces((int)((pc[i] ^ cmirror) >> 3),
-                        (int)(pc[i] & 0x07));
+                        (int)(pc[i] & 0x07) - 1);
             do {
                 p[i++] = bitScanForward(bb) ^ mirror;
                 bb &= bb-1;
@@ -269,7 +270,7 @@ static int probe_dtz_table(Board &b, int wdl, int *success) {
         ubyte *pc = entry->pieces;
         for (i = 0; i < entry->num;) {
             uint64_t bb = b.getPieces((int)((pc[i] ^ cmirror) >> 3),
-                        (int)(pc[i] & 0x07));
+                        (int)(pc[i] & 0x07) - 1);
             do {
                 p[i++] = bitScanForward(bb);
                 bb &= bb-1;
@@ -286,7 +287,7 @@ static int probe_dtz_table(Board &b, int wdl, int *success) {
     } else {
         struct DTZEntry_pawn *entry = (struct DTZEntry_pawn *)ptr;
         int k = entry->file[0].pieces[0] ^ cmirror;
-        uint64_t bb = b.getPieces((int)(k >> 3), (int)(k & 0x07));
+        uint64_t bb = b.getPieces((int)(k >> 3), (int)(k & 0x07) - 1);
         i = 0;
         do {
             p[i++] = bitScanForward(bb) ^ mirror;
@@ -300,7 +301,7 @@ static int probe_dtz_table(Board &b, int wdl, int *success) {
         ubyte *pc = entry->file[f].pieces;
         for (; i < entry->num;) {
             bb = b.getPieces((int)((pc[i] ^ cmirror) >> 3),
-                    (int)(pc[i] & 0x07));
+                    (int)(pc[i] & 0x07) - 1);
             do {
                 p[i++] = bitScanForward(bb) ^ mirror;
                 bb &= bb-1;
@@ -601,11 +602,11 @@ static int has_repeated() {
 }
 
 static int wdl_to_value[5] = {
-    -MATE_SCORE + MAX_DEPTH + 2,
+    -TB_WIN,
     -2,
     0,
     2,
-    MATE_SCORE - MAX_DEPTH - 2
+    TB_WIN
 };
 
 // Use the DTZ tables to filter out moves that don't preserve the win or draw.
@@ -614,7 +615,7 @@ static int wdl_to_value[5] = {
 //
 // A return value of 0 indicates that not all probes were successful and that
 // no moves were filtered out.
-int root_probe(Board *b, MoveList *rootMoves, ScoreList &scores, int &TBScore) {
+int root_probe(Board *b, MoveList &rootMoves, ScoreList &scores, int &TBScore) {
     int success;
 
     int dtz = probe_dtz(*b, &success);
@@ -623,8 +624,8 @@ int root_probe(Board *b, MoveList *rootMoves, ScoreList &scores, int &TBScore) {
     int color = b->getPlayerToMove();
 
     // Probe each move.
-    for (unsigned int i = 0; i < rootMoves->size(); i++) {
-        Move move = rootMoves->get(i);
+    for (unsigned int i = 0; i < rootMoves.size(); i++) {
+        Move move = rootMoves.get(i);
         Board copy = b->staticCopy();
         copy.doMove(move, color);
         int v = 0;
@@ -648,7 +649,6 @@ int root_probe(Board *b, MoveList *rootMoves, ScoreList &scores, int &TBScore) {
     }
 
     // Obtain 50-move counter for the root position.
-    // In Stockfish there seems to be no clean way, so we do it like this:
     int cnt50 = b->getFiftyMoveCounter();
 
     // Use 50-move counter to determine whether the root position is
@@ -673,7 +673,7 @@ int root_probe(Board *b, MoveList *rootMoves, ScoreList &scores, int &TBScore) {
     size_t j = 0;
     if (dtz > 0) { // winning (or 50-move rule draw)
         int best = 0xffff;
-        for (unsigned int i = 0; i < rootMoves->size(); i++) {
+        for (unsigned int i = 0; i < rootMoves.size(); i++) {
             int v = scores.get(i);
             if (v > 0 && v < best)
                 best = v;
@@ -683,16 +683,16 @@ int root_probe(Board *b, MoveList *rootMoves, ScoreList &scores, int &TBScore) {
         // that stay safely within the 50-move budget, if there are any.
         if (!has_repeated() && best + cnt50 <= 99)
             max = 99 - cnt50;
-        for (unsigned int i = 0; i < rootMoves->size(); i++) {
+        for (unsigned int i = 0; i < rootMoves.size(); i++) {
             int v = scores.get(i);
             if (v > 0 && v <= max) {
-                rootMoves->swap(j++, i);
+                rootMoves.swap(j++, i);
                 scores.swap(j-1, i);
             }
         }
     } else if (dtz < 0) {
         int best = 0;
-        for (unsigned int i = 0; i < rootMoves->size(); i++) {
+        for (unsigned int i = 0; i < rootMoves.size(); i++) {
             int v = scores.get(i);
             if (v < best)
                 best = v;
@@ -700,22 +700,22 @@ int root_probe(Board *b, MoveList *rootMoves, ScoreList &scores, int &TBScore) {
         // Try all moves, unless we approach or have a 50-move rule draw.
         if (-best * 2 + cnt50 < 100)
             return 1;
-        for (unsigned int i = 0; i < rootMoves->size(); i++) {
+        for (unsigned int i = 0; i < rootMoves.size(); i++) {
             if (scores.get(i) == best) {
-                rootMoves->swap(j++, i);
+                rootMoves.swap(j++, i);
                 scores.swap(j-1, i);
             }
         }
     } else { // drawing
         // Try all moves that preserve the draw.
-        for (unsigned int i = 0; i < rootMoves->size(); i++) {
+        for (unsigned int i = 0; i < rootMoves.size(); i++) {
             if (scores.get(i) == 0) {
-                rootMoves->swap(j++, i);
+                rootMoves.swap(j++, i);
                 scores.swap(j-1, i);
             }
         }
     }
-    rootMoves->resize(j);
+    rootMoves.resize(j);
 
     return 1;
 }
@@ -725,7 +725,7 @@ int root_probe(Board *b, MoveList *rootMoves, ScoreList &scores, int &TBScore) {
 //
 // A return value of 0 indicates that not all probes were successful and that
 // no moves were filtered out.
-int root_probe_wdl(Board *b, MoveList *rootMoves, ScoreList &scores, int &TBScore) {
+int root_probe_wdl(Board *b, MoveList &rootMoves, ScoreList &scores, int &TBScore) {
     int success;
 
     int wdl = probe_wdl(*b, &success);
@@ -737,8 +737,8 @@ int root_probe_wdl(Board *b, MoveList *rootMoves, ScoreList &scores, int &TBScor
     int best = -2;
 
     // Probe each move.
-    for (unsigned int i = 0; i < rootMoves->size(); i++) {
-        Move move = rootMoves->get(i);
+    for (unsigned int i = 0; i < rootMoves.size(); i++) {
+        Move move = rootMoves.get(i);
         Board copy = b->staticCopy();
         copy.doMove(move, color);
 
@@ -751,13 +751,13 @@ int root_probe_wdl(Board *b, MoveList *rootMoves, ScoreList &scores, int &TBScor
     }
 
     size_t j = 0;
-    for (unsigned int i = 0; i < rootMoves->size(); i++) {
+    for (unsigned int i = 0; i < rootMoves.size(); i++) {
         if (scores.get(i) == best) {
-            rootMoves->swap(j++, i);
+            rootMoves.swap(j++, i);
             scores.swap(j-1, i);
         }
     }
-    rootMoves->resize(j);
+    rootMoves.resize(j);
 
     return 1;
 }

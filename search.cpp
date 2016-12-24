@@ -42,6 +42,7 @@ using std::endl;
  */
 struct SearchStatistics {
     uint64_t nodes;
+    uint64_t tbhits;
     uint64_t hashProbes, hashHits, hashScoreCuts;
     uint64_t hashMoveAttempts, hashMoveCuts;
     uint64_t failHighs, firstFailHighs;
@@ -55,6 +56,7 @@ struct SearchStatistics {
 
     void reset() {
         nodes = 0;
+        tbhits = 0;
         hashProbes = hashHits = hashScoreCuts = 0;
         hashMoveAttempts = hashMoveCuts = 0;
         failHighs = firstFailHighs = 0;
@@ -151,6 +153,7 @@ int numThreads;
 
 // Accessible from tbcore.c
 int TBlargest = 0;
+static int probeLimit = 0;
 
 
 // Search functions
@@ -167,6 +170,7 @@ int adjustHashScore(int score, int plies);
 
 // Other utility functions
 Move nextMove(MoveList &moves, ScoreList &scores, unsigned int index);
+uint64_t getTBHits();
 void changePV(Move best, SearchPV *parent, SearchPV *child);
 std::string retrievePV(SearchPV *pvLine);
 int getSelectiveDepth();
@@ -211,6 +215,30 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     // only to get a rough PV/score
     if (legalMoves.size() == 1 && mode == TIME) {
         searchParamsArray[0].timeLimit = std::min(searchParamsArray[0].timeLimit / 32, ONE_SECOND);
+    }
+
+
+    // Root probe Syzygy
+    probeLimit = TBlargest;
+    int tbScore = 0;
+    unsigned int prevLMSize = legalMoves.size();
+    if (TBlargest && count(b->getAllPieces(WHITE) | b->getAllPieces(BLACK)) <= TBlargest) {
+        ScoreList scores;
+        int tbProbeResult = root_probe(b, legalMoves, scores, tbScore);
+        if (tbProbeResult) {
+            probeLimit = 0;
+            searchStatsArray[0].tbhits += prevLMSize;
+        }
+        else {
+            scores.clear();
+            tbScore = 0;
+            tbProbeResult = root_probe_wdl(b, legalMoves, scores, tbScore);
+            if (tbProbeResult) {
+                searchStatsArray[0].tbhits += prevLMSize;
+                if (tbScore <= 0)
+                    probeLimit = 0;
+            }
+        }
     }
 
 
@@ -308,10 +336,11 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     cout << "info depth " << rootDepth;
                     cout << " seldepth " << getSelectiveDepth();
                     cout << " score";
-                    cout << " cp " << bestScore * 100 / PIECE_VALUES[EG][PAWNS] << " upperbound";
+                    cout << " cp " << (tbScore == 0 ? bestScore : (bestScore/10 + tbScore)) * 100 / PIECE_VALUES[EG][PAWNS] << " upperbound";
 
                     cout << " time " << timeSoFar
                          << " nodes " << getNodes() << " nps " << nps
+                         << " tbhits " << getTBHits()
                          << " hashfull " << 1000 * transpositionTable.keys
                                                  / transpositionTable.getSize()
                          << " pv " << pvStr << endl;
@@ -326,10 +355,11 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     cout << "info depth " << rootDepth;
                     cout << " seldepth " << getSelectiveDepth();
                     cout << " score";
-                    cout << " cp " << bestScore * 100 / PIECE_VALUES[EG][PAWNS] << " lowerbound";
+                    cout << " cp " << (tbScore == 0 ? bestScore : (bestScore/10 + tbScore)) * 100 / PIECE_VALUES[EG][PAWNS] << " lowerbound";
 
                     cout << " time " << timeSoFar
                          << " nodes " << getNodes() << " nps " << nps
+                         << " tbhits " << getTBHits()
                          << " hashfull " << 1000 * transpositionTable.keys
                                                  / transpositionTable.getSize()
                          << " pv " << pvStr << endl;
@@ -366,6 +396,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 cout << " seldepth " << getSelectiveDepth();
                 cout << " time " << timeSoFar
                      << " nodes " << getNodes() << " nps " << nps
+                     << " tbhits " << getTBHits()
                      << " hashfull " << 1000 * transpositionTable.keys
                                              / transpositionTable.getSize()
                      << endl;
@@ -394,10 +425,11 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 cout << " mate " << (-MATE_SCORE - bestScore) / 2;
             else
                 // Scale score into centipawns using our internal pawn value
-                cout << " cp " << bestScore * 100 / PIECE_VALUES[EG][PAWNS];
+                cout << " cp " << (tbScore == 0 ? bestScore : (bestScore/10 + tbScore)) * 100 / PIECE_VALUES[EG][PAWNS];
 
             cout << " time " << timeSoFar
                  << " nodes " << getNodes() << " nps " << nps
+                 << " tbhits " << getTBHits()
                  << " hashfull " << 1000 * transpositionTable.keys
                                          / transpositionTable.getSize()
                  << " pv " << pvStr << endl;
@@ -675,6 +707,11 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         hashScore = getHashScore(hashEntry);
         nodeType = getHashNodeType(hashEntry);
         hashDepth = getHashDepth(hashEntry);
+        hashed = getHashMove(hashEntry);
+
+        // Count hashed tb hits
+        if (nodeType == PV_NODE && hashed == NULL_MOVE)
+            searchStats->tbhits++;
 
         // Adjust the hash score to mate distance from root if necessary
         if (hashScore >= MATE_SCORE - MAX_DEPTH)
@@ -697,12 +734,37 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             }
         }
 
-        // Otherwise, store the hash move for later use
-        hashed = getHashMove(hashEntry);
         // Don't use hash moves from too low of a depth
         if ((hashDepth < 1 && depth >= 7)
          || (isPVNode && hashDepth < depth - 3))
             hashed = NULL_MOVE;
+    }
+
+
+    // Tablebase probe
+    if (probeLimit
+     && count(b.getAllPieces(WHITE) | b.getAllPieces(BLACK)) <= probeLimit
+     && b.getFiftyMoveCounter() == 0
+     && !b.getAnyCanCastle()) {
+        int tbProbeResult;
+        int tbValue = probe_wdl(b, &tbProbeResult);
+
+        // Probe was successful
+        if (tbProbeResult != 0) {
+            searchStats->tbhits++;
+
+            int tbScore = tbValue < -1 ? -TB_WIN
+                        : tbValue >  1 ?  TB_WIN
+                                       : 2 * tbValue;
+
+            int tbDepth = std::min(depth+4, MAX_DEPTH);
+            uint64_t hashData = packHashData(tbDepth, NULL_MOVE,
+                adjustHashScore(tbScore, searchParams->ply), PV_NODE,
+                searchParams->rootMoveNumber);
+            transpositionTable.add(b, hashData, tbDepth, searchParams->rootMoveNumber);
+
+            return tbScore;
+        }
     }
 
 
@@ -1436,6 +1498,14 @@ uint64_t getNodes() {
     uint64_t total = 0;
     for (int i = 0; i < numThreads; i++) {
         total += searchStatsArray[i].nodes;
+    }
+    return total;
+}
+
+uint64_t getTBHits() {
+    uint64_t total = 0;
+    for (int i = 0; i < numThreads; i++) {
+        total += searchStatsArray[i].tbhits;
     }
     return total;
 }
