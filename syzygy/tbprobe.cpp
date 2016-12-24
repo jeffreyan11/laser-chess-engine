@@ -58,11 +58,9 @@ static void prt_str(Board &b, char *str, int mirror) {
         for (int i = count(b.getPieces(color, pt)); i > 0; i--)
             *str++ = pchr[5 - pt];
     *str++ = 0;
-    printf("%s\n", str);
 }
 
 // Given a position, produce a 64-bit material signature key.
-// If the engine supports such a key, it should equal the engine's key.
 // Again no need to make this very efficient.
 static uint64 calc_key(Board &b, int mirror) {
     uint64 key = 0;
@@ -380,7 +378,6 @@ int probe_wdl(Board &b, int *success) {
     // We do capture resolution, letting best_cap keep track of the best
     // capture without ep rights and letting best_ep keep track of still
     // better ep captures if they exist.
-
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Move capture = legalMoves.get(i);
         Board copy = b.staticCopy();
@@ -509,7 +506,6 @@ int probe_dtz(Board &b, int *success) {
     if (wdl > 0) {
         // Generate at least all legal non-capturing pawn moves
         // including non-capturing promotions.
-        // (The call to generate<>() in fact generates all moves.)
         b.getPseudoLegalQuiets(legalMoves, color);
 
         for (unsigned int i = 0; i < legalMoves.size(); i++) {
