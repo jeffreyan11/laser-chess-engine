@@ -70,6 +70,7 @@ extern TwoFoldStack twoFoldPositions[MAX_THREADS];
 
 int main() {
     initMagicTables(2563762638929852183ULL);
+    initPSQT();
     initKSArray();
     initZobristTable();
     initInBetweenTable();

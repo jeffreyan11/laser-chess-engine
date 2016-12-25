@@ -32,6 +32,25 @@ const uint64_t WHITE_QSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[1] | INDEX_TO_BIT[2] |
 const uint64_t BLACK_KSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[61] | INDEX_TO_BIT[62];
 const uint64_t BLACK_QSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[57] | INDEX_TO_BIT[58] | INDEX_TO_BIT[59];
 
+static Score PSQT[2][6][64];
+
+void initPSQT() {
+    #define E(mg, eg) ((Score) ((((int32_t) eg) << 16) + ((int32_t) mg)))
+    for (int pieceType = PAWNS; pieceType <= KINGS; pieceType++) {
+        for (int sq = 0; sq < 32; sq++) {
+            int r = sq / 4;
+            int f = sq & 0x3;
+            Score sc = E(pieceSquareTable[MG][pieceType][sq], pieceSquareTable[EG][pieceType][sq]);
+
+            PSQT[WHITE][pieceType][8*(7-r) + f] = sc;
+            PSQT[WHITE][pieceType][8*(7-r) + (7-f)] = sc;
+            PSQT[BLACK][pieceType][8*r + f] = sc;
+            PSQT[BLACK][pieceType][8*r + (7-f)] = sc;
+        }
+    }
+    #undef E
+}
+
 static int KS_TO_SCORE[200];
 
 void initKSArray() {
@@ -1349,28 +1368,19 @@ int Board::evaluate() {
 
 
     // Piece square tables
-    // White pieces
-    for (int pieceID = 0; pieceID < 6; pieceID++) {
-        uint64_t bitboard = pieces[WHITE][pieceID];
-        // Invert the board for white side
-        bitboard = flipAcrossRanks(bitboard);
-        while (bitboard) {
-            int sq = bitScanForward(bitboard);
-            bitboard &= bitboard - 1;
-            valueMg += getPSQTValue(MG, pieceID, sq);
-            valueEg += getPSQTValue(EG, pieceID, sq);
+    Score psqtScores[2] = {EVAL_ZERO, EVAL_ZERO};
+    for (int color = WHITE; color <= BLACK; color++) {
+        for (int pieceID = 0; pieceID < 6; pieceID++) {
+            uint64_t bitboard = pieces[color][pieceID];
+            while (bitboard) {
+                int sq = bitScanForward(bitboard);
+                bitboard &= bitboard - 1;
+                psqtScores[color] += PSQT[color][pieceID][sq];
+            }
         }
     }
-    // Black pieces
-    for (int pieceID = 0; pieceID < 6; pieceID++)  {
-        uint64_t bitboard = pieces[BLACK][pieceID];
-        while (bitboard) {
-            int sq = bitScanForward(bitboard);
-            bitboard &= bitboard - 1;
-            valueMg -= getPSQTValue(MG, pieceID, sq);
-            valueEg -= getPSQTValue(EG, pieceID, sq);
-        }
-    }
+    valueMg += decEvalMg(psqtScores[WHITE]) - decEvalMg(psqtScores[BLACK]);
+    valueEg += decEvalEg(psqtScores[WHITE]) - decEvalEg(psqtScores[BLACK]);
 
 
     // With queens on the board pawns are a target in the endgame
@@ -2011,12 +2021,14 @@ int Board::checkEndgameCases() {
 
     if (numPieces == 1) {
         if (pieces[WHITE][PAWNS]) {
-            int wPawn = bitScanForward(flipAcrossRanks(pieces[WHITE][PAWNS]));
-            return 3 * PIECE_VALUES[EG][PAWNS] / 2 + getPSQTValue(EG, PAWNS, wPawn);
+            int wPawn = bitScanForward(pieces[WHITE][PAWNS]);
+            int r = (wPawn >> 3);
+            return 3 * PIECE_VALUES[EG][PAWNS] / 2 + 5 * (r - 1) * (r - 2);
         }
         if (pieces[BLACK][PAWNS]) {
             int bPawn = bitScanForward(pieces[BLACK][PAWNS]);
-            return -3 * PIECE_VALUES[EG][PAWNS] / 2 - getPSQTValue(EG, PAWNS, bPawn);
+            int r = 7 - (bPawn >> 3);
+            return -3 * PIECE_VALUES[EG][PAWNS] / 2 - 5 * (r - 1) * (r - 2);
         }
     }
 
@@ -2162,12 +2174,6 @@ uint64_t Board::getNonPawnMaterial(int color) {
 
 int Board::getManhattanDistance(int sq1, int sq2) {
     return std::abs((sq1 >> 3) - (sq2 >> 3)) + std::abs((sq1 & 7) - (sq2 & 7));
-}
-
-inline int Board::getPSQTValue(int isEndgame, int pieceID, int sq) {
-    int f = sq & 7;
-    sq = ((sq >> 3) << 2) + std::min(f, 7-f);
-    return pieceSquareTable[isEndgame][pieceID][sq];
 }
 
 // Given a bitboard of attackers, finds the least valuable attacker of color and
