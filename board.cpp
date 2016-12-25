@@ -1771,8 +1771,6 @@ int Board::evaluate() {
         int f = pawnSq & 7;
         if (!(FILES[f] & pieces[BLACK][PAWNS])) {
             whitePawnScore += BACKWARD_SEMIOPEN_PENALTY;
-            // if (FILES[f] & pieces[BLACK][ROOKS])
-            //     blackPawnScore += BACKWARD_SEMIOPEN_ROOK_BONUS;
         }
     }
     while (bBackwards) {
@@ -1781,8 +1779,6 @@ int Board::evaluate() {
         int f = pawnSq & 7;
         if (!(FILES[f] & pieces[WHITE][PAWNS])) {
             blackPawnScore += BACKWARD_SEMIOPEN_PENALTY;
-            // if (FILES[f] & pieces[WHITE][ROOKS])
-            //     whitePawnScore += BACKWARD_SEMIOPEN_ROOK_BONUS;
         }
     }
 

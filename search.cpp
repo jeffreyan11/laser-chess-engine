@@ -224,17 +224,22 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     unsigned int prevLMSize = legalMoves.size();
     if (TBlargest && count(b->getAllPieces(WHITE) | b->getAllPieces(BLACK)) <= TBlargest) {
         ScoreList scores;
+        // Try probing with DTZ tables first
         int tbProbeResult = root_probe(b, legalMoves, scores, tbScore);
         if (tbProbeResult) {
+            // With DTZ table filtering, we have guaranteed that we will not
+            // make a mistake so do not probe TBs in search
             probeLimit = 0;
             searchStatsArray[0].tbhits += prevLMSize;
         }
+        // If unsuccessful, try WDL tables
         else {
             scores.clear();
             tbScore = 0;
             tbProbeResult = root_probe_wdl(b, legalMoves, scores, tbScore);
             if (tbProbeResult) {
                 searchStatsArray[0].tbhits += prevLMSize;
+                // Only probe to maintain a win
                 if (tbScore <= 0)
                     probeLimit = 0;
             }
@@ -742,6 +747,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
 
     // Tablebase probe
+    // We use Stockfish's strategy of only probing WDL tables in the main search
     if (probeLimit
      && count(b.getAllPieces(WHITE) | b.getAllPieces(BLACK)) <= probeLimit
      && b.getFiftyMoveCounter() == 0
@@ -757,6 +763,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
                         : tbValue >  1 ?  TB_WIN
                                        : 2 * tbValue;
 
+            // Hash the TB result
             int tbDepth = std::min(depth+4, MAX_DEPTH);
             uint64_t hashData = packHashData(tbDepth, NULL_MOVE,
                 adjustHashScore(tbScore, searchParams->ply), PV_NODE,

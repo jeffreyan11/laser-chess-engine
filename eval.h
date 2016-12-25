@@ -331,7 +331,6 @@ const Score ISOLATED_DOUBLED_PENALTY = E(-8, -12);
 // Backward pawns
 const Score BACKWARD_PENALTY = E(-12, -2);
 const Score BACKWARD_SEMIOPEN_PENALTY = E(-12, -10);
-// const Score BACKWARD_SEMIOPEN_ROOK_BONUS = E(4, 4);
 
 #undef E
 
