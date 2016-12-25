@@ -1158,6 +1158,17 @@ uint64_t Board::getAttackMap(int color, int sq) {
          | (getKingSquares(sq) & pieces[color][KINGS]);
 }
 
+// Get all pieces of both colors attacking a square
+uint64_t Board::getAttackMap(int sq) {
+    uint64_t occ = getOccupancy();
+    return (getBPawnCaptures(INDEX_TO_BIT[sq]) & pieces[WHITE][PAWNS])
+         | (getWPawnCaptures(INDEX_TO_BIT[sq]) & pieces[BLACK][PAWNS])
+         | (getKnightSquares(sq) & (pieces[WHITE][KNIGHTS] | pieces[BLACK][KNIGHTS]))
+         | (getBishopSquares(sq, occ) & (pieces[WHITE][BISHOPS] | pieces[WHITE][QUEENS] | pieces[BLACK][BISHOPS] | pieces[BLACK][QUEENS]))
+         | (getRookSquares(sq, occ) & (pieces[WHITE][ROOKS] | pieces[WHITE][QUEENS] | pieces[BLACK][ROOKS] | pieces[BLACK][QUEENS]))
+         | (getKingSquares(sq) & (pieces[WHITE][KINGS] | pieces[BLACK][KINGS]));
+}
+
 // Given the on a given square, used to get either the piece moving or the
 // captured piece.
 int Board::getPieceOnSquare(int color, int sq) {
@@ -2189,7 +2200,7 @@ uint64_t Board::getLeastValuableAttacker(uint64_t attackers, int color, int &pie
 // https://chessprogramming.wikispaces.com/SEE+-+The+Swap+Algorithm
 int Board::getSEE(int color, int sq) {
     int gain[32], d = 0, piece = 0;
-    uint64_t attackers = getAttackMap(WHITE, sq) | getAttackMap(BLACK, sq);
+    uint64_t attackers = getAttackMap(sq);
     // used attackers that may act as blockers for x-ray pieces
     uint64_t used = 0;
 
@@ -2198,14 +2209,13 @@ int Board::getSEE(int color, int sq) {
     // If there are no attackers, return immediately
     if (!single)
         return 0;
-    // Get value of piece initially being captured, or 0 if the square is
-    // empty
+    // Get value of piece initially being captured. Should never be empty.
     gain[d] = SEE_PIECE_VALS[getPieceOnSquare(color^1, sq)];
 
     do {
         d++; // next depth
         color ^= 1;
-        gain[d]  = SEE_PIECE_VALS[piece] - gain[d-1];
+        gain[d] = SEE_PIECE_VALS[piece] - gain[d-1];
         if (-gain[d-1] < 0 && gain[d] < 0) // pruning for stand pat
             break;
         attackers ^= single; // remove used attacker
@@ -2233,7 +2243,7 @@ int Board::getSEEForMove(int color, Move m) {
 
     // TODO temporary hack for EP captures
     if (isEP(m))
-        return -PIECE_VALUES[MG][PAWNS];
+        return 0;
 
     // Do the move temporarily
     pieces[color][pieceID] &= ~INDEX_TO_BIT[startSq];
@@ -2267,20 +2277,17 @@ int Board::getSEEForMove(int color, Move m) {
 
 int Board::valueOfPiece(int pieceID) {
     switch(pieceID) {
+        // EP capture
         case -1:
-            return 0;
-        case PAWNS:
             return PIECE_VALUES[MG][PAWNS];
+        case PAWNS:
         case KNIGHTS:
-            return PIECE_VALUES[MG][KNIGHTS];
         case BISHOPS:
-            return PIECE_VALUES[MG][BISHOPS];
         case ROOKS:
-            return PIECE_VALUES[MG][ROOKS];
         case QUEENS:
-            return PIECE_VALUES[MG][QUEENS];
+            return PIECE_VALUES[MG][pieceID];
         case KINGS:
-            return MATE_SCORE;
+            return MATE_SCORE / 2;
     }
 
     return -1;

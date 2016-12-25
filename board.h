@@ -91,6 +91,7 @@ public:
     //uint64_t getInitXRays(int color, int sq);
     // Get all pieces of that color attacking the square
     uint64_t getAttackMap(int color, int sq);
+    uint64_t getAttackMap(int sq);
     int getPieceOnSquare(int color, int sq);
     bool isCheckMove(int color, Move m);
     uint64_t getRookXRays(int sq, uint64_t occ, uint64_t blockers);

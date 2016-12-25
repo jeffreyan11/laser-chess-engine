@@ -25,7 +25,7 @@
  * This file stores evaluation constants and encoding.
  */
 
-const int SEE_PIECE_VALS[6] = {100, 400, 400, 600, 1150, MATE_SCORE};
+const int SEE_PIECE_VALS[6] = {100, 400, 400, 600, 1150, MATE_SCORE/2};
 const int EG_FACTOR_PIECE_VALS[5] = {73, 400, 388, 702, 1814};
 const int EG_FACTOR_ALPHA = 2720;
 const int EG_FACTOR_BETA = 5420;
