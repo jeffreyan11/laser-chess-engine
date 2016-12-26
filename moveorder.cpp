@@ -34,7 +34,7 @@ const int QUIET_SEE_DEPTH = 3;
 
 
 MoveOrder::MoveOrder(Board *_b, int _color, int _depth, int _threadID, bool _isPVNode, bool _isInCheck,
-	bool _isCutNode, int _staticEval, int _beta, SearchParameters *_searchParams, Move _hashed, MoveList _legalMoves) {
+	bool _isCutNode, int _staticEval, int _beta, SearchParameters *_searchParams, SearchStackInfo *_ssi, Move _hashed, MoveList _legalMoves) {
 	b = _b;
 	color = _color;
 	depth = _depth;
@@ -45,6 +45,7 @@ MoveOrder::MoveOrder(Board *_b, int _color, int _depth, int _threadID, bool _isP
     staticEval = _staticEval;
     beta = _beta;
 	searchParams = _searchParams;
+    ssi = _ssi;
     mgStage = STAGE_NONE;
     quietStart = 0;
     index = 0;
@@ -159,7 +160,7 @@ void MoveOrder::scoreQuiets() {
         Move m = legalMoves.get(i);
 
         // Score killers below even captures but above losing captures
-        if (m == searchParams->killers[searchParams->ply][0])
+        if (m == searchParams->killers[ssi->ply][0])
             scores.add(SCORE_EVEN_CAPTURE - 1);
 
         // Order queen promotions somewhat high
@@ -206,7 +207,7 @@ void MoveOrder::scoreIIDMove() {
     index = 0;*/
 
     int iidDepth = isPVNode ? depth-2 : (depth - 5) / 2;
-    int bestIndex = getBestMoveForSort(b, legalMoves, iidDepth, threadID);
+    int bestIndex = getBestMoveForSort(b, legalMoves, iidDepth, threadID, ssi);
 
     // Mate check to prevent crashes
     if (bestIndex == -1) {

@@ -93,7 +93,6 @@ struct EasyMove {
     }
 };
 
-
 //-------------------------------Search Constants-------------------------------
 // Futility pruning margins indexed by depth. If static eval is at least this
 // amount below alpha, we skip quiet moves for this position.
@@ -135,6 +134,7 @@ static EvalHash evalCache(DEFAULT_HASH_SIZE);
 static SearchParameters searchParamsArray[MAX_THREADS];
 static SearchStatistics searchStatsArray[MAX_THREADS];
 static EasyMove easyMoveInfo;
+static SearchStackInfo **ssInfo;
 
 // Accessible from uci.cpp
 TwoFoldStack twoFoldPositions[MAX_THREADS];
@@ -160,7 +160,7 @@ static int probeLimit = 0;
 void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
     int beta, int *bestMoveIndex, int *bestScore, unsigned int startMove,
     int threadID, SearchPV *pvLine);
-int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, SearchPV *pvLine);
+int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, SearchStackInfo *ssi, SearchPV *pvLine);
 int quiescence(Board &b, int plies, int alpha, int beta, int threadID);
 int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID);
 
@@ -519,7 +519,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
         int beta, int *bestMoveIndex, int *bestScore, unsigned int startMove,
         int threadID, SearchPV *pvLine) {
-    SearchParameters *searchParams = &(searchParamsArray[threadID]);
+    // SearchParameters *searchParams = &(searchParamsArray[threadID]);
     SearchStatistics *searchStats = &(searchStatsArray[threadID]);
     SearchPV line;
     int color = b->getPlayerToMove();
@@ -549,20 +549,14 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
         searchStats->nodes++;
 
         if (i != 0) {
-            searchParams->ply++;
-            score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, true, &line);
-            searchParams->ply--;
+            score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, true, &(ssInfo[threadID][1]), &line);
             if (alpha < score && score < beta) {
                 line.pvLength = 0;
-                searchParams->ply++;
-                score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, &line);
-                searchParams->ply--;
+                score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, &(ssInfo[threadID][1]), &line);
             }
         }
         else {
-            searchParams->ply++;
-            score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, &line);
-            searchParams->ply--;
+            score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, &(ssInfo[threadID][1]), &line);
         }
 
         // Stop condition. If stopping, return search results from incomplete
@@ -597,8 +591,8 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
 }
 
 // Gets a best move to try first when a hash move is not available.
-int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID) {
-    SearchParameters *searchParams = &(searchParamsArray[threadID]);
+int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID, SearchStackInfo *ssi) {
+    // SearchParameters *searchParams = &(searchParamsArray[threadID]);
     SearchStatistics *searchStats = &(searchStatsArray[threadID]);
     SearchPV line;
     int color = b->getPlayerToMove();
@@ -617,19 +611,13 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID) 
         searchStats->nodes++;
 
         if (i != 0) {
-            searchParams->ply++;
-            score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, true, &line);
-            searchParams->ply--;
+            score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, true, ssi+1, &line);
             if (alpha < score && score < beta) {
-                searchParams->ply++;
-                score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, &line);
-                searchParams->ply--;
+                score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, ssi+1, &line);
             }
         }
         else {
-            searchParams->ply++;
-            score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, &line);
-            searchParams->ply--;
+            score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, ssi+1, &line);
         }
 
         // Stop condition to break out as quickly as possible
@@ -652,17 +640,18 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID) 
 //------------------------------------------------------------------------------
 
 // The standard implementation of a fail-soft PVS search.
-int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, SearchPV *pvLine) {
+int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, SearchStackInfo *ssi, SearchPV *pvLine) {
     SearchParameters *searchParams = &(searchParamsArray[threadID]);
     SearchStatistics *searchStats = &(searchStatsArray[threadID]);
     // When the standard search is done, enter quiescence search.
     // Static board evaluation is done there.
-    if (depth <= 0 || searchParams->ply >= MAX_DEPTH) {
+    if (depth <= 0 || ssi->ply >= MAX_DEPTH) {
         // Update selective depth if necessary
-        if (searchParams->ply > searchParams->selectiveDepth)
-            searchParams->selectiveDepth = searchParams->ply;
+        if (ssi->ply > searchParams->selectiveDepth)
+            searchParams->selectiveDepth = ssi->ply;
         // The PV starts at depth 0
         pvLine->pvLength = 0;
+        searchParams->ply = ssi->ply;
         // Score the position using qsearch
         return quiescence(b, 0, alpha, beta, threadID);
     }
@@ -675,14 +664,14 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
 
     // Mate distance pruning
-    int matingScore = MATE_SCORE - searchParams->ply;
+    int matingScore = MATE_SCORE - ssi->ply;
     if (matingScore < beta) {
         beta = matingScore;
         if (alpha >= matingScore)
             return alpha;
     }
 
-    int matedScore = -MATE_SCORE + searchParams->ply;
+    int matedScore = -MATE_SCORE + ssi->ply;
     if (matedScore > alpha) {
         alpha = matedScore;
         if (beta <= matedScore)
@@ -720,9 +709,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
         // Adjust the hash score to mate distance from root if necessary
         if (hashScore >= MATE_SCORE - MAX_DEPTH)
-            hashScore -= searchParams->ply;
+            hashScore -= ssi->ply;
         else if (hashScore <= -MATE_SCORE + MAX_DEPTH)
-            hashScore += searchParams->ply;
+            hashScore += ssi->ply;
 
         // Return hash score failing soft if hash depth >= current depth and:
         //   The node is a hashed all node and score <= alpha
@@ -766,7 +755,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             // Hash the TB result
             int tbDepth = std::min(depth+4, MAX_DEPTH);
             uint64_t hashData = packHashData(tbDepth, NULL_MOVE,
-                adjustHashScore(tbScore, searchParams->ply), PV_NODE,
+                adjustHashScore(tbScore, ssi->ply), PV_NODE,
                 searchParams->rootMoveNumber);
             transpositionTable.add(b, hashData, tbDepth, searchParams->rootMoveNumber);
 
@@ -824,6 +813,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     if (!isPVNode && !isInCheck
      && nodeType != CUT_NODE && nodeType != PV_NODE && abs(alpha) < NEAR_MATE_SCORE
      && depth <= 3 && staticEval <= alpha - RAZOR_MARGIN[depth]) {
+        searchParams->ply = ssi->ply;
         if (depth == 1)
             return quiescence(b, 0, alpha, beta, threadID);
 
@@ -852,9 +842,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         uint16_t epCaptureFile = b.getEPCaptureFile();
         b.doNullMove();
         searchParams->nullMoveCount++;
-        searchParams->ply++;
-        int nullScore = -PVS(b, depth-1-reduction, -beta, -alpha, threadID, !isCutNode, &line);
-        searchParams->ply--;
+        int nullScore = -PVS(b, depth-1-reduction, -beta, -alpha, threadID, !isCutNode, ssi+1, &line);
 
         // Undo the null move
         b.undoNullMove(epCaptureFile);
@@ -874,7 +862,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         b.getAllPseudoLegalMoves(legalMoves, color);
     // Initialize the module for move ordering
     MoveOrder moveSorter(&b, color, depth, threadID, isPVNode, isInCheck,
-        isCutNode, staticEval, beta, searchParams, hashed, legalMoves);
+        isCutNode, staticEval, beta, searchParams, ssi, hashed, legalMoves);
     moveSorter.generateMoves();
 
     // Keeps track of the best move for storing into the TT
@@ -931,8 +919,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // https://chessprogramming.wikispaces.com/Futility+Pruning#MoveCountBasedPruning
         if (moveIsPrunable
          && depth <= 7 && movesSearched > LMP_MOVE_COUNTS[depth]
-         && m != searchParams->killers[searchParams->ply][0]
-         && m != searchParams->killers[searchParams->ply][1])
+         && m != searchParams->killers[ssi->ply][0]
+         && m != searchParams->killers[ssi->ply][1])
             continue;
 
 
@@ -961,8 +949,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // fail-low.
         if (!isInCheck && depth >= 3 && movesSearched > (isPVNode ? 4 : 2)
          && !isCapture(m) && !isPromotion(m)
-         && m != searchParams->killers[searchParams->ply][0]
-         && m != searchParams->killers[searchParams->ply][1]
+         && m != searchParams->killers[ssi->ply][0]
+         && m != searchParams->killers[ssi->ply][1]
          && !copy.isInCheck(color^1)) {
             // Increase reduction with higher depth and later moves
             reduction = (int) (0.5 + log(depth) * log(movesSearched) / 2.1);
@@ -1019,9 +1007,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
                 // Do a reduced search for fail-low confirmation
                 int SEDepth = depth / 2 - 1;
 
-                searchParams->ply++;
-                score = -PVS(seCopy, SEDepth, -SEWindow - 1, -SEWindow, threadID, !isCutNode, &line);
-                searchParams->ply--;
+                score = -PVS(seCopy, SEDepth, -SEWindow - 1, -SEWindow, threadID, !isCutNode, ssi+1, &line);
 
                 // If a move did not fail low, no singular extension
                 if (score > SEWindow) {
@@ -1041,32 +1027,24 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
         // Null-window search, with re-search if applicable
         if (movesSearched != 0) {
-            searchParams->ply++;
-            score = -PVS(copy, depth-1-reduction+extension, -alpha-1, -alpha, threadID, true, &line);
-            searchParams->ply--;
+            score = -PVS(copy, depth-1-reduction+extension, -alpha-1, -alpha, threadID, true, ssi+1, &line);
 
             // LMR re-search if the reduced search did not fail low
             if (reduction > 0 && score > alpha) {
                 line.pvLength = 0;
-                searchParams->ply++;
-                score = -PVS(copy, depth-1+extension, -alpha-1, -alpha, threadID, !isCutNode, &line);
-                searchParams->ply--;
+                score = -PVS(copy, depth-1+extension, -alpha-1, -alpha, threadID, !isCutNode, ssi+1, &line);
             }
 
             // Re-search for a scout window at PV nodes
             if (alpha < score && score < beta) {
                 line.pvLength = 0;
-                searchParams->ply++;
-                score = -PVS(copy, depth-1+extension, -beta, -alpha, threadID, false, &line);
-                searchParams->ply--;
+                score = -PVS(copy, depth-1+extension, -beta, -alpha, threadID, false, ssi+1, &line);
             }
         }
 
         // The first move is always searched at a normal depth
         else {
-            searchParams->ply++;
-            score = -PVS(copy, depth-1+extension, -beta, -alpha, threadID, (isPVNode ? false : !isCutNode), &line);
-            searchParams->ply--;
+            score = -PVS(copy, depth-1+extension, -beta, -alpha, threadID, (isPVNode ? false : !isCutNode), ssi+1, &line);
         }
 
         // Pop the position in case we return early from this search
@@ -1089,17 +1067,17 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
             // Hash the cut move and score
             uint64_t hashData = packHashData(depth, m,
-                adjustHashScore(score, searchParams->ply), CUT_NODE,
+                adjustHashScore(score, ssi->ply), CUT_NODE,
                 searchParams->rootMoveNumber);
             transpositionTable.add(b, hashData, depth, searchParams->rootMoveNumber);
 
             // Record killer if applicable
             if (!isCapture(m)) {
                 // Ensure the same killer does not fill both slots
-                if (m != searchParams->killers[searchParams->ply][0]) {
-                    searchParams->killers[searchParams->ply][1] =
-                        searchParams->killers[searchParams->ply][0];
-                    searchParams->killers[searchParams->ply][0] = m;
+                if (m != searchParams->killers[ssi->ply][0]) {
+                    searchParams->killers[ssi->ply][1] =
+                        searchParams->killers[ssi->ply][0];
+                    searchParams->killers[ssi->ply][0] = m;
                 }
                 // Update the history table
                 searchParams->historyTable[color][pieceID][endSq]
@@ -1129,7 +1107,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
     // If there were no legal moves
     if (bestScore == -INFTY && movesSearched == 0)
-        return scoreMate(moveSorter.isInCheck, searchParams->ply);
+        return scoreMate(moveSorter.isInCheck, ssi->ply);
 
     // Exact scores indicate a principal variation
     if (prevAlpha < alpha && alpha < beta) {
@@ -1140,7 +1118,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         }
 
         uint64_t hashData = packHashData(depth, toHash,
-            adjustHashScore(alpha, searchParams->ply), PV_NODE,
+            adjustHashScore(alpha, ssi->ply), PV_NODE,
             searchParams->rootMoveNumber);
         transpositionTable.add(b, hashData, depth, searchParams->rootMoveNumber);
 
@@ -1162,14 +1140,14 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         if (!isPVNode && moveSorter.doIID()) {
             uint64_t hashData = packHashData(depth,
                 (hashed == NULL_MOVE) ? moveSorter.legalMoves.get(0) : hashed,
-                adjustHashScore(bestScore, searchParams->ply), ALL_NODE,
+                adjustHashScore(bestScore, ssi->ply), ALL_NODE,
                 searchParams->rootMoveNumber);
             transpositionTable.add(b, hashData, depth, searchParams->rootMoveNumber);
         }
         // Otherwise, just store no best move as expected
         else {
             uint64_t hashData = packHashData(depth, NULL_MOVE,
-                adjustHashScore(bestScore, searchParams->ply), ALL_NODE,
+                adjustHashScore(bestScore, ssi->ply), ALL_NODE,
                 searchParams->rootMoveNumber);
             transpositionTable.add(b, hashData, depth, searchParams->rootMoveNumber);
         }
@@ -1574,6 +1552,15 @@ int getSelectiveDepth() {
         if (searchParamsArray[i].selectiveDepth > max)
             max = searchParamsArray[i].selectiveDepth;
     return max;
+}
+
+void initSSI() {
+    ssInfo = new SearchStackInfo *[MAX_THREADS];
+    for (int i = 0; i < MAX_THREADS; i++) {
+        ssInfo[i] = new SearchStackInfo[128];
+        for (int j = 0; j < 128; j++)
+            ssInfo[i][j].ply = j;
+    }
 }
 
 // Formats a fraction into a percentage value (0 to 100) for printing

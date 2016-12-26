@@ -65,6 +65,13 @@ public:
     }
 };
 
+/**
+ * @brief Stores search info on a preallocated stack
+ */
+struct SearchStackInfo {
+    int ply;
+};
+
 void getBestMove(Board *b, int mode, int value, Move *bestMove);
 void clearTables();
 void setHashSize(uint64_t MB);
@@ -72,8 +79,9 @@ void setEvalCacheSize(uint64_t MB);
 uint64_t getNodes();
 void setMultiPV(unsigned int n);
 void setNumThreads(int n);
+void initSSI();
 
-int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID);
+int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID, SearchStackInfo *ssi);
 
 // Search modes
 const int TIME = 1;

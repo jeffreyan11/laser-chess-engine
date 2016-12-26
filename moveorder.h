@@ -39,6 +39,7 @@ struct MoveOrder {
     int staticEval;
     int beta;
 	SearchParameters *searchParams;
+    SearchStackInfo *ssi;
     MoveGenStage mgStage;
     Move hashed;
 	MoveList legalMoves;
@@ -47,7 +48,7 @@ struct MoveOrder {
 	unsigned int index;
 
 	MoveOrder(Board *_b, int _color, int _depth, int _threadID, bool _isPVNode, bool _isInCheck,
-		bool _isCutNode, int _staticEval, int _beta, SearchParameters *_searchParams, Move _hashed, MoveList _legalMoves);
+		bool _isCutNode, int _staticEval, int _beta, SearchParameters *_searchParams, SearchStackInfo *_ssi, Move _hashed, MoveList _legalMoves);
 
     bool doIID();
 
