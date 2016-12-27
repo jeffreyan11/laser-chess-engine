@@ -8,14 +8,12 @@ After being compiled, the executable can be run with any UCI chess GUI, such as 
 
 ### Thanks To:
 - The Chess Programming Wiki, which is a great resource for beginning chess programmers, and was consulted frequently for this project: https://chessprogramming.wikispaces.com
-- The authors of Stockfish, Crafty, EXChess, Rebel, and all other open-source engines for providing inspiration for many parts of this project
+- The authors of Stockfish, Crafty, EXChess, Rebel, Texel, and all other open-source engines for providing inspiration for many parts of this project
 - The engine testers, for uncovering bugs, providing high quality games and ratings, and giving us motivation to improve
 - Cute Chess, the primary tool used for testing: (http://cutechess.com/)
 
 
 ### To Dos
- - Automatic tuning of evaluation with machine learning
- - Syzygy tablebase support
  - Chess960 support
  - Improved pruning rules
  - More efficient PERFT and eval
@@ -39,9 +37,11 @@ Laser 1.2: 59th, 2702 elo as of Oct 16, 2016
 - Lazy SMP up to 128 threads
 - Fancy magic bitboards for a 4.5 sec PERFT 6.
 - Evaluation with piece square tables, basic king safety, isolated/doubled/passed/backwards pawns, and mobility
+  - Tuned with reinforcement learning and a variation of Texel's Tuning Method
 - A transposition table with Zobrist hashing, a two bucket system, and 16 MB default size
 - An evaluation cache
-- Fail-hard principal variation search
+- Syzygy tablebase support
+- Fail-soft principal variation search
   - Adaptive null move pruning
   - Late move reduction
   - Futility pruning
