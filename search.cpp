@@ -861,7 +861,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     else
         b.getAllPseudoLegalMoves(legalMoves, color);
     // Initialize the module for move ordering
-    MoveOrder moveSorter(&b, color, depth, threadID, isPVNode, isInCheck,
+    MoveOrder moveSorter(&b, color, depth, threadID, isPVNode,
         isCutNode, staticEval, beta, searchParams, ssi, hashed, legalMoves);
     moveSorter.generateMoves();
 
@@ -1107,7 +1107,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
     // If there were no legal moves
     if (bestScore == -INFTY && movesSearched == 0)
-        return scoreMate(moveSorter.isInCheck, ssi->ply);
+        return scoreMate(isInCheck, ssi->ply);
 
     // Exact scores indicate a principal variation
     if (prevAlpha < alpha && alpha < beta) {

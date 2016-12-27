@@ -34,7 +34,6 @@ struct MoveOrder {
 	int depth;
     int threadID;
 	bool isPVNode;
-	bool isInCheck;
     bool isCutNode;
     int staticEval;
     int beta;
@@ -47,7 +46,7 @@ struct MoveOrder {
     unsigned int quietStart;
 	unsigned int index;
 
-	MoveOrder(Board *_b, int _color, int _depth, int _threadID, bool _isPVNode, bool _isInCheck,
+	MoveOrder(Board *_b, int _color, int _depth, int _threadID, bool _isPVNode,
 		bool _isCutNode, int _staticEval, int _beta, SearchParameters *_searchParams, SearchStackInfo *_ssi, Move _hashed, MoveList _legalMoves);
 
     bool doIID();

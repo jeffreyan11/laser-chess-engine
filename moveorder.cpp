@@ -33,14 +33,13 @@ const int SCORE_LOSING_QUIET = -(1 << 30) - (1 << 29) - (1 << 28);
 const int QUIET_SEE_DEPTH = 3;
 
 
-MoveOrder::MoveOrder(Board *_b, int _color, int _depth, int _threadID, bool _isPVNode, bool _isInCheck,
+MoveOrder::MoveOrder(Board *_b, int _color, int _depth, int _threadID, bool _isPVNode,
 	bool _isCutNode, int _staticEval, int _beta, SearchParameters *_searchParams, SearchStackInfo *_ssi, Move _hashed, MoveList _legalMoves) {
 	b = _b;
 	color = _color;
 	depth = _depth;
     threadID = _threadID;
 	isPVNode = _isPVNode;
-	isInCheck = _isInCheck;
     isCutNode = _isCutNode;
     staticEval = _staticEval;
     beta = _beta;
