@@ -123,8 +123,9 @@ const int RAZOR_MARGIN[4] = {0,
 };
 
 // Move count pruning
-const unsigned int LMP_MOVE_COUNTS[8] = {0,
-    3, 5, 8, 14, 24, 40, 64
+const unsigned int LMP_MOVE_COUNTS[2][8] = {{0,
+    3, 5, 8, 13, 20, 30, 45},
+{0, 5, 8, 13, 21, 33, 50, 72}
 };
 
 
@@ -771,17 +772,18 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     // A static evaluation, used to activate null move pruning and futility
     // pruning
     int staticEval = INFTY;
+    ssi->staticEval = INFTY;
     if (!isInCheck) {
         searchStats->evalCacheProbes++;
         // Probe the eval cache for a saved calculation
         int ehe = evalCache.get(b);
         if (ehe != 0) {
             searchStats->evalCacheHits++;
-            staticEval = ehe - EVAL_HASH_OFFSET;
+            ssi->staticEval = staticEval = ehe - EVAL_HASH_OFFSET;
         }
         else {
-            staticEval = (color == WHITE) ? b.evaluate()
-                                          : -b.evaluate();
+            ssi->staticEval = staticEval = (color == WHITE) ? b.evaluate()
+                                                            : -b.evaluate();
             evalCache.add(b, staticEval);
         }
     }
@@ -793,6 +795,10 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
          || (nodeType == PV_NODE))
             staticEval = hashScore;
     }
+
+
+    bool evalImproving = (ssi->ply >= 3 && (ssi->staticEval >= (ssi-2)->staticEval || (ssi-2)->staticEval == INFTY))
+                      || (ssi->ply < 3);
 
 
     // Reverse futility pruning
@@ -918,7 +924,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // As used in Fruit/Stockfish:
         // https://chessprogramming.wikispaces.com/Futility+Pruning#MoveCountBasedPruning
         if (moveIsPrunable
-         && depth <= 7 && movesSearched > LMP_MOVE_COUNTS[depth]
+         && depth <= 7 && movesSearched > LMP_MOVE_COUNTS[evalImproving][depth]
          && m != searchParams->killers[ssi->ply][0]
          && m != searchParams->killers[ssi->ply][1])
             continue;

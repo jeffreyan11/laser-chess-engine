@@ -70,6 +70,7 @@ public:
  */
 struct SearchStackInfo {
     int ply;
+    int staticEval;
 };
 
 void getBestMove(Board *b, int mode, int value, Move *bestMove);
