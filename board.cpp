@@ -1725,8 +1725,8 @@ int Board::evaluate() {
 
     // Doubled pawns
     for (int i = 0; i < 8; i++) {
-        whitePawnScore += DOUBLED_PENALTY[wPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[pieceCounts[WHITE][PAWNS]];
-        blackPawnScore += DOUBLED_PENALTY[bPawnCtByFile[i]] * DOUBLED_PENALTY_SCALE[pieceCounts[BLACK][PAWNS]];
+        whitePawnScore += DOUBLED_PENALTY * (((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2) * DOUBLED_PENALTY_SCALE[pieceCounts[WHITE][PAWNS]];
+        blackPawnScore += DOUBLED_PENALTY * (((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2) * DOUBLED_PENALTY_SCALE[pieceCounts[BLACK][PAWNS]];
     }
 
     // Isolated pawns
