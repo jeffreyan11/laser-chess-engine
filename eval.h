@@ -61,7 +61,7 @@ const int PIECE_VALUES[2][5] = {
   {100, 392, 430, 615, 1279},
   {137, 375, 424, 660, 1284}
 };
-const int KNOWN_WIN = PIECE_VALUES[EG][PAWNS] * 100;
+const int KNOWN_WIN = PIECE_VALUES[EG][PAWNS] * 75;
 const int TB_WIN = PIECE_VALUES[EG][PAWNS] * 125;
 
 //------------------------------Piece tables--------------------------------
