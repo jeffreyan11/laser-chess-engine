@@ -1620,6 +1620,38 @@ int Board::evaluate() {
     }
 
 
+    //-------------------------------Threats------------------------------------
+    // Get the overall attack maps
+    uint64_t wAttackMap = 0, bAttackMap = 0;
+    for (unsigned int i = 0; i < pmlWhite.size(); i++) {
+        wAttackMap |= pmlWhite.get(i).legal;
+    }
+    wAttackMap |= getWPawnCaptures(pieces[WHITE][PAWNS]);
+    for (unsigned int i = 0; i < pmlBlack.size(); i++) {
+        bAttackMap |= pmlBlack.get(i).legal;
+    }
+    bAttackMap |= getBPawnCaptures(pieces[BLACK][PAWNS]);
+
+    if (uint64_t upawns = pieces[WHITE][PAWNS] & bAttackMap & ~wPawnAtt) {
+        value += UNDEFENDED_PAWN * count(upawns);
+    }
+    if (uint64_t upawns = pieces[BLACK][PAWNS] & wAttackMap & ~bPawnAtt) {
+        value -= UNDEFENDED_PAWN * count(upawns);
+    }
+    if (uint64_t minors = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & bAttackMap & ~wPawnAtt) {
+        value += UNDEFENDED_MINOR * count(minors);
+    }
+    if (uint64_t minors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & wAttackMap & ~bPawnAtt) {
+        value -= UNDEFENDED_MINOR * count(minors);
+    }
+    if (uint64_t majors = (pieces[WHITE][ROOKS] | pieces[WHITE][QUEENS]) & bAttackMap) {
+        value += ATTACKED_MAJOR * count(majors);
+    }
+    if (uint64_t majors = (pieces[BLACK][ROOKS] | pieces[BLACK][QUEENS]) & wAttackMap) {
+        value -= ATTACKED_MAJOR * count(majors);
+    }
+
+
     //----------------------------Pawn structure--------------------------------
     Score whitePawnScore = EVAL_ZERO, blackPawnScore = EVAL_ZERO;
     // Passed pawns
@@ -1641,17 +1673,6 @@ int Board::evaluate() {
     // Passers are pawns outside the opposing pawn front span
     uint64_t wPassedPawns = pieces[WHITE][PAWNS] & ~wPassedBlocker;
     uint64_t bPassedPawns = pieces[BLACK][PAWNS] & ~bPassedBlocker;
-
-    // Get the overall attack maps
-    uint64_t wAttackMap = 0, bAttackMap = 0;
-    for (unsigned int i = 0; i < pmlWhite.size(); i++) {
-        wAttackMap |= pmlWhite.get(i).legal;
-    }
-    wAttackMap |= getWPawnCaptures(pieces[WHITE][PAWNS]);
-    for (unsigned int i = 0; i < pmlBlack.size(); i++) {
-        bAttackMap |= pmlBlack.get(i).legal;
-    }
-    bAttackMap |= getBPawnCaptures(pieces[BLACK][PAWNS]);
 
     uint64_t wPasserTemp = wPassedPawns;
     uint64_t wBlock = allPieces[BLACK] | bAttackMap;
