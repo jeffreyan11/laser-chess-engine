@@ -1,5 +1,5 @@
 # Laser
-Laser is a UCI-compliant chess engine written in C++11, by Jeffrey An and Michael An.
+Laser is a UCI-compliant chess engine written in C++11 by Jeffrey An and Michael An.
 
 For the latest release and previous versions, check https://github.com/jeffreyan11/uci-chess-engine/releases. Compiled binaries for 64-bit Windows are included.
 
@@ -8,12 +8,13 @@ After being compiled, the executable can be run with any UCI chess GUI, such as 
 
 ### Thanks To:
 - The Chess Programming Wiki, which is a great resource for beginning chess programmers, and was consulted frequently for this project: https://chessprogramming.wikispaces.com
-- The authors of Stockfish, Crafty, EXChess, Rebel, Texel, and all other open-source engines for providing inspiration for many parts of this project
+- The authors of Stockfish, Crafty, EXChess, Rebel, Texel, and all other open-source engines for providing inspiration and great ideas to move Laser forward
 - The engine testers, for uncovering bugs, providing high quality games and ratings, and giving us motivation to improve
 - Cute Chess, the primary tool used for testing: (http://cutechess.com/)
 
 
 ### To Dos
+ - Enumerate or typedef basic values such as color, piece type, and scores
  - Chess960 support
  - Improved pruning rules
  - More efficient PERFT and eval
@@ -35,18 +36,21 @@ Laser 1.2: 59th, 2702 elo as of Oct 16, 2016
 
 ### Implementation Details
 - Lazy SMP up to 128 threads
-- Fancy magic bitboards for a 4.5 sec PERFT 6.
-- Evaluation with piece square tables, basic king safety, isolated/doubled/passed/backwards pawns, and mobility
-  - Tuned with reinforcement learning and a variation of Texel's Tuning Method
-- A transposition table with Zobrist hashing, a two bucket system, and 16 MB default size
+- Fancy magic bitboards for a 4.5 sec PERFT 6 @2.2 GHz (no bulk counting).
+- Evaluation
+  - Tuned with reinforcement learning, coordinate descent, and a variation of Texel's Tuning Method
+  - Piece square tables
+  - King safety, pawns shields and storms
+  - Isolated/doubled/passed/backwards pawns
+  - Mobility
+  - Outposts
+  - Basic threat detection and pressure on weak pieces
+- A two-bucket transposition table with Zobrist hashing, 16 MB default size
 - An evaluation cache
 - Syzygy tablebase support
 - Fail-soft principal variation search
-  - Adaptive null move pruning
-  - Late move reduction
-  - Futility pruning
-  - Razoring
-  - Move count based pruning (late move pruning)
+  - Adaptive null move pruning, late move reduction
+  - Futility pruning, razoring, move count based pruning (late move pruning)
   - Check and singular extensions
 - Quiescence search with captures, queen promotions, and checks on the first two plies
 - Move ordering
