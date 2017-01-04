@@ -222,6 +222,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     // Root probe Syzygy
     probeLimit = TBlargest;
     int tbScore = 0;
+    bool tbProbeSuccess = false;
     unsigned int prevLMSize = legalMoves.size();
     if (TBlargest && count(b->getAllPieces(WHITE) | b->getAllPieces(BLACK)) <= TBlargest) {
         ScoreList scores;
@@ -231,6 +232,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
             // With DTZ table filtering, we have guaranteed that we will not
             // make a mistake so do not probe TBs in search
             probeLimit = 0;
+            tbProbeSuccess = true;
             searchStatsArray[0].tbhits += prevLMSize;
         }
         // If unsuccessful, try WDL tables
@@ -239,6 +241,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
             tbScore = 0;
             tbProbeResult = root_probe_wdl(b, legalMoves, scores, tbScore);
             if (tbProbeResult) {
+                tbProbeSuccess = true;
                 searchStatsArray[0].tbhits += prevLMSize;
                 // Only probe to maintain a win
                 if (tbScore <= 0)
@@ -342,7 +345,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     cout << "info depth " << rootDepth;
                     cout << " seldepth " << getSelectiveDepth();
                     cout << " score";
-                    cout << " cp " << (tbScore == 0 ? bestScore : (bestScore/10 + tbScore)) * 100 / PIECE_VALUES[EG][PAWNS] << " upperbound";
+                    cout << " cp " << (tbProbeSuccess ? (tbScore == 0 ? 0 : (bestScore/10 + tbScore)) : bestScore) * 100 / PIECE_VALUES[EG][PAWNS] << " upperbound";
 
                     cout << " time " << timeSoFar
                          << " nodes " << getNodes() << " nps " << nps
@@ -361,7 +364,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     cout << "info depth " << rootDepth;
                     cout << " seldepth " << getSelectiveDepth();
                     cout << " score";
-                    cout << " cp " << (tbScore == 0 ? bestScore : (bestScore/10 + tbScore)) * 100 / PIECE_VALUES[EG][PAWNS] << " lowerbound";
+                    cout << " cp " << (tbProbeSuccess ? (tbScore == 0 ? 0 : (bestScore/10 + tbScore)) : bestScore) * 100 / PIECE_VALUES[EG][PAWNS] << " lowerbound";
 
                     cout << " time " << timeSoFar
                          << " nodes " << getNodes() << " nps " << nps
@@ -431,7 +434,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 cout << " mate " << (-MATE_SCORE - bestScore) / 2;
             else
                 // Scale score into centipawns using our internal pawn value
-                cout << " cp " << (tbScore == 0 ? bestScore : (bestScore/10 + tbScore)) * 100 / PIECE_VALUES[EG][PAWNS];
+                cout << " cp " << (tbProbeSuccess ? (tbScore == 0 ? 0 : (bestScore/10 + tbScore)) : bestScore) * 100 / PIECE_VALUES[EG][PAWNS];
 
             cout << " time " << timeSoFar
                  << " nodes " << getNodes() << " nps " << nps
