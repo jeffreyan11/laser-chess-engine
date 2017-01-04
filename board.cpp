@@ -1556,28 +1556,53 @@ int Board::evaluate() {
     value += KNIGHT_PAWN_BONUS * pieceCounts[WHITE][KNIGHTS] * pieceCounts[BLACK][PAWNS];
     value -= KNIGHT_PAWN_BONUS * pieceCounts[BLACK][KNIGHTS] * pieceCounts[WHITE][PAWNS];
 
+    // Outposts
+    // Region 1: Ranks 4/5/6 on files D/E, ranks 5/6 on files C/F, rank 6 on files B/G
+    const uint64_t W_OUTPOST1 = ((FILES[3] | FILES[4]) & (RANKS[3] | RANKS[4] | RANKS[5]))
+                              | ((FILES[2] | FILES[5]) & (RANKS[4] | RANKS[5]))
+                              | ((FILES[1] | FILES[6]) &  RANKS[5]);
+    // Region 2: Rank 4 on files C/F, rank 5 on files B/G, ranks 5/6 on files A/H
+    const uint64_t W_OUTPOST2 = ((FILES[2] | FILES[5]) &  RANKS[3])
+                              | ((FILES[1] | FILES[6]) &  RANKS[4])
+                              | ((FILES[0] | FILES[7]) & (RANKS[4] | RANKS[5]));
+    const uint64_t B_OUTPOST1 = ((FILES[3] | FILES[4]) & (RANKS[4] | RANKS[3] | RANKS[2]))
+                              | ((FILES[2] | FILES[5]) & (RANKS[3] | RANKS[2]))
+                              | ((FILES[1] | FILES[6]) &  RANKS[2]);
+    const uint64_t B_OUTPOST2 = ((FILES[2] | FILES[5]) &  RANKS[4])
+                              | ((FILES[1] | FILES[6]) &  RANKS[3])
+                              | ((FILES[0] | FILES[7]) & (RANKS[3] | RANKS[2]));
+
     // Knight outposts: knights that cannot be attacked by opposing pawns
-    const uint64_t RANKS_456 = RANKS[3] | RANKS[4] | RANKS[5];
-    const uint64_t RANKS_543 = RANKS[4] | RANKS[3] | RANKS[2];
-    const uint64_t FILES_CDEF = FILES[2] | FILES[3] | FILES[4] | FILES[5];
-    if (uint64_t wOutpost = pieces[WHITE][KNIGHTS] & ~bPawnStopAtt & RANKS_456 & FILES_CDEF) {
-        value += KNIGHT_OUTPOST_BONUS * count(wOutpost);
+    if (uint64_t wOutpost = pieces[WHITE][KNIGHTS] & ~bPawnStopAtt) {
+        if (wOutpost & W_OUTPOST1)
+            value += KNIGHT_OUTPOST_BONUS1 * count(wOutpost & W_OUTPOST1);
+        if (wOutpost & W_OUTPOST2)
+            value += KNIGHT_OUTPOST_BONUS2 * count(wOutpost & W_OUTPOST2);
         // An additional bonus if the outpost knight is defended by a pawn
-        value += KNIGHT_OUTPOST_PAWN_DEF_BONUS * count(wOutpost & wPawnAtt);
+        value += KNIGHT_OUTPOST_PAWN_DEF_BONUS * count(wOutpost & (W_OUTPOST1 | W_OUTPOST2) & wPawnAtt);
     }
-    if (uint64_t bOutpost = pieces[BLACK][KNIGHTS] & ~wPawnStopAtt & RANKS_543 & FILES_CDEF) {
-        value -= KNIGHT_OUTPOST_BONUS * count(bOutpost);
-        value -= KNIGHT_OUTPOST_PAWN_DEF_BONUS * count(bOutpost & bPawnAtt);
+    if (uint64_t bOutpost = pieces[BLACK][KNIGHTS] & ~wPawnStopAtt) {
+        if (bOutpost & B_OUTPOST1)
+            value -= KNIGHT_OUTPOST_BONUS1 * count(bOutpost & B_OUTPOST1);
+        if (bOutpost & B_OUTPOST2)
+            value -= KNIGHT_OUTPOST_BONUS2 * count(bOutpost & B_OUTPOST2);
+        value -= KNIGHT_OUTPOST_PAWN_DEF_BONUS * count(bOutpost & (B_OUTPOST1 | B_OUTPOST2) & bPawnAtt);
     }
 
     // Bishop outposts
-    if (uint64_t wOutpost = pieces[WHITE][BISHOPS] & ~bPawnStopAtt & RANKS_456 & FILES_CDEF) {
-        value += BISHOP_OUTPOST_BONUS * count(wOutpost);
-        value += BISHOP_OUTPOST_PAWN_DEF_BONUS * count(wOutpost & wPawnAtt);
+    if (uint64_t wOutpost = pieces[WHITE][BISHOPS] & ~bPawnStopAtt) {
+        if (wOutpost & W_OUTPOST1)
+            value += BISHOP_OUTPOST_BONUS1 * count(wOutpost & W_OUTPOST1);
+        if (wOutpost & W_OUTPOST2)
+            value += BISHOP_OUTPOST_BONUS2 * count(wOutpost & W_OUTPOST2);
+        value += BISHOP_OUTPOST_PAWN_DEF_BONUS * count(wOutpost & (W_OUTPOST1 | W_OUTPOST2) & wPawnAtt);
     }
-    if (uint64_t bOutpost = pieces[BLACK][BISHOPS] & ~wPawnStopAtt & RANKS_543 & FILES_CDEF) {
-        value -= BISHOP_OUTPOST_BONUS * count(bOutpost);
-        value -= BISHOP_OUTPOST_PAWN_DEF_BONUS * count(bOutpost & bPawnAtt);
+    if (uint64_t bOutpost = pieces[BLACK][BISHOPS] & ~wPawnStopAtt) {
+        if (bOutpost & B_OUTPOST1)
+            value -= BISHOP_OUTPOST_BONUS1 * count(bOutpost & B_OUTPOST1);
+        if (bOutpost & B_OUTPOST2)
+            value -= BISHOP_OUTPOST_BONUS2 * count(bOutpost & B_OUTPOST2);
+        value -= BISHOP_OUTPOST_PAWN_DEF_BONUS * count(bOutpost & (B_OUTPOST1 | B_OUTPOST2) & bPawnAtt);
     }
 
     // Special case: Nc3 blocking c2-c4 in closed openings (pawn on d4, no pawn on e4)
@@ -1632,18 +1657,21 @@ int Board::evaluate() {
     }
     bAttackMap |= getBPawnCaptures(pieces[BLACK][PAWNS]);
 
+    // Pawns that are attacked by opposing pieces and not defended by own pawns
     if (uint64_t upawns = pieces[WHITE][PAWNS] & bAttackMap & ~wPawnAtt) {
         value += UNDEFENDED_PAWN * count(upawns);
     }
     if (uint64_t upawns = pieces[BLACK][PAWNS] & wAttackMap & ~bPawnAtt) {
         value -= UNDEFENDED_PAWN * count(upawns);
     }
+    // Minor pieces that are attacked by opposing pieces and not defended by own pawns
     if (uint64_t minors = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & bAttackMap & ~wPawnAtt) {
         value += UNDEFENDED_MINOR * count(minors);
     }
     if (uint64_t minors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & wAttackMap & ~bPawnAtt) {
         value -= UNDEFENDED_MINOR * count(minors);
     }
+    // Major pieces that are attacked by opposing pieces
     if (uint64_t majors = (pieces[WHITE][ROOKS] | pieces[WHITE][QUEENS]) & bAttackMap) {
         value += ATTACKED_MAJOR * count(majors);
     }

@@ -79,14 +79,14 @@ const int pieceSquareTable[2][6][32] = {
   0,  0,  0,  0
 },
 { // Knights
--82,-20,-14, -8,
--26,-14,  5,  8,
--12, 16, 14, 25,
-  5, 10, 15, 20,
- -5,  5, 10, 15,
--14,  2,  5, 10,
--21,-10, -5,  1,
--52,-27,-20,-15
+-94,-16,-12, -8,
+-22,-14,  5, 10,
+-13, 11, 13, 25,
+  5,  7, 15, 20,
+  0,  5, 10, 15,
+-14,  2,  6, 11,
+-20, -8, -5,  1,
+-52,-24,-15,-10
 },
 { // Bishops
 -10, -5, -5, -5,
@@ -143,13 +143,13 @@ const int pieceSquareTable[2][6][32] = {
 },
 { // Knights
 -50,-16, -5,  0,
--15,-10,  0,  5,
- -5, 10, 10, 15,
-  0, 15, 15, 15,
-  0, 15, 15, 15,
--15, -5,  0, 10,
--20,-12,-10, -5,
--45,-21,-15,-10
+-15, -5,  7, 15,
+  0,  5, 10, 16,
+  4, 11, 14, 18,
+  4, 11, 14, 18,
+-11, -3,  2,  9,
+-16,-10, -5,  0,
+-40,-20,-15,-10
 },
 { // Bishops
 -10, -5, -5, -5,
@@ -293,11 +293,13 @@ const Score BISHOP_PAWN_COLOR_PENALTY = E(-6, -7);
 // A bonus for each opponent pawn on the board, given once for each knight
 const Score KNIGHT_PAWN_BONUS = E(1, 6);
 // A bonus for strong outpost knights
-const Score KNIGHT_OUTPOST_BONUS = E(24, 3);
-const Score KNIGHT_OUTPOST_PAWN_DEF_BONUS = E(15, 19);
+const Score KNIGHT_OUTPOST_BONUS1 = E(24, 4);
+const Score KNIGHT_OUTPOST_BONUS2 = E(19, 1);
+const Score KNIGHT_OUTPOST_PAWN_DEF_BONUS = E(14, 15);
 // A smaller bonus for bishops
-const Score BISHOP_OUTPOST_BONUS = E(9, 0);
-const Score BISHOP_OUTPOST_PAWN_DEF_BONUS = E(20, 5);
+const Score BISHOP_OUTPOST_BONUS1 = E(11, 0);
+const Score BISHOP_OUTPOST_BONUS2 = E(7, 0);
+const Score BISHOP_OUTPOST_PAWN_DEF_BONUS = E(19, 14);
 // A penalty for Nc3 blocking c2-c4 in closed openings
 const Score KNIGHT_C3_CLOSED_PENALTY = E(-24, 0);
 
