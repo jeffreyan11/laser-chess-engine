@@ -2011,13 +2011,18 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
 
     // Holds the king safety score
     int kingSafetyPts = 0;
-    // Counts the number of pieces participating in the king attack
+    // Counts the number and value of pieces participating in the king attack
+    int kingAttackPts = 0;
     int kingAttackPieces = 0;
 
     uint64_t kingNeighborhood = (attackingColor == WHITE) ? (kingSqs | (kingSqs >> 8))
                                                           : (kingSqs | (kingSqs << 8));
     uint64_t defendingPawns = pieces[attackingColor^1][PAWNS];
 
+
+    kingAttackPieces = count(((attackingColor == WHITE) ? getWPawnCaptures(pieces[attackingColor][PAWNS])
+                                                        : getBPawnCaptures(pieces[attackingColor][PAWNS]))
+                           & kingNeighborhood);
 
     // Analyze undefended squares directly adjacent to king
     uint64_t kingDefenseless = 0;
@@ -2043,7 +2048,8 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
         int kingSqCount = count(legal & kingNeighborhood);
         if (kingSqCount) {
             kingAttackPieces++;
-            kingSafetyPts += KING_THREAT_MULTIPLIER[pieceIndex] * count(legal & kingSqs);
+            kingAttackPts += KING_THREAT_MULTIPLIER[pieceIndex];
+            kingSafetyPts += KING_THREAT_SQUARE[pieceIndex] * count(legal & kingSqs);
 
             // Bonus for overloading on defenseless squares
             kingSafetyPts += KING_DEFENSELESS_SQUARE * count(legal & kingDefenseless);
@@ -2051,7 +2057,7 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     }
 
     // Give a decent bonus for each additional piece participating
-    kingSafetyPts += std::min(60, 2 * kingAttackPieces * (kingAttackPieces+1));
+    kingSafetyPts += std::min(100, kingAttackPieces * kingAttackPts);
 
     // Adjust based on pawn shield and pawn storms
     kingSafetyPts -= pawnScore / 4;
