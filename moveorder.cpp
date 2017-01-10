@@ -188,7 +188,7 @@ void MoveOrder::scoreQuiets() {
 
 bool MoveOrder::doIID() {
     if (isPVNode) {
-        return (depth >= 4);
+        return (depth >= 5);
     }
     if (depth >= 6
      && (isCutNode || staticEval >= beta - 50 - 10*depth)) {
@@ -205,7 +205,7 @@ void MoveOrder::scoreIIDMove() {
               m = nextMove());
     index = 0;*/
 
-    int iidDepth = isPVNode ? depth-2 : (depth - 5) / 2;
+    int iidDepth = isPVNode ? depth - depth/4 - 1 : (depth - 5) / 2;
     int bestIndex = getBestMoveForSort(b, legalMoves, iidDepth, threadID, ssi);
 
     // Mate check to prevent crashes
