@@ -846,7 +846,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
      && b.getNonPawnMaterial(color)) {
         int reduction;
         // Reduce more if we are further ahead
-        reduction = 2 + (40 * (depth - 1) + (staticEval - beta)) / 200;
+        reduction = 2 + (32 * depth + (staticEval - beta)) / 128;
 
         uint16_t epCaptureFile = b.getEPCaptureFile();
         b.doNullMove();
