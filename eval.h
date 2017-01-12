@@ -313,6 +313,9 @@ const Score UNDEFENDED_PAWN = E(-5, -18);
 const Score UNDEFENDED_MINOR = E(-18, -30);
 const Score ATTACKED_MAJOR = E(-9, -6);
 
+const Score LOOSE_PAWN = E(-4, -2);
+const Score LOOSE_MINOR = E(-7, -6);
+
 // Pawn structure
 // Passed pawns
 const Score PASSER_BONUS[8] = {E(  0,   0), E(  3,   6), E(  4,  8), E( 10,  15),

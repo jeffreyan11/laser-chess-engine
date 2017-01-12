@@ -1679,6 +1679,24 @@ int Board::evaluate() {
         value -= ATTACKED_MAJOR * count(majors);
     }
 
+    // Loose pawns
+    const uint64_t WHITE_HALF = RANKS[0] | RANKS[1] | RANKS[2] | RANKS[3];
+    const uint64_t BLACK_HALF = RANKS[4] | RANKS[5] | RANKS[6] | RANKS[7];
+    if (uint64_t lpawns = pieces[WHITE][PAWNS] & BLACK_HALF & ~(wAttackMap | wPawnAtt)) {
+        value += LOOSE_PAWN * count(lpawns);
+    }
+    if (uint64_t lpawns = pieces[BLACK][PAWNS] & WHITE_HALF & ~(bAttackMap | bPawnAtt)) {
+        value -= LOOSE_PAWN * count(lpawns);
+    }
+
+    // Loose minors
+    if (uint64_t lminors = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & BLACK_HALF & ~(wAttackMap | wPawnAtt)) {
+        value += LOOSE_MINOR * count(lminors);
+    }
+    if (uint64_t lminors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & WHITE_HALF & ~(bAttackMap | bPawnAtt)) {
+        value -= LOOSE_MINOR * count(lminors);
+    }
+
 
     //----------------------------Pawn structure--------------------------------
     Score whitePawnScore = EVAL_ZERO, blackPawnScore = EVAL_ZERO;
