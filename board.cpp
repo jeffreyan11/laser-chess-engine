@@ -1357,6 +1357,17 @@ int Board::evaluate() {
     int valueMg = 0;
     int valueEg = 0;
 
+    // Bishop pair bonus
+    if ((pieces[WHITE][BISHOPS] & LIGHT) && (pieces[WHITE][BISHOPS] & DARK)) {
+        whiteMaterial += BISHOP_PAIR_VALUE;
+        valueEg += BISHOP_PAIR_VALUE;
+    }
+    if ((pieces[BLACK][BISHOPS] & LIGHT) && (pieces[BLACK][BISHOPS] & DARK)) {
+        blackMaterial += BISHOP_PAIR_VALUE;
+        valueEg -= BISHOP_PAIR_VALUE;
+    }
+
+    // MG and EG material
     valueMg += whiteMaterial;
     valueMg -= blackMaterial;
     for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
@@ -1366,17 +1377,6 @@ int Board::evaluate() {
 
     // Tempo bonus
     valueMg += (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
-
-    // Bishop pair bonus
-    if ((pieces[WHITE][BISHOPS] & LIGHT) && (pieces[WHITE][BISHOPS] & DARK)) {
-        valueMg += BISHOP_PAIR_VALUE;
-        valueEg += BISHOP_PAIR_VALUE;
-    }
-    if ((pieces[BLACK][BISHOPS] & LIGHT) && (pieces[BLACK][BISHOPS] & DARK)) {
-        valueMg -= BISHOP_PAIR_VALUE;
-        valueEg -= BISHOP_PAIR_VALUE;
-    }
-
 
     // Piece square tables
     Score psqtScores[2] = {EVAL_ZERO, EVAL_ZERO};
@@ -1916,23 +1916,35 @@ int Board::evaluate() {
         }
     }
     // Reduce eval for lack of pawns
-    if (totalEval > 0 && totalEval < PIECE_VALUES[MG][BISHOPS] + 50
+    if (whiteMaterial - blackMaterial > 0
+     && whiteMaterial - blackMaterial <= PIECE_VALUES[MG][BISHOPS]
      && pieceCounts[WHITE][PAWNS] <= 1) {
-        if (whiteMaterial < PIECE_VALUES[MG][BISHOPS] + 50)
-            totalEval /= 16;
-        else if (pieceCounts[WHITE][PAWNS] == 0)
-            totalEval /= 8;
-        else
+        if (pieceCounts[WHITE][PAWNS] == 0) {
+            if (whiteMaterial < PIECE_VALUES[MG][BISHOPS] + 50)
+                totalEval /= 16;
+            else if (blackMaterial <= PIECE_VALUES[MG][BISHOPS])
+                totalEval /= 8;
+            else
+                totalEval /= 4;
+        }
+        else {
             totalEval /= 2;
+        }
     }
-    if (totalEval < 0 && totalEval > -PIECE_VALUES[MG][BISHOPS] - 50
+    if (blackMaterial - whiteMaterial > 0
+     && blackMaterial - whiteMaterial <= PIECE_VALUES[MG][BISHOPS]
      && pieceCounts[BLACK][PAWNS] <= 1) {
-        if (blackMaterial < PIECE_VALUES[MG][BISHOPS] + 50)
-            totalEval /= 16;
-        else if (pieceCounts[BLACK][PAWNS] == 0)
-            totalEval /= 8;
-        else
+        if (pieceCounts[BLACK][PAWNS] == 0) {
+            if (blackMaterial < PIECE_VALUES[MG][BISHOPS] + 50)
+                totalEval /= 16;
+            else if (whiteMaterial <= PIECE_VALUES[MG][BISHOPS])
+                totalEval /= 8;
+            else
+                totalEval /= 4;
+        }
+        else {
             totalEval /= 2;
+        }
     }
 
 
