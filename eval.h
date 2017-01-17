@@ -341,6 +341,8 @@ const Score ISOLATED_DOUBLED_PENALTY = E(-8, -13);
 // Backward pawns
 const Score BACKWARD_PENALTY = E(-12, 0);
 const Score BACKWARD_SEMIOPEN_PENALTY = E(-11, -11);
+// King-pawn tropism
+const int KING_TROPISM_VALUE = 13;
 
 #undef E
 

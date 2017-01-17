@@ -1873,7 +1873,7 @@ int Board::evaluate() {
     int kingPawnTropism = 0;
     if (egFactor > 0) {
         uint64_t pawnBits = pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS];
-        int pawnCount = pieceCounts[WHITE][PAWNS] + pieceCounts[BLACK][PAWNS];
+        int pawnWeight = 0;
 
         int wTropismTotal = 0, bTropismTotal = 0;
         while (pawnBits) {
@@ -1883,17 +1883,19 @@ int Board::evaluate() {
             if (INDEX_TO_BIT[pawnSq] & (wBackwards | bBackwards)) {
                 wTropismTotal += 2 * getManhattanDistance(pawnSq, wKingSq);
                 bTropismTotal += 2 * getManhattanDistance(pawnSq, bKingSq);
+                pawnWeight += 2;
             }
             else {
                 wTropismTotal += getManhattanDistance(pawnSq, wKingSq);
                 bTropismTotal += getManhattanDistance(pawnSq, bKingSq);
+                pawnWeight++;
             }
         }
 
-        if (pawnCount)
-            kingPawnTropism = (bTropismTotal - wTropismTotal) / pawnCount;
+        if (pawnWeight)
+            kingPawnTropism = (bTropismTotal - wTropismTotal) / pawnWeight;
 
-        valueEg += kingPawnTropism;
+        valueEg += KING_TROPISM_VALUE * kingPawnTropism;
     }
 
 
