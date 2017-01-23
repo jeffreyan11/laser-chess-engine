@@ -287,6 +287,7 @@ const double KS_ARRAY_FACTOR = 36.0;
 const int KING_THREAT_MULTIPLIER[4] = {2, 1, 2, 6};
 const int KING_THREAT_SQUARE[4] = {7, 4, 3, 6};
 const int KING_DEFENSELESS_SQUARE = 12;
+const int KS_PAWN_FACTOR = 8;
 
 // Minor pieces
 // A penalty for each own pawn that is on a square of the same color as your bishop

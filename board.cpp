@@ -2092,7 +2092,7 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     kingSafetyPts += std::min(100, kingAttackPieces * kingAttackPts);
 
     // Adjust based on pawn shield and pawn storms
-    kingSafetyPts -= pawnScore / 4;
+    kingSafetyPts -= KS_PAWN_FACTOR * pawnScore / 32;
 
     return KS_TO_SCORE[std::max(0, std::min(199, kingSafetyPts))];
 }
