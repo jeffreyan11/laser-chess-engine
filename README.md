@@ -21,8 +21,8 @@ After being compiled, the executable can be run with any UCI chess GUI, such as 
 
 
 ### Engine Strength
-- **CCRL 40/40:** 41st, 2949 ELO as of January 28, 2017
-- **CCRL 40/4:** 48th, 2914 ELO as of January 28, 2017
+- **CCRL 40/4:** 41st, 2949 ELO as of January 28, 2017
+- **CCRL 40/40:** 48th, 2914 ELO as of January 28, 2017
 - **CEGT 40/4 (Best Single Versions):** 33rd, 2817 ELO as of January 20, 2017
 - **CEGT 40/20 (Best Single Versions):** 33rd, 2826 ELO as of January 22, 2017
 
