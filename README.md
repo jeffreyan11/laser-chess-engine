@@ -21,17 +21,10 @@ After being compiled, the executable can be run with any UCI chess GUI, such as 
 
 
 ### Engine Strength
-CCRL 40/40
-
-Laser 1.2: 57th, 2868 elo as of Oct 22, 2016
-
-CCRL 40/4
-
-Laser 1.2: 54th, 2873 elo as of Oct 22, 2016
-
-CEGT Blitz - Best Single Versions
-
-Laser 1.2: 59th, 2702 elo as of Oct 16, 2016
+- **CCRL 40/40:** 41st, 2949 ELO as of January 28, 2017
+- **CCRL 40/4:** 48th, 2914 ELO as of January 28, 2017
+- **CEGT 40/4 (Best Single Versions):** 33rd, 2817 ELO as of January 20, 2017
+- **CEGT 40/20 (Best Single Versions):** 33rd, 2826 ELO as of January 22, 2017
 
 
 ### Implementation Details
