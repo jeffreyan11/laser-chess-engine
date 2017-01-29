@@ -1651,32 +1651,41 @@ int Board::evaluate() {
     for (unsigned int i = 0; i < pmlWhite.size(); i++) {
         wAttackMap |= pmlWhite.get(i).legal;
     }
-    wAttackMap |= getWPawnCaptures(pieces[WHITE][PAWNS]);
+    // wAttackMap |= getWPawnCaptures(pieces[WHITE][PAWNS]);
     for (unsigned int i = 0; i < pmlBlack.size(); i++) {
         bAttackMap |= pmlBlack.get(i).legal;
     }
-    bAttackMap |= getBPawnCaptures(pieces[BLACK][PAWNS]);
+    // bAttackMap |= getBPawnCaptures(pieces[BLACK][PAWNS]);
 
-    // Pawns that are attacked by opposing pieces and not defended by own pawns
     if (uint64_t upawns = pieces[WHITE][PAWNS] & bAttackMap & ~wPawnAtt) {
         value += UNDEFENDED_PAWN * count(upawns);
     }
     if (uint64_t upawns = pieces[BLACK][PAWNS] & wAttackMap & ~bPawnAtt) {
         value -= UNDEFENDED_PAWN * count(upawns);
     }
-    // Minor pieces that are attacked by opposing pieces and not defended by own pawns
     if (uint64_t minors = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & bAttackMap & ~wPawnAtt) {
         value += UNDEFENDED_MINOR * count(minors);
     }
     if (uint64_t minors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & wAttackMap & ~bPawnAtt) {
         value -= UNDEFENDED_MINOR * count(minors);
     }
-    // Major pieces that are attacked by opposing pieces
     if (uint64_t majors = (pieces[WHITE][ROOKS] | pieces[WHITE][QUEENS]) & bAttackMap) {
         value += ATTACKED_MAJOR * count(majors);
     }
     if (uint64_t majors = (pieces[BLACK][ROOKS] | pieces[BLACK][QUEENS]) & wAttackMap) {
         value -= ATTACKED_MAJOR * count(majors);
+    }
+    if (uint64_t minors = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & bPawnAtt) {
+        value += PAWN_MINOR_THREAT * count(minors);
+    }
+    if (uint64_t minors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & wPawnAtt) {
+        value -= PAWN_MINOR_THREAT * count(minors);
+    }
+    if (uint64_t majors = (pieces[WHITE][ROOKS] | pieces[WHITE][QUEENS]) & bPawnAtt) {
+        value += PAWN_MAJOR_THREAT * count(majors);
+    }
+    if (uint64_t majors = (pieces[BLACK][ROOKS] | pieces[BLACK][QUEENS]) & wPawnAtt) {
+        value -= PAWN_MAJOR_THREAT * count(majors);
     }
 
     // Loose pawns

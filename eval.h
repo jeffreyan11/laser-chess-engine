@@ -310,9 +310,11 @@ const Score ROOK_OPEN_FILE_BONUS = E(28, 13);
 const Score ROOK_SEMIOPEN_FILE_BONUS = E(7, 4);
 
 // Threats
-const Score UNDEFENDED_PAWN = E(-7, -21);
-const Score UNDEFENDED_MINOR = E(-17, -34);
-const Score ATTACKED_MAJOR = E(-6, -5);
+const Score UNDEFENDED_PAWN = E(-7, -22);
+const Score UNDEFENDED_MINOR = E(-13, -42);
+const Score ATTACKED_MAJOR = E(-7, -3);
+const Score PAWN_MINOR_THREAT = E(-45, -28);
+const Score PAWN_MAJOR_THREAT = E(-42, -21);
 
 const Score LOOSE_PAWN = E(-11, -7);
 const Score LOOSE_MINOR = E(-8, -10);
