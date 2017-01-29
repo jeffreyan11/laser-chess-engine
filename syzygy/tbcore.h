@@ -1,6 +1,6 @@
 /*
     Laser, a UCI chess engine written in C++11.
-    Copyright 2015-2016 Jeffrey An and Michael An
+    Copyright 2015-2017 Jeffrey An and Michael An
     Copyright (c) 2011-2015 Ronald de Man
 
     Laser is free software: you can redistribute it and/or modify
