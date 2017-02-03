@@ -1,23 +1,9 @@
 # Laser
 Laser is a UCI-compliant chess engine written in C++11 by Jeffrey An and Michael An.
 
-For the latest release and previous versions, check https://github.com/jeffreyan11/uci-chess-engine/releases. Compiled binaries for 64-bit Windows are included.
+For the latest release and previous versions, check https://github.com/jeffreyan11/uci-chess-engine/releases. Compiled binaries for 32 and 64-bit Windows are included.
 
-After being compiled, the executable can be run with any UCI chess GUI, such as Arena (http://www.playwitharena.com/) or Tarrasch (http://www.triplehappy.com/).
-
-
-### Thanks To:
-- The Chess Programming Wiki, which is a great resource for beginning chess programmers, and was consulted frequently for this project: https://chessprogramming.wikispaces.com
-- The authors of Stockfish, Crafty, EXChess, Rebel, Texel, and all other open-source engines for providing inspiration and great ideas to move Laser forward
-- The engine testers, for uncovering bugs, providing high quality games and ratings, and giving us motivation to improve
-- Cute Chess, the primary tool used for testing: (http://cutechess.com/)
-
-
-### To Dos
- - Enumerate or typedef basic values such as color, piece type, and scores
- - Chess960 support
- - Improved pruning rules
- - More efficient PERFT and eval
+Laser is a command-line engine only. To have a graphical interface, the executable can be used with any UCI chess GUI, such as Arena (http://www.playwitharena.com/) or Tarrasch (http://www.triplehappy.com/).
 
 
 ### Engine Strength
@@ -25,6 +11,18 @@ After being compiled, the executable can be run with any UCI chess GUI, such as 
 - **CCRL 40/40:** 48th, 2914 ELO as of January 28, 2017
 - **CEGT 40/4 (Best Single Versions):** 33rd, 2817 ELO as of January 20, 2017
 - **CEGT 40/20 (Best Single Versions):** 33rd, 2826 ELO as of January 22, 2017
+
+
+### Makefile Notes
+The code and Makefile support g++ on Linux and MinGW on Windows for POPCNT processors only. For older or 32-bit systems, set the preprocessor flag USE_INLINE_ASM in common.h to false.
+To compile, simply run 'make' in the main directory. The USE_STATIC=true option creates a statically-linked build with all necessary libraries.
+
+
+### Thanks To:
+- The Chess Programming Wiki, which is a great resource for beginner chess programmers, and was consulted frequently for this project: https://chessprogramming.wikispaces.com
+- The authors of Stockfish, Crafty, EXChess, Rebel, Texel, and all other open-source engines for providing inspiration and great ideas to move Laser forward
+- The engine testers and rating lists, for uncovering bugs, providing high quality games and ratings, and giving us motivation to improve
+- Cute Chess, the primary tool used for testing: (http://cutechess.com/)
 
 
 ### Implementation Details
@@ -52,5 +50,8 @@ After being compiled, the executable can be run with any UCI chess GUI, such as 
   - Killer and history heuristics to order quiet moves
 
 
-### Notes
-The code and Makefile support gcc on Linux and MinGW on Windows for Intel Nehalem (2008-2010) and later processors only (due to popcnt instruction support). For older or 32-bit systems, set the preprocessor flag USE_INLINE_ASM in common.h to false.
+### To Dos
+ - Enumerate or typedef basic values such as color, piece type, and scores
+ - Chess960 support
+ - Improved pruning rules
+ - More efficient PERFT and eval
