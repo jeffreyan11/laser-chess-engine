@@ -1,9 +1,9 @@
 # Laser
 Laser is a UCI-compliant chess engine written in C++11 by Jeffrey An and Michael An.
 
-For the latest release and previous versions, check https://github.com/jeffreyan11/uci-chess-engine/releases. Compiled binaries for 32 and 64-bit Windows are included.
+The latest release and previous versions can be found [here](https://github.com/jeffreyan11/uci-chess-engine/releases). Compiled binaries for 32 and 64-bit Windows are included.
 
-Laser is a command-line engine only. To have a graphical interface, the executable can be used with any UCI chess GUI, such as Arena (http://www.playwitharena.com/) or Tarrasch (http://www.triplehappy.com/).
+Laser is a command-line engine only. To have a graphical interface, the executable can be used with any UCI chess GUI, such as [Arena](http://www.playwitharena.com) or [Tarrasch](http://www.triplehappy.com).
 
 
 ### Engine Strength
@@ -14,15 +14,15 @@ Laser is a command-line engine only. To have a graphical interface, the executab
 
 
 ### Makefile Notes
-The code and Makefile support g++ on Linux and MinGW on Windows for POPCNT processors only. For older or 32-bit systems, set the preprocessor flag USE_INLINE_ASM in common.h to false.
-To compile, simply run 'make' in the main directory. The USE_STATIC=true option creates a statically-linked build with all necessary libraries.
+The code and Makefile support g++ on Linux and MinGW on Windows for POPCNT processors only. For older or 32-bit systems, set the preprocessor flag `USE_INLINE_ASM` in common.h to `false`.
+To compile, simply run `make` in the main directory. The `USE_STATIC=true` option creates a statically-linked build with all necessary libraries.
 
 
 ### Thanks To:
-- The Chess Programming Wiki, which is a great resource for beginner chess programmers, and was consulted frequently for this project: https://chessprogramming.wikispaces.com
+- The [Chess Programming Wiki](https://chessprogramming.wikispaces.com), which is a great resource for beginner chess programmers, and was consulted frequently for this project
 - The authors of Stockfish, Crafty, EXChess, Rebel, Texel, and all other open-source engines for providing inspiration and great ideas to move Laser forward
 - The engine testers and rating lists, for uncovering bugs, providing high quality games and ratings, and giving us motivation to improve
-- Cute Chess, the primary tool used for testing: (http://cutechess.com/)
+- [Cute Chess](http://cutechess.com), the primary tool used for testing
 
 
 ### Implementation Details
