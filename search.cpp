@@ -752,8 +752,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         if (tbProbeResult != 0) {
             searchStats->tbhits++;
 
-            int tbScore = tbValue < -1 ? -TB_WIN
-                        : tbValue >  1 ?  TB_WIN
+            int tbScore = tbValue < -1 ? -TB_WIN - MAX_DEPTH + ssi->ply
+                        : tbValue >  1 ?  TB_WIN + MAX_DEPTH - ssi->ply
                                        : 2 * tbValue;
 
             // Hash the TB result
