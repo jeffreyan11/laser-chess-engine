@@ -910,7 +910,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // move probably won't raise our prospects much, so don't bother
         // q-searching it.
         if (moveIsPrunable && bestScore > -INFTY
-         && depth <= 5 && staticEval <= alpha - FUTILITY_MARGIN[depth] - (isPVNode ? 100 : 0))
+         && depth <= 5 && staticEval <= alpha - FUTILITY_MARGIN[depth] - (isPVNode ? 80 + 40*depth : 0))
             continue;
 
 
@@ -926,7 +926,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // As used in Fruit/Stockfish:
         // https://chessprogramming.wikispaces.com/Futility+Pruning#MoveCountBasedPruning
         if (moveIsPrunable
-         && depth <= 7 && movesSearched > LMP_MOVE_COUNTS[evalImproving][depth] + (isPVNode ? 2 : 0)
+         && depth <= 7 && movesSearched > LMP_MOVE_COUNTS[evalImproving][depth] + (isPVNode ? depth : 0)
          && m != searchParams->killers[ssi->ply][0]
          && m != searchParams->killers[ssi->ply][1])
             continue;
