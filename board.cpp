@@ -1731,6 +1731,7 @@ int Board::evaluate() {
 
     uint64_t wPasserTemp = wPassedPawns;
     uint64_t wBlock = allPieces[BLACK] | bAttackMap;
+    uint64_t wDefend = wAttackMap | wPawnAtt;
     while (wPasserTemp) {
         int passerSq = bitScanForward(wPasserTemp);
         wPasserTemp &= wPasserTemp - 1;
@@ -1753,18 +1754,19 @@ int Board::evaluate() {
         else if (!((INDEX_TO_BIT[passerSq] << 8) & wBlock))
             whitePawnScore += rFactor * FREE_STOP_BONUS;
         // Path to queen is completely defended by own pieces
-        if ((pathToQueen & wAttackMap) == pathToQueen)
+        if ((pathToQueen & wDefend) == pathToQueen)
             whitePawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
         // Stop square is defended by own pieces
-        else if ((INDEX_TO_BIT[passerSq] << 8) & wAttackMap)
+        else if ((INDEX_TO_BIT[passerSq] << 8) & wDefend)
             whitePawnScore += rFactor * DEFENDED_PASSER_BONUS;
 
         // Bonuses and penalties for king distance
-        whitePawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq, wKingSq) * rFactor;
-        whitePawnScore += OPP_KING_DIST * getManhattanDistance(passerSq, bKingSq) * rFactor;
+        whitePawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq+8, wKingSq) * rFactor;
+        whitePawnScore += OPP_KING_DIST * getManhattanDistance(passerSq+8, bKingSq) * rFactor;
     }
     uint64_t bPasserTemp = bPassedPawns;
     uint64_t bBlock = allPieces[WHITE] | wAttackMap;
+    uint64_t bDefend = bAttackMap | bPawnAtt;
     while (bPasserTemp) {
         int passerSq = bitScanForward(bPasserTemp);
         bPasserTemp &= bPasserTemp - 1;
@@ -1783,13 +1785,13 @@ int Board::evaluate() {
             blackPawnScore += rFactor * FREE_PROMOTION_BONUS;
         else if (!((INDEX_TO_BIT[passerSq] >> 8) & bBlock))
             blackPawnScore += rFactor * FREE_STOP_BONUS;
-        if ((pathToQueen & bAttackMap) == pathToQueen)
+        if ((pathToQueen & bDefend) == pathToQueen)
             blackPawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
-        else if ((INDEX_TO_BIT[passerSq] >> 8) & bAttackMap)
+        else if ((INDEX_TO_BIT[passerSq] >> 8) & bDefend)
             blackPawnScore += rFactor * DEFENDED_PASSER_BONUS;
 
-        blackPawnScore += OPP_KING_DIST * getManhattanDistance(passerSq, wKingSq) * rFactor;
-        blackPawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq, bKingSq) * rFactor;
+        blackPawnScore += OPP_KING_DIST * getManhattanDistance(passerSq-8, wKingSq) * rFactor;
+        blackPawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq-8, bKingSq) * rFactor;
     }
 
     int wPawnCtByFile[8];
