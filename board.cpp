@@ -1400,6 +1400,34 @@ int Board::evaluate() {
     if (pieces[BLACK][QUEENS])
         valueEg += QUEEN_PAWN_PENALTY * pieceCounts[WHITE][PAWNS];
 
+    if (pieceCounts[WHITE][KNIGHTS] == 2) {
+        valueMg += KNIGHT_PAIR_PENALTY;
+        valueEg += KNIGHT_PAIR_PENALTY;
+    }
+    if (pieceCounts[BLACK][KNIGHTS] == 2) {
+        valueMg -= KNIGHT_PAIR_PENALTY;
+        valueEg -= KNIGHT_PAIR_PENALTY;
+    }
+
+    if (pieceCounts[WHITE][ROOKS] == 2) {
+        valueMg += ROOK_PAIR_PENALTY;
+        valueEg += ROOK_PAIR_PENALTY;
+    }
+    if (pieceCounts[BLACK][ROOKS] == 2) {
+        valueMg -= ROOK_PAIR_PENALTY;
+        valueEg -= ROOK_PAIR_PENALTY;
+    }
+
+    // Own-opp imbalance terms
+    for (int ownID = KNIGHTS; ownID <= QUEENS; ownID++) {
+        for (int oppID = PAWNS; oppID < ownID; oppID++) {
+            valueMg += OWN_OPP_IMBALANCE[MG][ownID][oppID] * pieceCounts[WHITE][ownID] * pieceCounts[BLACK][oppID];
+            valueEg += OWN_OPP_IMBALANCE[EG][ownID][oppID] * pieceCounts[WHITE][ownID] * pieceCounts[BLACK][oppID];
+            valueMg -= OWN_OPP_IMBALANCE[MG][ownID][oppID] * pieceCounts[BLACK][ownID] * pieceCounts[WHITE][oppID];
+            valueEg -= OWN_OPP_IMBALANCE[EG][ownID][oppID] * pieceCounts[BLACK][ownID] * pieceCounts[WHITE][oppID];
+        }
+    }
+
     if (debug) {
         evalDebugStats.totalMaterialMg = valueMg;
         evalDebugStats.totalMaterialEg = valueEg;

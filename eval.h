@@ -200,6 +200,27 @@ const int TEMPO_VALUE = 12;
 
 // Pawns are a target for the queen in the endgame
 const int QUEEN_PAWN_PENALTY = -21;
+const int KNIGHT_PAIR_PENALTY = -3;
+const int ROOK_PAIR_PENALTY = -8;
+
+const int OWN_OPP_IMBALANCE[2][5][5] = {
+{
+//       Opponent's
+//    P   N   B   R   Q
+    { 0},                   // Own pawns
+    { 0,  0},               // Own knights
+    { 0,  0,  0},           // Own bishops
+    {-2,  0,  0,  0},       // Own rooks
+    { 0,  6,  3,-19,  0}    // Own queens
+},
+{
+    { 0},                   // Own pawns
+    { 0,  0},               // Own knights
+    { 2,  0,  0},           // Own bishops
+    { 0, -1, -1,  0},       // Own rooks
+    { 3,  0,  7, 17,  0}    // Own queens
+}
+};
 
 //------------------------Positional eval constants-----------------------------
 // Mobility tables, with zero padding for pieces that cannot move up to 27 squares
