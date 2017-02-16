@@ -88,6 +88,7 @@ extern uint64_t inBetweenSqs[64][64];
 struct EvalDebug {
     int totalEval;
     int totalMaterialMg, totalMaterialEg;
+    int totalImbalanceMg, totalImbalanceEg;
     int whiteMobilityMg, whiteMobilityEg, blackMobilityMg, blackMobilityEg;
     int whiteKingSafety, blackKingSafety;
     Score whitePawnScore, blackPawnScore;
@@ -99,6 +100,7 @@ struct EvalDebug {
     void clear() {
         totalEval = 0;
         totalMaterialMg = totalMaterialEg = 0;
+        totalImbalanceMg = totalImbalanceEg = 0;
         whiteMobilityMg = whiteMobilityEg = blackMobilityMg = blackMobilityEg = 0;
         whiteKingSafety = blackKingSafety = 0;
         whitePawnScore = blackPawnScore = EVAL_ZERO;
@@ -116,6 +118,13 @@ struct EvalDebug {
                   << " -- " << "   |   "
                   << std::setw(4) << S(totalMaterialMg) << "   "
                   << std::setw(4) << S(totalMaterialEg) << std::endl;
+        std::cerr << "    Imbalance     |   "
+                  << " -- " << "   "
+                  << " -- " << "   |   "
+                  << " -- " << "   "
+                  << " -- " << "   |   "
+                  << std::setw(4) << S(totalImbalanceMg) << "   "
+                  << std::setw(4) << S(totalImbalanceEg) << std::endl;
         std::cerr << "    Mobility      |   "
                   << std::setw(4) << S(whiteMobilityMg) << "   "
                   << std::setw(4) << S(whiteMobilityEg) << "   |   "
@@ -1393,24 +1402,30 @@ int Board::evaluate() {
     valueMg += decEvalMg(psqtScores[WHITE]) - decEvalMg(psqtScores[BLACK]);
     valueEg += decEvalEg(psqtScores[WHITE]) - decEvalEg(psqtScores[BLACK]);
 
+    if (debug) {
+        evalDebugStats.totalMaterialMg = valueMg;
+        evalDebugStats.totalMaterialEg = valueEg;
+    }
 
+
+    int imbalanceValue[2] = {0, 0};
     // Material imbalance evaluation
     if (pieceCounts[WHITE][KNIGHTS] == 2) {
-        valueMg += KNIGHT_PAIR_PENALTY;
-        valueEg += KNIGHT_PAIR_PENALTY;
+        imbalanceValue[MG] += KNIGHT_PAIR_PENALTY;
+        imbalanceValue[EG] += KNIGHT_PAIR_PENALTY;
     }
     if (pieceCounts[BLACK][KNIGHTS] == 2) {
-        valueMg -= KNIGHT_PAIR_PENALTY;
-        valueEg -= KNIGHT_PAIR_PENALTY;
+        imbalanceValue[MG] -= KNIGHT_PAIR_PENALTY;
+        imbalanceValue[EG] -= KNIGHT_PAIR_PENALTY;
     }
 
     if (pieceCounts[WHITE][ROOKS] == 2) {
-        valueMg += ROOK_PAIR_PENALTY;
-        valueEg += ROOK_PAIR_PENALTY;
+        imbalanceValue[MG] += ROOK_PAIR_PENALTY;
+        imbalanceValue[EG] += ROOK_PAIR_PENALTY;
     }
     if (pieceCounts[BLACK][ROOKS] == 2) {
-        valueMg -= ROOK_PAIR_PENALTY;
-        valueEg -= ROOK_PAIR_PENALTY;
+        imbalanceValue[MG] -= ROOK_PAIR_PENALTY;
+        imbalanceValue[EG] -= ROOK_PAIR_PENALTY;
     }
 
     // Own-opp imbalance terms
@@ -1418,16 +1433,19 @@ int Board::evaluate() {
     // you have and each oppID piece the opponent has
     for (int ownID = KNIGHTS; ownID <= QUEENS; ownID++) {
         for (int oppID = PAWNS; oppID < ownID; oppID++) {
-            valueMg += OWN_OPP_IMBALANCE[MG][ownID][oppID] * pieceCounts[WHITE][ownID] * pieceCounts[BLACK][oppID];
-            valueEg += OWN_OPP_IMBALANCE[EG][ownID][oppID] * pieceCounts[WHITE][ownID] * pieceCounts[BLACK][oppID];
-            valueMg -= OWN_OPP_IMBALANCE[MG][ownID][oppID] * pieceCounts[BLACK][ownID] * pieceCounts[WHITE][oppID];
-            valueEg -= OWN_OPP_IMBALANCE[EG][ownID][oppID] * pieceCounts[BLACK][ownID] * pieceCounts[WHITE][oppID];
+            imbalanceValue[MG] += OWN_OPP_IMBALANCE[MG][ownID][oppID] * pieceCounts[WHITE][ownID] * pieceCounts[BLACK][oppID];
+            imbalanceValue[EG] += OWN_OPP_IMBALANCE[EG][ownID][oppID] * pieceCounts[WHITE][ownID] * pieceCounts[BLACK][oppID];
+            imbalanceValue[MG] -= OWN_OPP_IMBALANCE[MG][ownID][oppID] * pieceCounts[BLACK][ownID] * pieceCounts[WHITE][oppID];
+            imbalanceValue[EG] -= OWN_OPP_IMBALANCE[EG][ownID][oppID] * pieceCounts[BLACK][ownID] * pieceCounts[WHITE][oppID];
         }
     }
 
+    valueMg += imbalanceValue[MG];
+    valueEg += imbalanceValue[EG];
+
     if (debug) {
-        evalDebugStats.totalMaterialMg = valueMg;
-        evalDebugStats.totalMaterialEg = valueEg;
+        evalDebugStats.totalImbalanceMg = imbalanceValue[MG];
+        evalDebugStats.totalImbalanceEg = imbalanceValue[EG];
     }
 
 
