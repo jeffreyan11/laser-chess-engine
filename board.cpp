@@ -1394,12 +1394,7 @@ int Board::evaluate() {
     valueEg += decEvalEg(psqtScores[WHITE]) - decEvalEg(psqtScores[BLACK]);
 
 
-    // With queens on the board pawns are a target in the endgame
-    if (pieces[WHITE][QUEENS])
-        valueEg -= QUEEN_PAWN_PENALTY * pieceCounts[BLACK][PAWNS];
-    if (pieces[BLACK][QUEENS])
-        valueEg += QUEEN_PAWN_PENALTY * pieceCounts[WHITE][PAWNS];
-
+    // Material imbalance evaluation
     if (pieceCounts[WHITE][KNIGHTS] == 2) {
         valueMg += KNIGHT_PAIR_PENALTY;
         valueEg += KNIGHT_PAIR_PENALTY;
@@ -1419,6 +1414,8 @@ int Board::evaluate() {
     }
 
     // Own-opp imbalance terms
+    // Gain OWN_OPP_IMBALANCE[][ownID][oppID] centipawns for each ownID piece
+    // you have and each oppID piece the opponent has
     for (int ownID = KNIGHTS; ownID <= QUEENS; ownID++) {
         for (int oppID = PAWNS; oppID < ownID; oppID++) {
             valueMg += OWN_OPP_IMBALANCE[MG][ownID][oppID] * pieceCounts[WHITE][ownID] * pieceCounts[BLACK][oppID];
@@ -1579,10 +1576,6 @@ int Board::evaluate() {
     if (pieces[BLACK][BISHOPS] & DARK) {
         value -= BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & DARK);
     }
-
-    // Knights do better when the opponent has many pawns
-    value += KNIGHT_PAWN_BONUS * pieceCounts[WHITE][KNIGHTS] * pieceCounts[BLACK][PAWNS];
-    value -= KNIGHT_PAWN_BONUS * pieceCounts[BLACK][KNIGHTS] * pieceCounts[WHITE][PAWNS];
 
     // Outposts
     // Region 1: Ranks 4/5/6 on files D/E, ranks 5/6 on files C/F, rank 6 on files B/G

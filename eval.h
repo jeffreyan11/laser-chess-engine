@@ -198,8 +198,7 @@ const int pieceSquareTable[2][6][32] = {
 const int BISHOP_PAIR_VALUE = 54;
 const int TEMPO_VALUE = 12;
 
-// Pawns are a target for the queen in the endgame
-const int QUEEN_PAWN_PENALTY = -21;
+// Material imbalance terms
 const int KNIGHT_PAIR_PENALTY = -3;
 const int ROOK_PAIR_PENALTY = -8;
 
@@ -215,10 +214,10 @@ const int OWN_OPP_IMBALANCE[2][5][5] = {
 },
 {
     { 0},                   // Own pawns
-    { 0,  0},               // Own knights
+    { 8,  0},               // Own knights
     { 2,  0,  0},           // Own bishops
     { 0, -1, -1,  0},       // Own rooks
-    { 3,  0,  7, 17,  0}    // Own queens
+    {24,  0,  7, 17,  0}    // Own queens
 }
 };
 
@@ -313,8 +312,6 @@ const int KS_PAWN_FACTOR = 9;
 // Minor pieces
 // A penalty for each own pawn that is on a square of the same color as your bishop
 const Score BISHOP_PAWN_COLOR_PENALTY = E(-7, -5);
-// A bonus for each opponent pawn on the board, given once for each knight
-const Score KNIGHT_PAWN_BONUS = E(0, 8);
 // A bonus for strong outpost knights
 const Score KNIGHT_OUTPOST_BONUS1 = E(28, 15);
 const Score KNIGHT_OUTPOST_BONUS2 = E(20, 11);
