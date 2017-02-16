@@ -91,6 +91,7 @@ struct EvalDebug {
     int totalImbalanceMg, totalImbalanceEg;
     int whiteMobilityMg, whiteMobilityEg, blackMobilityMg, blackMobilityEg;
     int whiteKingSafety, blackKingSafety;
+    Score whiteThreatScore, blackThreatScore;
     Score whitePawnScore, blackPawnScore;
 
     EvalDebug() {
@@ -103,6 +104,7 @@ struct EvalDebug {
         totalImbalanceMg = totalImbalanceEg = 0;
         whiteMobilityMg = whiteMobilityEg = blackMobilityMg = blackMobilityEg = 0;
         whiteKingSafety = blackKingSafety = 0;
+        whiteThreatScore = blackThreatScore = EVAL_ZERO;
         whitePawnScore = blackPawnScore = EVAL_ZERO;
     }
 
@@ -135,6 +137,11 @@ struct EvalDebug {
                   << " -- " << "   |   "
                   << std::setw(4) << S(blackKingSafety) << "   "
                   << " -- " << std::endl;
+        std::cerr << "    Threats       |   "
+                  << std::setw(4) << S(decEvalMg(whiteThreatScore)) << "   "
+                  << std::setw(4) << S(decEvalEg(whiteThreatScore)) << "   |   "
+                  << std::setw(4) << S(decEvalMg(blackThreatScore)) << "   "
+                  << std::setw(4) << S(decEvalEg(blackThreatScore)) << std::endl;
         std::cerr << "    Pawns         |   "
                   << std::setw(4) << S(decEvalMg(whitePawnScore)) << "   "
                   << std::setw(4) << S(decEvalEg(whitePawnScore)) << "   |   "
@@ -1450,9 +1457,6 @@ int Board::evaluate() {
 
 
     //----------------------------Positional terms------------------------------
-    // A 32-bit integer that holds both the midgame and endgame values using SWAR
-    Score value = EVAL_ZERO;
-
 
     //-----------------------King Safety and Mobility---------------------------
     // Scores based on mobility and basic king safety (which is turned off in
@@ -1580,6 +1584,9 @@ int Board::evaluate() {
     uint64_t bPawnStopAtt = ((bPawnFrontSpan >> 1) & NOTH) | ((bPawnFrontSpan << 1) & NOTA);
 
 
+    // A 32-bit integer that holds both the midgame and endgame values using SWAR
+    Score value = EVAL_ZERO;
+
     //------------------------------Minor Pieces--------------------------------
     // Bishops tend to be worse if too many pawns are on squares of their color
     if (pieces[WHITE][BISHOPS] & LIGHT) {
@@ -1684,7 +1691,12 @@ int Board::evaluate() {
     }
 
 
+    valueMg += decEvalMg(value);
+    valueEg += decEvalEg(value);
+
+
     //-------------------------------Threats------------------------------------
+    Score threatScore[2] = {EVAL_ZERO, EVAL_ZERO};
     // Get the overall attack maps
     uint64_t wAttackMap = 0, bAttackMap = 0;
     for (unsigned int i = 0; i < pmlWhite.size(); i++) {
@@ -1697,52 +1709,60 @@ int Board::evaluate() {
     // bAttackMap |= getBPawnCaptures(pieces[BLACK][PAWNS]);
 
     if (uint64_t upawns = pieces[WHITE][PAWNS] & bAttackMap & ~wPawnAtt) {
-        value += UNDEFENDED_PAWN * count(upawns);
+        threatScore[WHITE] += UNDEFENDED_PAWN * count(upawns);
     }
     if (uint64_t upawns = pieces[BLACK][PAWNS] & wAttackMap & ~bPawnAtt) {
-        value -= UNDEFENDED_PAWN * count(upawns);
+        threatScore[BLACK] += UNDEFENDED_PAWN * count(upawns);
     }
     if (uint64_t minors = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & bAttackMap & ~wPawnAtt) {
-        value += UNDEFENDED_MINOR * count(minors);
+        threatScore[WHITE] += UNDEFENDED_MINOR * count(minors);
     }
     if (uint64_t minors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & wAttackMap & ~bPawnAtt) {
-        value -= UNDEFENDED_MINOR * count(minors);
+        threatScore[BLACK] += UNDEFENDED_MINOR * count(minors);
     }
     if (uint64_t majors = (pieces[WHITE][ROOKS] | pieces[WHITE][QUEENS]) & bAttackMap) {
-        value += ATTACKED_MAJOR * count(majors);
+        threatScore[WHITE] += ATTACKED_MAJOR * count(majors);
     }
     if (uint64_t majors = (pieces[BLACK][ROOKS] | pieces[BLACK][QUEENS]) & wAttackMap) {
-        value -= ATTACKED_MAJOR * count(majors);
+        threatScore[BLACK] += ATTACKED_MAJOR * count(majors);
     }
     if (uint64_t minors = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & bPawnAtt) {
-        value += PAWN_MINOR_THREAT * count(minors);
+        threatScore[WHITE] += PAWN_MINOR_THREAT * count(minors);
     }
     if (uint64_t minors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & wPawnAtt) {
-        value -= PAWN_MINOR_THREAT * count(minors);
+        threatScore[BLACK] += PAWN_MINOR_THREAT * count(minors);
     }
     if (uint64_t majors = (pieces[WHITE][ROOKS] | pieces[WHITE][QUEENS]) & bPawnAtt) {
-        value += PAWN_MAJOR_THREAT * count(majors);
+        threatScore[WHITE] += PAWN_MAJOR_THREAT * count(majors);
     }
     if (uint64_t majors = (pieces[BLACK][ROOKS] | pieces[BLACK][QUEENS]) & wPawnAtt) {
-        value -= PAWN_MAJOR_THREAT * count(majors);
+        threatScore[BLACK] += PAWN_MAJOR_THREAT * count(majors);
     }
 
     // Loose pawns
     const uint64_t WHITE_HALF = RANKS[0] | RANKS[1] | RANKS[2] | RANKS[3];
     const uint64_t BLACK_HALF = RANKS[4] | RANKS[5] | RANKS[6] | RANKS[7];
     if (uint64_t lpawns = pieces[WHITE][PAWNS] & BLACK_HALF & ~(wAttackMap | wPawnAtt)) {
-        value += LOOSE_PAWN * count(lpawns);
+        threatScore[WHITE] += LOOSE_PAWN * count(lpawns);
     }
     if (uint64_t lpawns = pieces[BLACK][PAWNS] & WHITE_HALF & ~(bAttackMap | bPawnAtt)) {
-        value -= LOOSE_PAWN * count(lpawns);
+        threatScore[BLACK] += LOOSE_PAWN * count(lpawns);
     }
 
     // Loose minors
     if (uint64_t lminors = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & BLACK_HALF & ~(wAttackMap | wPawnAtt)) {
-        value += LOOSE_MINOR * count(lminors);
+        threatScore[WHITE] += LOOSE_MINOR * count(lminors);
     }
     if (uint64_t lminors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & WHITE_HALF & ~(bAttackMap | bPawnAtt)) {
-        value -= LOOSE_MINOR * count(lminors);
+        threatScore[BLACK] += LOOSE_MINOR * count(lminors);
+    }
+
+    valueMg += decEvalMg(threatScore[WHITE]) - decEvalMg(threatScore[BLACK]);
+    valueEg += decEvalEg(threatScore[WHITE]) - decEvalEg(threatScore[BLACK]);
+
+    if (debug) {
+        evalDebugStats.whiteThreatScore = threatScore[WHITE];
+        evalDebugStats.blackThreatScore = threatScore[BLACK];
     }
 
 
@@ -1949,8 +1969,6 @@ int Board::evaluate() {
     }
 
 
-    valueMg += decEvalMg(value);
-    valueEg += decEvalEg(value);
     int totalEval = (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES;
 
     // Scale factors
