@@ -91,6 +91,7 @@ struct EvalDebug {
     int totalImbalanceMg, totalImbalanceEg;
     int whiteMobilityMg, whiteMobilityEg, blackMobilityMg, blackMobilityEg;
     int whiteKingSafety, blackKingSafety;
+    Score whitePieceScore, blackPieceScore;
     Score whiteThreatScore, blackThreatScore;
     Score whitePawnScore, blackPawnScore;
 
@@ -104,6 +105,7 @@ struct EvalDebug {
         totalImbalanceMg = totalImbalanceEg = 0;
         whiteMobilityMg = whiteMobilityEg = blackMobilityMg = blackMobilityEg = 0;
         whiteKingSafety = blackKingSafety = 0;
+        whitePieceScore = blackPieceScore = EVAL_ZERO;
         whiteThreatScore = blackThreatScore = EVAL_ZERO;
         whitePawnScore = blackPawnScore = EVAL_ZERO;
     }
@@ -131,22 +133,37 @@ struct EvalDebug {
                   << std::setw(4) << S(whiteMobilityMg) << "   "
                   << std::setw(4) << S(whiteMobilityEg) << "   |   "
                   << std::setw(4) << S(blackMobilityMg) << "   "
-                  << std::setw(4) << S(blackMobilityEg) << std::endl;
+                  << std::setw(4) << S(blackMobilityEg) << "   |   "
+                  << std::setw(4) << S(whiteMobilityMg) - S(blackMobilityMg) << "   "
+                  << std::setw(4) << S(whiteMobilityEg) - S(blackMobilityEg) << std::endl;
         std::cerr << "    King Safety   |   "
                   << std::setw(4) << S(whiteKingSafety) << "   "
                   << " -- " << "   |   "
                   << std::setw(4) << S(blackKingSafety) << "   "
+                  << " -- " << "   |   "
+                  << std::setw(4) << S(whiteKingSafety) - S(blackKingSafety) << "   "
                   << " -- " << std::endl;
+        std::cerr << "    Pieces        |   "
+                  << std::setw(4) << S(decEvalMg(whitePieceScore)) << "   "
+                  << std::setw(4) << S(decEvalEg(whitePieceScore)) << "   |   "
+                  << std::setw(4) << S(decEvalMg(blackPieceScore)) << "   "
+                  << std::setw(4) << S(decEvalEg(blackPieceScore)) << "   |   "
+                  << std::setw(4) << S(decEvalMg(whitePieceScore)) - S(decEvalMg(blackPieceScore)) << "   "
+                  << std::setw(4) << S(decEvalEg(whitePieceScore)) - S(decEvalEg(blackPieceScore)) << std::endl;
         std::cerr << "    Threats       |   "
                   << std::setw(4) << S(decEvalMg(whiteThreatScore)) << "   "
                   << std::setw(4) << S(decEvalEg(whiteThreatScore)) << "   |   "
                   << std::setw(4) << S(decEvalMg(blackThreatScore)) << "   "
-                  << std::setw(4) << S(decEvalEg(blackThreatScore)) << std::endl;
+                  << std::setw(4) << S(decEvalEg(blackThreatScore)) << "   |   "
+                  << std::setw(4) << S(decEvalMg(whiteThreatScore)) - S(decEvalMg(blackThreatScore)) << "   "
+                  << std::setw(4) << S(decEvalEg(whiteThreatScore)) - S(decEvalEg(blackThreatScore)) << std::endl;
         std::cerr << "    Pawns         |   "
                   << std::setw(4) << S(decEvalMg(whitePawnScore)) << "   "
                   << std::setw(4) << S(decEvalEg(whitePawnScore)) << "   |   "
                   << std::setw(4) << S(decEvalMg(blackPawnScore)) << "   "
-                  << std::setw(4) << S(decEvalEg(blackPawnScore)) << std::endl;
+                  << std::setw(4) << S(decEvalEg(blackPawnScore)) << "   |   "
+                  << std::setw(4) << S(decEvalMg(whitePawnScore)) - S(decEvalMg(blackPawnScore)) << "   "
+                  << std::setw(4) << S(decEvalEg(whitePawnScore)) - S(decEvalEg(blackPawnScore)) << std::endl;
         std::cerr << std::string(70, '-') << std::endl;
         std::cerr << "Static evaluation: " << S(totalEval) << std::endl;
         std::cerr << std::endl;
@@ -1584,22 +1601,21 @@ int Board::evaluate() {
     uint64_t bPawnStopAtt = ((bPawnFrontSpan >> 1) & NOTH) | ((bPawnFrontSpan << 1) & NOTA);
 
 
-    // A 32-bit integer that holds both the midgame and endgame values using SWAR
-    Score value = EVAL_ZERO;
+    Score pieceEvalScore[2] = {EVAL_ZERO, EVAL_ZERO};
 
     //------------------------------Minor Pieces--------------------------------
     // Bishops tend to be worse if too many pawns are on squares of their color
     if (pieces[WHITE][BISHOPS] & LIGHT) {
-        value += BISHOP_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & LIGHT);
+        pieceEvalScore[WHITE] += BISHOP_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & LIGHT);
     }
     if (pieces[WHITE][BISHOPS] & DARK) {
-        value += BISHOP_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & DARK);
+        pieceEvalScore[WHITE] += BISHOP_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & DARK);
     }
     if (pieces[BLACK][BISHOPS] & LIGHT) {
-        value -= BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & LIGHT);
+        pieceEvalScore[BLACK] += BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & LIGHT);
     }
     if (pieces[BLACK][BISHOPS] & DARK) {
-        value -= BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & DARK);
+        pieceEvalScore[BLACK] += BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & DARK);
     }
 
     // Outposts
@@ -1621,34 +1637,34 @@ int Board::evaluate() {
     // Knight outposts: knights that cannot be attacked by opposing pawns
     if (uint64_t wOutpost = pieces[WHITE][KNIGHTS] & ~bPawnStopAtt) {
         if (wOutpost & W_OUTPOST1)
-            value += KNIGHT_OUTPOST_BONUS1 * count(wOutpost & W_OUTPOST1);
+            pieceEvalScore[WHITE] += KNIGHT_OUTPOST_BONUS1 * count(wOutpost & W_OUTPOST1);
         if (wOutpost & W_OUTPOST2)
-            value += KNIGHT_OUTPOST_BONUS2 * count(wOutpost & W_OUTPOST2);
+            pieceEvalScore[WHITE] += KNIGHT_OUTPOST_BONUS2 * count(wOutpost & W_OUTPOST2);
         // An additional bonus if the outpost knight is defended by a pawn
-        value += KNIGHT_OUTPOST_PAWN_DEF_BONUS * count(wOutpost & (W_OUTPOST1 | W_OUTPOST2) & wPawnAtt);
+        pieceEvalScore[WHITE] += KNIGHT_OUTPOST_PAWN_DEF_BONUS * count(wOutpost & (W_OUTPOST1 | W_OUTPOST2) & wPawnAtt);
     }
     if (uint64_t bOutpost = pieces[BLACK][KNIGHTS] & ~wPawnStopAtt) {
         if (bOutpost & B_OUTPOST1)
-            value -= KNIGHT_OUTPOST_BONUS1 * count(bOutpost & B_OUTPOST1);
+            pieceEvalScore[BLACK] += KNIGHT_OUTPOST_BONUS1 * count(bOutpost & B_OUTPOST1);
         if (bOutpost & B_OUTPOST2)
-            value -= KNIGHT_OUTPOST_BONUS2 * count(bOutpost & B_OUTPOST2);
-        value -= KNIGHT_OUTPOST_PAWN_DEF_BONUS * count(bOutpost & (B_OUTPOST1 | B_OUTPOST2) & bPawnAtt);
+            pieceEvalScore[BLACK] += KNIGHT_OUTPOST_BONUS2 * count(bOutpost & B_OUTPOST2);
+        pieceEvalScore[BLACK] += KNIGHT_OUTPOST_PAWN_DEF_BONUS * count(bOutpost & (B_OUTPOST1 | B_OUTPOST2) & bPawnAtt);
     }
 
     // Bishop outposts
     if (uint64_t wOutpost = pieces[WHITE][BISHOPS] & ~bPawnStopAtt) {
         if (wOutpost & W_OUTPOST1)
-            value += BISHOP_OUTPOST_BONUS1 * count(wOutpost & W_OUTPOST1);
+            pieceEvalScore[WHITE] += BISHOP_OUTPOST_BONUS1 * count(wOutpost & W_OUTPOST1);
         if (wOutpost & W_OUTPOST2)
-            value += BISHOP_OUTPOST_BONUS2 * count(wOutpost & W_OUTPOST2);
-        value += BISHOP_OUTPOST_PAWN_DEF_BONUS * count(wOutpost & (W_OUTPOST1 | W_OUTPOST2) & wPawnAtt);
+            pieceEvalScore[WHITE] += BISHOP_OUTPOST_BONUS2 * count(wOutpost & W_OUTPOST2);
+        pieceEvalScore[WHITE] += BISHOP_OUTPOST_PAWN_DEF_BONUS * count(wOutpost & (W_OUTPOST1 | W_OUTPOST2) & wPawnAtt);
     }
     if (uint64_t bOutpost = pieces[BLACK][BISHOPS] & ~wPawnStopAtt) {
         if (bOutpost & B_OUTPOST1)
-            value -= BISHOP_OUTPOST_BONUS1 * count(bOutpost & B_OUTPOST1);
+            pieceEvalScore[BLACK] += BISHOP_OUTPOST_BONUS1 * count(bOutpost & B_OUTPOST1);
         if (bOutpost & B_OUTPOST2)
-            value -= BISHOP_OUTPOST_BONUS2 * count(bOutpost & B_OUTPOST2);
-        value -= BISHOP_OUTPOST_PAWN_DEF_BONUS * count(bOutpost & (B_OUTPOST1 | B_OUTPOST2) & bPawnAtt);
+            pieceEvalScore[BLACK] += BISHOP_OUTPOST_BONUS2 * count(bOutpost & B_OUTPOST2);
+        pieceEvalScore[BLACK] += BISHOP_OUTPOST_PAWN_DEF_BONUS * count(bOutpost & (B_OUTPOST1 | B_OUTPOST2) & bPawnAtt);
     }
 
     // Special case: Nc3 blocking c2-c4 in closed openings (pawn on d4, no pawn on e4)
@@ -1656,12 +1672,12 @@ int Board::evaluate() {
      && (pieces[WHITE][PAWNS] & 0x400)
      && (pieces[WHITE][PAWNS] & 0x8000000)
     && !(pieces[WHITE][PAWNS] & 0x10000000))
-        value += KNIGHT_C3_CLOSED_PENALTY;
+        pieceEvalScore[WHITE] += KNIGHT_C3_CLOSED_PENALTY;
     if ((pieces[BLACK][KNIGHTS] & 0x40000000000)
      && (pieces[BLACK][PAWNS] & 0x4000000000000)
      && (pieces[BLACK][PAWNS] & 0x800000000)
     && !(pieces[BLACK][PAWNS] & 0x1000000000))
-        value -= KNIGHT_C3_CLOSED_PENALTY;
+        pieceEvalScore[BLACK] += KNIGHT_C3_CLOSED_PENALTY;
 
 
     //-------------------------------Rooks--------------------------------------
@@ -1673,9 +1689,9 @@ int Board::evaluate() {
         int file = rookSq & 7;
 
         if (!(FILES[file] & (pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS])))
-            value += ROOK_OPEN_FILE_BONUS;
+            pieceEvalScore[WHITE] += ROOK_OPEN_FILE_BONUS;
         else if (!(FILES[file] & pieces[WHITE][PAWNS]))
-            value += ROOK_SEMIOPEN_FILE_BONUS;
+            pieceEvalScore[WHITE] += ROOK_SEMIOPEN_FILE_BONUS;
     }
 
     uint64_t bRooksOpen = pieces[BLACK][ROOKS];
@@ -1685,14 +1701,19 @@ int Board::evaluate() {
         int file = rookSq & 7;
 
         if (!(FILES[file] & (pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS])))
-            value -= ROOK_OPEN_FILE_BONUS;
+            pieceEvalScore[BLACK] += ROOK_OPEN_FILE_BONUS;
         else if (!(FILES[file] & pieces[BLACK][PAWNS]))
-            value -= ROOK_SEMIOPEN_FILE_BONUS;
+            pieceEvalScore[BLACK] += ROOK_SEMIOPEN_FILE_BONUS;
     }
 
 
-    valueMg += decEvalMg(value);
-    valueEg += decEvalEg(value);
+    valueMg += decEvalMg(pieceEvalScore[WHITE]) - decEvalMg(pieceEvalScore[BLACK]);
+    valueEg += decEvalEg(pieceEvalScore[WHITE]) - decEvalEg(pieceEvalScore[BLACK]);
+
+    if (debug) {
+        evalDebugStats.whitePieceScore = pieceEvalScore[WHITE];
+        evalDebugStats.blackPieceScore = pieceEvalScore[BLACK];
+    }
 
 
     //-------------------------------Threats------------------------------------
