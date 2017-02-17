@@ -287,7 +287,10 @@ void setPosition(string &input, std::vector<string> &inputVector, Board &board) 
         pos = STARTPOS;
 
     if (input.find("fen") != string::npos) {
-        if (inputVector.size() < 7 || inputVector.at(6) == "moves") {
+        if (inputVector.size() < 5 || inputVector.at(4) == "moves") {
+            pos = inputVector.at(2) + ' ' + inputVector.at(3) + " - -";
+        }
+        else if (inputVector.size() < 7 || inputVector.at(6) == "moves") {
             pos = inputVector.at(2) + ' ' + inputVector.at(3) + ' ' + inputVector.at(4) + ' '
                 + inputVector.at(5);
         }
