@@ -926,9 +926,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // As used in Fruit/Stockfish:
         // https://chessprogramming.wikispaces.com/Futility+Pruning#MoveCountBasedPruning
         if (moveIsPrunable
-         && depth <= 7 && movesSearched > LMP_MOVE_COUNTS[evalImproving][depth] + (isPVNode ? depth : 0)
-         && m != searchParams->killers[ssi->ply][0]
-         && m != searchParams->killers[ssi->ply][1])
+         && depth <= 7
+         && movesSearched > LMP_MOVE_COUNTS[evalImproving][depth] + (isPVNode ? depth : 0))
             continue;
 
 
@@ -957,11 +956,13 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // fail-low.
         if (!isInCheck && depth >= 3 && movesSearched > (isPVNode ? 4 : 2)
          && !isCapture(m) && !isPromotion(m)
-         && m != searchParams->killers[ssi->ply][0]
-         && m != searchParams->killers[ssi->ply][1]
          && !copy.isInCheck(color^1)) {
             // Increase reduction with higher depth and later moves
             reduction = (int) (0.5 + log(depth) * log(movesSearched) / 2.1);
+            // Reduce less for killers
+            if (m == searchParams->killers[ssi->ply][0]
+             || m == searchParams->killers[ssi->ply][1])
+                reduction--;
             // Reduce more for moves with poor history
             int historyValue = searchParams->historyTable[color][pieceID][endSq];
             if (historyValue < 0)
