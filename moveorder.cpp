@@ -176,11 +176,13 @@ void MoveOrder::scoreQuiets() {
             if (depth >= QUIET_SEE_DEPTH) {
                 int see = b->getSEEForMove(color, m);
                 scores.add(((see < 0) ? SCORE_LOSING_QUIET : SCORE_QUIET_MOVE)
-                    + searchParams->historyTable[color][pieceID][endSq]);
+                    + searchParams->historyTable[color][pieceID][endSq]
+                    + ((ssi->counterMoveHistory != nullptr) ? ssi->counterMoveHistory[pieceID][endSq] : 0));
             }
             else {
                 scores.add(SCORE_QUIET_MOVE
-                    + searchParams->historyTable[color][pieceID][endSq]);
+                    + searchParams->historyTable[color][pieceID][endSq]
+                    + ((ssi->counterMoveHistory != nullptr) ? ssi->counterMoveHistory[pieceID][endSq] : 0));
             }
         }
     }
@@ -292,6 +294,8 @@ void MoveOrder::reduceBadHistories(Move bestMove) {
             * (8 + std::max(1, depth)) / (2 + 2 * MAX_DEPTH);
         searchParams->historyTable[color][pieceID][endSq]
             -= std::max(0, diff) + depth;
+        if (ssi->counterMoveHistory != nullptr)
+            ssi->counterMoveHistory[pieceID][endSq] -= std::max(0, diff) + depth;
     }
 }
 

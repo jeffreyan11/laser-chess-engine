@@ -530,6 +530,7 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
     int tempMove = -1;
     int score = -MATE_SCORE;
     *bestScore = -INFTY;
+    SearchStackInfo *ssi = &(ssInfo[threadID][1]);
 
     // Push current position to two fold stack
     twoFoldPositions[threadID].push(b->getZobristKey());
@@ -552,15 +553,20 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
         copy.doMove(legalMoves->get(i), color);
         searchStats->nodes++;
 
+        int startSq = getStartSq(legalMoves->get(i));
+        int endSq = getEndSq(legalMoves->get(i));
+        int pieceID = b->getPieceOnSquare(color, startSq);
+        ssi->counterMoveHistory = searchParamsArray[threadID].counterMoveHistory[pieceID][endSq];
+
         if (i != 0) {
-            score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, true, &(ssInfo[threadID][1]), &line);
+            score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, true, ssi, &line);
             if (alpha < score && score < beta) {
                 line.pvLength = 0;
-                score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, &(ssInfo[threadID][1]), &line);
+                score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, ssi, &line);
             }
         }
         else {
-            score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, &(ssInfo[threadID][1]), &line);
+            score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, ssi, &line);
         }
 
         // Stop condition. If stopping, return search results from incomplete
@@ -613,6 +619,11 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID, 
         if(!copy.doPseudoLegalMove(legalMoves.get(i), color))
             continue;
         searchStats->nodes++;
+
+        int startSq = getStartSq(legalMoves.get(i));
+        int endSq = getEndSq(legalMoves.get(i));
+        int pieceID = b->getPieceOnSquare(color, startSq);
+        (ssi+1)->counterMoveHistory = searchParamsArray[threadID].counterMoveHistory[pieceID][endSq];
 
         if (i != 0) {
             score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, true, ssi+1, &line);
@@ -851,6 +862,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         uint16_t epCaptureFile = b.getEPCaptureFile();
         b.doNullMove();
         searchParams->nullMoveCount++;
+        (ssi+1)->counterMoveHistory = nullptr;
         int nullScore = -PVS(b, depth-1-reduction, -beta, -alpha, threadID, !isCutNode, ssi+1, &line);
 
         // Undo the null move
@@ -1010,6 +1022,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
                 if (!seCopy.doPseudoLegalMove(seMove, color))
                     continue;
 
+                (ssi+1)->counterMoveHistory = searchParams->counterMoveHistory
+                    [b.getPieceOnSquare(color, getStartSq(seMove))][getEndSq(seMove)];
+
                 // The window is lowered more for PV nodes and for higher depths
                 int SEWindow = isPVNode ? hashScore - 10 - depth
                                         : alpha - 10 - depth;
@@ -1033,6 +1048,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
         // Reset the PV line just in case
         line.pvLength = 0;
+
+        (ssi+1)->counterMoveHistory = searchParams->counterMoveHistory[pieceID][endSq];
 
         // Null-window search, with re-search if applicable
         if (movesSearched != 0) {
@@ -1091,6 +1108,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
                 // Update the history table
                 searchParams->historyTable[color][pieceID][endSq]
                     += depth * depth;
+                if (ssi->counterMoveHistory != nullptr)
+                    ssi->counterMoveHistory[pieceID][endSq] += depth * depth;
                 moveSorter.reduceBadHistories(m);
             }
 
@@ -1138,6 +1157,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             int pieceID = b.getPieceOnSquare(color, startSq);
 
             searchParams->historyTable[color][pieceID][endSq] += depth * depth;
+            if (ssi->counterMoveHistory != nullptr)
+                ssi->counterMoveHistory[pieceID][endSq] += depth * depth;
             moveSorter.reduceBadHistories(toHash);
         }
     }

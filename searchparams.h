@@ -27,13 +27,33 @@ struct SearchParameters {
     int selectiveDepth;
     ChessTime startTime;
     uint64_t timeLimit;
+    uint8_t rootMoveNumber;
     Move killers[MAX_DEPTH][2];
     int historyTable[2][6][64];
-    uint8_t rootMoveNumber;
+    int **counterMoveHistory[6][64];
 
     SearchParameters() {
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 64; j++) {
+                counterMoveHistory[i][j] = new int *[6];
+                for (int k = 0; k < 6; k++) {
+                    counterMoveHistory[i][j][k] = new int[64];
+                }
+            }
+        }
         reset();
         resetHistoryTable();
+    }
+
+    ~SearchParameters() {
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 64; j++) {
+                for (int k = 0; k < 6; k++) {
+                    delete[] counterMoveHistory[i][j][k];
+                }
+                delete[] counterMoveHistory[i][j];
+            }
+        }
     }
 
     void reset() {
@@ -53,6 +73,15 @@ struct SearchParameters {
                     historyTable[i][j][k] = 0;
             }
         }
+
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 64; j++) {
+                for (int k = 0; k < 6; k++) {
+                    for (int l = 0; l < 64; l++)
+                        counterMoveHistory[i][j][k][l] = 0;
+                }
+            }
+        }
     }
 
     void ageHistoryTable(int depth) {
@@ -66,6 +95,19 @@ struct SearchParameters {
                         historyTable[i][j][k] /= posHistoryScale;
                     else
                         historyTable[i][j][k] /= negHistoryScale;
+                }
+            }
+        }
+
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < 64; j++) {
+                for (int k = 0; k < 6; k++) {
+                    for (int l = 0; l < 64; l++) {
+                        if (counterMoveHistory[i][j][k][l] > 0)
+                            counterMoveHistory[i][j][k][l] /= posHistoryScale;
+                        else
+                            counterMoveHistory[i][j][k][l] /= negHistoryScale;
+                    }
                 }
             }
         }
