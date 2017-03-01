@@ -2183,6 +2183,31 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     // Adjust based on pawn shield and pawn storms
     kingSafetyPts -= KS_PAWN_FACTOR * pawnScore / 32;
 
+    // Add bonuses for safe checks
+    uint64_t defendMap = (attackingColor == WHITE) ? getBPawnCaptures(defendingPawns)
+                                                   : getWPawnCaptures(defendingPawns);
+    for (unsigned int i = 0; i < defenders.size(); i++) {
+        PieceMoveInfo pmi = defenders.get(i);
+        defendMap |= pmi.legal;
+    }
+
+    int kingSq = bitScanForward(pieces[attackingColor^1][KINGS]);
+    uint64_t occ = getOccupancy();
+    uint64_t checkMaps[4];
+    checkMaps[KNIGHTS-1] = getKnightSquares(kingSq);
+    checkMaps[BISHOPS-1] = getBishopSquares(kingSq, occ);
+    checkMaps[ROOKS-1] = getRookSquares(kingSq, occ);
+    checkMaps[QUEENS-1] = getQueenSquares(kingSq, occ);
+
+    for (unsigned int i = 0; i < attackers.size(); i++) {
+        PieceMoveInfo pmi = attackers.get(i);
+        int pieceIndex = pmi.pieceID - 1;
+        uint64_t legal = pmi.legal;
+
+        if (legal & checkMaps[pieceIndex] & ~kingSqs & ~defendMap)
+            kingSafetyPts += SAFE_CHECK_BONUS[pieceIndex];
+    }
+
     return KS_TO_SCORE[std::max(0, std::min(199, kingSafetyPts))];
 }
 
