@@ -2139,6 +2139,12 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     uint64_t kingNeighborhood = (attackingColor == WHITE) ? (kingSqs | (kingSqs >> 8))
                                                           : (kingSqs | (kingSqs << 8));
     uint64_t defendingPawns = pieces[attackingColor^1][PAWNS];
+    uint64_t defendMap = (attackingColor == WHITE) ? getBPawnCaptures(defendingPawns)
+                                                   : getWPawnCaptures(defendingPawns);
+    for (unsigned int i = 0; i < defenders.size(); i++) {
+        PieceMoveInfo pmi = defenders.get(i);
+        defendMap |= pmi.legal;
+    }
 
 
     kingAttackPieces = count(((attackingColor == WHITE) ? getWPawnCaptures(pieces[attackingColor][PAWNS])
@@ -2146,14 +2152,7 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
                            & kingNeighborhood);
 
     // Analyze undefended squares directly adjacent to king
-    uint64_t kingDefenseless = 0;
-    for (unsigned int i = 0; i < defenders.size(); i++) {
-        uint64_t legal = defenders.get(i).legal;
-        kingDefenseless |= legal & kingSqs;
-    }
-    // Add in pawns
-    kingDefenseless |= (attackingColor == WHITE) ? (getBPawnCaptures(defendingPawns) & kingSqs)
-                                                 : (getWPawnCaptures(defendingPawns) & kingSqs);
+    uint64_t kingDefenseless = defendMap & kingSqs;
     kingDefenseless ^= kingSqs;
 
 
@@ -2184,13 +2183,6 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     kingSafetyPts -= KS_PAWN_FACTOR * pawnScore / 32;
 
     // Add bonuses for safe checks
-    uint64_t defendMap = (attackingColor == WHITE) ? getBPawnCaptures(defendingPawns)
-                                                   : getWPawnCaptures(defendingPawns);
-    for (unsigned int i = 0; i < defenders.size(); i++) {
-        PieceMoveInfo pmi = defenders.get(i);
-        defendMap |= pmi.legal;
-    }
-
     int kingSq = bitScanForward(pieces[attackingColor^1][KINGS]);
     uint64_t occ = getOccupancy();
     uint64_t checkMaps[4];
