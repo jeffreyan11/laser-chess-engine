@@ -1951,6 +1951,46 @@ int Board::evaluate() {
         }
     }
 
+    // Undefended pawns
+    uint64_t wUndefendedPawns = pieces[WHITE][PAWNS] & ~wPawnAtt & ~wBackwards;
+    uint64_t bUndefendedPawns = pieces[BLACK][PAWNS] & ~bPawnAtt & ~bBackwards;
+    while (wUndefendedPawns) {
+        int pawnSq = bitScanForward(wUndefendedPawns);
+        wUndefendedPawns &= wUndefendedPawns - 1;
+        int f = pawnSq & 7;
+        if (!(wp & INDEX_TO_BIT[7-f]))
+            whitePawnScore += UNDEFENDED_PAWN_PENALTY;
+    }
+    while (bUndefendedPawns) {
+        int pawnSq = bitScanForward(bUndefendedPawns);
+        bUndefendedPawns &= bUndefendedPawns - 1;
+        int f = pawnSq & 7;
+        if (!(bp & INDEX_TO_BIT[7-f]))
+            blackPawnScore += UNDEFENDED_PAWN_PENALTY;
+    }
+
+    // Pawn phalanxes
+    uint64_t wPawnPhalanx = (pieces[WHITE][PAWNS] & (pieces[WHITE][PAWNS] << 1) & NOTA)
+                          | (pieces[WHITE][PAWNS] & (pieces[WHITE][PAWNS] >> 1) & NOTH);
+    uint64_t bPawnPhalanx = (pieces[BLACK][PAWNS] & (pieces[BLACK][PAWNS] << 1) & NOTA)
+                          | (pieces[BLACK][PAWNS] & (pieces[BLACK][PAWNS] >> 1) & NOTH);
+    wPawnPhalanx &= RANKS[2] | RANKS[3] | RANKS[4] | RANKS[5];
+    bPawnPhalanx &= RANKS[2] | RANKS[3] | RANKS[4] | RANKS[5];
+    wPawnPhalanx &= ~(pieces[BLACK][PAWNS] >> 8);
+    bPawnPhalanx &= ~(pieces[WHITE][PAWNS] << 8);
+    while (wPawnPhalanx) {
+        int pawnSq = bitScanForward(wPawnPhalanx);
+        wPawnPhalanx &= wPawnPhalanx - 1;
+        int r = pawnSq >> 3;
+        whitePawnScore += PAWN_PHALANX_BONUS + PAWN_PHALANX_RANK_BONUS * (r-2);
+    }
+    while (bPawnPhalanx) {
+        int pawnSq = bitScanForward(bPawnPhalanx);
+        bPawnPhalanx &= bPawnPhalanx - 1;
+        int r = 7 - (pawnSq >> 3);
+        blackPawnScore += PAWN_PHALANX_BONUS + PAWN_PHALANX_RANK_BONUS * (r-2);
+    }
+    
     valueMg += decEvalMg(whitePawnScore) - decEvalMg(blackPawnScore);
     valueEg += decEvalEg(whitePawnScore) - decEvalEg(blackPawnScore);
 

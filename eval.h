@@ -356,13 +356,18 @@ const Score DOUBLED_PENALTY = E(-12, -15);
 // Doubled pawns are worse the less pawns you have
 const Score DOUBLED_PENALTY_SCALE[9] = {0, 0, 3, 2, 1, 1, 1, 1, 1};
 // Isolated pawns
-const Score ISOLATED_PENALTY = E(-8, -11);
+const Score ISOLATED_PENALTY = E(-9, -12);
 const Score CENTRAL_ISOLATED_PENALTY = E(-3, -5);
 // Isolated, doubled pawns
-const Score ISOLATED_DOUBLED_PENALTY = E(-11, -18);
+const Score ISOLATED_DOUBLED_PENALTY = E(-13, -20);
 // Backward pawns
-const Score BACKWARD_PENALTY = E(-10, 0);
-const Score BACKWARD_SEMIOPEN_PENALTY = E(-8, -15);
+const Score BACKWARD_PENALTY = E(-11, 0);
+const Score BACKWARD_SEMIOPEN_PENALTY = E(-8, -16);
+// Undefended pawns that are not backwards or isolated
+const Score UNDEFENDED_PAWN_PENALTY = E(-8, -5);
+// Pawn phalanxes
+const Score PAWN_PHALANX_BONUS = E(1, -1);
+const Score PAWN_PHALANX_RANK_BONUS = E(11, 9);
 // King-pawn tropism
 const int KING_TROPISM_VALUE = 14;
 
