@@ -1607,15 +1607,19 @@ int Board::evaluate() {
     // Bishops tend to be worse if too many pawns are on squares of their color
     if (pieces[WHITE][BISHOPS] & LIGHT) {
         pieceEvalScore[WHITE] += BISHOP_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & LIGHT);
+        pieceEvalScore[WHITE] += BISHOP_RAMMED_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & (pieces[BLACK][PAWNS] >> 8) & LIGHT);
     }
     if (pieces[WHITE][BISHOPS] & DARK) {
         pieceEvalScore[WHITE] += BISHOP_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & DARK);
+        pieceEvalScore[WHITE] += BISHOP_RAMMED_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & (pieces[BLACK][PAWNS] >> 8) & DARK);
     }
     if (pieces[BLACK][BISHOPS] & LIGHT) {
         pieceEvalScore[BLACK] += BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & LIGHT);
+        pieceEvalScore[BLACK] += BISHOP_RAMMED_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & (pieces[WHITE][PAWNS] << 8) & LIGHT);
     }
     if (pieces[BLACK][BISHOPS] & DARK) {
         pieceEvalScore[BLACK] += BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & DARK);
+        pieceEvalScore[BLACK] += BISHOP_RAMMED_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & (pieces[WHITE][PAWNS] << 8) & DARK);
     }
 
     // Outposts

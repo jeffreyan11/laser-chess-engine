@@ -312,7 +312,8 @@ const int SAFE_CHECK_BONUS[4] = {23, 8, 17, 17};
 
 // Minor pieces
 // A penalty for each own pawn that is on a square of the same color as your bishop
-const Score BISHOP_PAWN_COLOR_PENALTY = E(-7, -6);
+const Score BISHOP_PAWN_COLOR_PENALTY = E(-7, -2);
+const Score BISHOP_RAMMED_PAWN_COLOR_PENALTY = E(-4, -14);
 // A bonus for strong outpost knights
 const Score KNIGHT_OUTPOST_BONUS1 = E(27, 13);
 const Score KNIGHT_OUTPOST_BONUS2 = E(19, 7);
