@@ -117,9 +117,9 @@ const int REVERSE_FUTILITY_MARGIN[6] = {0,
 // Razor margins indexed by depth. If static eval is far below alpha, use a
 // qsearch to confirm fail low and then return.
 const int RAZOR_MARGIN[4] = {0,
+    200,
     300,
-    360,
-    400
+    380
 };
 
 // Move count pruning
