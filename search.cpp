@@ -97,21 +97,21 @@ struct EasyMove {
 // Futility pruning margins indexed by depth. If static eval is at least this
 // amount below alpha, we skip quiet moves for this position.
 const int FUTILITY_MARGIN[6] = {0,
-    110,
-    240,
-    390,
-    580,
-    800
+    80,
+    170,
+    280,
+    420,
+    600
 };
 
 // Reverse futility pruning margins indexed by depth. If static eval is at least
 // this amount above beta, we skip searching the position entirely.
 const int REVERSE_FUTILITY_MARGIN[6] = {0,
-    90,
-    215,
-    360,
-    540,
-    760
+    60,
+    130,
+    220,
+    340,
+    500
 };
 
 // Razor margins indexed by depth. If static eval is far below alpha, use a
