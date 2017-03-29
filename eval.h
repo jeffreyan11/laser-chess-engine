@@ -372,6 +372,11 @@ const Score PAWN_PHALANX_RANK_BONUS = E(14, 12);
 // King-pawn tropism
 const int KING_TROPISM_VALUE = 14;
 
+// Scale factors for drawish endgames
+const int MAX_SCALE_FACTOR = 32;
+const int OPPOSITE_BISHOP_SCALING[2] = {16, 27};
+const int PAWNLESS_SCALING[4] = {1, 3, 8, 21};
+
 #undef E
 
 #endif

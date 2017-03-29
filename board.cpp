@@ -2037,6 +2037,7 @@ int Board::evaluate() {
     int totalEval = (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES;
 
     // Scale factors
+    int scaleFactor = MAX_SCALE_FACTOR;
     // Opposite colored bishops
     if (egFactor > 3 * EG_FACTOR_RES / 4) {
         if (pieceCounts[WHITE][BISHOPS] == 1
@@ -2045,9 +2046,9 @@ int Board::evaluate() {
           || ((pieces[WHITE][BISHOPS] & DARK) && (pieces[BLACK][BISHOPS] & LIGHT)))) {
             if ((getNonPawnMaterial(WHITE) == pieces[WHITE][BISHOPS])
              && (getNonPawnMaterial(BLACK) == pieces[BLACK][BISHOPS]))
-                totalEval = totalEval / 2;
+                scaleFactor = OPPOSITE_BISHOP_SCALING[0];
             else
-                totalEval = (384 - 128 * egFactor / EG_FACTOR_RES) * totalEval / 256;
+                scaleFactor = OPPOSITE_BISHOP_SCALING[1];
         }
     }
     // Reduce eval for lack of pawns
@@ -2056,14 +2057,14 @@ int Board::evaluate() {
      && pieceCounts[WHITE][PAWNS] <= 1) {
         if (pieceCounts[WHITE][PAWNS] == 0) {
             if (whiteMaterial < PIECE_VALUES[MG][BISHOPS] + 50)
-                totalEval /= 16;
+                scaleFactor = PAWNLESS_SCALING[0];
             else if (blackMaterial <= PIECE_VALUES[MG][BISHOPS])
-                totalEval /= 8;
+                scaleFactor = PAWNLESS_SCALING[1];
             else
-                totalEval /= 4;
+                scaleFactor = PAWNLESS_SCALING[2];
         }
         else {
-            totalEval /= 2;
+            scaleFactor = PAWNLESS_SCALING[3];
         }
     }
     if (blackMaterial - whiteMaterial > 0
@@ -2071,16 +2072,19 @@ int Board::evaluate() {
      && pieceCounts[BLACK][PAWNS] <= 1) {
         if (pieceCounts[BLACK][PAWNS] == 0) {
             if (blackMaterial < PIECE_VALUES[MG][BISHOPS] + 50)
-                totalEval /= 16;
+                scaleFactor = PAWNLESS_SCALING[0];
             else if (whiteMaterial <= PIECE_VALUES[MG][BISHOPS])
-                totalEval /= 8;
+                scaleFactor = PAWNLESS_SCALING[1];
             else
-                totalEval /= 4;
+                scaleFactor = PAWNLESS_SCALING[2];
         }
         else {
-            totalEval /= 2;
+            scaleFactor = PAWNLESS_SCALING[3];
         }
     }
+
+    if (scaleFactor < MAX_SCALE_FACTOR)
+        totalEval = totalEval * scaleFactor / MAX_SCALE_FACTOR;
 
 
     if (debug) {
