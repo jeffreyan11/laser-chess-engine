@@ -1685,29 +1685,36 @@ int Board::evaluate() {
 
 
     //-------------------------------Rooks--------------------------------------
-    // Bonus for having rooks on open files
-    uint64_t wRooksOpen = pieces[WHITE][ROOKS];
-    while (wRooksOpen) {
-        int rookSq = bitScanForward(wRooksOpen);
-        wRooksOpen &= wRooksOpen - 1;
+    uint64_t wRooksTemp = pieces[WHITE][ROOKS];
+    while (wRooksTemp) {
+        int rookSq = bitScanForward(wRooksTemp);
+        wRooksTemp &= wRooksTemp - 1;
         int file = rookSq & 7;
+        int rank = rookSq >> 3;
 
+        // Bonus for having rooks on open files
         if (!(FILES[file] & (pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS])))
             pieceEvalScore[WHITE] += ROOK_OPEN_FILE_BONUS;
         else if (!(FILES[file] & pieces[WHITE][PAWNS]))
             pieceEvalScore[WHITE] += ROOK_SEMIOPEN_FILE_BONUS;
+        // Bonus for having rooks on same ranks as enemy pawns
+        if (rank >= 4)
+            pieceEvalScore[WHITE] += ROOK_PAWN_RANK_THREAT * count(RANKS[rank] & pieces[BLACK][PAWNS]);
     }
 
-    uint64_t bRooksOpen = pieces[BLACK][ROOKS];
-    while (bRooksOpen) {
-        int rookSq = bitScanForward(bRooksOpen);
-        bRooksOpen &= bRooksOpen - 1;
+    uint64_t bRooksTemp = pieces[BLACK][ROOKS];
+    while (bRooksTemp) {
+        int rookSq = bitScanForward(bRooksTemp);
+        bRooksTemp &= bRooksTemp - 1;
         int file = rookSq & 7;
+        int rank = rookSq >> 3;
 
         if (!(FILES[file] & (pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS])))
             pieceEvalScore[BLACK] += ROOK_OPEN_FILE_BONUS;
         else if (!(FILES[file] & pieces[BLACK][PAWNS]))
             pieceEvalScore[BLACK] += ROOK_SEMIOPEN_FILE_BONUS;
+        if (rank <= 3)
+            pieceEvalScore[BLACK] += ROOK_PAWN_RANK_THREAT * count(RANKS[rank] & pieces[WHITE][PAWNS]);
     }
 
 

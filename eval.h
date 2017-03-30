@@ -328,6 +328,7 @@ const Score KNIGHT_C3_CLOSED_PENALTY = E(-20, 0);
 // Rooks
 const Score ROOK_OPEN_FILE_BONUS = E(28, 13);
 const Score ROOK_SEMIOPEN_FILE_BONUS = E(10, 0);
+const Score ROOK_PAWN_RANK_THREAT = E(3, 6);
 
 // Threats
 const Score UNDEFENDED_PAWN = E(-6, -20);
