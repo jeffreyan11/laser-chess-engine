@@ -965,7 +965,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // With good move ordering, later moves are less likely to increase
         // alpha, so we search them to a shallower depth hoping for a quick
         // fail-low.
-        if (!isInCheck && depth >= 3 && movesSearched > (isPVNode ? 4 : 2)
+        if (depth >= 3 && movesSearched > (isPVNode ? 4 : 2) + (unsigned int) isInCheck
          && !isCapture(m) && !isPromotion(m)
          && !copy.isInCheck(color^1)) {
             // Increase reduction with higher depth and later moves
@@ -973,6 +973,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             // Reduce less for killers
             if (m == searchParams->killers[ssi->ply][0]
              || m == searchParams->killers[ssi->ply][1])
+                reduction--;
+            // Reduce less when in check
+            if (isInCheck)
                 reduction--;
             // Reduce more for moves with poor history
             int historyValue = searchParams->historyTable[color][pieceID][endSq];
