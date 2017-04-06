@@ -1472,6 +1472,13 @@ int Board::evaluate() {
         evalDebugStats.totalImbalanceEg = imbalanceValue[EG];
     }
 
+    // Increase knight value in closed positions
+    int numRammedPawns = count((pieces[WHITE][PAWNS] << 8) & pieces[BLACK][PAWNS]);
+    valueMg += KNIGHT_CLOSED_BONUS[MG] * pieceCounts[WHITE][KNIGHTS] * numRammedPawns * numRammedPawns / 4;
+    valueEg += KNIGHT_CLOSED_BONUS[EG] * pieceCounts[WHITE][KNIGHTS] * numRammedPawns * numRammedPawns / 4;
+    valueMg -= KNIGHT_CLOSED_BONUS[MG] * pieceCounts[BLACK][KNIGHTS] * numRammedPawns * numRammedPawns / 4;
+    valueEg -= KNIGHT_CLOSED_BONUS[EG] * pieceCounts[BLACK][KNIGHTS] * numRammedPawns * numRammedPawns / 4;
+
 
     //----------------------------Positional terms------------------------------
 

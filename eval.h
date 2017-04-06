@@ -221,6 +221,9 @@ const int OWN_OPP_IMBALANCE[2][5][5] = {
 }
 };
 
+// Bonus for knight in closed positions
+const int KNIGHT_CLOSED_BONUS[2] = {1, 2};
+
 //------------------------Positional eval constants-----------------------------
 // Mobility tables, with zero padding for pieces that cannot move up to 27 squares
 const int mobilityScore[2][4][28] = {
