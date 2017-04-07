@@ -123,6 +123,7 @@ int main() {
         else if (input == "ucinewgame") clearAll(board);
         else if (input.substr(0, 8) == "position") setPosition(input, inputVector, board);
         else if (input.substr(0, 2) == "go" && isStop) {
+            isStop = false;
             int mode = DEPTH, value = 1;
             std::vector<string>::iterator it;
 
@@ -142,7 +143,8 @@ int main() {
                 mode = DEPTH;
                 value = MAX_DEPTH;
             }
-            else if (input.find("wtime") != string::npos) {
+            else if (input.find("wtime") != string::npos
+                  || input.find("btime") != string::npos) {
                 mode = TIME;
                 int color = board.getPlayerToMove();
 
@@ -174,12 +176,14 @@ int main() {
             }
 
             bestMove = NULL_MOVE;
-            isStop = false;
             searchThread = std::thread(getBestMove, &board, mode, value, &bestMove);
             searchThread.detach();
         }
 
-        else if (input == "stop") isStop = true;
+        else if (input == "stop") {
+            isStop = true;
+            std::this_thread::yield();
+        }
         else if (input.substr(0, 9) == "setoption" && inputVector.size() == 5) {
             if (inputVector.at(1) != "name" || inputVector.at(3) != "value") {
                 cout << "info string Invalid option format." << endl;
