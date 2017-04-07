@@ -59,6 +59,7 @@ const std::vector<string> positions = {
 void setPosition(string &input, std::vector<string> &inputVector, Board &board);
 std::vector<string> split(const string &s, char d);
 string boardToString(Board &board);
+void stringToLowerCase(std::string &s);
 void clearAll(Board &board);
 uint64_t perft(Board &b, int color, int depth, uint64_t &captures);
 
@@ -93,6 +94,7 @@ int main() {
 
     while (input != "quit") {
         getline(std::cin, input);
+        stringToLowerCase(input);
         inputVector = split(input, ' ');
         std::cin.clear();
 
@@ -177,10 +179,10 @@ int main() {
         else if (input == "stop") isStop = true;
         else if (input.substr(0, 9) == "setoption" && inputVector.size() == 5) {
             if (inputVector.at(1) != "name" || inputVector.at(3) != "value") {
-                cout << "Invalid option format." << endl;
+                cout << "info string Invalid option format." << endl;
             }
             else {
-                if (inputVector.at(2) == "Threads" || inputVector.at(2) == "threads") {
+                if (inputVector.at(2) == "threads") {
                     int threads = std::stoi(inputVector.at(4));
                     if (threads < MIN_THREADS)
                         threads = MIN_THREADS;
@@ -188,7 +190,7 @@ int main() {
                         threads = MAX_THREADS;
                     setNumThreads(threads);
                 }
-                else if (inputVector.at(2) == "Hash" || inputVector.at(2) == "hash") {
+                else if (inputVector.at(2) == "hash") {
                     int MB = std::stoi(inputVector.at(4));
                     if (MB < MIN_HASH_SIZE)
                         MB = MIN_HASH_SIZE;
@@ -196,7 +198,7 @@ int main() {
                         MB = MAX_HASH_SIZE;
                     setHashSize((uint64_t) MB);
                 }
-                else if (inputVector.at(2) == "EvalCache" || inputVector.at(2) == "evalcache") {
+                else if (inputVector.at(2) == "evalcache") {
                     int MB = std::stoi(inputVector.at(4));
                     if (MB < MIN_HASH_SIZE)
                         MB = MIN_HASH_SIZE;
@@ -204,7 +206,7 @@ int main() {
                         MB = MAX_HASH_SIZE;
                     setEvalCacheSize((uint64_t) MB);
                 }
-                else if (inputVector.at(2) == "MultiPV" || inputVector.at(2) == "multipv") {
+                else if (inputVector.at(2) == "multipv") {
                     int multiPV = std::stoi(inputVector.at(4));
                     if (multiPV < MIN_MULTI_PV)
                         multiPV = MIN_MULTI_PV;
@@ -212,14 +214,14 @@ int main() {
                         multiPV = MAX_MULTI_PV;
                     setMultiPV((unsigned int) multiPV);
                 }
-                else if (inputVector.at(2) == "BufferTime" || inputVector.at(2) == "buffertime") {
+                else if (inputVector.at(2) == "buffertime") {
                     BUFFER_TIME = std::stoi(inputVector.at(4));
                     if (BUFFER_TIME < MIN_BUFFER_TIME)
                         BUFFER_TIME = MIN_BUFFER_TIME;
                     if (BUFFER_TIME > MAX_BUFFER_TIME)
                         BUFFER_TIME = MAX_BUFFER_TIME;
                 }
-                else if (inputVector.at(2) == "SyzygyPath" || inputVector.at(2) == "syzygypath") {
+                else if (inputVector.at(2) == "syzygypath") {
                     string path = inputVector.at(4);
                     for (unsigned int i = 5; i < inputVector.size(); i++)
                         path += " " + inputVector.at(i);
@@ -229,7 +231,7 @@ int main() {
                     free(c_path);
                 }
                 else
-                    cout << "Invalid option." << endl;
+                    cout << "info string Invalid option." << endl;
             }
         }
 
@@ -462,6 +464,11 @@ string boardToString(Board &board) {
     boardString += "  abcdefgh\n";
     delete[] mailbox;
     return boardString;
+}
+
+void stringToLowerCase(std::string &s) {
+    for (std::size_t i = 0; i < s.size(); i++)
+        s[i] = tolower(s[i]);
 }
 
 void clearAll(Board &board) {
