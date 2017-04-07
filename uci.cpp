@@ -59,6 +59,7 @@ const std::vector<string> positions = {
 void setPosition(string &input, std::vector<string> &inputVector, Board &board);
 std::vector<string> split(const string &s, char d);
 string boardToString(Board &board);
+bool equalsIgnoreCase(const std::string &s1, const std::string &s2);
 void stringToLowerCase(std::string &s);
 void clearAll(Board &board);
 uint64_t perft(Board &b, int color, int depth, uint64_t &captures);
@@ -127,7 +128,9 @@ int main() {
 
             if (input.find("movetime") != string::npos && inputVector.size() > 2) {
                 mode = MOVETIME;
-                value = std::stoi(inputVector.at(2));
+                it = find(inputVector.begin(), inputVector.end(), "movetime");
+                it++;
+                value = std::stoi(*it);
             }
             else if (input.find("depth") != string::npos && inputVector.size() > 2) {
                 mode = DEPTH;
@@ -466,7 +469,22 @@ string boardToString(Board &board) {
     return boardString;
 }
 
+bool equalsIgnoreCase(const std::string &s1, const std::string &s2) {
+    if (s1.size() != s2.size())
+        return false;
+    for (std::size_t i = 0; i < s1.size(); i++) {
+        if (tolower(s1[i]) != tolower(s2[i]))
+            return false;
+    }
+    return true;
+}
+
 void stringToLowerCase(std::string &s) {
+    if (equalsIgnoreCase(s.substr(0, 8), "position")) {
+        for (std::size_t i = 0; i < 12; i++)
+            s[i] = tolower(s[i]);
+        return;
+    }
     for (std::size_t i = 0; i < s.size(); i++)
         s[i] = tolower(s[i]);
 }
