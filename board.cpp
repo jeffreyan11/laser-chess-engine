@@ -1469,13 +1469,11 @@ int Board::evaluate() {
     // Piece square tables
     Score psqtScores[2] = {EVAL_ZERO, EVAL_ZERO};
     for (int color = WHITE; color <= BLACK; color++) {
-        for (int pieceID = PAWNS; pieceID <= KNIGHTS; pieceID++) {
-            uint64_t bitboard = pieces[color][pieceID];
-            while (bitboard) {
-                int sq = bitScanForward(bitboard);
-                bitboard &= bitboard - 1;
-                psqtScores[color] += PSQT[color][pieceID][sq];
-            }
+        uint64_t bitboard = pieces[color][PAWNS];
+        while (bitboard) {
+            int sq = bitScanForward(bitboard);
+            bitboard &= bitboard - 1;
+            psqtScores[color] += PSQT[color][PAWNS][sq];
         }
     }
 
@@ -1655,22 +1653,44 @@ int Board::evaluate() {
                               | ((FILES[1] | FILES[6]) &  RANKS[3])
                               | ((FILES[0] | FILES[7]) & (RANKS[3] | RANKS[2]));
 
-    // Knight outposts: knights that cannot be attacked by opposing pawns
-    if (uint64_t wOutpost = pieces[WHITE][KNIGHTS] & ~bPawnStopAtt) {
-        if (wOutpost & W_OUTPOST1)
-            pieceEvalScore[WHITE] += KNIGHT_OUTPOST_BONUS1 * count(wOutpost & W_OUTPOST1);
-        if (wOutpost & W_OUTPOST2)
-            pieceEvalScore[WHITE] += KNIGHT_OUTPOST_BONUS2 * count(wOutpost & W_OUTPOST2);
-        // An additional bonus if the outpost knight is defended by a pawn
-        pieceEvalScore[WHITE] += KNIGHT_OUTPOST_PAWN_DEF_BONUS * count(wOutpost & (W_OUTPOST1 | W_OUTPOST2) & wPawnAtt);
+    //-----------------------------------Knights--------------------------------
+    uint64_t wKnightsTemp = pieces[WHITE][KNIGHTS];
+    while (wKnightsTemp) {
+        int knightSq = bitScanForward(wKnightsTemp);
+        wKnightsTemp &= wKnightsTemp - 1;
+        uint64_t bit = INDEX_TO_BIT[knightSq];
+
+        psqtScores[WHITE] += PSQT[WHITE][KNIGHTS][knightSq];
+
+        // Outposts
+        if (bit & ~bPawnStopAtt & (W_OUTPOST1 | W_OUTPOST2)) {
+            if (bit & W_OUTPOST1)
+                pieceEvalScore[WHITE] += KNIGHT_OUTPOST_BONUS1;
+            else
+                pieceEvalScore[WHITE] += KNIGHT_OUTPOST_BONUS2;
+            if (bit & wPawnAtt)
+                pieceEvalScore[WHITE] += KNIGHT_OUTPOST_PAWN_DEF_BONUS;
+        }
     }
-    if (uint64_t bOutpost = pieces[BLACK][KNIGHTS] & ~wPawnStopAtt) {
-        if (bOutpost & B_OUTPOST1)
-            pieceEvalScore[BLACK] += KNIGHT_OUTPOST_BONUS1 * count(bOutpost & B_OUTPOST1);
-        if (bOutpost & B_OUTPOST2)
-            pieceEvalScore[BLACK] += KNIGHT_OUTPOST_BONUS2 * count(bOutpost & B_OUTPOST2);
-        pieceEvalScore[BLACK] += KNIGHT_OUTPOST_PAWN_DEF_BONUS * count(bOutpost & (B_OUTPOST1 | B_OUTPOST2) & bPawnAtt);
+
+    uint64_t bKnightsTemp = pieces[BLACK][KNIGHTS];
+    while (bKnightsTemp) {
+        int knightSq = bitScanForward(bKnightsTemp);
+        bKnightsTemp &= bKnightsTemp - 1;
+        uint64_t bit = INDEX_TO_BIT[knightSq];
+
+        psqtScores[BLACK] += PSQT[BLACK][KNIGHTS][knightSq];
+
+        if (bit & ~wPawnStopAtt & (B_OUTPOST1 | B_OUTPOST2)) {
+            if (bit & B_OUTPOST1)
+                pieceEvalScore[BLACK] += KNIGHT_OUTPOST_BONUS1;
+            else
+                pieceEvalScore[BLACK] += KNIGHT_OUTPOST_BONUS2;
+            if (bit & bPawnAtt)
+                pieceEvalScore[BLACK] += KNIGHT_OUTPOST_PAWN_DEF_BONUS;
+        }
     }
+    
 
     //-----------------------------------Bishops--------------------------------
     uint64_t wBishopsTemp = pieces[WHITE][BISHOPS];
