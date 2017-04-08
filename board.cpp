@@ -1469,13 +1469,22 @@ int Board::evaluate() {
     // Piece square tables
     Score psqtScores[2] = {EVAL_ZERO, EVAL_ZERO};
     for (int color = WHITE; color <= BLACK; color++) {
-        for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++) {
+        for (int pieceID = PAWNS; pieceID <= KNIGHTS; pieceID++) {
             uint64_t bitboard = pieces[color][pieceID];
             while (bitboard) {
                 int sq = bitScanForward(bitboard);
                 bitboard &= bitboard - 1;
                 psqtScores[color] += PSQT[color][pieceID][sq];
             }
+        }
+    }
+
+    for (int color = WHITE; color <= BLACK; color++) {
+        uint64_t bitboard = pieces[color][QUEENS];
+        while (bitboard) {
+            int sq = bitScanForward(bitboard);
+            bitboard &= bitboard - 1;
+            psqtScores[color] += PSQT[color][QUEENS][sq];
         }
     }
 
@@ -1663,20 +1672,42 @@ int Board::evaluate() {
         pieceEvalScore[BLACK] += KNIGHT_OUTPOST_PAWN_DEF_BONUS * count(bOutpost & (B_OUTPOST1 | B_OUTPOST2) & bPawnAtt);
     }
 
-    // Bishop outposts
-    if (uint64_t wOutpost = pieces[WHITE][BISHOPS] & ~bPawnStopAtt) {
-        if (wOutpost & W_OUTPOST1)
-            pieceEvalScore[WHITE] += BISHOP_OUTPOST_BONUS1 * count(wOutpost & W_OUTPOST1);
-        if (wOutpost & W_OUTPOST2)
-            pieceEvalScore[WHITE] += BISHOP_OUTPOST_BONUS2 * count(wOutpost & W_OUTPOST2);
-        pieceEvalScore[WHITE] += BISHOP_OUTPOST_PAWN_DEF_BONUS * count(wOutpost & (W_OUTPOST1 | W_OUTPOST2) & wPawnAtt);
+    //-----------------------------------Bishops--------------------------------
+    uint64_t wBishopsTemp = pieces[WHITE][BISHOPS];
+    while (wBishopsTemp) {
+        int bishopSq = bitScanForward(wBishopsTemp);
+        wBishopsTemp &= wBishopsTemp - 1;
+        uint64_t bit = INDEX_TO_BIT[bishopSq];
+
+        psqtScores[WHITE] += PSQT[WHITE][BISHOPS][bishopSq];
+
+        // Outposts
+        if (bit & ~bPawnStopAtt & (W_OUTPOST1 | W_OUTPOST2)) {
+            if (bit & W_OUTPOST1)
+                pieceEvalScore[WHITE] += BISHOP_OUTPOST_BONUS1;
+            else
+                pieceEvalScore[WHITE] += BISHOP_OUTPOST_BONUS2;
+            if (bit & wPawnAtt)
+                pieceEvalScore[WHITE] += BISHOP_OUTPOST_PAWN_DEF_BONUS;
+        }
     }
-    if (uint64_t bOutpost = pieces[BLACK][BISHOPS] & ~wPawnStopAtt) {
-        if (bOutpost & B_OUTPOST1)
-            pieceEvalScore[BLACK] += BISHOP_OUTPOST_BONUS1 * count(bOutpost & B_OUTPOST1);
-        if (bOutpost & B_OUTPOST2)
-            pieceEvalScore[BLACK] += BISHOP_OUTPOST_BONUS2 * count(bOutpost & B_OUTPOST2);
-        pieceEvalScore[BLACK] += BISHOP_OUTPOST_PAWN_DEF_BONUS * count(bOutpost & (B_OUTPOST1 | B_OUTPOST2) & bPawnAtt);
+
+    uint64_t bBishopsTemp = pieces[BLACK][BISHOPS];
+    while (bBishopsTemp) {
+        int bishopSq = bitScanForward(bBishopsTemp);
+        bBishopsTemp &= bBishopsTemp - 1;
+        uint64_t bit = INDEX_TO_BIT[bishopSq];
+
+        psqtScores[BLACK] += PSQT[BLACK][BISHOPS][bishopSq];
+
+        if (bit & ~wPawnStopAtt & (B_OUTPOST1 | B_OUTPOST2)) {
+            if (bit & B_OUTPOST1)
+                pieceEvalScore[BLACK] += BISHOP_OUTPOST_BONUS1;
+            else
+                pieceEvalScore[BLACK] += BISHOP_OUTPOST_BONUS2;
+            if (bit & bPawnAtt)
+                pieceEvalScore[BLACK] += BISHOP_OUTPOST_PAWN_DEF_BONUS;
+        }
     }
 
     // Special case: Nc3 blocking c2-c4 in closed openings (pawn on d4, no pawn on e4)
@@ -1700,6 +1731,8 @@ int Board::evaluate() {
         int file = rookSq & 7;
         int rank = rookSq >> 3;
 
+        psqtScores[WHITE] += PSQT[WHITE][ROOKS][rookSq];
+
         // Bonus for having rooks on open files
         if (!(FILES[file] & (pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS])))
             pieceEvalScore[WHITE] += ROOK_OPEN_FILE_BONUS;
@@ -1716,6 +1749,8 @@ int Board::evaluate() {
         bRooksTemp &= bRooksTemp - 1;
         int file = rookSq & 7;
         int rank = rookSq >> 3;
+
+        psqtScores[BLACK] += PSQT[BLACK][ROOKS][rookSq];
 
         if (!(FILES[file] & (pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS])))
             pieceEvalScore[BLACK] += ROOK_OPEN_FILE_BONUS;
