@@ -1411,21 +1411,6 @@ int Board::evaluate() {
     // Tempo bonus
     valueMg += (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
 
-    // Piece square tables
-    Score psqtScores[2] = {EVAL_ZERO, EVAL_ZERO};
-    for (int color = WHITE; color <= BLACK; color++) {
-        for (int pieceID = 0; pieceID < 6; pieceID++) {
-            uint64_t bitboard = pieces[color][pieceID];
-            while (bitboard) {
-                int sq = bitScanForward(bitboard);
-                bitboard &= bitboard - 1;
-                psqtScores[color] += PSQT[color][pieceID][sq];
-            }
-        }
-    }
-    valueMg += decEvalMg(psqtScores[WHITE]) - decEvalMg(psqtScores[BLACK]);
-    valueEg += decEvalEg(psqtScores[WHITE]) - decEvalEg(psqtScores[BLACK]);
-
     if (debug) {
         evalDebugStats.totalMaterialMg = valueMg;
         evalDebugStats.totalMaterialEg = valueEg;
@@ -1481,8 +1466,20 @@ int Board::evaluate() {
 
 
     //----------------------------Positional terms------------------------------
+    // Piece square tables
+    Score psqtScores[2] = {EVAL_ZERO, EVAL_ZERO};
+    for (int color = WHITE; color <= BLACK; color++) {
+        for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++) {
+            uint64_t bitboard = pieces[color][pieceID];
+            while (bitboard) {
+                int sq = bitScanForward(bitboard);
+                bitboard &= bitboard - 1;
+                psqtScores[color] += PSQT[color][pieceID][sq];
+            }
+        }
+    }
 
-    //-----------------------King Safety and Mobility---------------------------
+    //--------------------------------Mobility----------------------------------
     // Scores based on mobility and basic king safety (which is turned off in
     // the endgame)
     PieceMoveList pmlWhite = getPieceMoveList(WHITE);
@@ -1502,16 +1499,20 @@ int Board::evaluate() {
     }
 
 
+    //------------------------------King Safety---------------------------------
     // Consider squares near king
     int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
     int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
     uint64_t wKingNeighborhood = getKingSquares(wKingSq);
     uint64_t bKingNeighborhood = getKingSquares(bKingSq);
 
+    psqtScores[WHITE] += PSQT[WHITE][KINGS][wKingSq];
+    psqtScores[BLACK] += PSQT[BLACK][KINGS][bKingSq];
+
+    int wKsValue = 0, bKsValue = 0;
+
     // All king safety terms are midgame only, so don't calculate them in the endgame
     if (egFactor < EG_FACTOR_RES) {
-        int wKsValue = 0, bKsValue = 0;
-
         // Pawn shield and storm values
         int wKingFile = wKingSq & 7;
         int bKingFile = bKingSq & 7;
@@ -1583,12 +1584,12 @@ int Board::evaluate() {
         // Castling rights
         wKsValue += CASTLING_RIGHTS_VALUE[count(castlingRights & WHITECASTLE)];
         bKsValue += CASTLING_RIGHTS_VALUE[count(castlingRights & BLACKCASTLE)];
+    }
 
-        valueMg += wKsValue - bKsValue;
-        if (debug) {
-            evalDebugStats.whiteKingSafety = wKsValue;
-            evalDebugStats.blackKingSafety = bKsValue;
-        }
+    valueMg += wKsValue - bKsValue;
+    if (debug) {
+        evalDebugStats.whiteKingSafety = wKsValue;
+        evalDebugStats.blackKingSafety = bKsValue;
     }
 
 
@@ -1732,6 +1733,9 @@ int Board::evaluate() {
         evalDebugStats.whitePieceScore = pieceEvalScore[WHITE];
         evalDebugStats.blackPieceScore = pieceEvalScore[BLACK];
     }
+
+    valueMg += decEvalMg(psqtScores[WHITE]) - decEvalMg(psqtScores[BLACK]);
+    valueEg += decEvalEg(psqtScores[WHITE]) - decEvalEg(psqtScores[BLACK]);
 
 
     //-------------------------------Threats------------------------------------
