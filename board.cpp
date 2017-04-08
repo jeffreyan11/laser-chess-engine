@@ -1469,6 +1469,15 @@ int Board::evaluate() {
     // Piece square tables
     Score psqtScores[2] = {EVAL_ZERO, EVAL_ZERO};
     for (int color = WHITE; color <= BLACK; color++) {
+        uint64_t bitboard = pieces[color][PAWNS];
+        while (bitboard) {
+            int sq = bitScanForward(bitboard);
+            bitboard &= bitboard - 1;
+            psqtScores[color] += PSQT[color][PAWNS][sq];
+        }
+    }
+
+    for (int color = WHITE; color <= BLACK; color++) {
         uint64_t bitboard = pieces[color][QUEENS];
         while (bitboard) {
             int sq = bitScanForward(bitboard);
@@ -1681,7 +1690,7 @@ int Board::evaluate() {
                 pieceEvalScore[BLACK] += KNIGHT_OUTPOST_PAWN_DEF_BONUS;
         }
     }
-
+    
 
     //-----------------------------------Bishops--------------------------------
     uint64_t wBishopsTemp = pieces[WHITE][BISHOPS];
@@ -1877,11 +1886,70 @@ int Board::evaluate() {
     uint64_t wPassedPawns = pieces[WHITE][PAWNS] & ~wPassedBlocker;
     uint64_t bPassedPawns = pieces[BLACK][PAWNS] & ~bPassedBlocker;
 
+    uint64_t wPasserTemp = wPassedPawns;
     uint64_t wBlock = allPieces[BLACK] | bAttackMap;
     uint64_t wDefend = wAttackMap | wPawnAtt;
+    while (wPasserTemp) {
+        int passerSq = bitScanForward(wPasserTemp);
+        wPasserTemp &= wPasserTemp - 1;
+        int file = passerSq & 7;
+        int rank = passerSq >> 3;
+        whitePawnScore += PASSER_BONUS[rank];
+        whitePawnScore += PASSER_FILE_BONUS[file];
 
+        uint64_t pathToQueen = INDEX_TO_BIT[passerSq];
+        pathToQueen |= pathToQueen << 8;
+        pathToQueen |= pathToQueen << 16;
+        pathToQueen |= pathToQueen << 32;
+
+        // Non-linear bonus based on rank
+        int rFactor = (rank-1) * (rank-2) / 2;
+        // Path to queen is completely undefended by opponent
+        if (!(pathToQueen & wBlock))
+            whitePawnScore += rFactor * FREE_PROMOTION_BONUS;
+        // Stop square is undefended by opponent
+        else if (!((INDEX_TO_BIT[passerSq] << 8) & wBlock))
+            whitePawnScore += rFactor * FREE_STOP_BONUS;
+        // Path to queen is completely defended by own pieces
+        if ((pathToQueen & wDefend) == pathToQueen)
+            whitePawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
+        // Stop square is defended by own pieces
+        else if ((INDEX_TO_BIT[passerSq] << 8) & wDefend)
+            whitePawnScore += rFactor * DEFENDED_PASSER_BONUS;
+
+        // Bonuses and penalties for king distance
+        whitePawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq+8, wKingSq) * rFactor;
+        whitePawnScore += OPP_KING_DIST * getManhattanDistance(passerSq+8, bKingSq) * rFactor;
+    }
+    uint64_t bPasserTemp = bPassedPawns;
     uint64_t bBlock = allPieces[WHITE] | wAttackMap;
     uint64_t bDefend = bAttackMap | bPawnAtt;
+    while (bPasserTemp) {
+        int passerSq = bitScanForward(bPasserTemp);
+        bPasserTemp &= bPasserTemp - 1;
+        int file = passerSq & 7;
+        int rank = 7 - (passerSq >> 3);
+        blackPawnScore += PASSER_BONUS[rank];
+        blackPawnScore += PASSER_FILE_BONUS[file];
+
+        uint64_t pathToQueen = INDEX_TO_BIT[passerSq];
+        pathToQueen |= pathToQueen >> 8;
+        pathToQueen |= pathToQueen >> 16;
+        pathToQueen |= pathToQueen >> 32;
+
+        int rFactor = (rank-1) * (rank-2) / 2;
+        if (!(pathToQueen & bBlock))
+            blackPawnScore += rFactor * FREE_PROMOTION_BONUS;
+        else if (!((INDEX_TO_BIT[passerSq] >> 8) & bBlock))
+            blackPawnScore += rFactor * FREE_STOP_BONUS;
+        if ((pathToQueen & bDefend) == pathToQueen)
+            blackPawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
+        else if ((INDEX_TO_BIT[passerSq] >> 8) & bDefend)
+            blackPawnScore += rFactor * DEFENDED_PASSER_BONUS;
+
+        blackPawnScore += OPP_KING_DIST * getManhattanDistance(passerSq-8, wKingSq) * rFactor;
+        blackPawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq-8, bKingSq) * rFactor;
+    }
 
     int wPawnCtByFile[8];
     int bPawnCtByFile[8];
@@ -1999,84 +2067,6 @@ int Board::evaluate() {
         int r = 7 - (pawnSq >> 3);
         blackPawnScore += PAWN_PHALANX_BONUS + PAWN_PHALANX_RANK_BONUS * (r-2);
     }
-
-
-    //--------------------------------Pawn Loop---------------------------------
-    uint64_t wPawnsTemp = pieces[WHITE][PAWNS];
-    while (wPawnsTemp) {
-        int pawnSq = bitScanForward(wPawnsTemp);
-        wPawnsTemp &= wPawnsTemp - 1;
-        uint64_t bit = INDEX_TO_BIT[pawnSq];
-        int r = pawnSq >> 3;
-        int f = pawnSq & 7;
-
-        whitePawnScore += PSQT[WHITE][PAWNS][pawnSq];
-
-        // Passed pawn evaluation
-        if (bit & wPassedPawns) {
-            whitePawnScore += PASSER_BONUS[r];
-            whitePawnScore += PASSER_FILE_BONUS[f];
-
-            uint64_t pathToQueen = bit;
-            pathToQueen |= pathToQueen << 8;
-            pathToQueen |= pathToQueen << 16;
-            pathToQueen |= pathToQueen << 32;
-
-            // Non-linear bonus based on rank
-            int rFactor = (r-1) * (r-2) / 2;
-            // Path to queen is completely undefended by opponent
-            if (!(pathToQueen & wBlock))
-                whitePawnScore += rFactor * FREE_PROMOTION_BONUS;
-            // Stop square is undefended by opponent
-            else if (!((bit << 8) & wBlock))
-                whitePawnScore += rFactor * FREE_STOP_BONUS;
-            // Path to queen is completely defended by own pieces
-            if ((pathToQueen & wDefend) == pathToQueen)
-                whitePawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
-            // Stop square is defended by own pieces
-            else if ((bit << 8) & wDefend)
-                whitePawnScore += rFactor * DEFENDED_PASSER_BONUS;
-
-            // Bonuses and penalties for king distance
-            whitePawnScore -= OWN_KING_DIST * getManhattanDistance(pawnSq+8, wKingSq) * rFactor;
-            whitePawnScore += OPP_KING_DIST * getManhattanDistance(pawnSq+8, bKingSq) * rFactor;
-        }
-    }
-
-    uint64_t bPawnsTemp = pieces[BLACK][PAWNS];
-    while (bPawnsTemp) {
-        int pawnSq = bitScanForward(bPawnsTemp);
-        bPawnsTemp &= bPawnsTemp - 1;
-        uint64_t bit = INDEX_TO_BIT[pawnSq];
-        int r = 7 - (pawnSq >> 3);
-        int f = pawnSq & 7;
-
-        blackPawnScore += PSQT[BLACK][PAWNS][pawnSq];
-
-        if (bit & bPassedPawns) {
-            blackPawnScore += PASSER_BONUS[r];
-            blackPawnScore += PASSER_FILE_BONUS[f];
-
-            uint64_t pathToQueen = bit;
-            pathToQueen |= pathToQueen >> 8;
-            pathToQueen |= pathToQueen >> 16;
-            pathToQueen |= pathToQueen >> 32;
-
-            int rFactor = (r-1) * (r-2) / 2;
-            if (!(pathToQueen & bBlock))
-                blackPawnScore += rFactor * FREE_PROMOTION_BONUS;
-            else if (!((bit >> 8) & bBlock))
-                blackPawnScore += rFactor * FREE_STOP_BONUS;
-            if ((pathToQueen & bDefend) == pathToQueen)
-                blackPawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
-            else if ((bit >> 8) & bDefend)
-                blackPawnScore += rFactor * DEFENDED_PASSER_BONUS;
-
-            blackPawnScore += OPP_KING_DIST * getManhattanDistance(pawnSq-8, wKingSq) * rFactor;
-            blackPawnScore -= OWN_KING_DIST * getManhattanDistance(pawnSq-8, bKingSq) * rFactor;
-        }
-    }
-
     
     valueMg += decEvalMg(whitePawnScore) - decEvalMg(blackPawnScore);
     valueEg += decEvalEg(whitePawnScore) - decEvalEg(blackPawnScore);
