@@ -2011,17 +2011,19 @@ int Board::evaluate() {
     blackPawnScore += BACKWARD_PENALTY * count(bBackwards);
 
     // Semi-open files with backwards pawns
-    while (wBackwards) {
-        int pawnSq = bitScanForward(wBackwards);
-        wBackwards &= wBackwards - 1;
+    uint64_t wBackwardsTemp = wBackwards;
+    while (wBackwardsTemp) {
+        int pawnSq = bitScanForward(wBackwardsTemp);
+        wBackwardsTemp &= wBackwardsTemp - 1;
         int f = pawnSq & 7;
         if (!(FILES[f] & pieces[BLACK][PAWNS])) {
             whitePawnScore += BACKWARD_SEMIOPEN_PENALTY;
         }
     }
-    while (bBackwards) {
-        int pawnSq = bitScanForward(bBackwards);
-        bBackwards &= bBackwards - 1;
+    uint64_t bBackwardsTemp = bBackwards;
+    while (bBackwardsTemp) {
+        int pawnSq = bitScanForward(bBackwardsTemp);
+        bBackwardsTemp &= bBackwardsTemp - 1;
         int f = pawnSq & 7;
         if (!(FILES[f] & pieces[WHITE][PAWNS])) {
             blackPawnScore += BACKWARD_SEMIOPEN_PENALTY;
@@ -2029,8 +2031,8 @@ int Board::evaluate() {
     }
 
     // Undefended pawns
-    uint64_t wUndefendedPawns = pieces[WHITE][PAWNS] & ~wPawnAtt & ~wBackwards;
-    uint64_t bUndefendedPawns = pieces[BLACK][PAWNS] & ~bPawnAtt & ~bBackwards;
+    uint64_t wUndefendedPawns = pieces[WHITE][PAWNS] & ~wPawnAtt; // & ~wBackwards;
+    uint64_t bUndefendedPawns = pieces[BLACK][PAWNS] & ~bPawnAtt; // & ~bBackwards;
     while (wUndefendedPawns) {
         int pawnSq = bitScanForward(wUndefendedPawns);
         wUndefendedPawns &= wUndefendedPawns - 1;
@@ -2088,16 +2090,16 @@ int Board::evaluate() {
             int pawnSq = bitScanForward(pawnBits);
             // int rank = pawnSq >> 3;
             pawnBits &= pawnBits - 1;
-            if (INDEX_TO_BIT[pawnSq] & (wBackwards | bBackwards)) {
-                wTropismTotal += 2 * getManhattanDistance(pawnSq, wKingSq);
-                bTropismTotal += 2 * getManhattanDistance(pawnSq, bKingSq);
-                pawnWeight += 2;
-            }
-            else {
+            // if (INDEX_TO_BIT[pawnSq] & (wBackwards | bBackwards)) {
+            //     wTropismTotal += 2 * getManhattanDistance(pawnSq, wKingSq);
+            //     bTropismTotal += 2 * getManhattanDistance(pawnSq, bKingSq);
+            //     pawnWeight += 2;
+            // }
+            // else {
                 wTropismTotal += getManhattanDistance(pawnSq, wKingSq);
                 bTropismTotal += getManhattanDistance(pawnSq, bKingSq);
                 pawnWeight++;
-            }
+            // }
         }
 
         if (pawnWeight)
