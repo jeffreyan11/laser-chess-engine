@@ -1637,6 +1637,14 @@ int Board::evaluate() {
         pieceEvalScore[BLACK] += BISHOP_RAMMED_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & (pieces[WHITE][PAWNS] << 8) & DARK);
     }
 
+    // Shielded minors: minors behind own pawns
+    pieceEvalScore[WHITE] += SHIELDED_MINOR_BONUS * count((pieces[WHITE][PAWNS] >> 8)
+                                                        & (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS])
+                                                        & (RANKS[1] | RANKS[2] | RANKS[3]));
+    pieceEvalScore[BLACK] += SHIELDED_MINOR_BONUS * count((pieces[BLACK][PAWNS] << 8)
+                                                        & (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS])
+                                                        & (RANKS[6] | RANKS[5] | RANKS[4]));
+
     // Outposts
     // Region 1: Ranks 4/5/6 on files D/E, ranks 5/6 on files C/F, rank 6 on files B/G
     const uint64_t W_OUTPOST1 = ((FILES[3] | FILES[4]) & (RANKS[3] | RANKS[4] | RANKS[5]))
@@ -1729,18 +1737,6 @@ int Board::evaluate() {
                 pieceEvalScore[BLACK] += BISHOP_OUTPOST_PAWN_DEF_BONUS;
         }
     }
-
-    // Special case: Nc3 blocking c2-c4 in closed openings (pawn on d4, no pawn on e4)
-    if ((pieces[WHITE][KNIGHTS] & 0x40000)
-     && (pieces[WHITE][PAWNS] & 0x400)
-     && (pieces[WHITE][PAWNS] & 0x8000000)
-    && !(pieces[WHITE][PAWNS] & 0x10000000))
-        pieceEvalScore[WHITE] += KNIGHT_C3_CLOSED_PENALTY;
-    if ((pieces[BLACK][KNIGHTS] & 0x40000000000)
-     && (pieces[BLACK][PAWNS] & 0x4000000000000)
-     && (pieces[BLACK][PAWNS] & 0x800000000)
-    && !(pieces[BLACK][PAWNS] & 0x1000000000))
-        pieceEvalScore[BLACK] += KNIGHT_C3_CLOSED_PENALTY;
 
 
     //-------------------------------Rooks--------------------------------------

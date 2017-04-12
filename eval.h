@@ -317,6 +317,8 @@ const int SAFE_CHECK_BONUS[4] = {31, 8, 19, 22};
 // A penalty for each own pawn that is on a square of the same color as your bishop
 const Score BISHOP_PAWN_COLOR_PENALTY = E(-6, -1);
 const Score BISHOP_RAMMED_PAWN_COLOR_PENALTY = E(-1, -13);
+// Minors shielded by own pawn in front
+const Score SHIELDED_MINOR_BONUS = E(10, 0);
 // A bonus for strong outpost knights
 const Score KNIGHT_OUTPOST_BONUS1 = E(25, 14);
 const Score KNIGHT_OUTPOST_BONUS2 = E(14, 8);
@@ -325,8 +327,6 @@ const Score KNIGHT_OUTPOST_PAWN_DEF_BONUS = E(15, 10);
 const Score BISHOP_OUTPOST_BONUS1 = E(17, 6);
 const Score BISHOP_OUTPOST_BONUS2 = E(12, 2);
 const Score BISHOP_OUTPOST_PAWN_DEF_BONUS = E(17, 9);
-// A penalty for Nc3 blocking c2-c4 in closed openings
-const Score KNIGHT_C3_CLOSED_PENALTY = E(-20, 0);
 
 // Rooks
 const Score ROOK_OPEN_FILE_BONUS = E(24, 10);
