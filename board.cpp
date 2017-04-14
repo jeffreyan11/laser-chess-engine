@@ -1508,95 +1508,68 @@ int Board::evaluate() {
 
     //------------------------------King Safety---------------------------------
     // Consider squares near king
-    int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
-    int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
-    uint64_t wKingNeighborhood = getKingSquares(wKingSq);
-    uint64_t bKingNeighborhood = getKingSquares(bKingSq);
+    int kingSq[2] = {bitScanForward(pieces[WHITE][KINGS]),
+                     bitScanForward(pieces[BLACK][KINGS])};
+    uint64_t kingNeighborhood[2] = {getKingSquares(kingSq[WHITE]), getKingSquares(kingSq[BLACK])};
 
-    psqtScores[WHITE] += PSQT[WHITE][KINGS][wKingSq];
-    psqtScores[BLACK] += PSQT[BLACK][KINGS][bKingSq];
+    psqtScores[WHITE] += PSQT[WHITE][KINGS][kingSq[WHITE]];
+    psqtScores[BLACK] += PSQT[BLACK][KINGS][kingSq[BLACK]];
 
-    int wKsValue = 0, bKsValue = 0;
+    int ksValue[2] = {0, 0};
 
     // All king safety terms are midgame only, so don't calculate them in the endgame
     if (egFactor < EG_FACTOR_RES) {
-        // Pawn shield and storm values
-        int wKingFile = wKingSq & 7;
-        int bKingFile = bKingSq & 7;
+        for (int color = WHITE; color <= BLACK; color++) {
+            // Pawn shield and storm values
+            int kingFile = kingSq[color] & 7;
 
-        // White king
-        for (int i = wKingFile-1; i <= wKingFile+1; i++) {
-            if (i < 0 || i > 7)
-                continue;
-            int f = std::min(i, 7-i);
+            for (int i = kingFile-1; i <= kingFile+1; i++) {
+                if (i < 0 || i > 7)
+                    continue;
+                int f = std::min(i, 7-i);
 
-            uint64_t wPawnShield = pieces[WHITE][PAWNS] & FILES[i];
-            if (wPawnShield) {
-                int wPawnSq = bitScanForward(wPawnShield);
-                int wr = wPawnSq >> 3;
+                uint64_t pawnShield = pieces[color][PAWNS] & FILES[i];
+                if (pawnShield) {
+                    int pawnSq = (color == WHITE) ? bitScanForward(pawnShield)
+                                                  : bitScanReverse(pawnShield);
+                    int r = relativeRank(color, pawnSq >> 3);
 
-                wKsValue += PAWN_SHIELD_VALUE[f][wr];
+                    ksValue[color] += PAWN_SHIELD_VALUE[f][r];
+                }
+                // Semi-open file: no pawn shield
+                else
+                    ksValue[color] += PAWN_SHIELD_VALUE[f][0];
+
+                uint64_t pawnStorm = pieces[color^1][PAWNS] & FILES[i];
+                if (pawnStorm) {
+                    int pawnSq = (color == WHITE) ? bitScanForward(pawnStorm)
+                                                  : bitScanReverse(pawnStorm);
+                    int r = relativeRank(color, pawnSq >> 3);
+                    int stopSq = pawnSq + ((color == WHITE) ? -8 : 8);
+
+                    ksValue[color] -= PAWN_STORM_VALUE[
+                        (pieces[color][PAWNS] & FILES[i]) == 0             ? 0 :
+                        (pieces[color][PAWNS] & INDEX_TO_BIT[stopSq]) != 0 ? 1 : 2][f][r];
+                }
+                // Semi-open file: no pawn for attacker
+                else
+                    ksValue[color] -= PAWN_STORM_VALUE[0][f][0];
             }
-            // Semi-open file: no pawn shield
-            else
-                wKsValue += PAWN_SHIELD_VALUE[f][0];
-
-            uint64_t bPawnStorm = pieces[BLACK][PAWNS] & FILES[i];
-            if (bPawnStorm) {
-                int bPawnSq = bitScanForward(bPawnStorm);
-                int br = bPawnSq >> 3;
-
-                wKsValue -= PAWN_STORM_VALUE[
-                    (pieces[WHITE][PAWNS] & FILES[i]) == 0                  ? 0 :
-                    (pieces[WHITE][PAWNS] & INDEX_TO_BIT[bPawnSq - 8]) != 0 ? 1 : 2][f][br];
-            }
-            // Semi-open file: no pawn for attacker
-            else
-                wKsValue -= PAWN_STORM_VALUE[0][f][0];
-        }
-
-        // Black king
-        for (int i = bKingFile-1; i <= bKingFile+1; i++) {
-            if (i < 0 || i > 7)
-                continue;
-            int f = std::min(i, 7-i);
-
-            uint64_t bPawnShield = pieces[BLACK][PAWNS] & FILES[i];
-            if (bPawnShield) {
-                int bPawnSq = bitScanReverse(bPawnShield);
-                int br = 7 - (bPawnSq >> 3);
-
-                bKsValue += PAWN_SHIELD_VALUE[f][br];
-            }
-            else
-                bKsValue += PAWN_SHIELD_VALUE[f][0];
-
-            uint64_t wPawnStorm = pieces[WHITE][PAWNS] & FILES[i];
-            if (wPawnStorm) {
-                int wPawnSq = bitScanReverse(wPawnStorm);
-                int wr = 7 - (wPawnSq >> 3);
-
-                bKsValue -= PAWN_STORM_VALUE[
-                    (pieces[BLACK][PAWNS] & FILES[i]) == 0                  ? 0 :
-                    (pieces[BLACK][PAWNS] & INDEX_TO_BIT[wPawnSq + 8]) != 0 ? 1 : 2][f][wr];
-            }
-            else
-                bKsValue -= PAWN_STORM_VALUE[0][f][0];
         }
 
         // Piece attacks
-        bKsValue -= getKingSafety<WHITE>(pmlWhite, pmlBlack, bKingNeighborhood, bKsValue);
-        wKsValue -= getKingSafety<BLACK>(pmlBlack, pmlWhite, wKingNeighborhood, wKsValue);
+        ksValue[BLACK] -= getKingSafety<WHITE>(pmlWhite, pmlBlack, kingNeighborhood[BLACK], ksValue[BLACK]);
+        ksValue[WHITE] -= getKingSafety<BLACK>(pmlBlack, pmlWhite, kingNeighborhood[WHITE], ksValue[WHITE]);
 
         // Castling rights
-        wKsValue += CASTLING_RIGHTS_VALUE[count(castlingRights & WHITECASTLE)];
-        bKsValue += CASTLING_RIGHTS_VALUE[count(castlingRights & BLACKCASTLE)];
+        ksValue[WHITE] += CASTLING_RIGHTS_VALUE[count(castlingRights & WHITECASTLE)];
+        ksValue[BLACK] += CASTLING_RIGHTS_VALUE[count(castlingRights & BLACKCASTLE)];
     }
 
-    valueMg += wKsValue - bKsValue;
+    valueMg += ksValue[WHITE] - ksValue[BLACK];
     if (debug) {
-        evalDebugStats.whiteKingSafety = wKsValue;
-        evalDebugStats.blackKingSafety = bKsValue;
+        evalDebugStats.whiteKingSafety = ksValue[WHITE];
+        evalDebugStats.blackKingSafety = ksValue[BLACK];
     }
 
 
@@ -1914,8 +1887,8 @@ int Board::evaluate() {
             whitePawnScore += rFactor * DEFENDED_PASSER_BONUS;
 
         // Bonuses and penalties for king distance
-        whitePawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq+8, wKingSq) * rFactor;
-        whitePawnScore += OPP_KING_DIST * getManhattanDistance(passerSq+8, bKingSq) * rFactor;
+        whitePawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq+8, kingSq[WHITE]) * rFactor;
+        whitePawnScore += OPP_KING_DIST * getManhattanDistance(passerSq+8, kingSq[BLACK]) * rFactor;
     }
     uint64_t bPasserTemp = bPassedPawns;
     uint64_t bBlock = allPieces[WHITE] | wAttackMap;
@@ -1943,8 +1916,8 @@ int Board::evaluate() {
         else if ((INDEX_TO_BIT[passerSq] >> 8) & bDefend)
             blackPawnScore += rFactor * DEFENDED_PASSER_BONUS;
 
-        blackPawnScore += OPP_KING_DIST * getManhattanDistance(passerSq-8, wKingSq) * rFactor;
-        blackPawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq-8, bKingSq) * rFactor;
+        blackPawnScore += OPP_KING_DIST * getManhattanDistance(passerSq-8, kingSq[WHITE]) * rFactor;
+        blackPawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq-8, kingSq[BLACK]) * rFactor;
     }
 
     int wPawnCtByFile[8];
@@ -2087,13 +2060,13 @@ int Board::evaluate() {
             // int rank = pawnSq >> 3;
             pawnBits &= pawnBits - 1;
             // if (INDEX_TO_BIT[pawnSq] & (wBackwards | bBackwards)) {
-            //     wTropismTotal += 2 * getManhattanDistance(pawnSq, wKingSq);
-            //     bTropismTotal += 2 * getManhattanDistance(pawnSq, bKingSq);
+            //     wTropismTotal += 2 * getManhattanDistance(pawnSq, kingSq[WHITE]);
+            //     bTropismTotal += 2 * getManhattanDistance(pawnSq, kingSq[BLACK]);
             //     pawnWeight += 2;
             // }
             // else {
-                wTropismTotal += getManhattanDistance(pawnSq, wKingSq);
-                bTropismTotal += getManhattanDistance(pawnSq, bKingSq);
+                wTropismTotal += getManhattanDistance(pawnSq, kingSq[WHITE]);
+                bTropismTotal += getManhattanDistance(pawnSq, kingSq[BLACK]);
                 pawnWeight++;
             // }
         }
