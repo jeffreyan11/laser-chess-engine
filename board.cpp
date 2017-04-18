@@ -1787,23 +1787,13 @@ int Board::evaluate() {
     if (uint64_t minors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & wAttackMap & ~bPawnAtt) {
         threatScore[BLACK] += UNDEFENDED_MINOR * count(minors);
     }
-    if (uint64_t majors = (pieces[WHITE][ROOKS] | pieces[WHITE][QUEENS]) & bAttackMap) {
-        threatScore[WHITE] += ATTACKED_MAJOR * count(majors);
+    if (uint64_t threatened = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]
+                             | pieces[WHITE][ROOKS]   | pieces[WHITE][QUEENS]) & bPawnAtt) {
+        threatScore[WHITE] += PAWN_PIECE_THREAT * count(threatened);
     }
-    if (uint64_t majors = (pieces[BLACK][ROOKS] | pieces[BLACK][QUEENS]) & wAttackMap) {
-        threatScore[BLACK] += ATTACKED_MAJOR * count(majors);
-    }
-    if (uint64_t minors = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & bPawnAtt) {
-        threatScore[WHITE] += PAWN_MINOR_THREAT * count(minors);
-    }
-    if (uint64_t minors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & wPawnAtt) {
-        threatScore[BLACK] += PAWN_MINOR_THREAT * count(minors);
-    }
-    if (uint64_t majors = (pieces[WHITE][ROOKS] | pieces[WHITE][QUEENS]) & bPawnAtt) {
-        threatScore[WHITE] += PAWN_MAJOR_THREAT * count(majors);
-    }
-    if (uint64_t majors = (pieces[BLACK][ROOKS] | pieces[BLACK][QUEENS]) & wPawnAtt) {
-        threatScore[BLACK] += PAWN_MAJOR_THREAT * count(majors);
+    if (uint64_t threatened = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]
+                             | pieces[BLACK][ROOKS]   | pieces[BLACK][QUEENS]) & wPawnAtt) {
+        threatScore[BLACK] += PAWN_PIECE_THREAT * count(threatened);
     }
 
     // Loose pawns

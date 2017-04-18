@@ -336,9 +336,7 @@ const Score ROOK_PAWN_RANK_THREAT = E(6, 9);
 // Threats
 const Score UNDEFENDED_PAWN = E(-7, -20);
 const Score UNDEFENDED_MINOR = E(-17, -35);
-const Score ATTACKED_MAJOR = E(-4, -1);
-const Score PAWN_MINOR_THREAT = E(-49, -38);
-const Score PAWN_MAJOR_THREAT = E(-50, -26);
+const Score PAWN_PIECE_THREAT = E(-50, -32);
 
 const Score LOOSE_PAWN = E(-18, -11);
 const Score LOOSE_MINOR = E(-10, -3);
