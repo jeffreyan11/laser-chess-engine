@@ -56,7 +56,7 @@ static int KS_TO_SCORE[200];
 void initKSArray() {
     for (int i = 0; i < 200; i++) {
         double x = (double) i;
-        KS_TO_SCORE[i] = (int) std::min(x * x / KS_ARRAY_FACTOR, 500.0);
+        KS_TO_SCORE[i] = (int) std::min(x * x / KS_ARRAY_FACTOR, 600.0);
     }
 }
 
@@ -2259,7 +2259,7 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     }
 
     // Give a decent bonus for each additional piece participating
-    kingSafetyPts += std::min(100, kingAttackPieces * kingAttackPts);
+    kingSafetyPts += std::min(80, kingAttackPieces * kingAttackPts);
 
     // Adjust based on pawn shield and pawn storms
     kingSafetyPts -= KS_PAWN_FACTOR * pawnScore / 32;
