@@ -1766,12 +1766,15 @@ int Board::evaluate() {
     Score threatScore[2] = {EVAL_ZERO, EVAL_ZERO};
     // Get the overall attack maps
     uint64_t wAttackMap = 0, bAttackMap = 0;
+    uint64_t pieceAttackMaps[2][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
     for (unsigned int i = 0; i < pmlWhite.size(); i++) {
         wAttackMap |= pmlWhite.get(i).legal;
+        pieceAttackMaps[WHITE][pmlWhite.get(i).pieceID-1] |= pmlWhite.get(i).legal;
     }
     // wAttackMap |= getWPawnCaptures(pieces[WHITE][PAWNS]);
     for (unsigned int i = 0; i < pmlBlack.size(); i++) {
         bAttackMap |= pmlBlack.get(i).legal;
+        pieceAttackMaps[BLACK][pmlBlack.get(i).pieceID-1] |= pmlBlack.get(i).legal;
     }
     // bAttackMap |= getBPawnCaptures(pieces[BLACK][PAWNS]);
 
@@ -1786,6 +1789,24 @@ int Board::evaluate() {
     }
     if (uint64_t minors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & wAttackMap & ~bPawnAtt) {
         threatScore[BLACK] += UNDEFENDED_MINOR * count(minors);
+    }
+    if (uint64_t rooks = pieces[WHITE][ROOKS] & (pieceAttackMaps[BLACK][KNIGHTS-1] | pieceAttackMaps[BLACK][BISHOPS-1])) {
+        threatScore[WHITE] += MINOR_ROOK_THREAT * count(rooks);
+    }
+    if (uint64_t rooks = pieces[BLACK][ROOKS] & (pieceAttackMaps[WHITE][KNIGHTS-1] | pieceAttackMaps[WHITE][BISHOPS-1])) {
+        threatScore[BLACK] += MINOR_ROOK_THREAT * count(rooks);
+    }
+    if (uint64_t queens = pieces[WHITE][QUEENS] & (pieceAttackMaps[BLACK][KNIGHTS-1] | pieceAttackMaps[BLACK][BISHOPS-1])) {
+        threatScore[WHITE] += MINOR_QUEEN_THREAT * count(queens);
+    }
+    if (uint64_t queens = pieces[BLACK][QUEENS] & (pieceAttackMaps[WHITE][KNIGHTS-1] | pieceAttackMaps[WHITE][BISHOPS-1])) {
+        threatScore[BLACK] += MINOR_QUEEN_THREAT * count(queens);
+    }
+    if (uint64_t queens = pieces[WHITE][QUEENS] & pieceAttackMaps[BLACK][ROOKS-1]) {
+        threatScore[WHITE] += ROOK_QUEEN_THREAT * count(queens);
+    }
+    if (uint64_t queens = pieces[BLACK][QUEENS] & pieceAttackMaps[WHITE][ROOKS-1]) {
+        threatScore[BLACK] += ROOK_QUEEN_THREAT * count(queens);
     }
     if (uint64_t threatened = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]
                              | pieces[WHITE][ROOKS]   | pieces[WHITE][QUEENS]) & bPawnAtt) {
