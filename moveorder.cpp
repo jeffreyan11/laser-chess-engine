@@ -290,12 +290,16 @@ void MoveOrder::reduceBadHistories(Move bestMove) {
         int startSq = getStartSq(legalMoves.get(i));
         int endSq = getEndSq(legalMoves.get(i));
         int pieceID = b->getPieceOnSquare(color, startSq);
-        int diff = searchParams->historyTable[color][pieceID][endSq]
-            * (8 + std::max(1, depth)) / (2 + 2 * MAX_DEPTH);
-        searchParams->historyTable[color][pieceID][endSq]
-            -= std::max(0, diff) + depth;
-        if (ssi->counterMoveHistory != nullptr)
-            ssi->counterMoveHistory[pieceID][endSq] -= std::max(0, diff) + depth;
+
+        int histDepth = std::min(depth, 12);
+        searchParams->historyTable[color][pieceID][endSq] -=
+            histDepth * searchParams->historyTable[color][pieceID][endSq] / 64;
+        searchParams->historyTable[color][pieceID][endSq] -= histDepth * histDepth;
+        if (ssi->counterMoveHistory != nullptr) {
+            ssi->counterMoveHistory[pieceID][endSq] -=
+                histDepth * ssi->counterMoveHistory[pieceID][endSq] / 64;
+            ssi->counterMoveHistory[pieceID][endSq] -= histDepth * histDepth;
+        }
     }
 }
 

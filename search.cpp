@@ -979,8 +979,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
                 reduction--;
             // Reduce more for moves with poor history
             int historyValue = searchParams->historyTable[color][pieceID][endSq];
-            if (historyValue < 0)
-                reduction++;
+            reduction -= historyValue / 256;
             // Reduce more for expected cut nodes
             if (isCutNode)
                 reduction++;
@@ -1108,10 +1107,16 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
                     searchParams->killers[ssi->ply][0] = m;
                 }
                 // Update the history table
-                searchParams->historyTable[color][pieceID][endSq]
-                    += depth * depth;
-                if (ssi->counterMoveHistory != nullptr)
-                    ssi->counterMoveHistory[pieceID][endSq] += depth * depth;
+                int histDepth = std::min(depth, 12);
+                searchParams->historyTable[color][pieceID][endSq] -=
+                    histDepth * searchParams->historyTable[color][pieceID][endSq] / 64;
+                searchParams->historyTable[color][pieceID][endSq] += histDepth * histDepth;
+                // Update countermove history
+                if (ssi->counterMoveHistory != nullptr) {
+                    ssi->counterMoveHistory[pieceID][endSq] -=
+                        histDepth * ssi->counterMoveHistory[pieceID][endSq] / 64;
+                    ssi->counterMoveHistory[pieceID][endSq] += histDepth * histDepth;
+                }
                 moveSorter.reduceBadHistories(m);
             }
 
@@ -1152,15 +1157,22 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             searchParams->rootMoveNumber);
         transpositionTable.add(b, hashData, depth, searchParams->rootMoveNumber);
 
-        // Update the history table
         if (!isCapture(toHash)) {
             int startSq = getStartSq(toHash);
             int endSq = getEndSq(toHash);
             int pieceID = b.getPieceOnSquare(color, startSq);
 
-            searchParams->historyTable[color][pieceID][endSq] += depth * depth;
-            if (ssi->counterMoveHistory != nullptr)
-                ssi->counterMoveHistory[pieceID][endSq] += depth * depth;
+            // Update the history table
+            int histDepth = std::min(depth, 12);
+            searchParams->historyTable[color][pieceID][endSq] -=
+                histDepth * searchParams->historyTable[color][pieceID][endSq] / 64;
+            searchParams->historyTable[color][pieceID][endSq] += histDepth * histDepth;
+            // Update countermove history
+            if (ssi->counterMoveHistory != nullptr) {
+                ssi->counterMoveHistory[pieceID][endSq] -=
+                    histDepth * ssi->counterMoveHistory[pieceID][endSq] / 64;
+                ssi->counterMoveHistory[pieceID][endSq] += histDepth * histDepth;
+            }
             moveSorter.reduceBadHistories(toHash);
         }
     }

@@ -85,16 +85,10 @@ struct SearchParameters {
     }
 
     void ageHistoryTable(int depth) {
-        int posHistoryScale = depth * depth;
-        int negHistoryScale = depth;
-
         for (int i = 0; i < 2; i++) {
             for (int j = 0; j < 6; j++) {
                 for (int k = 0; k < 64; k++) {
-                    if (historyTable[i][j][k] > 0)
-                        historyTable[i][j][k] /= posHistoryScale;
-                    else
-                        historyTable[i][j][k] /= negHistoryScale;
+                    historyTable[i][j][k] /= depth * depth;
                 }
             }
         }
@@ -103,10 +97,7 @@ struct SearchParameters {
             for (int j = 0; j < 64; j++) {
                 for (int k = 0; k < 6; k++) {
                     for (int l = 0; l < 64; l++) {
-                        if (counterMoveHistory[i][j][k][l] > 0)
-                            counterMoveHistory[i][j][k][l] /= posHistoryScale;
-                        else
-                            counterMoveHistory[i][j][k][l] /= negHistoryScale;
+                        counterMoveHistory[i][j][k][l] /= depth * depth;
                     }
                 }
             }
