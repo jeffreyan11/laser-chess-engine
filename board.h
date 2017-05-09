@@ -54,6 +54,9 @@ void initPSQT();
 void initKSArray();
 void initZobristTable();
 
+void setMaterialScale(int s);
+void setKingSafetyScale(int s);
+
 
 /**
  * @brief A chess board and its associated functionality, including get legal

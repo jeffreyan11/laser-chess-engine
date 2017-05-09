@@ -117,6 +117,10 @@ int main() {
             cout << "option name BufferTime type spin default " << DEFAULT_BUFFER_TIME
                  << " min " << MIN_BUFFER_TIME << " max " << MAX_BUFFER_TIME << endl;
             cout << "option name SyzygyPath type string default <empty>" << endl;
+            cout << "option name ScaleMaterial type spin default " << DEFAULT_EVAL_SCALE
+                 << " min " << MIN_EVAL_SCALE << " max " << MAX_EVAL_SCALE << endl;
+            cout << "option name ScaleKingSafety type spin default " << DEFAULT_EVAL_SCALE
+                 << " min " << MIN_EVAL_SCALE << " max " << MAX_EVAL_SCALE << endl;
             cout << "uciok" << endl;
         }
         else if (input == "isready") cout << "readyok" << endl;
@@ -236,6 +240,22 @@ int main() {
                     std::strcpy(c_path, path.c_str());
                     init_tablebases(c_path);
                     free(c_path);
+                }
+                else if (inputVector.at(2) == "scalematerial") {
+                    int scale = std::stoi(inputVector.at(4));
+                    if (scale < MIN_EVAL_SCALE)
+                        scale = MIN_EVAL_SCALE;
+                    if (scale > MAX_EVAL_SCALE)
+                        scale = MAX_EVAL_SCALE;
+                    setMaterialScale(scale);
+                }
+                else if (inputVector.at(2) == "scalekingsafety") {
+                    int scale = std::stoi(inputVector.at(4));
+                    if (scale < MIN_EVAL_SCALE)
+                        scale = MIN_EVAL_SCALE;
+                    if (scale > MAX_EVAL_SCALE)
+                        scale = MAX_EVAL_SCALE;
+                    setKingSafetyScale(scale);
                 }
                 else
                     cout << "info string Invalid option." << endl;

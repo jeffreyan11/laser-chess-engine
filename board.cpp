@@ -25,6 +25,7 @@
 #include "board.h"
 #include "bbinit.h"
 #include "eval.h"
+#include "uci.h"
 
 
 const uint64_t WHITE_KSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[5] | INDEX_TO_BIT[6];
@@ -176,6 +177,17 @@ struct EvalDebug {
 };
 
 static EvalDebug evalDebugStats;
+
+
+static int scaleMaterial = DEFAULT_EVAL_SCALE;
+static int scaleKingSafety = DEFAULT_EVAL_SCALE;
+
+void setMaterialScale(int s) {
+    scaleMaterial = s;
+}
+void setKingSafetyScale(int s) {
+    scaleKingSafety = s;
+}
 
 
 //------------------------------------------------------------------------------
@@ -1411,6 +1423,9 @@ int Board::evaluate() {
     // Tempo bonus
     valueMg += (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
 
+    valueMg = valueMg * scaleMaterial / DEFAULT_EVAL_SCALE;
+    valueEg = valueEg * scaleMaterial / DEFAULT_EVAL_SCALE;
+
     if (debug) {
         evalDebugStats.totalMaterialMg = valueMg;
         evalDebugStats.totalMaterialEg = valueEg;
@@ -1566,6 +1581,8 @@ int Board::evaluate() {
         ksValue[BLACK] += CASTLING_RIGHTS_VALUE[count(castlingRights & BLACKCASTLE)];
     }
 
+    ksValue[WHITE] = ksValue[WHITE] * scaleKingSafety / DEFAULT_EVAL_SCALE;
+    ksValue[BLACK] = ksValue[BLACK] * scaleKingSafety / DEFAULT_EVAL_SCALE;
     valueMg += ksValue[WHITE] - ksValue[BLACK];
     if (debug) {
         evalDebugStats.whiteKingSafety = ksValue[WHITE];
