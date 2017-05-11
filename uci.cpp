@@ -84,7 +84,7 @@ int main() {
     string input;
     std::vector<string> inputVector;
     string name = "Laser";
-    string version = "1.4 beta";
+    string version = "1.4";
     string author = "Jeffrey An and Michael An";
     std::thread searchThread;
     Move bestMove = NULL_MOVE;
