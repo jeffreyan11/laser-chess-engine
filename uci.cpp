@@ -507,10 +507,22 @@ void stringToLowerCase(std::string &s) {
     if (equalsIgnoreCase(s.substr(0, 8), "position")) {
         for (std::size_t i = 0; i < 12; i++)
             s[i] = tolower(s[i]);
-        return;
     }
-    for (std::size_t i = 0; i < s.size(); i++)
-        s[i] = tolower(s[i]);
+    else if (equalsIgnoreCase(s.substr(0, 9), "setoption")) {
+        std::size_t j = 0;
+        int spaceCt = 0;
+        // Find the index of the 4th space: right after value
+        // setoption _1_ name _2_ <name> _3_ value _4_ <value>
+        for (; spaceCt < 4; j++)
+            if (s[j] == ' ')
+                spaceCt++;
+        for (std::size_t i = 0; i < j; i++)
+            s[i] = tolower(s[i]);
+    }
+    else {
+        for (std::size_t i = 0; i < s.size(); i++)
+            s[i] = tolower(s[i]);
+    }
 }
 
 void clearAll(Board &board) {
