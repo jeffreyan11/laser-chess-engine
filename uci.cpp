@@ -188,7 +188,7 @@ int main() {
             isStop = true;
             std::this_thread::yield();
         }
-        else if (input.substr(0, 9) == "setoption" && inputVector.size() == 5) {
+        else if (input.substr(0, 9) == "setoption" && inputVector.size() >= 5) {
             if (inputVector.at(1) != "name" || inputVector.at(3) != "value") {
                 cout << "info string Invalid option format." << endl;
             }
@@ -234,8 +234,10 @@ int main() {
                 }
                 else if (inputVector.at(2) == "syzygypath") {
                     string path = inputVector.at(4);
-                    for (unsigned int i = 5; i < inputVector.size(); i++)
-                        path += " " + inputVector.at(i);
+                    for (unsigned int i = 5; i < inputVector.size(); i++) {
+                        path += " ";
+                        path += inputVector.at(i);
+                    }
                     char *c_path = (char *) malloc(path.length() + 1);
                     std::strcpy(c_path, path.c_str());
                     init_tablebases(c_path);
