@@ -235,8 +235,7 @@ int main() {
                 else if (inputVector.at(2) == "syzygypath") {
                     string path = inputVector.at(4);
                     for (unsigned int i = 5; i < inputVector.size(); i++) {
-                        path += " ";
-                        path += inputVector.at(i);
+                        path += string(" ") + inputVector.at(i);
                     }
                     char *c_path = (char *) malloc(path.length() + 1);
                     std::strcpy(c_path, path.c_str());
