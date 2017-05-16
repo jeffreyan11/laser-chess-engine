@@ -742,11 +742,6 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
                 return hashScore;
             }
         }
-
-        // Don't use hash moves from too low of a depth
-        if ((hashDepth < 1 && depth >= 7)
-         || (isPVNode && hashDepth < depth - 3))
-            hashed = NULL_MOVE;
     }
 
 
