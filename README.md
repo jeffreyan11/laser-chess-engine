@@ -1,4 +1,6 @@
 # Laser
+![](logos/laser_logo_small.png)
+
 Laser is a UCI-compliant chess engine written in C++11 by Jeffrey An and Michael An.
 
 The latest release and previous versions can be found [here](https://github.com/jeffreyan11/uci-chess-engine/releases). Compiled binaries for 32 and 64-bit Windows are included.
