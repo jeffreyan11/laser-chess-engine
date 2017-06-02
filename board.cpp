@@ -1963,33 +1963,31 @@ int Board::evaluate() {
 
     // Isolated pawns
     // Fill a bitmap of which files have pawns
-    uint64_t wp = 0, bp = 0;
-    for (int i = 0; i < 8; i++) {
-        wp |= (bool) (wPawnCtByFile[i]);
-        bp |= (bool) (bPawnCtByFile[i]);
-        wp <<= 1;
-        bp <<= 1;
+    uint64_t wIsolated = 0, bIsolated = 0;
+    for (int i = 7; i >= 0; i--) {
+        wIsolated |= (bool) (wPawnCtByFile[i]);
+        bIsolated |= (bool) (bPawnCtByFile[i]);
+        wIsolated <<= 1;
+        bIsolated <<= 1;
     }
-    wp >>= 1;
-    bp >>= 1;
+    wIsolated >>= 1;
+    bIsolated >>= 1;
     // If there are pawns on either adjacent file, we remove this pawn
-    wp &= ~((wp >> 1) | (wp << 1));
-    bp &= ~((bp >> 1) | (bp << 1));
-    int whiteIsolated = count(wp);
-    int blackIsolated = count(bp);
-    whitePawnScore += ISOLATED_PENALTY * whiteIsolated;
-    blackPawnScore += ISOLATED_PENALTY * blackIsolated;
-    whitePawnScore += CENTRAL_ISOLATED_PENALTY * count(wp & 0x7E);
-    blackPawnScore += CENTRAL_ISOLATED_PENALTY * count(bp & 0x7E);
+    wIsolated &= ~((wIsolated >> 1) | (wIsolated << 1));
+    bIsolated &= ~((bIsolated >> 1) | (bIsolated << 1));
+    whitePawnScore += ISOLATED_PENALTY * count(wIsolated);
+    blackPawnScore += ISOLATED_PENALTY * count(bIsolated);
+    whitePawnScore += CENTRAL_ISOLATED_PENALTY * count(wIsolated & 0x7E);
+    blackPawnScore += CENTRAL_ISOLATED_PENALTY * count(bIsolated & 0x7E);
 
     // Isolated, doubled pawns
     // x1 for isolated, doubled pawns
     // x3 for isolated, tripled pawns
     for (int i = 0; i < 8; i++) {
-        if ((wPawnCtByFile[i] > 1) && (wp & INDEX_TO_BIT[7-i])) {
+        if ((wPawnCtByFile[i] > 1) && (wIsolated & INDEX_TO_BIT[i])) {
             whitePawnScore += ISOLATED_DOUBLED_PENALTY * (((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2);
         }
-        if ((bPawnCtByFile[i] > 1) && (bp & INDEX_TO_BIT[7-i])) {
+        if ((bPawnCtByFile[i] > 1) && (bIsolated & INDEX_TO_BIT[i])) {
             blackPawnScore += ISOLATED_DOUBLED_PENALTY * (((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2);
         }
     }
@@ -2034,14 +2032,14 @@ int Board::evaluate() {
         int pawnSq = bitScanForward(wUndefendedPawns);
         wUndefendedPawns &= wUndefendedPawns - 1;
         int f = pawnSq & 7;
-        if (!(wp & INDEX_TO_BIT[7-f]))
+        if (!(wIsolated & INDEX_TO_BIT[f]))
             whitePawnScore += UNDEFENDED_PAWN_PENALTY;
     }
     while (bUndefendedPawns) {
         int pawnSq = bitScanForward(bUndefendedPawns);
         bUndefendedPawns &= bUndefendedPawns - 1;
         int f = pawnSq & 7;
-        if (!(bp & INDEX_TO_BIT[7-f]))
+        if (!(bIsolated & INDEX_TO_BIT[f]))
             blackPawnScore += UNDEFENDED_PAWN_PENALTY;
     }
 
