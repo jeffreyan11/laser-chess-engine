@@ -17,6 +17,7 @@
 */
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
 #include <iomanip>
 #include <iostream>
@@ -141,9 +142,9 @@ static SearchStackInfo **ssInfo;
 TwoFoldStack twoFoldPositions[MAX_THREADS];
 
 // Used to break out of the search thread if the stop command is given
-extern bool isStop;
+extern std::atomic<bool> isStop;
 // Additional stop signal to stop helper threads during SMP
-volatile bool stopSignal;
+std::atomic<bool> stopSignal(false);
 // Used to quit all threads
 static volatile int threadsRunning;
 std::mutex threadsRunningMutex;
@@ -1293,6 +1294,10 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         searchStats->nodes++;
         searchStats->qsNodes++;
         score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
+
+        // Stop condition to help break out as quickly as possible
+        if (isStop || stopSignal)
+            return INFTY;
 
         if (score >= beta) {
             searchStats->qsFailHighs++;

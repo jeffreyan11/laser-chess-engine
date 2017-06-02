@@ -17,6 +17,7 @@
 */
 
 #include <algorithm>
+#include <atomic>
 #include <cstring>
 #include <iostream>
 #include <sstream>
@@ -65,8 +66,8 @@ void clearAll(Board &board);
 uint64_t perft(Board &b, int color, int depth, uint64_t &captures);
 
 
-static int BUFFER_TIME = 100;
-volatile bool isStop = true;
+static int BUFFER_TIME = DEFAULT_BUFFER_TIME;
+std::atomic<bool> isStop(true);
 extern TwoFoldStack twoFoldPositions[MAX_THREADS];
 
 
@@ -165,7 +166,7 @@ int main() {
                 if (it != inputVector.end()) {
                     it++;
                     int movesToGo = std::stoi(*it);
-                    value /= std::max(movesToGo, (int)MAX_TIME_FACTOR + 1);
+                    value /= std::max(movesToGo, (int) (MAX_TIME_FACTOR + movesToGo / 2.0));
                 }
                 else value /= MOVE_HORIZON;
 
