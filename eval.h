@@ -359,8 +359,6 @@ const Score OPP_KING_DIST = E(0, 4);
 
 // Doubled pawns
 const Score DOUBLED_PENALTY = E(-10, -14);
-// Doubled pawns are worse the less pawns you have
-const Score DOUBLED_PENALTY_SCALE[9] = {0, 0, 3, 2, 1, 1, 1, 1, 1};
 // Isolated pawns
 const Score ISOLATED_PENALTY = E(-10, -10);
 const Score CENTRAL_ISOLATED_PENALTY = E(-5, -8);
