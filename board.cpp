@@ -1975,20 +1975,27 @@ int Board::evaluate() {
     // If there are pawns on either adjacent file, we remove this pawn
     wIsolated &= ~((wIsolated >> 1) | (wIsolated << 1));
     bIsolated &= ~((bIsolated >> 1) | (bIsolated << 1));
-    whitePawnScore += ISOLATED_PENALTY * count(wIsolated);
-    blackPawnScore += ISOLATED_PENALTY * count(bIsolated);
-    whitePawnScore += CENTRAL_ISOLATED_PENALTY * count(wIsolated & 0x7E);
-    blackPawnScore += CENTRAL_ISOLATED_PENALTY * count(bIsolated & 0x7E);
 
-    // Isolated, doubled pawns
-    // x1 for isolated, doubled pawns
-    // x3 for isolated, tripled pawns
-    for (int i = 0; i < 8; i++) {
-        if ((wPawnCtByFile[i] > 1) && (wIsolated & INDEX_TO_BIT[i])) {
-            whitePawnScore += ISOLATED_DOUBLED_PENALTY * (((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2);
+    uint64_t wIsolatedBB = wIsolated;
+    wIsolatedBB |= wIsolatedBB << 8;
+    wIsolatedBB |= wIsolatedBB << 16;
+    wIsolatedBB |= wIsolatedBB << 32;
+    uint64_t bIsolatedBB = bIsolated;
+    bIsolatedBB |= bIsolatedBB << 8;
+    bIsolatedBB |= bIsolatedBB << 16;
+    bIsolatedBB |= bIsolatedBB << 32;
+
+    // Score isolated pawns
+    for (int f = 0; f < 8; f++) {
+        if (wIsolated & INDEX_TO_BIT[f]) {
+            whitePawnScore += ISOLATED_PENALTY * wPawnCtByFile[f];
+            if (!(FILES[f] & pieces[BLACK][PAWNS]))
+                whitePawnScore += ISOLATED_SEMIOPEN_PENALTY * wPawnCtByFile[f];
         }
-        if ((bPawnCtByFile[i] > 1) && (bIsolated & INDEX_TO_BIT[i])) {
-            blackPawnScore += ISOLATED_DOUBLED_PENALTY * (((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2);
+        if (bIsolated & INDEX_TO_BIT[f]) {
+            blackPawnScore += ISOLATED_PENALTY * bPawnCtByFile[f];
+            if (!(FILES[f] & pieces[WHITE][PAWNS]))
+                blackPawnScore += ISOLATED_SEMIOPEN_PENALTY * bPawnCtByFile[f];
         }
     }
 
@@ -2000,8 +2007,8 @@ int Board::evaluate() {
         bBadStopSqs |= bBadStopSqs << 8;
     }
 
-    uint64_t wBackwards = wBadStopSqs & pieces[WHITE][PAWNS];
-    uint64_t bBackwards = bBadStopSqs & pieces[BLACK][PAWNS];
+    uint64_t wBackwards = wBadStopSqs & pieces[WHITE][PAWNS] & ~wIsolatedBB & ~bPawnAtt;
+    uint64_t bBackwards = bBadStopSqs & pieces[BLACK][PAWNS] & ~bIsolatedBB & ~wPawnAtt;
     whitePawnScore += BACKWARD_PENALTY * count(wBackwards);
     blackPawnScore += BACKWARD_PENALTY * count(bBackwards);
 
@@ -2026,22 +2033,10 @@ int Board::evaluate() {
     }
 
     // Undefended pawns
-    uint64_t wUndefendedPawns = pieces[WHITE][PAWNS] & ~wPawnAtt; // & ~wBackwards;
-    uint64_t bUndefendedPawns = pieces[BLACK][PAWNS] & ~bPawnAtt; // & ~bBackwards;
-    while (wUndefendedPawns) {
-        int pawnSq = bitScanForward(wUndefendedPawns);
-        wUndefendedPawns &= wUndefendedPawns - 1;
-        int f = pawnSq & 7;
-        if (!(wIsolated & INDEX_TO_BIT[f]))
-            whitePawnScore += UNDEFENDED_PAWN_PENALTY;
-    }
-    while (bUndefendedPawns) {
-        int pawnSq = bitScanForward(bUndefendedPawns);
-        bUndefendedPawns &= bUndefendedPawns - 1;
-        int f = pawnSq & 7;
-        if (!(bIsolated & INDEX_TO_BIT[f]))
-            blackPawnScore += UNDEFENDED_PAWN_PENALTY;
-    }
+    uint64_t wUndefendedPawns = pieces[WHITE][PAWNS] & ~wPawnAtt & ~wBackwards & ~wIsolatedBB;
+    uint64_t bUndefendedPawns = pieces[BLACK][PAWNS] & ~bPawnAtt & ~bBackwards & ~bIsolatedBB;
+    whitePawnScore += UNDEFENDED_PAWN_PENALTY * count(wUndefendedPawns);
+    blackPawnScore += UNDEFENDED_PAWN_PENALTY * count(bUndefendedPawns);
 
     // Pawn phalanxes
     uint64_t wPawnPhalanx = (pieces[WHITE][PAWNS] & (pieces[WHITE][PAWNS] << 1) & NOTA)

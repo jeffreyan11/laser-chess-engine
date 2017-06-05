@@ -358,17 +358,15 @@ const Score OWN_KING_DIST = E(0, 2);
 const Score OPP_KING_DIST = E(0, 4);
 
 // Doubled pawns
-const Score DOUBLED_PENALTY = E(-10, -14);
+const Score DOUBLED_PENALTY = E(-14, -17);
 // Isolated pawns
-const Score ISOLATED_PENALTY = E(-10, -10);
-const Score CENTRAL_ISOLATED_PENALTY = E(-5, -8);
-// Isolated, doubled pawns
-const Score ISOLATED_DOUBLED_PENALTY = E(-9, -18);
+const Score ISOLATED_PENALTY = E(-16, -13);
+const Score ISOLATED_SEMIOPEN_PENALTY = E(-6, -3);
 // Backward pawns
-const Score BACKWARD_PENALTY = E(-9, 0);
-const Score BACKWARD_SEMIOPEN_PENALTY = E(-14, -15);
+const Score BACKWARD_PENALTY = E(-18, -6);
+const Score BACKWARD_SEMIOPEN_PENALTY = E(-12, -2);
 // Undefended pawns that are not backwards or isolated
-const Score UNDEFENDED_PAWN_PENALTY = E(-9, -7);
+const Score UNDEFENDED_PAWN_PENALTY = E(-6, -3);
 // Pawn phalanxes
 const Score PAWN_PHALANX_BONUS = E(2, 2);
 const Score PAWN_PHALANX_RANK_BONUS = E(14, 14);
