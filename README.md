@@ -9,10 +9,10 @@ Laser is a command-line engine only. To have a graphical interface, the executab
 
 
 ### Engine Strength
-- **CCRL 40/4:** 41st, 2949 ELO as of January 28, 2017
-- **CCRL 40/40:** 48th, 2914 ELO as of January 28, 2017
-- **CEGT 40/4 (Best Single Versions):** 33rd, 2817 ELO as of January 20, 2017
-- **CEGT 40/20 (Best Single Versions):** 33rd, 2826 ELO as of January 22, 2017
+- **CCRL 40/4:** 23rd, 3116 ELO (4 CPU) as of June 3, 2017
+- **CCRL 40/40:** 36th, 3017 ELO (1 CPU) as of June 3, 2017
+- **CEGT 40/4 (Best Single Versions):** 30th, 2863 ELO as of May 28, 2017
+- **CEGT 40/20 (Best Single Versions):** 25th, 2936 ELO as of May 28, 2017
 
 
 ### Makefile Notes
