@@ -92,7 +92,7 @@ void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
                 toReplace = &(node->slot2);
             // The node must be from a newer search space or be a
             // higher depth if from the same search space.
-            if (score1 < 0 && score2 < 0)
+            if (score1 < -2 && score2 < -2)
                 toReplace = NULL;
 
             if (toReplace != NULL) {
