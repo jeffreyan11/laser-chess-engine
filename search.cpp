@@ -562,7 +562,6 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
         if (i != 0) {
             score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, true, ssi, &line);
             if (alpha < score && score < beta) {
-                line.pvLength = 0;
                 score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, ssi, &line);
             }
         }
@@ -659,14 +658,14 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID, 
 int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, SearchStackInfo *ssi, SearchPV *pvLine) {
     SearchParameters *searchParams = &(searchParamsArray[threadID]);
     SearchStatistics *searchStats = &(searchStatsArray[threadID]);
+    // Reset the PV line
+    pvLine->pvLength = 0;
     // When the standard search is done, enter quiescence search.
     // Static board evaluation is done there.
     if (depth <= 0 || ssi->ply >= MAX_DEPTH) {
         // Update selective depth if necessary
         if (ssi->ply > searchParams->selectiveDepth)
             searchParams->selectiveDepth = ssi->ply;
-        // The PV starts at depth 0
-        pvLine->pvLength = 0;
         searchParams->ply = ssi->ply;
         // Score the position using qsearch
         return quiescence(b, 0, alpha, beta, threadID);
@@ -1043,8 +1042,6 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
                 extension++;
         }
 
-        // Reset the PV line just in case
-        line.pvLength = 0;
 
         (ssi+1)->counterMoveHistory = searchParams->counterMoveHistory[pieceID][endSq];
 
@@ -1054,13 +1051,11 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
             // LMR re-search if the reduced search did not fail low
             if (reduction > 0 && score > alpha) {
-                line.pvLength = 0;
                 score = -PVS(copy, depth-1+extension, -alpha-1, -alpha, threadID, !isCutNode, ssi+1, &line);
             }
 
             // Re-search for a scout window at PV nodes
             if (alpha < score && score < beta) {
-                line.pvLength = 0;
                 score = -PVS(copy, depth-1+extension, -beta, -alpha, threadID, false, ssi+1, &line);
             }
         }
