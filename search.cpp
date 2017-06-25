@@ -23,6 +23,7 @@
 #include <iostream>
 #include <mutex>
 #include <thread>
+#include <vector>
 #include "eval.h"
 #include "evalhash.h"
 #include "hash.h"
@@ -133,8 +134,8 @@ const unsigned int LMP_MOVE_COUNTS[2][8] = {{0,
 //-----------------------------Global variables---------------------------------
 static Hash transpositionTable(DEFAULT_HASH_SIZE);
 static EvalHash evalCache(DEFAULT_HASH_SIZE);
-static SearchParameters searchParamsArray[MAX_THREADS];
-static SearchStatistics searchStatsArray[MAX_THREADS];
+static std::vector<SearchParameters *> searchParamsArray;
+static std::vector<SearchStatistics *> searchStatsArray;
 static EasyMove easyMoveInfo;
 static SearchStackInfo **ssInfo;
 
@@ -187,10 +188,10 @@ void printStatistics();
  */
 void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     for (int i = 0; i < numThreads; i++) {
-        searchParamsArray[i].reset();
-        searchStatsArray[i].reset();
-        searchParamsArray[i].rootMoveNumber = (uint8_t) (b->getMoveNumber());
-        searchParamsArray[i].selectiveDepth = 0;
+        searchParamsArray[i]->reset();
+        searchStatsArray[i]->reset();
+        searchParamsArray[i]->rootMoveNumber = (uint8_t) (b->getMoveNumber());
+        searchParamsArray[i]->selectiveDepth = 0;
     }
 
     int color = b->getPlayerToMove();
@@ -207,16 +208,16 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     *bestMove = legalMoves.get(0);
 
     // Set up timing
-    searchParamsArray[0].timeLimit = (mode == TIME) ? (uint64_t) (MAX_TIME_FACTOR * value)
+    searchParamsArray[0]->timeLimit = (mode == TIME) ? (uint64_t) (MAX_TIME_FACTOR * value)
                                                     : (mode == MOVETIME) ? value
                                                                          : MAX_TIME;
-    searchParamsArray[0].startTime = ChessClock::now();
-    uint64_t timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
+    searchParamsArray[0]->startTime = ChessClock::now();
+    uint64_t timeSoFar = getTimeElapsed(searchParamsArray[0]->startTime);
 
     // Special case if there is only one legal move: use less search time,
     // only to get a rough PV/score
     if (legalMoves.size() == 1 && mode == TIME) {
-        searchParamsArray[0].timeLimit = std::min(searchParamsArray[0].timeLimit / 32, ONE_SECOND);
+        searchParamsArray[0]->timeLimit = std::min(searchParamsArray[0]->timeLimit / 32, ONE_SECOND);
     }
 
 
@@ -234,7 +235,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
             // make a mistake so do not probe TBs in search
             probeLimit = 0;
             tbProbeSuccess = true;
-            searchStatsArray[0].tbhits += prevLMSize;
+            searchStatsArray[0]->tbhits += prevLMSize;
         }
         // If unsuccessful, try WDL tables
         else {
@@ -243,7 +244,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
             tbProbeResult = root_probe_wdl(b, legalMoves, scores, tbScore);
             if (tbProbeResult) {
                 tbProbeSuccess = true;
-                searchStatsArray[0].tbhits += prevLMSize;
+                searchStatsArray[0]->tbhits += prevLMSize;
                 // Only probe to maintain a win
                 if (tbScore <= 0)
                     probeLimit = 0;
@@ -286,7 +287,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
             while (!isStop) {
                 // Reset all search parameters (killers, plies, etc)
                 for (int i = 0; i < numThreads; i++)
-                    searchParamsArray[i].reset();
+                    searchParamsArray[i]->reset();
                 pvLine.pvLength = 0;
 
                 // Get the index of the best move
@@ -335,7 +336,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                         &bestMoveIndex, &bestScore, multiPVNum-1, 0, &pvLine);
                 }
 
-                timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
+                timeSoFar = getTimeElapsed(searchParamsArray[0]->startTime);
                 // Calculate values for printing
                 uint64_t nps = 1000 * getNodes() / timeSoFar;
                 std::string pvStr = retrievePV(&pvLine);
@@ -396,7 +397,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
             // End aspiration loop
 
             // Calculate values for printing
-            timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
+            timeSoFar = getTimeElapsed(searchParamsArray[0]->startTime);
             uint64_t nps = 1000 * getNodes() / timeSoFar;
             std::string pvStr = retrievePV(&pvLine);
 
@@ -507,7 +508,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
     // Aging for the history heuristic table
     for (int i = 0; i < numThreads; i++)
-        searchParamsArray[i].ageHistoryTable(rootDepth);
+        searchParamsArray[i]->ageHistoryTable(rootDepth);
 
     // Reset the hashfull counter
     transpositionTable.keys = 0;
@@ -524,8 +525,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
         int beta, int *bestMoveIndex, int *bestScore, unsigned int startMove,
         int threadID, SearchPV *pvLine) {
-    // SearchParameters *searchParams = &(searchParamsArray[threadID]);
-    SearchStatistics *searchStats = &(searchStatsArray[threadID]);
+    // SearchParameters *searchParams = searchParamsArray[threadID];
+    SearchStatistics *searchStats = searchStatsArray[threadID];
     SearchPV line;
     int color = b->getPlayerToMove();
     int tempMove = -1;
@@ -544,7 +545,7 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
     for (unsigned int i = startMove; i < legalMoves->size(); i++) {
         // Output current move info to the GUI. Only do so if 5 seconds of
         // search have elapsed to avoid clutter
-        uint64_t timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
+        uint64_t timeSoFar = getTimeElapsed(searchParamsArray[0]->startTime);
         uint64_t nps = 1000 * getNodes() / timeSoFar;
         if (threadID == 0 && timeSoFar > 5 * ONE_SECOND)
             cout << "info depth " << depth << " currmove " << moveToString(legalMoves->get(i))
@@ -557,7 +558,7 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
         int startSq = getStartSq(legalMoves->get(i));
         int endSq = getEndSq(legalMoves->get(i));
         int pieceID = b->getPieceOnSquare(color, startSq);
-        ssi->counterMoveHistory = searchParamsArray[threadID].counterMoveHistory[pieceID][endSq];
+        ssi->counterMoveHistory = searchParamsArray[threadID]->counterMoveHistory[pieceID][endSq];
 
         if (i != 0) {
             score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, true, ssi, &line);
@@ -602,8 +603,8 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
 
 // Gets a best move to try first when a hash move is not available.
 int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID, SearchStackInfo *ssi) {
-    // SearchParameters *searchParams = &(searchParamsArray[threadID]);
-    SearchStatistics *searchStats = &(searchStatsArray[threadID]);
+    // SearchParameters *searchParams = searchParamsArray[threadID];
+    SearchStatistics *searchStats = searchStatsArray[threadID];
     SearchPV line;
     int color = b->getPlayerToMove();
     int tempMove = -1;
@@ -623,7 +624,7 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID, 
         int startSq = getStartSq(legalMoves.get(i));
         int endSq = getEndSq(legalMoves.get(i));
         int pieceID = b->getPieceOnSquare(color, startSq);
-        (ssi+1)->counterMoveHistory = searchParamsArray[threadID].counterMoveHistory[pieceID][endSq];
+        (ssi+1)->counterMoveHistory = searchParamsArray[threadID]->counterMoveHistory[pieceID][endSq];
 
         if (i != 0) {
             score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, true, ssi+1, &line);
@@ -656,8 +657,8 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID, 
 
 // The standard implementation of a fail-soft PVS search.
 int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, SearchStackInfo *ssi, SearchPV *pvLine) {
-    SearchParameters *searchParams = &(searchParamsArray[threadID]);
-    SearchStatistics *searchStats = &(searchStatsArray[threadID]);
+    SearchParameters *searchParams = searchParamsArray[threadID];
+    SearchStatistics *searchStats = searchStatsArray[threadID];
     // Reset the PV line
     pvLine->pvLength = 0;
     // When the standard search is done, enter quiescence search.
@@ -892,8 +893,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     for (Move m = moveSorter.nextMove(); m != NULL_MOVE;
               m = moveSorter.nextMove()) {
         // Check for a timeout
-        uint64_t timeSoFar = getTimeElapsed(searchParamsArray[0].startTime);
-        if (timeSoFar > searchParamsArray[0].timeLimit)
+        uint64_t timeSoFar = getTimeElapsed(searchParamsArray[0]->startTime);
+        if (timeSoFar > searchParamsArray[0]->timeLimit)
             isStop = stopSignal = true;
         // Stop condition to help break out as quickly as possible
         if (isStop || stopSignal)
@@ -1200,8 +1201,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
  * The search is done within a fail-soft framework.
  */
 int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
-    SearchParameters *searchParams = &(searchParamsArray[threadID]);
-    SearchStatistics *searchStats = &(searchStatsArray[threadID]);
+    SearchParameters *searchParams = searchParamsArray[threadID];
+    SearchStatistics *searchStats = searchStatsArray[threadID];
     int color = b.getPlayerToMove();
 
     // If in check, we must consider all legal check evasions
@@ -1418,8 +1419,8 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     if (twoFoldPositions[threadID].find(b.getZobristKey()))
         return 0;
 
-    SearchParameters *searchParams = &(searchParamsArray[threadID]);
-    SearchStatistics *searchStats = &(searchStatsArray[threadID]);
+    SearchParameters *searchParams = searchParamsArray[threadID];
+    SearchStatistics *searchStats = searchStatsArray[threadID];
     int color = b.getPlayerToMove();
     MoveList legalMoves;
     b.getPseudoLegalCheckEscapes(legalMoves, color);
@@ -1506,8 +1507,8 @@ int adjustHashScore(int score, int plies) {
 void clearTables() {
     transpositionTable.clear();
     evalCache.clear();
-    for (int i = 0; i < MAX_THREADS; i++)
-        searchParamsArray[i].resetHistoryTable();
+    for (int i = 0; i < numThreads; i++)
+        searchParamsArray[i]->resetHistoryTable();
 }
 
 void setHashSize(uint64_t MB) {
@@ -1521,7 +1522,7 @@ void setEvalCacheSize(uint64_t MB) {
 uint64_t getNodes() {
     uint64_t total = 0;
     for (int i = 0; i < numThreads; i++) {
-        total += searchStatsArray[i].nodes;
+        total += searchStatsArray[i]->nodes;
     }
     return total;
 }
@@ -1529,7 +1530,7 @@ uint64_t getNodes() {
 uint64_t getTBHits() {
     uint64_t total = 0;
     for (int i = 0; i < numThreads; i++) {
-        total += searchStatsArray[i].tbhits;
+        total += searchStatsArray[i]->tbhits;
     }
     return total;
 }
@@ -1540,6 +1541,25 @@ void setMultiPV(unsigned int n) {
 
 void setNumThreads(int n) {
     numThreads = n;
+
+    while ((int) searchParamsArray.size() < n)
+        searchParamsArray.push_back(new SearchParameters());
+    while ((int) searchParamsArray.size() > n) {
+        delete searchParamsArray.back();
+        searchParamsArray.pop_back();
+    }
+
+    while ((int) searchStatsArray.size() < n)
+        searchStatsArray.push_back(new SearchStatistics());
+    while ((int) searchStatsArray.size() > n) {
+        delete searchStatsArray.back();
+        searchStatsArray.pop_back();
+    }
+}
+
+void initPerThreadMemory() {
+    searchParamsArray.push_back(new SearchParameters());
+    searchStatsArray.push_back(new SearchStatistics());
 }
 
 
@@ -1588,8 +1608,8 @@ std::string retrievePV(SearchPV *pvLine) {
 int getSelectiveDepth() {
     int max = 0;
     for (int i = 0; i < numThreads; i++)
-        if (searchParamsArray[i].selectiveDepth > max)
-            max = searchParamsArray[i].selectiveDepth;
+        if (searchParamsArray[i]->selectiveDepth > max)
+            max = searchParamsArray[i]->selectiveDepth;
     return max;
 }
 
@@ -1616,19 +1636,19 @@ void printStatistics() {
     // Aggregate statistics over all threads
     SearchStatistics searchStats;
     for (int i = 0; i < numThreads; i++) {
-        searchStats.nodes +=            searchStatsArray[i].nodes;
-        searchStats.hashProbes +=       searchStatsArray[i].hashProbes;
-        searchStats.hashHits +=         searchStatsArray[i].hashHits;
-        searchStats.hashScoreCuts +=    searchStatsArray[i].hashScoreCuts;
-        searchStats.hashMoveAttempts += searchStatsArray[i].hashMoveAttempts;
-        searchStats.hashMoveCuts +=     searchStatsArray[i].hashMoveCuts;
-        searchStats.failHighs +=        searchStatsArray[i].failHighs;
-        searchStats.firstFailHighs +=   searchStatsArray[i].firstFailHighs;
-        searchStats.qsNodes +=          searchStatsArray[i].qsNodes;
-        searchStats.qsFailHighs +=      searchStatsArray[i].qsFailHighs;
-        searchStats.qsFirstFailHighs += searchStatsArray[i].qsFirstFailHighs;
-        searchStats.evalCacheProbes +=  searchStatsArray[i].evalCacheProbes;
-        searchStats.evalCacheHits +=    searchStatsArray[i].evalCacheHits;
+        searchStats.nodes +=            searchStatsArray[i]->nodes;
+        searchStats.hashProbes +=       searchStatsArray[i]->hashProbes;
+        searchStats.hashHits +=         searchStatsArray[i]->hashHits;
+        searchStats.hashScoreCuts +=    searchStatsArray[i]->hashScoreCuts;
+        searchStats.hashMoveAttempts += searchStatsArray[i]->hashMoveAttempts;
+        searchStats.hashMoveCuts +=     searchStatsArray[i]->hashMoveCuts;
+        searchStats.failHighs +=        searchStatsArray[i]->failHighs;
+        searchStats.firstFailHighs +=   searchStatsArray[i]->firstFailHighs;
+        searchStats.qsNodes +=          searchStatsArray[i]->qsNodes;
+        searchStats.qsFailHighs +=      searchStatsArray[i]->qsFailHighs;
+        searchStats.qsFirstFailHighs += searchStatsArray[i]->qsFirstFailHighs;
+        searchStats.evalCacheProbes +=  searchStatsArray[i]->evalCacheProbes;
+        searchStats.evalCacheHits +=    searchStatsArray[i]->evalCacheHits;
     }
 
     cerr << std::setw(22) << "Hash hit rate: " << getPercentage(searchStats.hashHits, searchStats.hashProbes)

@@ -77,6 +77,7 @@ int main() {
     initKSArray();
     initZobristTable();
     initInBetweenTable();
+    initPerThreadMemory();
     initSSI();
 
     setMultiPV(DEFAULT_MULTI_PV);

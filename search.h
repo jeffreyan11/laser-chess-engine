@@ -81,6 +81,7 @@ void setEvalCacheSize(uint64_t MB);
 uint64_t getNodes();
 void setMultiPV(unsigned int n);
 void setNumThreads(int n);
+void initPerThreadMemory();
 void initSSI();
 
 int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID, SearchStackInfo *ssi);
