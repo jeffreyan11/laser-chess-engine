@@ -43,7 +43,7 @@ int EvalHash::get(Board &b) {
     uint32_t h = (uint32_t) (b.getZobristKey() & 0xFFFFFFFF);
     uint32_t index = h & (size-1);
 
-    if((table[index].zobristKey ^ table[index].score) == (uint32_t) (b.getZobristKey() >> 32))
+    if ((table[index].zobristKey ^ table[index].score) == (uint32_t) (b.getZobristKey() >> 32))
         return table[index].score;
 
     // Because of the offset, 0 will not be a valid returned score. Thus we can use
@@ -63,9 +63,8 @@ void EvalHash::init(uint64_t MB) {
     uint64_t maxSize = bytes / sizeof(EvalHashEntry);
 
     size = 1;
-    while(size <= maxSize) {
+    while (size <= maxSize)
         size <<= 1;
-    }
     size >>= 1;
 
     table = (EvalHashEntry *) calloc(size, sizeof(EvalHashEntry));

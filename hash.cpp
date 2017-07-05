@@ -110,7 +110,7 @@ uint64_t Hash::get(Board &b) {
     uint64_t index = h & (size-1);
     HashNode *node = table + index;
 
-    if((node->slot1.zobristKey ^ node->slot1.data) == b.getZobristKey())
+    if ((node->slot1.zobristKey ^ node->slot1.data) == b.getZobristKey())
         return node->slot1.data;
     else if ((node->slot2.zobristKey ^ node->slot2.data) == b.getZobristKey())
         return node->slot2.data;
@@ -134,9 +134,8 @@ void Hash::init(uint64_t MB) {
     uint64_t maxSize = bytes / sizeof(HashNode);
 
     size = 1;
-    while (size <= maxSize) {
+    while (size <= maxSize)
         size <<= 1;
-    }
     size >>= 1;
 
     table = (HashNode *) calloc(size,  sizeof(HashNode));
