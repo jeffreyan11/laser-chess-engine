@@ -98,30 +98,32 @@ struct EasyMove {
 //-------------------------------Search Constants-------------------------------
 // Futility pruning margins indexed by depth. If static eval is at least this
 // amount below alpha, we skip quiet moves for this position.
-const int FUTILITY_MARGIN[6] = {0,
+const int FUTILITY_MARGIN[7] = {0,
     80,
     170,
-    280,
-    420,
-    600
+    270,
+    380,
+    500,
+    630
 };
 
 // Reverse futility pruning margins indexed by depth. If static eval is at least
 // this amount above beta, we skip searching the position entirely.
-const int REVERSE_FUTILITY_MARGIN[6] = {0,
+const int REVERSE_FUTILITY_MARGIN[7] = {0,
     60,
     130,
-    220,
-    340,
-    500
+    210,
+    300,
+    400,
+    510
 };
 
 // Razor margins indexed by depth. If static eval is far below alpha, use a
 // qsearch to confirm fail low and then return.
 const int RAZOR_MARGIN[4] = {0,
-    200,
-    300,
-    380
+    240,
+    280,
+    300
 };
 
 // Move count pruning
@@ -816,7 +818,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     // probably wouldn't have let us get here (a form of the null-move observation
     // adapted to low depths)
     if (!isPVNode && !isInCheck
-     && (depth <= 5 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
+     && (depth <= 6 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
      && b.getNonPawnMaterial(color))
         return staticEval;
 
@@ -917,7 +919,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // move probably won't raise our prospects much, so don't bother
         // q-searching it.
         if (moveIsPrunable && bestScore > -INFTY
-         && depth <= 5 && staticEval <= alpha - FUTILITY_MARGIN[depth] - (isPVNode ? 80 + 40*depth : 0))
+         && depth <= 6 && staticEval <= alpha - FUTILITY_MARGIN[depth] - (isPVNode ? 80 + 40*depth : 0))
             continue;
 
 
@@ -1001,7 +1003,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
         // Singular extensions
         // If one move appears to be much better than all others, extend the move
-        if (depth >= 6 && reduction == 0 && extension == 0
+        if (depth >= 7 && reduction == 0 && extension == 0
          && m == hashed
          && abs(hashScore) < NEAR_MATE_SCORE
          && ((hashScore >= beta && (nodeType == CUT_NODE || nodeType == PV_NODE)
