@@ -854,7 +854,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
      && searchParams->nullMoveCount < 2
      && b.getNonPawnMaterial(color)) {
         // Reduce more if we are further ahead
-        int reduction = 2 + (32 * depth + std::min((int) ((16*sqrt(staticEval - beta) + (staticEval - beta))/2), 640)) / 128;
+        int reduction = 2 + (32 * depth + std::min(staticEval - beta, 512)) / 128;
 
         uint16_t epCaptureFile = b.getEPCaptureFile();
         b.doNullMove();
