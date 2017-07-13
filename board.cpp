@@ -540,12 +540,12 @@ PieceMoveList Board::getPieceMoveList(int color) {
         pml.add(PieceMoveInfo(KNIGHTS, stSq, nSq));
     }
 
-    uint64_t occ = allPieces[color^1] | pieces[color][PAWNS] | pieces[color][KINGS];
+    uint64_t occ = allPieces[color^1] | pieces[color][PAWNS] | pieces[color][KNIGHTS] | pieces[color][KINGS];
     uint64_t bishops = pieces[color][BISHOPS];
     while (bishops) {
         int stSq = bitScanForward(bishops);
         bishops &= bishops-1;
-        uint64_t bSq = getBishopSquares(stSq, occ);
+        uint64_t bSq = getBishopSquares(stSq, occ | pieces[color][ROOKS]);
 
         pml.add(PieceMoveInfo(BISHOPS, stSq, bSq));
     }
@@ -554,7 +554,7 @@ PieceMoveList Board::getPieceMoveList(int color) {
     while (rooks) {
         int stSq = bitScanForward(rooks);
         rooks &= rooks-1;
-        uint64_t rSq = getRookSquares(stSq, occ);
+        uint64_t rSq = getRookSquares(stSq, occ | pieces[color][BISHOPS]);
 
         pml.add(PieceMoveInfo(ROOKS, stSq, rSq));
     }
@@ -2180,8 +2180,6 @@ void Board::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml,
     int mgMobility = 0, egMobility = 0;
     // Holds the center control score
     int centerControl = 0;
-    // All squares the side to move could possibly move to
-    uint64_t openSqs = ~allPieces[color];
 
     // Calculate center control only for pawns
     uint64_t pawns = pieces[color][PAWNS];
@@ -2194,9 +2192,13 @@ void Board::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml,
     uint64_t oppPawns = pieces[color^1][PAWNS];
     uint64_t oppPawnAttackMap = (color == WHITE) ? getBPawnCaptures(oppPawns)
                                                  : getWPawnCaptures(oppPawns);
-    // We count mobility for captures or moves to open squares not controlled
-    // by an opponent's pawn
-    openSqs = allPieces[color^1] | (openSqs & ~oppPawnAttackMap);
+
+    // We count mobility for all squares other than ones occupied by own rammed
+    // pawns, king, or attacked by opponent's pawns
+    uint64_t rammedPawns = (color == WHITE) ? (pieces[BLACK][PAWNS] >> 8)
+                                            : (pieces[WHITE][PAWNS] << 8);
+    rammedPawns &= pieces[color][PAWNS];
+    uint64_t openSqs = ~(rammedPawns | pieces[color][KINGS] | oppPawnAttackMap);
     // Or for a queen, squares not controlled by an opponent's pawn, minor, or rook
     uint64_t oppAttackMap = 0;
     for (unsigned int i = 0; i < oppPml.size(); i++) {
@@ -2249,8 +2251,8 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     int kingAttackPts = 0;
     int kingAttackPieces = 0;
 
-    uint64_t kingNeighborhood = (attackingColor == WHITE) ? (kingSqs | (kingSqs >> 8))
-                                                          : (kingSqs | (kingSqs << 8));
+    uint64_t kingNeighborhood = (attackingColor == WHITE) ? ((pieces[BLACK][KINGS] & RANKS[7]) ? (kingSqs | (kingSqs >> 8)) : kingSqs)
+                                                          : ((pieces[WHITE][KINGS] & RANKS[0]) ? (kingSqs | (kingSqs << 8)) : kingSqs);
     uint64_t defendingPawns = pieces[attackingColor^1][PAWNS];
     uint64_t defendMap = (attackingColor == WHITE) ? getBPawnCaptures(defendingPawns)
                                                    : getWPawnCaptures(defendingPawns);
@@ -2278,8 +2280,7 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
         uint64_t legal = pmi.legal;
 
         // Get king safety score
-        int kingSqCount = count(legal & kingNeighborhood);
-        if (kingSqCount) {
+        if (legal & kingNeighborhood) {
             kingAttackPieces++;
             kingAttackPts += KING_THREAT_MULTIPLIER[pieceIndex];
             kingSafetyPts += KING_THREAT_SQUARE[pieceIndex] * count(legal & kingSqs);
