@@ -38,10 +38,7 @@ using std::cerr;
 using std::endl;
 
 
-/**
- * @brief Records a bunch of useful statistics from the search,
- * which are printed to std error at the end of the search.
- */
+// Records useful statistics which are printed to std::err at the end of each search
 struct SearchStatistics {
     uint64_t nodes;
     uint64_t tbhits;
@@ -68,9 +65,7 @@ struct SearchStatistics {
     }
 };
 
-/**
- * @brief Records the PV found by the search.
- */
+// Records the PV found by the search.
 struct SearchPV {
     int pvLength;
     Move pv[MAX_DEPTH+1];
@@ -80,9 +75,7 @@ struct SearchPV {
     }
 };
 
-/**
- * @brief Stores information about candidate easymoves.
- */
+// Stores information about candidate easymoves.
 struct EasyMove {
     Move prevBest;
     Move streakBest;
@@ -148,7 +141,7 @@ TwoFoldStack twoFoldPositions[MAX_THREADS];
 extern std::atomic<bool> isStop;
 // Additional stop signal to stop helper threads during SMP
 std::atomic<bool> stopSignal(false);
-// Used to quit all threads
+// Used to ensure all threads have terminated
 static volatile int threadsRunning;
 std::mutex threadsRunningMutex;
 
@@ -273,6 +266,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                           multiPVNum++) {
             int aspAlpha = -MATE_SCORE;
             int aspBeta = MATE_SCORE;
+            // Initial aspiration window based on depth and score
             int deltaAlpha = 20 - std::min(rootDepth/3, 10) + abs(bestScore) / 20;
             int deltaBeta = deltaAlpha;
 
@@ -656,7 +650,6 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID, 
 //------------------------------------------------------------------------------
 //------------------------------Search functions--------------------------------
 //------------------------------------------------------------------------------
-
 // The standard implementation of a fail-soft PVS search.
 int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, SearchStackInfo *ssi, SearchPV *pvLine) {
     SearchParameters *searchParams = searchParamsArray[threadID];
@@ -664,13 +657,12 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     // Reset the PV line
     pvLine->pvLength = 0;
     // When the standard search is done, enter quiescence search.
-    // Static board evaluation is done there.
     if (depth <= 0 || ssi->ply >= MAX_DEPTH) {
         // Update selective depth if necessary
         if (ssi->ply > searchParams->selectiveDepth)
             searchParams->selectiveDepth = ssi->ply;
         searchParams->ply = ssi->ply;
-        // Score the position using qsearch
+
         return quiescence(b, 0, alpha, beta, threadID);
     }
 
@@ -699,7 +691,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
     int prevAlpha = alpha;
     int color = b.getPlayerToMove();
-    // For PVS, the node is a PV node if beta - alpha != 1 (i.e. not a null window)
+    // For PVS, the node is a PV node if beta - alpha != 1 (not a null window)
     // We do not want to do most pruning techniques on PV nodes
     bool isPVNode = (beta - alpha != 1);
 
@@ -779,15 +771,14 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
     // Keeps track of the PV to propagate up to root
     SearchPV line;
-    // Similarly, we do not want to prune if we are in check
+    // We do not want to do pruning if we are in check
     bool isInCheck = b.isInCheck(color);
-    // A static evaluation, used to activate null move pruning and futility
-    // pruning
+    // A static evaluation, used to make numerous pruning decisions
     int staticEval = INFTY;
     ssi->staticEval = INFTY;
     if (!isInCheck) {
         searchStats->evalCacheProbes++;
-        // Probe the eval cache for a saved calculation
+        // Probe the eval cache for a saved evaluation
         int ehe = evalCache.get(b);
         if (ehe != 0) {
             searchStats->evalCacheHits++;
@@ -809,6 +800,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     }
 
 
+    // Is static eval improving across plies? Used to make pruning decisions. Idea from Stockfish
     bool evalImproving = (ssi->ply >= 3 && (ssi->staticEval >= (ssi-2)->staticEval || (ssi-2)->staticEval == INFTY))
                       || (ssi->ply < 3);
 
@@ -816,7 +808,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     // Reverse futility pruning
     // If we are already doing really well and it's our turn, our opponent
     // probably wouldn't have let us get here (a form of the null-move observation
-    // adapted to low depths)
+    // adapted to low depths, also called static null move pruning)
     if (!isPVNode && !isInCheck
      && (depth <= 6 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
      && b.getNonPawnMaterial(color))
@@ -902,6 +894,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         if (isStop || stopSignal)
             return INFTY;
 
+        // Conditions for whether to do futility and move count pruning
         bool moveIsPrunable = !isInCheck
                            && !isCapture(m)
                            && !isPromotion(m)
@@ -909,6 +902,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
                            && abs(alpha) < NEAR_MATE_SCORE
                            && !b.isCheckMove(color, m);
 
+        // For accessing history tables
         int startSq = getStartSq(m);
         int endSq = getEndSq(m);
         int pieceID = b.getPieceOnSquare(color, startSq);
@@ -967,6 +961,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
          && !isCapture(m) && !isPromotion(m)
          && !copy.isInCheck(color^1)) {
             // Increase reduction with higher depth and later moves
+            // Idea for log-based formula from Stockfish
             reduction = (int) (0.5 + log(depth) * log(movesSearched) / 2.1);
             // Reduce less for killers
             if (m == searchParams->killers[ssi->ply][0]
@@ -1002,7 +997,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         twoFoldPositions[threadID].push(b.getZobristKey());
 
         // Singular extensions
-        // If one move appears to be much better than all others, extend the move
+        // If the TT move appears to be much better than all others, extend the move
         if (depth >= 7 && reduction == 0 && extension == 0
          && m == hashed
          && abs(hashScore) < NEAR_MATE_SCORE
@@ -1024,7 +1019,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
                 (ssi+1)->counterMoveHistory = searchParams->counterMoveHistory
                     [b.getPieceOnSquare(color, getStartSq(seMove))][getEndSq(seMove)];
 
-                // The window is lowered more for PV nodes and for higher depths
+                // The window is lowered more for higher depths
                 int SEWindow = isPVNode ? hashScore - 10 - depth
                                         : alpha - 10 - depth;
                 // Do a reduced search for fail-low confirmation
@@ -1171,10 +1166,10 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         }
     }
 
-    // Record all-nodes. No best move can be recorded.
+    // Record all-nodes
     else if (alpha <= prevAlpha) {
-        // If we would have done IID, save the hash/IID move so we don't have to
-        // waste computation for it next time
+        // If we would have done IID, save the hash/IID move in case the node
+        // becomes a PV or cut node next time
         if (!isPVNode && moveSorter.doIID()) {
             uint64_t hashData = packHashData(depth,
                 (hashed == NULL_MOVE) ? moveSorter.legalMoves.get(0) : hashed,
@@ -1200,7 +1195,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
  * This diminishes the horizon effect and greatly improves playing strength.
  * Delta pruning and static-exchange evaluation are used to reduce the time
  * spent here.
- * The search is done within a fail-soft framework.
+ * The search is a fail-soft PVS.
  */
 int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     SearchParameters *searchParams = searchParamsArray[threadID];
@@ -1213,6 +1208,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
 
     if (b.isInsufficientMaterial())
         return 0;
+    // Check for repetition draws while we are still considering checks
     if (plies <= 2 && twoFoldPositions[threadID].find(b.getZobristKey()))
         return 0;
 

@@ -1481,7 +1481,7 @@ int Board::evaluate() {
 
 
     //----------------------------Positional terms------------------------------
-    // Piece square tables
+    // Pawn piece square tables
     Score psqtScores[2] = {EVAL_ZERO, EVAL_ZERO};
     for (int color = WHITE; color <= BLACK; color++) {
         uint64_t bitboard = pieces[color][PAWNS];
@@ -1502,8 +1502,6 @@ int Board::evaluate() {
     }
 
     //--------------------------------Mobility----------------------------------
-    // Scores based on mobility and basic king safety (which is turned off in
-    // the endgame)
     PieceMoveList pmlWhite = getPieceMoveList(WHITE);
     PieceMoveList pmlBlack = getPieceMoveList(BLACK);
     int whiteMobilityMg, whiteMobilityEg;
@@ -1527,6 +1525,7 @@ int Board::evaluate() {
                      bitScanForward(pieces[BLACK][KINGS])};
     uint64_t kingNeighborhood[2] = {getKingSquares(kingSq[WHITE]), getKingSquares(kingSq[BLACK])};
 
+    // Calculate king piece square table scores
     psqtScores[WHITE] += PSQT[WHITE][KINGS][kingSq[WHITE]];
     psqtScores[BLACK] += PSQT[BLACK][KINGS][kingSq[BLACK]];
 
@@ -1590,8 +1589,7 @@ int Board::evaluate() {
     }
 
 
-    // Current pawn attacks
-    // Used for outposts and backwards pawns
+    // Current pawn attacks: used for outposts and backwards pawns
     uint64_t wPawnAtt = getWPawnCaptures(pieces[WHITE][PAWNS]);
     uint64_t bPawnAtt = getBPawnCaptures(pieces[BLACK][PAWNS]);
     // Get all squares attackable by pawns in the future
@@ -1666,6 +1664,7 @@ int Board::evaluate() {
                 pieceEvalScore[WHITE] += KNIGHT_OUTPOST_BONUS1;
             else
                 pieceEvalScore[WHITE] += KNIGHT_OUTPOST_BONUS2;
+            // Defended by pawn
             if (bit & wPawnAtt)
                 pieceEvalScore[WHITE] += KNIGHT_OUTPOST_PAWN_DEF_BONUS;
         }
@@ -1699,7 +1698,6 @@ int Board::evaluate() {
 
         psqtScores[WHITE] += PSQT[WHITE][BISHOPS][bishopSq];
 
-        // Outposts
         if (bit & ~bPawnStopAtt & (W_OUTPOST1 | W_OUTPOST2)) {
             if (bit & W_OUTPOST1)
                 pieceEvalScore[WHITE] += BISHOP_OUTPOST_BONUS1;
@@ -1739,7 +1737,7 @@ int Board::evaluate() {
 
         psqtScores[WHITE] += PSQT[WHITE][ROOKS][rookSq];
 
-        // Bonus for having rooks on open files
+        // Bonus for having rooks on open or semiopen files
         if (!(FILES[file] & (pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS])))
             pieceEvalScore[WHITE] += ROOK_OPEN_FILE_BONUS;
         else if (!(FILES[file] & pieces[WHITE][PAWNS]))
@@ -1835,6 +1833,7 @@ int Board::evaluate() {
     }
 
     // Loose pawns
+    // Defined as pawns in opponent's half of the board with no defenders
     const uint64_t WHITE_HALF = RANKS[0] | RANKS[1] | RANKS[2] | RANKS[3];
     const uint64_t BLACK_HALF = RANKS[4] | RANKS[5] | RANKS[6] | RANKS[7];
     if (uint64_t lpawns = pieces[WHITE][PAWNS] & BLACK_HALF & ~(wAttackMap | wPawnAtt)) {
@@ -2195,11 +2194,13 @@ void Board::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml,
 
     // We count mobility for all squares other than ones occupied by own rammed
     // pawns, king, or attacked by opponent's pawns
+    // Idea from Stockfish
     uint64_t rammedPawns = (color == WHITE) ? (pieces[BLACK][PAWNS] >> 8)
                                             : (pieces[WHITE][PAWNS] << 8);
     rammedPawns &= pieces[color][PAWNS];
     uint64_t openSqs = ~(rammedPawns | pieces[color][KINGS] | oppPawnAttackMap);
-    // Or for a queen, squares not controlled by an opponent's pawn, minor, or rook
+
+    // For a queen, we also exclude squares not controlled by an opponent's minor or rook
     uint64_t oppAttackMap = 0;
     for (unsigned int i = 0; i < oppPml.size(); i++) {
         PieceMoveInfo pmi = oppPml.get(i);
@@ -2210,10 +2211,9 @@ void Board::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml,
     // Iterate over piece move information to extract all mobility-related scores
     for (unsigned int i = 0; i < pml.size(); i++) {
         PieceMoveInfo pmi = pml.get(i);
-
         int pieceIndex = pmi.pieceID - 1;
-        // Get all potential legal moves
         uint64_t legal = pmi.legal;
+
         // Get mobility score
         if (pieceIndex == QUEENS - 1) {
             mgMobility += mobilityScore[MG][pieceIndex][count(legal & openSqs & ~oppAttackMap)];
@@ -2240,7 +2240,8 @@ void Board::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml,
 }
 
 // King safety, based on the number of opponent pieces near the king
-// The lookup table approach is inspired by Ed Schroder's Rebel chess engine
+// The lookup table approach is inspired by Ed Schroder's Rebel chess engine,
+// and by Stockfish
 template <int attackingColor>
 int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     uint64_t kingSqs, int pawnScore) {
@@ -2333,6 +2334,7 @@ int Board::checkEndgameCases() {
         return scoreSimpleKnownWin(BLACK);
     }
 
+    // TODO detect when KPvK is drawn
     if (numPieces == 1) {
         if (pieces[WHITE][PAWNS]) {
             int wPawn = bitScanForward(pieces[WHITE][PAWNS]);
