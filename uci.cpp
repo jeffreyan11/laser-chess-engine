@@ -159,6 +159,7 @@ int main() {
                 it++;
                 value = std::stoi(*it);
                 value -= BUFFER_TIME;
+                value = std::max(0, value);
 
                 int maxValue = value / MAX_TIME_FACTOR;
 
