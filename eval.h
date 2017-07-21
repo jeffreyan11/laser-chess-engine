@@ -58,8 +58,8 @@ const int EG = 1;
 
 // Material constants
 const int PIECE_VALUES[2][5] = {
-  {100, 392, 433, 614, 1317},
-  {144, 392, 449, 703, 1305}
+  {100, 385, 430, 631, 1321},
+  {142, 391, 443, 693, 1285}
 };
 const int KNOWN_WIN = PIECE_VALUES[EG][PAWNS] * 75;
 const int TB_WIN = PIECE_VALUES[EG][PAWNS] * 125;
@@ -209,20 +209,20 @@ const int OWN_OPP_IMBALANCE[2][5][5] = {
     { 0},                   // Own pawns
     { 3,  0},               // Own knights
     { 1, -5,  0},           // Own bishops
-    {-1, -4, -6,  0},       // Own rooks
-    {-3,  4, -2,-32,  0}    // Own queens
+    {-1, -4,-10,  0},       // Own rooks
+    { 1, -4, -2,-16,  0}    // Own queens
 },
 {
     { 0},                   // Own pawns
     { 6,  0},               // Own knights
     { 1,  0,  0},           // Own bishops
-    { 8, -3, -9,  0},       // Own rooks
-    {21,  7, 24, 25,  0}    // Own queens
+    { 3, -3,-12,  0},       // Own rooks
+    {18, -3, 10, 15,  0}    // Own queens
 }
 };
 
 // Bonus for knight in closed positions
-const int KNIGHT_CLOSED_BONUS[2] = {4, 1};
+const int KNIGHT_CLOSED_BONUS[2] = {4, 2};
 
 //------------------------Positional eval constants-----------------------------
 // Mobility tables, with zero padding for pieces that cannot move up to 27 squares
