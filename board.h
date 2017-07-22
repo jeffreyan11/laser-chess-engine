@@ -51,7 +51,6 @@ struct PieceMoveInfo {
 typedef SearchArrayList<PieceMoveInfo> PieceMoveList;
 
 void initPSQT();
-void initKSArray();
 void initZobristTable();
 
 void setMaterialScale(int s);

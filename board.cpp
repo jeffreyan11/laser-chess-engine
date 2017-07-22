@@ -52,15 +52,6 @@ void initPSQT() {
     #undef E
 }
 
-static int KS_TO_SCORE[200];
-
-void initKSArray() {
-    for (int i = 0; i < 200; i++) {
-        double x = (double) i;
-        KS_TO_SCORE[i] = (int) std::min(x * x / KS_ARRAY_FACTOR, 600.0);
-    }
-}
-
 // Zobrist hashing table and the start position key, both initialized at startup
 uint64_t zobristTable[794];
 static uint64_t startPosZobristKey = 0;
@@ -2292,7 +2283,7 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
     }
 
     // Give a decent bonus for each additional piece participating
-    kingSafetyPts += std::min(80, kingAttackPieces * kingAttackPts);
+    kingSafetyPts += kingAttackPieces * kingAttackPts;
 
     // Adjust based on pawn shield and pawn storms
     kingSafetyPts -= KS_PAWN_FACTOR * pawnScore / 32;
@@ -2315,7 +2306,8 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
             kingSafetyPts += SAFE_CHECK_BONUS[pieceIndex];
     }
 
-    return KS_TO_SCORE[std::max(0, std::min(199, kingSafetyPts))];
+    kingSafetyPts = std::max(0, std::min(199, kingSafetyPts));
+    return std::min(kingSafetyPts * kingSafetyPts / KS_ARRAY_FACTOR, 600);
 }
 
 // Check special endgame cases: where help mate is possible (detecting this

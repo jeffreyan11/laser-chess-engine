@@ -306,12 +306,12 @@ const int PAWN_STORM_VALUE[3][4][8] = {
 };
 
 // Scale factor for pieces attacking opposing king
-const double KS_ARRAY_FACTOR = 32.0;
-const int KING_THREAT_MULTIPLIER[4] = {2, 1, 2, 4};
-const int KING_THREAT_SQUARE[4] = {5, 7, 3, 6};
-const int KING_DEFENSELESS_SQUARE = 11;
-const int KS_PAWN_FACTOR = 5;
-const int SAFE_CHECK_BONUS[4] = {43, 12, 24, 26};
+const int KS_ARRAY_FACTOR = 128;
+const int KING_THREAT_MULTIPLIER[4] = {4, 2, 4, 8};
+const int KING_THREAT_SQUARE[4] = {10, 14, 6, 12};
+const int KING_DEFENSELESS_SQUARE = 22;
+const int KS_PAWN_FACTOR = 10;
+const int SAFE_CHECK_BONUS[4] = {86, 24, 48, 52};
 
 // Minor pieces
 // A penalty for each own pawn that is on a square of the same color as your bishop
