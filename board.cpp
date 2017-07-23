@@ -2306,7 +2306,7 @@ int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
             kingSafetyPts += SAFE_CHECK_BONUS[pieceIndex];
     }
 
-    kingSafetyPts = std::max(0, std::min(199, kingSafetyPts));
+    kingSafetyPts = std::max(0, kingSafetyPts);
     return std::min(kingSafetyPts * kingSafetyPts / KS_ARRAY_FACTOR, 600);
 }
 
