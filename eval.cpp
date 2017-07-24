@@ -443,8 +443,9 @@ int evaluate(Board &b) {
         wPawnFrontSpan |= wPawnFrontSpan << 8;
         bPawnFrontSpan |= bPawnFrontSpan >> 8;
     }
-    uint64_t wPawnStopAtt = ((wPawnFrontSpan >> 1) & NOTH) | ((wPawnFrontSpan << 1) & NOTA);
-    uint64_t bPawnStopAtt = ((bPawnFrontSpan >> 1) & NOTH) | ((bPawnFrontSpan << 1) & NOTA);
+    uint64_t pawnStopAtt[2];
+    pawnStopAtt[WHITE] = ((wPawnFrontSpan >> 1) & NOTH) | ((wPawnFrontSpan << 1) & NOTA);
+    pawnStopAtt[BLACK] = ((bPawnFrontSpan >> 1) & NOTH) | ((bPawnFrontSpan << 1) & NOTA);
 
 
     Score pieceEvalScore[2] = {EVAL_ZERO, EVAL_ZERO};
@@ -478,133 +479,80 @@ int evaluate(Board &b) {
 
     // Outposts
     // Region 1: Ranks 4/5/6 on files D/E, ranks 5/6 on files C/F, rank 6 on files B/G
-    const uint64_t W_OUTPOST1 = ((FILES[3] | FILES[4]) & (RANKS[3] | RANKS[4] | RANKS[5]))
-                              | ((FILES[2] | FILES[5]) & (RANKS[4] | RANKS[5]))
-                              | ((FILES[1] | FILES[6]) &  RANKS[5]);
+    const uint64_t OUTPOST1[2] = {((FILES[3] | FILES[4]) & (RANKS[3] | RANKS[4] | RANKS[5]))
+                                | ((FILES[2] | FILES[5]) & (RANKS[4] | RANKS[5]))
+                                | ((FILES[1] | FILES[6]) &  RANKS[5]),
+                                  ((FILES[3] | FILES[4]) & (RANKS[4] | RANKS[3] | RANKS[2]))
+                                | ((FILES[2] | FILES[5]) & (RANKS[3] | RANKS[2]))
+                                | ((FILES[1] | FILES[6]) &  RANKS[2])};
     // Region 2: Rank 4 on files C/F, rank 5 on files B/G, ranks 5/6 on files A/H
-    const uint64_t W_OUTPOST2 = ((FILES[2] | FILES[5]) &  RANKS[3])
-                              | ((FILES[1] | FILES[6]) &  RANKS[4])
-                              | ((FILES[0] | FILES[7]) & (RANKS[4] | RANKS[5]));
-    const uint64_t B_OUTPOST1 = ((FILES[3] | FILES[4]) & (RANKS[4] | RANKS[3] | RANKS[2]))
-                              | ((FILES[2] | FILES[5]) & (RANKS[3] | RANKS[2]))
-                              | ((FILES[1] | FILES[6]) &  RANKS[2]);
-    const uint64_t B_OUTPOST2 = ((FILES[2] | FILES[5]) &  RANKS[4])
-                              | ((FILES[1] | FILES[6]) &  RANKS[3])
-                              | ((FILES[0] | FILES[7]) & (RANKS[3] | RANKS[2]));
+    const uint64_t OUTPOST2[2] = {((FILES[2] | FILES[5]) &  RANKS[3])
+                                | ((FILES[1] | FILES[6]) &  RANKS[4])
+                                | ((FILES[0] | FILES[7]) & (RANKS[4] | RANKS[5])),
+                                  ((FILES[2] | FILES[5]) &  RANKS[4])
+                                | ((FILES[1] | FILES[6]) &  RANKS[3])
+                                | ((FILES[0] | FILES[7]) & (RANKS[3] | RANKS[2]))};
 
-    //-----------------------------------Knights--------------------------------
-    uint64_t wKnightsTemp = pieces[WHITE][KNIGHTS];
-    while (wKnightsTemp) {
-        int knightSq = bitScanForward(wKnightsTemp);
-        wKnightsTemp &= wKnightsTemp - 1;
-        uint64_t bit = INDEX_TO_BIT[knightSq];
+    for (int color = WHITE; color <= BLACK; color++) {
+        //-----------------------------------Knights--------------------------------
+        uint64_t knightsTemp = pieces[color][KNIGHTS];
+        while (knightsTemp) {
+            int knightSq = bitScanForward(knightsTemp);
+            knightsTemp &= knightsTemp - 1;
+            uint64_t bit = INDEX_TO_BIT[knightSq];
 
-        psqtScores[WHITE] += PSQT[WHITE][KNIGHTS][knightSq];
+            psqtScores[color] += PSQT[color][KNIGHTS][knightSq];
 
-        // Outposts
-        if (bit & ~bPawnStopAtt & (W_OUTPOST1 | W_OUTPOST2)) {
-            if (bit & W_OUTPOST1)
-                pieceEvalScore[WHITE] += KNIGHT_OUTPOST_BONUS1;
-            else
-                pieceEvalScore[WHITE] += KNIGHT_OUTPOST_BONUS2;
-            // Defended by pawn
-            if (bit & ei.attackMaps[WHITE][PAWNS])
-                pieceEvalScore[WHITE] += KNIGHT_OUTPOST_PAWN_DEF_BONUS;
+            // Outposts
+            if (bit & ~pawnStopAtt[color^1] & (OUTPOST1[color] | OUTPOST2[color])) {
+                if (bit & OUTPOST1[color])
+                    pieceEvalScore[color] += KNIGHT_OUTPOST_BONUS1;
+                else
+                    pieceEvalScore[color] += KNIGHT_OUTPOST_BONUS2;
+                // Defended by pawn
+                if (bit & ei.attackMaps[color][PAWNS])
+                    pieceEvalScore[color] += KNIGHT_OUTPOST_PAWN_DEF_BONUS;
+            }
         }
-    }
 
-    uint64_t bKnightsTemp = pieces[BLACK][KNIGHTS];
-    while (bKnightsTemp) {
-        int knightSq = bitScanForward(bKnightsTemp);
-        bKnightsTemp &= bKnightsTemp - 1;
-        uint64_t bit = INDEX_TO_BIT[knightSq];
+        //-----------------------------------Bishops--------------------------------
+        uint64_t bishopsTemp = pieces[color][BISHOPS];
+        while (bishopsTemp) {
+            int bishopSq = bitScanForward(bishopsTemp);
+            bishopsTemp &= bishopsTemp - 1;
+            uint64_t bit = INDEX_TO_BIT[bishopSq];
 
-        psqtScores[BLACK] += PSQT[BLACK][KNIGHTS][knightSq];
+            psqtScores[color] += PSQT[color][BISHOPS][bishopSq];
 
-        if (bit & ~wPawnStopAtt & (B_OUTPOST1 | B_OUTPOST2)) {
-            if (bit & B_OUTPOST1)
-                pieceEvalScore[BLACK] += KNIGHT_OUTPOST_BONUS1;
-            else
-                pieceEvalScore[BLACK] += KNIGHT_OUTPOST_BONUS2;
-            if (bit & ei.attackMaps[BLACK][PAWNS])
-                pieceEvalScore[BLACK] += KNIGHT_OUTPOST_PAWN_DEF_BONUS;
+            if (bit & ~pawnStopAtt[color^1] & (OUTPOST1[color] | OUTPOST2[color])) {
+                if (bit & OUTPOST1[color])
+                    pieceEvalScore[color] += BISHOP_OUTPOST_BONUS1;
+                else
+                    pieceEvalScore[color] += BISHOP_OUTPOST_BONUS2;
+                if (bit & ei.attackMaps[color][PAWNS])
+                    pieceEvalScore[color] += BISHOP_OUTPOST_PAWN_DEF_BONUS;
+            }
         }
-    }
-    
 
-    //-----------------------------------Bishops--------------------------------
-    uint64_t wBishopsTemp = pieces[WHITE][BISHOPS];
-    while (wBishopsTemp) {
-        int bishopSq = bitScanForward(wBishopsTemp);
-        wBishopsTemp &= wBishopsTemp - 1;
-        uint64_t bit = INDEX_TO_BIT[bishopSq];
+        //-------------------------------Rooks--------------------------------------
+        uint64_t rooksTemp = pieces[color][ROOKS];
+        while (rooksTemp) {
+            int rookSq = bitScanForward(rooksTemp);
+            rooksTemp &= rooksTemp - 1;
+            int file = rookSq & 7;
+            int rank = rookSq >> 3;
 
-        psqtScores[WHITE] += PSQT[WHITE][BISHOPS][bishopSq];
+            psqtScores[color] += PSQT[color][ROOKS][rookSq];
 
-        if (bit & ~bPawnStopAtt & (W_OUTPOST1 | W_OUTPOST2)) {
-            if (bit & W_OUTPOST1)
-                pieceEvalScore[WHITE] += BISHOP_OUTPOST_BONUS1;
-            else
-                pieceEvalScore[WHITE] += BISHOP_OUTPOST_BONUS2;
-            if (bit & ei.attackMaps[WHITE][PAWNS])
-                pieceEvalScore[WHITE] += BISHOP_OUTPOST_PAWN_DEF_BONUS;
+            // Bonus for having rooks on open or semiopen files
+            if (!(FILES[file] & (pieces[color][PAWNS] | pieces[color^1][PAWNS])))
+                pieceEvalScore[color] += ROOK_OPEN_FILE_BONUS;
+            else if (!(FILES[file] & pieces[color][PAWNS]))
+                pieceEvalScore[color] += ROOK_SEMIOPEN_FILE_BONUS;
+            // Bonus for having rooks on same ranks as enemy pawns
+            if (relativeRank(color, rank) >= 4)
+                pieceEvalScore[color] += ROOK_PAWN_RANK_THREAT * count(RANKS[rank] & pieces[color^1][PAWNS]);
         }
-    }
-
-    uint64_t bBishopsTemp = pieces[BLACK][BISHOPS];
-    while (bBishopsTemp) {
-        int bishopSq = bitScanForward(bBishopsTemp);
-        bBishopsTemp &= bBishopsTemp - 1;
-        uint64_t bit = INDEX_TO_BIT[bishopSq];
-
-        psqtScores[BLACK] += PSQT[BLACK][BISHOPS][bishopSq];
-
-        if (bit & ~wPawnStopAtt & (B_OUTPOST1 | B_OUTPOST2)) {
-            if (bit & B_OUTPOST1)
-                pieceEvalScore[BLACK] += BISHOP_OUTPOST_BONUS1;
-            else
-                pieceEvalScore[BLACK] += BISHOP_OUTPOST_BONUS2;
-            if (bit & ei.attackMaps[BLACK][PAWNS])
-                pieceEvalScore[BLACK] += BISHOP_OUTPOST_PAWN_DEF_BONUS;
-        }
-    }
-
-
-    //-------------------------------Rooks--------------------------------------
-    uint64_t wRooksTemp = pieces[WHITE][ROOKS];
-    while (wRooksTemp) {
-        int rookSq = bitScanForward(wRooksTemp);
-        wRooksTemp &= wRooksTemp - 1;
-        int file = rookSq & 7;
-        int rank = rookSq >> 3;
-
-        psqtScores[WHITE] += PSQT[WHITE][ROOKS][rookSq];
-
-        // Bonus for having rooks on open or semiopen files
-        if (!(FILES[file] & (pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS])))
-            pieceEvalScore[WHITE] += ROOK_OPEN_FILE_BONUS;
-        else if (!(FILES[file] & pieces[WHITE][PAWNS]))
-            pieceEvalScore[WHITE] += ROOK_SEMIOPEN_FILE_BONUS;
-        // Bonus for having rooks on same ranks as enemy pawns
-        if (rank >= 4)
-            pieceEvalScore[WHITE] += ROOK_PAWN_RANK_THREAT * count(RANKS[rank] & pieces[BLACK][PAWNS]);
-    }
-
-    uint64_t bRooksTemp = pieces[BLACK][ROOKS];
-    while (bRooksTemp) {
-        int rookSq = bitScanForward(bRooksTemp);
-        bRooksTemp &= bRooksTemp - 1;
-        int file = rookSq & 7;
-        int rank = rookSq >> 3;
-
-        psqtScores[BLACK] += PSQT[BLACK][ROOKS][rookSq];
-
-        if (!(FILES[file] & (pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS])))
-            pieceEvalScore[BLACK] += ROOK_OPEN_FILE_BONUS;
-        else if (!(FILES[file] & pieces[BLACK][PAWNS]))
-            pieceEvalScore[BLACK] += ROOK_SEMIOPEN_FILE_BONUS;
-        if (rank <= 3)
-            pieceEvalScore[BLACK] += ROOK_PAWN_RANK_THREAT * count(RANKS[rank] & pieces[WHITE][PAWNS]);
     }
 
 
@@ -722,29 +670,31 @@ int evaluate(Board &b) {
         whitePawnScore += PASSER_BONUS[rank];
         whitePawnScore += PASSER_FILE_BONUS[file];
 
-        uint64_t pathToQueen = INDEX_TO_BIT[passerSq];
-        pathToQueen |= pathToQueen << 8;
-        pathToQueen |= pathToQueen << 16;
-        pathToQueen |= pathToQueen << 32;
-
         // Non-linear bonus based on rank
         int rFactor = (rank-1) * (rank-2) / 2;
-        // Path to queen is completely undefended by opponent
-        if (!(pathToQueen & wBlock))
-            whitePawnScore += rFactor * FREE_PROMOTION_BONUS;
-        // Stop square is undefended by opponent
-        else if (!((INDEX_TO_BIT[passerSq] << 8) & wBlock))
-            whitePawnScore += rFactor * FREE_STOP_BONUS;
-        // Path to queen is completely defended by own pieces
-        if ((pathToQueen & wDefend) == pathToQueen)
-            whitePawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
-        // Stop square is defended by own pieces
-        else if ((INDEX_TO_BIT[passerSq] << 8) & wDefend)
-            whitePawnScore += rFactor * DEFENDED_PASSER_BONUS;
+        if (rFactor) {
+            uint64_t pathToQueen = INDEX_TO_BIT[passerSq];
+            pathToQueen |= pathToQueen << 8;
+            pathToQueen |= pathToQueen << 16;
+            pathToQueen |= pathToQueen << 32;
 
-        // Bonuses and penalties for king distance
-        whitePawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq+8, kingSq[WHITE]) * rFactor;
-        whitePawnScore += OPP_KING_DIST * getManhattanDistance(passerSq+8, kingSq[BLACK]) * rFactor;
+            // Path to queen is completely undefended by opponent
+            if (!(pathToQueen & wBlock))
+                whitePawnScore += rFactor * FREE_PROMOTION_BONUS;
+            // Stop square is undefended by opponent
+            else if (!(INDEX_TO_BIT[passerSq+8] & wBlock))
+                whitePawnScore += rFactor * FREE_STOP_BONUS;
+            // Path to queen is completely defended by own pieces
+            if ((pathToQueen & wDefend) == pathToQueen)
+                whitePawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
+            // Stop square is defended by own pieces
+            else if (INDEX_TO_BIT[passerSq+8] & wDefend)
+                whitePawnScore += rFactor * DEFENDED_PASSER_BONUS;
+
+            // Bonuses and penalties for king distance
+            whitePawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq+8, kingSq[WHITE]) * rFactor;
+            whitePawnScore += OPP_KING_DIST * getManhattanDistance(passerSq+8, kingSq[BLACK]) * rFactor;
+        }
     }
     uint64_t bPasserTemp = bPassedPawns;
     uint64_t bBlock = allPieces[WHITE] | ei.fullAttackMaps[WHITE];
@@ -757,23 +707,25 @@ int evaluate(Board &b) {
         blackPawnScore += PASSER_BONUS[rank];
         blackPawnScore += PASSER_FILE_BONUS[file];
 
-        uint64_t pathToQueen = INDEX_TO_BIT[passerSq];
-        pathToQueen |= pathToQueen >> 8;
-        pathToQueen |= pathToQueen >> 16;
-        pathToQueen |= pathToQueen >> 32;
-
         int rFactor = (rank-1) * (rank-2) / 2;
-        if (!(pathToQueen & bBlock))
-            blackPawnScore += rFactor * FREE_PROMOTION_BONUS;
-        else if (!((INDEX_TO_BIT[passerSq] >> 8) & bBlock))
-            blackPawnScore += rFactor * FREE_STOP_BONUS;
-        if ((pathToQueen & bDefend) == pathToQueen)
-            blackPawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
-        else if ((INDEX_TO_BIT[passerSq] >> 8) & bDefend)
-            blackPawnScore += rFactor * DEFENDED_PASSER_BONUS;
+        if (rFactor) {
+            uint64_t pathToQueen = INDEX_TO_BIT[passerSq];
+            pathToQueen |= pathToQueen >> 8;
+            pathToQueen |= pathToQueen >> 16;
+            pathToQueen |= pathToQueen >> 32;
 
-        blackPawnScore += OPP_KING_DIST * getManhattanDistance(passerSq-8, kingSq[WHITE]) * rFactor;
-        blackPawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq-8, kingSq[BLACK]) * rFactor;
+            if (!(pathToQueen & bBlock))
+                blackPawnScore += rFactor * FREE_PROMOTION_BONUS;
+            else if (!(INDEX_TO_BIT[passerSq-8] & bBlock))
+                blackPawnScore += rFactor * FREE_STOP_BONUS;
+            if ((pathToQueen & bDefend) == pathToQueen)
+                blackPawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
+            else if (INDEX_TO_BIT[passerSq-8] & bDefend)
+                blackPawnScore += rFactor * DEFENDED_PASSER_BONUS;
+
+            blackPawnScore += OPP_KING_DIST * getManhattanDistance(passerSq-8, kingSq[WHITE]) * rFactor;
+            blackPawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq-8, kingSq[BLACK]) * rFactor;
+        }
     }
 
     int wPawnCtByFile[8];
@@ -828,8 +780,8 @@ int evaluate(Board &b) {
     }
 
     // Backward pawns
-    uint64_t wBadStopSqs = ~wPawnStopAtt & ei.attackMaps[BLACK][PAWNS];
-    uint64_t bBadStopSqs = ~bPawnStopAtt & ei.attackMaps[WHITE][PAWNS];
+    uint64_t wBadStopSqs = ~pawnStopAtt[WHITE] & ei.attackMaps[BLACK][PAWNS];
+    uint64_t bBadStopSqs = ~pawnStopAtt[BLACK] & ei.attackMaps[WHITE][PAWNS];
     for (int i = 0; i < 6; i++) {
         wBadStopSqs |= wBadStopSqs >> 8;
         bBadStopSqs |= bBadStopSqs << 8;
@@ -1075,11 +1027,13 @@ int getKingSafety(Board &b, PieceMoveList &attackers, PieceMoveList &defenders, 
     // Count the number and value of pieces participating in the king attack
     int kingAttackPts = 0;
     int kingAttackPieces = count(ei.attackMaps[attackingColor][PAWNS] & kingNeighborhood);
+    // Get check information
+    uint64_t checkMaps[4];
+    b.getCheckMaps(attackingColor^1, checkMaps);
 
     // Iterate over piece move information to extract all mobility-related scores
     for (unsigned int i = 0; i < attackers.size(); i++) {
         PieceMoveInfo pmi = attackers.get(i);
-
         int pieceIndex = pmi.pieceID - 1;
         // Get all potential legal moves
         uint64_t legal = pmi.legal;
@@ -1093,6 +1047,10 @@ int getKingSafety(Board &b, PieceMoveList &attackers, PieceMoveList &defenders, 
             // Bonus for overloading on defenseless squares
             kingSafetyPts += KING_DEFENSELESS_SQUARE * count(legal & kingDefenseless);
         }
+
+        // Add bonuses for safe checks
+        if (legal & checkMaps[pieceIndex] & ~kingSqs & ~defendMap)
+            kingSafetyPts += SAFE_CHECK_BONUS[pieceIndex];
     }
 
     // Give a decent bonus for each additional piece participating
@@ -1101,18 +1059,8 @@ int getKingSafety(Board &b, PieceMoveList &attackers, PieceMoveList &defenders, 
     // Adjust based on pawn shield and pawn storms
     kingSafetyPts -= KS_PAWN_FACTOR * pawnScore / 32;
 
-    // Add bonuses for safe checks
-    uint64_t checkMaps[4];
-    b.getCheckMaps(attackingColor^1, checkMaps);
-    for (unsigned int i = 0; i < attackers.size(); i++) {
-        PieceMoveInfo pmi = attackers.get(i);
-        int pieceIndex = pmi.pieceID - 1;
-        uint64_t legal = pmi.legal;
 
-        if (legal & checkMaps[pieceIndex] & ~kingSqs & ~defendMap)
-            kingSafetyPts += SAFE_CHECK_BONUS[pieceIndex];
-    }
-
+    // Convert king safety points into centipawns using a quadratic relationship
     kingSafetyPts = std::max(0, kingSafetyPts);
     return std::min(kingSafetyPts * kingSafetyPts / KS_ARRAY_FACTOR, 600);
 }
