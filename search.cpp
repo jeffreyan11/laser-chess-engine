@@ -785,8 +785,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             ssi->staticEval = staticEval = ehe - EVAL_HASH_OFFSET;
         }
         else {
-            ssi->staticEval = staticEval = (color == WHITE) ? b.evaluate()
-                                                            : -b.evaluate();
+            ssi->staticEval = staticEval = (color == WHITE) ? evaluate(b)
+                                                            : -evaluate(b);
             evalCache.add(b, staticEval);
         }
     }
@@ -1247,7 +1247,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         standPat = ehe - EVAL_HASH_OFFSET;
     }
     else {
-        standPat = (color == WHITE) ? b.evaluate() : -b.evaluate();
+        standPat = (color == WHITE) ? evaluate(b) : -evaluate(b);
         evalCache.add(b, standPat);
     }
 

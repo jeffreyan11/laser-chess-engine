@@ -17,7 +17,7 @@
 CC          = g++
 CFLAGS      = -Wall -ansi -pedantic -std=c++11 -O3 -flto
 LDFLAGS     = -lpthread
-OBJS        = bbinit.o board.o common.o evalhash.o hash.o search.o moveorder.o syzygy/tbprobe.o
+OBJS        = bbinit.o board.o common.o eval.o evalhash.o hash.o search.o moveorder.o syzygy/tbprobe.o
 ENGINENAME  = laser
 
 ifeq ($(USE_STATIC), true)

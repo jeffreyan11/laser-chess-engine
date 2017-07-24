@@ -21,9 +21,14 @@
 
 #include "common.h"
 
-/*
- * This file stores evaluation constants and encoding.
- */
+class Board;
+
+void initPSQT();
+void setMaterialScale(int s);
+void setKingSafetyScale(int s);
+
+template <bool debug = false> int evaluate(Board &b);
+
 
 const int SEE_PIECE_VALS[6] = {100, 400, 400, 600, 1150, MATE_SCORE/2};
 const int EG_FACTOR_PIECE_VALS[5] = {68, 382, 391, 699, 1821};

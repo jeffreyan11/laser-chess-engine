@@ -50,11 +50,7 @@ struct PieceMoveInfo {
 
 typedef SearchArrayList<PieceMoveInfo> PieceMoveList;
 
-void initPSQT();
 void initZobristTable();
-
-void setMaterialScale(int s);
-void setKingSafetyScale(int s);
 
 
 /**
@@ -104,8 +100,10 @@ public:
     bool isDraw();
     bool isInsufficientMaterial();
 
-    // Evaluation
-    template <bool debug = false> int evaluate();
+    // Eval helpers
+    template <int attackingColor>
+    int getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders, uint64_t kingSqs, int pawnScore);
+
     int getMaterial(int color);
     // Useful for turning off some pruning late endgame
     uint64_t getNonPawnMaterial(int color);
@@ -118,6 +116,11 @@ public:
     int getMVVLVAScore(int color, Move m);
     int getExchangeScore(int color, Move m);
 
+    // Public move generators
+    uint64_t getWPawnCaptures(uint64_t pawns);
+    uint64_t getBPawnCaptures(uint64_t pawns);
+    uint64_t getKingSquares(int single);
+
     // Getter methods
     bool getWhiteCanKCastle();
     bool getBlackCanKCastle();
@@ -126,6 +129,7 @@ public:
     bool getAnyCanCastle();
     uint16_t getEPCaptureFile();
     uint8_t getFiftyMoveCounter();
+    uint8_t getCastlingRights();
     uint16_t getMoveNumber();
     int getPlayerToMove();
     uint64_t getPieces(int color, int piece);
@@ -169,16 +173,6 @@ private:
     void addPromotionsToList(MoveList &moves, int stSq, int endSq);
     void addCastlesToList(MoveList &moves, int color);
 
-    // Eval helpers
-    template <int color>
-    void getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg);
-    template <int attackingColor>
-    int getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders, uint64_t kingSqs, int pawnScore);
-    int checkEndgameCases();
-    int scoreSimpleKnownWin(int winningColor);
-    int scoreCornerDistance(int winningColor, int wKingSq, int bKingSq);
-    int getManhattanDistance(int sq1, int sq2);
-
     // Move generation
     // Takes into account blocking for sliders, but otherwise leaves
     // the occupancy of the end square up to the move generation function
@@ -191,13 +185,10 @@ private:
     uint64_t getBPawnLeftCaptures(uint64_t pawns);
     uint64_t getWPawnRightCaptures(uint64_t pawns);
     uint64_t getBPawnRightCaptures(uint64_t pawns);
-    uint64_t getWPawnCaptures(uint64_t pawns);
-    uint64_t getBPawnCaptures(uint64_t pawns);
     uint64_t getKnightSquares(int single);
     uint64_t getBishopSquares(int single, uint64_t occ);
     uint64_t getRookSquares(int single, uint64_t occ);
     uint64_t getQueenSquares(int single, uint64_t occ);
-    uint64_t getKingSquares(int single);
     uint64_t getOccupancy();
     int epVictimSquare(int victimColor, uint16_t file);
 

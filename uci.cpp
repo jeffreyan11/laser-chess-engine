@@ -28,6 +28,7 @@
 #include "common.h"
 #include "bbinit.h"
 #include "board.h"
+#include "eval.h"
 #include "search.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
@@ -305,7 +306,7 @@ int main() {
             cerr << "Nodes/second: " << 1000 * totalNodes / time << endl;
         }
         else if (input == "eval") {
-            board.evaluate<true>();
+            evaluate<true>(board);
         }
 
         // According to UCI protocol, inputs that do not make sense are ignored
