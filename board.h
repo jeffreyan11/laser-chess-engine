@@ -99,10 +99,7 @@ public:
     bool isInCheck(int color);
     bool isDraw();
     bool isInsufficientMaterial();
-
-    // Eval helpers
-    template <int attackingColor>
-    int getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders, uint64_t kingSqs, int pawnScore);
+    void getCheckMaps(int color, uint64_t *checkMaps);
 
     int getMaterial(int color);
     // Useful for turning off some pruning late endgame

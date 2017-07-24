@@ -59,7 +59,6 @@ extern uint64_t inBetweenSqs[64][64];
 //------------------------------------------------------------------------------
 //--------------------------------Constructors----------------------------------
 //------------------------------------------------------------------------------
-
 // Create a board object initialized to the start position.
 Board::Board() {
     allPieces[WHITE] = 0x000000000000FFFF;
@@ -133,7 +132,6 @@ Board Board::staticCopy() {
 //------------------------------------------------------------------------------
 //---------------------------------Do Move--------------------------------------
 //------------------------------------------------------------------------------
-
 /**
  * @brief Updates the board and Zobrist keys with Move m.
  */
@@ -388,7 +386,6 @@ void Board::undoNullMove(uint16_t _epCaptureFile) {
 //------------------------------------------------------------------------------
 //-------------------------------Move Generation--------------------------------
 //------------------------------------------------------------------------------
-
 /*
  * @brief Returns a list of structs containing the piece type, start square,
  * and a bitboard of potential legal moves for each knight, bishop, rook, and queen.
@@ -1191,7 +1188,6 @@ uint64_t Board::getPinnedMap(int color) {
 //------------------------------------------------------------------------------
 //-------------------King: check, draw, insufficient material-------------------
 //------------------------------------------------------------------------------
-
 bool Board::isInCheck(int color) {
     int sq = bitScanForward(pieces[color][KINGS]);
 
@@ -1220,95 +1216,19 @@ bool Board::isInsufficientMaterial() {
     return false;
 }
 
-
-//------------------------------------------------------------------------------
-//------------------------Evaluation and Move Ordering--------------------------
-//------------------------------------------------------------------------------
-// King safety, based on the number of opponent pieces near the king
-// The lookup table approach is inspired by Ed Schroder's Rebel chess engine,
-// and by Stockfish
-template <int attackingColor>
-int Board::getKingSafety(PieceMoveList &attackers, PieceMoveList &defenders,
-    uint64_t kingSqs, int pawnScore) {
-
-    // Holds the king safety score
-    int kingSafetyPts = 0;
-    // Counts the number and value of pieces participating in the king attack
-    int kingAttackPts = 0;
-    int kingAttackPieces = 0;
-
-    uint64_t kingNeighborhood = (attackingColor == WHITE) ? ((pieces[BLACK][KINGS] & RANKS[7]) ? (kingSqs | (kingSqs >> 8)) : kingSqs)
-                                                          : ((pieces[WHITE][KINGS] & RANKS[0]) ? (kingSqs | (kingSqs << 8)) : kingSqs);
-    uint64_t defendingPawns = pieces[attackingColor^1][PAWNS];
-    uint64_t defendMap = (attackingColor == WHITE) ? getBPawnCaptures(defendingPawns)
-                                                   : getWPawnCaptures(defendingPawns);
-    for (unsigned int i = 0; i < defenders.size(); i++) {
-        PieceMoveInfo pmi = defenders.get(i);
-        defendMap |= pmi.legal;
-    }
-
-
-    kingAttackPieces = count(((attackingColor == WHITE) ? getWPawnCaptures(pieces[attackingColor][PAWNS])
-                                                        : getBPawnCaptures(pieces[attackingColor][PAWNS]))
-                           & kingNeighborhood);
-
-    // Analyze undefended squares directly adjacent to king
-    uint64_t kingDefenseless = defendMap & kingSqs;
-    kingDefenseless ^= kingSqs;
-
-
-    // Iterate over piece move information to extract all mobility-related scores
-    for (unsigned int i = 0; i < attackers.size(); i++) {
-        PieceMoveInfo pmi = attackers.get(i);
-
-        int pieceIndex = pmi.pieceID - 1;
-        // Get all potential legal moves
-        uint64_t legal = pmi.legal;
-
-        // Get king safety score
-        if (legal & kingNeighborhood) {
-            kingAttackPieces++;
-            kingAttackPts += KING_THREAT_MULTIPLIER[pieceIndex];
-            kingSafetyPts += KING_THREAT_SQUARE[pieceIndex] * count(legal & kingSqs);
-
-            // Bonus for overloading on defenseless squares
-            kingSafetyPts += KING_DEFENSELESS_SQUARE * count(legal & kingDefenseless);
-        }
-    }
-
-    // Give a decent bonus for each additional piece participating
-    kingSafetyPts += kingAttackPieces * kingAttackPts;
-
-    // Adjust based on pawn shield and pawn storms
-    kingSafetyPts -= KS_PAWN_FACTOR * pawnScore / 32;
-
-    // Add bonuses for safe checks
-    int kingSq = bitScanForward(pieces[attackingColor^1][KINGS]);
+void Board::getCheckMaps(int color, uint64_t *checkMaps) {
+    int kingSq = bitScanForward(pieces[color][KINGS]);
     uint64_t occ = getOccupancy();
-    uint64_t checkMaps[4];
     checkMaps[KNIGHTS-1] = getKnightSquares(kingSq);
     checkMaps[BISHOPS-1] = getBishopSquares(kingSq, occ);
     checkMaps[ROOKS-1] = getRookSquares(kingSq, occ);
     checkMaps[QUEENS-1] = getQueenSquares(kingSq, occ);
-
-    for (unsigned int i = 0; i < attackers.size(); i++) {
-        PieceMoveInfo pmi = attackers.get(i);
-        int pieceIndex = pmi.pieceID - 1;
-        uint64_t legal = pmi.legal;
-
-        if (legal & checkMaps[pieceIndex] & ~kingSqs & ~defendMap)
-            kingSafetyPts += SAFE_CHECK_BONUS[pieceIndex];
-    }
-
-    kingSafetyPts = std::max(0, kingSafetyPts);
-    return std::min(kingSafetyPts * kingSafetyPts / KS_ARRAY_FACTOR, 600);
 }
 
-// TODO temporary explicit instantiation
-template int Board::getKingSafety<WHITE>(PieceMoveList &attackers, PieceMoveList &defenders, uint64_t kingSqs, int pawnScore);
-template int Board::getKingSafety<BLACK>(PieceMoveList &attackers, PieceMoveList &defenders, uint64_t kingSqs, int pawnScore);
 
-
+//------------------------------------------------------------------------------
+//--------------------------------Move Ordering---------------------------------
+//------------------------------------------------------------------------------
 int Board::getMaterial(int color) {
     int material = 0;
     for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
@@ -1458,9 +1378,8 @@ int Board::getExchangeScore(int color, Move m) {
 
 
 //------------------------------------------------------------------------------
-//-----------------------------MOVE GENERATION----------------------------------
+//-----------------------------Move Generation----------------------------------
 //------------------------------------------------------------------------------
-
 inline uint64_t Board::getWPawnSingleMoves(uint64_t pawns) {
     return (pawns << 8) & ~getOccupancy();
 }
@@ -1545,9 +1464,8 @@ inline int Board::epVictimSquare(int victimColor, uint16_t file) {
 
 
 //------------------------------------------------------------------------------
-//---------------------------PUBLIC GETTER METHODS------------------------------
+//---------------------------Public Getter Methods------------------------------
 //------------------------------------------------------------------------------
-
 bool Board::getWhiteCanKCastle() {
     return castlingRights & WHITEKSIDE;
 }

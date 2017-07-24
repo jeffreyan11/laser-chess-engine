@@ -16,6 +16,7 @@
     along with Laser.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <cstring>
 #include <iomanip>
 #include <iostream>
 #include "bbinit.h"
@@ -148,15 +149,30 @@ void setKingSafetyScale(int s) {
 }
 
 
+struct EvalInfo {
+    uint64_t attackMaps[2][5];
+    uint64_t fullAttackMaps[2];
+    uint64_t rammedPawns[2];
+
+    void clear() {
+        std::memset(this, 0, sizeof(EvalInfo));
+    }
+};
+
+
 
 // Eval helpers
 template <int color>
-void getPseudoMobility(Board &b, PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg);
+void getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg);
+template <int attackingColor>
+int getKingSafety(Board &b, PieceMoveList &attackers, PieceMoveList &defenders, uint64_t kingSqs, int pawnScore);
 int checkEndgameCases();
 int scoreSimpleKnownWin(int winningColor);
 int scoreCornerDistance(int winningColor, int wKingSq, int bKingSq);
 int getManhattanDistance(int sq1, int sq2);
 
+// Global eval variables
+EvalInfo ei;
 uint64_t pieces[2][6];
 uint64_t allPieces[2];
 int playerToMove;
@@ -207,6 +223,27 @@ int evaluate(Board &b) {
         if (endgameScore != -INFTY)
             return endgameScore;
     }
+
+
+    // Precompute more values
+    PieceMoveList pmlWhite = b.getPieceMoveList(WHITE);
+    PieceMoveList pmlBlack = b.getPieceMoveList(BLACK);
+
+    ei.clear();
+
+    // Get the overall attack maps
+    ei.attackMaps[WHITE][PAWNS] = b.getWPawnCaptures(pieces[WHITE][PAWNS]);
+    for (unsigned int i = 0; i < pmlWhite.size(); i++)
+        ei.attackMaps[WHITE][pmlWhite.get(i).pieceID] |= pmlWhite.get(i).legal;
+    ei.attackMaps[BLACK][PAWNS] = b.getBPawnCaptures(pieces[BLACK][PAWNS]);
+    for (unsigned int i = 0; i < pmlBlack.size(); i++)
+        ei.attackMaps[BLACK][pmlBlack.get(i).pieceID] |= pmlBlack.get(i).legal;
+    for (int color = WHITE; color <= BLACK; color++)
+        for (int pieceID = KNIGHTS; pieceID <= QUEENS; pieceID++)
+            ei.fullAttackMaps[color] |= ei.attackMaps[color][pieceID];
+
+    ei.rammedPawns[WHITE] = pieces[WHITE][PAWNS] & (pieces[BLACK][PAWNS] >> 8);
+    ei.rammedPawns[BLACK] = pieces[BLACK][PAWNS] & (pieces[WHITE][PAWNS] << 8);
 
 
     //---------------------------Material terms---------------------------------
@@ -284,7 +321,7 @@ int evaluate(Board &b) {
     }
 
     // Increase knight value in closed positions
-    int numRammedPawns = count((pieces[WHITE][PAWNS] << 8) & pieces[BLACK][PAWNS]);
+    int numRammedPawns = count(ei.rammedPawns[WHITE]);
     valueMg += KNIGHT_CLOSED_BONUS[MG] * pieceCounts[WHITE][KNIGHTS] * numRammedPawns * numRammedPawns / 4;
     valueEg += KNIGHT_CLOSED_BONUS[EG] * pieceCounts[WHITE][KNIGHTS] * numRammedPawns * numRammedPawns / 4;
     valueMg -= KNIGHT_CLOSED_BONUS[MG] * pieceCounts[BLACK][KNIGHTS] * numRammedPawns * numRammedPawns / 4;
@@ -313,12 +350,10 @@ int evaluate(Board &b) {
     }
 
     //--------------------------------Mobility----------------------------------
-    PieceMoveList pmlWhite = b.getPieceMoveList(WHITE);
-    PieceMoveList pmlBlack = b.getPieceMoveList(BLACK);
     int whiteMobilityMg, whiteMobilityEg;
     int blackMobilityMg, blackMobilityEg;
-    getPseudoMobility<WHITE>(b, pmlWhite, pmlBlack, whiteMobilityMg, whiteMobilityEg);
-    getPseudoMobility<BLACK>(b, pmlBlack, pmlWhite, blackMobilityMg, blackMobilityEg);
+    getPseudoMobility<WHITE>(pmlWhite, pmlBlack, whiteMobilityMg, whiteMobilityEg);
+    getPseudoMobility<BLACK>(pmlBlack, pmlWhite, blackMobilityMg, blackMobilityEg);
     valueMg += whiteMobilityMg - blackMobilityMg;
     valueEg += whiteMobilityEg - blackMobilityEg;
 
@@ -383,8 +418,8 @@ int evaluate(Board &b) {
         }
 
         // Piece attacks
-        ksValue[BLACK] -= b.getKingSafety<WHITE>(pmlWhite, pmlBlack, kingNeighborhood[BLACK], ksValue[BLACK]);
-        ksValue[WHITE] -= b.getKingSafety<BLACK>(pmlBlack, pmlWhite, kingNeighborhood[WHITE], ksValue[WHITE]);
+        ksValue[BLACK] -= getKingSafety<WHITE>(b, pmlWhite, pmlBlack, kingNeighborhood[BLACK], ksValue[BLACK]);
+        ksValue[WHITE] -= getKingSafety<BLACK>(b, pmlBlack, pmlWhite, kingNeighborhood[WHITE], ksValue[WHITE]);
 
         // Castling rights
         ksValue[WHITE] += CASTLING_RIGHTS_VALUE[count(b.getCastlingRights() & WHITECASTLE)];
@@ -400,9 +435,6 @@ int evaluate(Board &b) {
     }
 
 
-    // Current pawn attacks: used for outposts and backwards pawns
-    uint64_t wPawnAtt = b.getWPawnCaptures(pieces[WHITE][PAWNS]);
-    uint64_t bPawnAtt = b.getBPawnCaptures(pieces[BLACK][PAWNS]);
     // Get all squares attackable by pawns in the future
     // Used for outposts and backwards pawns
     uint64_t wPawnFrontSpan = pieces[WHITE][PAWNS] << 8;
@@ -421,19 +453,19 @@ int evaluate(Board &b) {
     // Bishops tend to be worse if too many pawns are on squares of their color
     if (pieces[WHITE][BISHOPS] & LIGHT) {
         pieceEvalScore[WHITE] += BISHOP_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & LIGHT);
-        pieceEvalScore[WHITE] += BISHOP_RAMMED_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & (pieces[BLACK][PAWNS] >> 8) & LIGHT);
+        pieceEvalScore[WHITE] += BISHOP_RAMMED_PAWN_COLOR_PENALTY * count(ei.rammedPawns[WHITE] & LIGHT);
     }
     if (pieces[WHITE][BISHOPS] & DARK) {
         pieceEvalScore[WHITE] += BISHOP_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & DARK);
-        pieceEvalScore[WHITE] += BISHOP_RAMMED_PAWN_COLOR_PENALTY * count(pieces[WHITE][PAWNS] & (pieces[BLACK][PAWNS] >> 8) & DARK);
+        pieceEvalScore[WHITE] += BISHOP_RAMMED_PAWN_COLOR_PENALTY * count(ei.rammedPawns[WHITE] & DARK);
     }
     if (pieces[BLACK][BISHOPS] & LIGHT) {
         pieceEvalScore[BLACK] += BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & LIGHT);
-        pieceEvalScore[BLACK] += BISHOP_RAMMED_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & (pieces[WHITE][PAWNS] << 8) & LIGHT);
+        pieceEvalScore[BLACK] += BISHOP_RAMMED_PAWN_COLOR_PENALTY * count(ei.rammedPawns[BLACK] & LIGHT);
     }
     if (pieces[BLACK][BISHOPS] & DARK) {
         pieceEvalScore[BLACK] += BISHOP_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & DARK);
-        pieceEvalScore[BLACK] += BISHOP_RAMMED_PAWN_COLOR_PENALTY * count(pieces[BLACK][PAWNS] & (pieces[WHITE][PAWNS] << 8) & DARK);
+        pieceEvalScore[BLACK] += BISHOP_RAMMED_PAWN_COLOR_PENALTY * count(ei.rammedPawns[BLACK] & DARK);
     }
 
     // Shielded minors: minors behind own pawns
@@ -476,7 +508,7 @@ int evaluate(Board &b) {
             else
                 pieceEvalScore[WHITE] += KNIGHT_OUTPOST_BONUS2;
             // Defended by pawn
-            if (bit & wPawnAtt)
+            if (bit & ei.attackMaps[WHITE][PAWNS])
                 pieceEvalScore[WHITE] += KNIGHT_OUTPOST_PAWN_DEF_BONUS;
         }
     }
@@ -494,7 +526,7 @@ int evaluate(Board &b) {
                 pieceEvalScore[BLACK] += KNIGHT_OUTPOST_BONUS1;
             else
                 pieceEvalScore[BLACK] += KNIGHT_OUTPOST_BONUS2;
-            if (bit & bPawnAtt)
+            if (bit & ei.attackMaps[BLACK][PAWNS])
                 pieceEvalScore[BLACK] += KNIGHT_OUTPOST_PAWN_DEF_BONUS;
         }
     }
@@ -514,7 +546,7 @@ int evaluate(Board &b) {
                 pieceEvalScore[WHITE] += BISHOP_OUTPOST_BONUS1;
             else
                 pieceEvalScore[WHITE] += BISHOP_OUTPOST_BONUS2;
-            if (bit & wPawnAtt)
+            if (bit & ei.attackMaps[WHITE][PAWNS])
                 pieceEvalScore[WHITE] += BISHOP_OUTPOST_PAWN_DEF_BONUS;
         }
     }
@@ -532,7 +564,7 @@ int evaluate(Board &b) {
                 pieceEvalScore[BLACK] += BISHOP_OUTPOST_BONUS1;
             else
                 pieceEvalScore[BLACK] += BISHOP_OUTPOST_BONUS2;
-            if (bit & bPawnAtt)
+            if (bit & ei.attackMaps[BLACK][PAWNS])
                 pieceEvalScore[BLACK] += BISHOP_OUTPOST_PAWN_DEF_BONUS;
         }
     }
@@ -590,56 +622,42 @@ int evaluate(Board &b) {
 
     //-------------------------------Threats------------------------------------
     Score threatScore[2] = {EVAL_ZERO, EVAL_ZERO};
-    // Get the overall attack maps
-    uint64_t wAttackMap = 0, bAttackMap = 0;
-    uint64_t pieceAttackMaps[2][4] = {{0, 0, 0, 0}, {0, 0, 0, 0}};
-    for (unsigned int i = 0; i < pmlWhite.size(); i++) {
-        wAttackMap |= pmlWhite.get(i).legal;
-        pieceAttackMaps[WHITE][pmlWhite.get(i).pieceID-1] |= pmlWhite.get(i).legal;
-    }
-    // wAttackMap |= getWPawnCaptures(pieces[WHITE][PAWNS]);
-    for (unsigned int i = 0; i < pmlBlack.size(); i++) {
-        bAttackMap |= pmlBlack.get(i).legal;
-        pieceAttackMaps[BLACK][pmlBlack.get(i).pieceID-1] |= pmlBlack.get(i).legal;
-    }
-    // bAttackMap |= getBPawnCaptures(pieces[BLACK][PAWNS]);
-
-    if (uint64_t upawns = pieces[WHITE][PAWNS] & bAttackMap & ~wPawnAtt) {
+    if (uint64_t upawns = pieces[WHITE][PAWNS] & ei.fullAttackMaps[BLACK] & ~ei.attackMaps[WHITE][PAWNS]) {
         threatScore[WHITE] += UNDEFENDED_PAWN * count(upawns);
     }
-    if (uint64_t upawns = pieces[BLACK][PAWNS] & wAttackMap & ~bPawnAtt) {
+    if (uint64_t upawns = pieces[BLACK][PAWNS] & ei.fullAttackMaps[WHITE] & ~ei.attackMaps[BLACK][PAWNS]) {
         threatScore[BLACK] += UNDEFENDED_PAWN * count(upawns);
     }
-    if (uint64_t minors = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & bAttackMap & ~wPawnAtt) {
+    if (uint64_t minors = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & ei.fullAttackMaps[BLACK] & ~ei.attackMaps[WHITE][PAWNS]) {
         threatScore[WHITE] += UNDEFENDED_MINOR * count(minors);
     }
-    if (uint64_t minors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & wAttackMap & ~bPawnAtt) {
+    if (uint64_t minors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & ei.fullAttackMaps[WHITE] & ~ei.attackMaps[BLACK][PAWNS]) {
         threatScore[BLACK] += UNDEFENDED_MINOR * count(minors);
     }
-    if (uint64_t rooks = pieces[WHITE][ROOKS] & (pieceAttackMaps[BLACK][KNIGHTS-1] | pieceAttackMaps[BLACK][BISHOPS-1])) {
+    if (uint64_t rooks = pieces[WHITE][ROOKS] & (ei.attackMaps[BLACK][KNIGHTS] | ei.attackMaps[BLACK][BISHOPS])) {
         threatScore[WHITE] += MINOR_ROOK_THREAT * count(rooks);
     }
-    if (uint64_t rooks = pieces[BLACK][ROOKS] & (pieceAttackMaps[WHITE][KNIGHTS-1] | pieceAttackMaps[WHITE][BISHOPS-1])) {
+    if (uint64_t rooks = pieces[BLACK][ROOKS] & (ei.attackMaps[WHITE][KNIGHTS] | ei.attackMaps[WHITE][BISHOPS])) {
         threatScore[BLACK] += MINOR_ROOK_THREAT * count(rooks);
     }
-    if (uint64_t queens = pieces[WHITE][QUEENS] & (pieceAttackMaps[BLACK][KNIGHTS-1] | pieceAttackMaps[BLACK][BISHOPS-1])) {
+    if (uint64_t queens = pieces[WHITE][QUEENS] & (ei.attackMaps[BLACK][KNIGHTS] | ei.attackMaps[BLACK][BISHOPS])) {
         threatScore[WHITE] += MINOR_QUEEN_THREAT * count(queens);
     }
-    if (uint64_t queens = pieces[BLACK][QUEENS] & (pieceAttackMaps[WHITE][KNIGHTS-1] | pieceAttackMaps[WHITE][BISHOPS-1])) {
+    if (uint64_t queens = pieces[BLACK][QUEENS] & (ei.attackMaps[WHITE][KNIGHTS] | ei.attackMaps[WHITE][BISHOPS])) {
         threatScore[BLACK] += MINOR_QUEEN_THREAT * count(queens);
     }
-    if (uint64_t queens = pieces[WHITE][QUEENS] & pieceAttackMaps[BLACK][ROOKS-1]) {
+    if (uint64_t queens = pieces[WHITE][QUEENS] & ei.attackMaps[BLACK][ROOKS]) {
         threatScore[WHITE] += ROOK_QUEEN_THREAT * count(queens);
     }
-    if (uint64_t queens = pieces[BLACK][QUEENS] & pieceAttackMaps[WHITE][ROOKS-1]) {
+    if (uint64_t queens = pieces[BLACK][QUEENS] & ei.attackMaps[WHITE][ROOKS]) {
         threatScore[BLACK] += ROOK_QUEEN_THREAT * count(queens);
     }
     if (uint64_t threatened = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]
-                             | pieces[WHITE][ROOKS]   | pieces[WHITE][QUEENS]) & bPawnAtt) {
+                             | pieces[WHITE][ROOKS]   | pieces[WHITE][QUEENS]) & ei.attackMaps[BLACK][PAWNS]) {
         threatScore[WHITE] += PAWN_PIECE_THREAT * count(threatened);
     }
     if (uint64_t threatened = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]
-                             | pieces[BLACK][ROOKS]   | pieces[BLACK][QUEENS]) & wPawnAtt) {
+                             | pieces[BLACK][ROOKS]   | pieces[BLACK][QUEENS]) & ei.attackMaps[WHITE][PAWNS]) {
         threatScore[BLACK] += PAWN_PIECE_THREAT * count(threatened);
     }
 
@@ -647,18 +665,18 @@ int evaluate(Board &b) {
     // Defined as pawns in opponent's half of the board with no defenders
     const uint64_t WHITE_HALF = RANKS[0] | RANKS[1] | RANKS[2] | RANKS[3];
     const uint64_t BLACK_HALF = RANKS[4] | RANKS[5] | RANKS[6] | RANKS[7];
-    if (uint64_t lpawns = pieces[WHITE][PAWNS] & BLACK_HALF & ~(wAttackMap | wPawnAtt)) {
+    if (uint64_t lpawns = pieces[WHITE][PAWNS] & BLACK_HALF & ~(ei.fullAttackMaps[WHITE] | ei.attackMaps[WHITE][PAWNS])) {
         threatScore[WHITE] += LOOSE_PAWN * count(lpawns);
     }
-    if (uint64_t lpawns = pieces[BLACK][PAWNS] & WHITE_HALF & ~(bAttackMap | bPawnAtt)) {
+    if (uint64_t lpawns = pieces[BLACK][PAWNS] & WHITE_HALF & ~(ei.fullAttackMaps[BLACK] | ei.attackMaps[BLACK][PAWNS])) {
         threatScore[BLACK] += LOOSE_PAWN * count(lpawns);
     }
 
     // Loose minors
-    if (uint64_t lminors = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & BLACK_HALF & ~(wAttackMap | wPawnAtt)) {
+    if (uint64_t lminors = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & BLACK_HALF & ~(ei.fullAttackMaps[WHITE] | ei.attackMaps[WHITE][PAWNS])) {
         threatScore[WHITE] += LOOSE_MINOR * count(lminors);
     }
-    if (uint64_t lminors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & WHITE_HALF & ~(bAttackMap | bPawnAtt)) {
+    if (uint64_t lminors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & WHITE_HALF & ~(ei.fullAttackMaps[BLACK] | ei.attackMaps[BLACK][PAWNS])) {
         threatScore[BLACK] += LOOSE_MINOR * count(lminors);
     }
 
@@ -694,8 +712,8 @@ int evaluate(Board &b) {
     uint64_t bPassedPawns = pieces[BLACK][PAWNS] & ~bPassedBlocker;
 
     uint64_t wPasserTemp = wPassedPawns;
-    uint64_t wBlock = allPieces[BLACK] | bAttackMap;
-    uint64_t wDefend = wAttackMap | wPawnAtt;
+    uint64_t wBlock = allPieces[BLACK] | ei.fullAttackMaps[BLACK];
+    uint64_t wDefend = ei.fullAttackMaps[WHITE] | ei.attackMaps[WHITE][PAWNS];
     while (wPasserTemp) {
         int passerSq = bitScanForward(wPasserTemp);
         wPasserTemp &= wPasserTemp - 1;
@@ -729,8 +747,8 @@ int evaluate(Board &b) {
         whitePawnScore += OPP_KING_DIST * getManhattanDistance(passerSq+8, kingSq[BLACK]) * rFactor;
     }
     uint64_t bPasserTemp = bPassedPawns;
-    uint64_t bBlock = allPieces[WHITE] | wAttackMap;
-    uint64_t bDefend = bAttackMap | bPawnAtt;
+    uint64_t bBlock = allPieces[WHITE] | ei.fullAttackMaps[WHITE];
+    uint64_t bDefend = ei.fullAttackMaps[BLACK] | ei.attackMaps[BLACK][PAWNS];
     while (bPasserTemp) {
         int passerSq = bitScanForward(bPasserTemp);
         bPasserTemp &= bPasserTemp - 1;
@@ -810,15 +828,15 @@ int evaluate(Board &b) {
     }
 
     // Backward pawns
-    uint64_t wBadStopSqs = ~wPawnStopAtt & bPawnAtt;
-    uint64_t bBadStopSqs = ~bPawnStopAtt & wPawnAtt;
+    uint64_t wBadStopSqs = ~wPawnStopAtt & ei.attackMaps[BLACK][PAWNS];
+    uint64_t bBadStopSqs = ~bPawnStopAtt & ei.attackMaps[WHITE][PAWNS];
     for (int i = 0; i < 6; i++) {
         wBadStopSqs |= wBadStopSqs >> 8;
         bBadStopSqs |= bBadStopSqs << 8;
     }
 
-    uint64_t wBackwards = wBadStopSqs & pieces[WHITE][PAWNS] & ~wIsolatedBB & ~bPawnAtt;
-    uint64_t bBackwards = bBadStopSqs & pieces[BLACK][PAWNS] & ~bIsolatedBB & ~wPawnAtt;
+    uint64_t wBackwards = wBadStopSqs & pieces[WHITE][PAWNS] & ~wIsolatedBB & ~ei.attackMaps[BLACK][PAWNS];
+    uint64_t bBackwards = bBadStopSqs & pieces[BLACK][PAWNS] & ~bIsolatedBB & ~ei.attackMaps[WHITE][PAWNS];
     whitePawnScore += BACKWARD_PENALTY * count(wBackwards);
     blackPawnScore += BACKWARD_PENALTY * count(bBackwards);
 
@@ -843,8 +861,8 @@ int evaluate(Board &b) {
     }
 
     // Undefended pawns
-    uint64_t wUndefendedPawns = pieces[WHITE][PAWNS] & ~wPawnAtt & ~wBackwards & ~wIsolatedBB;
-    uint64_t bUndefendedPawns = pieces[BLACK][PAWNS] & ~bPawnAtt & ~bBackwards & ~bIsolatedBB;
+    uint64_t wUndefendedPawns = pieces[WHITE][PAWNS] & ~ei.attackMaps[WHITE][PAWNS] & ~wBackwards & ~wIsolatedBB;
+    uint64_t bUndefendedPawns = pieces[BLACK][PAWNS] & ~ei.attackMaps[BLACK][PAWNS] & ~bBackwards & ~bIsolatedBB;
     whitePawnScore += UNDEFENDED_PAWN_PENALTY * count(wUndefendedPawns);
     blackPawnScore += UNDEFENDED_PAWN_PENALTY * count(bUndefendedPawns);
 
@@ -979,8 +997,7 @@ template int evaluate<false>(Board &b);
  * opponent's king, and deals with control of center.
  */
 template <int color>
-void getPseudoMobility(Board &b, PieceMoveList &pml, PieceMoveList &oppPml,
-    int &valueMg, int &valueEg) {
+void getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg) {
     // Bitboard of center 4 squares: d4, e4, d5, e5
     const uint64_t CENTER_SQS = 0x0000001818000000;
     // Extended center: center, plus c4, f4, c5, f5, and d6/d3, e6/e3
@@ -991,32 +1008,22 @@ void getPseudoMobility(Board &b, PieceMoveList &pml, PieceMoveList &oppPml,
     int centerControl = 0;
 
     // Calculate center control only for pawns
-    uint64_t pawns = pieces[color][PAWNS];
-    uint64_t pawnAttackMap = (color == WHITE) ? b.getWPawnCaptures(pawns)
-                                              : b.getBPawnCaptures(pawns);
+    uint64_t pawnAttackMap = ei.attackMaps[color][PAWNS];
     centerControl += EXTENDED_CENTER_VAL * count(pawnAttackMap & EXTENDED_CENTER_SQS);
     centerControl += CENTER_BONUS * count(pawnAttackMap & CENTER_SQS);
 
-
-    uint64_t oppPawns = pieces[color^1][PAWNS];
-    uint64_t oppPawnAttackMap = (color == WHITE) ? b.getBPawnCaptures(oppPawns)
-                                                 : b.getWPawnCaptures(oppPawns);
+    uint64_t oppPawnAttackMap = ei.attackMaps[color^1][PAWNS];
 
     // We count mobility for all squares other than ones occupied by own rammed
     // pawns, king, or attacked by opponent's pawns
     // Idea from Stockfish
-    uint64_t rammedPawns = (color == WHITE) ? (pieces[BLACK][PAWNS] >> 8)
-                                            : (pieces[WHITE][PAWNS] << 8);
-    rammedPawns &= pieces[color][PAWNS];
-    uint64_t openSqs = ~(rammedPawns | pieces[color][KINGS] | oppPawnAttackMap);
+    uint64_t openSqs = ~(ei.rammedPawns[color] | pieces[color][KINGS] | oppPawnAttackMap);
 
     // For a queen, we also exclude squares not controlled by an opponent's minor or rook
     uint64_t oppAttackMap = 0;
-    for (unsigned int i = 0; i < oppPml.size(); i++) {
-        PieceMoveInfo pmi = oppPml.get(i);
-        if (pmi.pieceID <= ROOKS)
-            oppAttackMap |= pmi.legal;
-    }
+    for (int pieceID = KNIGHTS; pieceID <= ROOKS; pieceID++)
+        oppAttackMap |= ei.attackMaps[color^1][pieceID];
+
 
     // Iterate over piece move information to extract all mobility-related scores
     for (unsigned int i = 0; i < pml.size(); i++) {
@@ -1047,6 +1054,67 @@ void getPseudoMobility(Board &b, PieceMoveList &pml, PieceMoveList &oppPml,
 
     valueMg = mgMobility + centerControl;
     valueEg = egMobility;
+}
+
+// King safety, based on the number of opponent pieces near the king
+// The lookup table approach is inspired by Ed Schroder's Rebel chess engine,
+// and by Stockfish
+template <int attackingColor>
+int getKingSafety(Board &b, PieceMoveList &attackers, PieceMoveList &defenders, uint64_t kingSqs, int pawnScore) {
+    // Precalculate a few things
+    uint64_t kingNeighborhood = (attackingColor == WHITE) ? ((pieces[BLACK][KINGS] & RANKS[7]) ? (kingSqs | (kingSqs >> 8)) : kingSqs)
+                                                          : ((pieces[WHITE][KINGS] & RANKS[0]) ? (kingSqs | (kingSqs << 8)) : kingSqs);
+    uint64_t defendMap = ei.attackMaps[attackingColor^1][PAWNS] | ei.fullAttackMaps[attackingColor^1];
+    // Analyze undefended squares directly adjacent to king
+    uint64_t kingDefenseless = defendMap & kingSqs;
+    kingDefenseless ^= kingSqs;
+
+
+    // Holds the king safety score
+    int kingSafetyPts = 0;
+    // Count the number and value of pieces participating in the king attack
+    int kingAttackPts = 0;
+    int kingAttackPieces = count(ei.attackMaps[attackingColor][PAWNS] & kingNeighborhood);
+
+    // Iterate over piece move information to extract all mobility-related scores
+    for (unsigned int i = 0; i < attackers.size(); i++) {
+        PieceMoveInfo pmi = attackers.get(i);
+
+        int pieceIndex = pmi.pieceID - 1;
+        // Get all potential legal moves
+        uint64_t legal = pmi.legal;
+
+        // Get king safety score
+        if (legal & kingNeighborhood) {
+            kingAttackPieces++;
+            kingAttackPts += KING_THREAT_MULTIPLIER[pieceIndex];
+            kingSafetyPts += KING_THREAT_SQUARE[pieceIndex] * count(legal & kingSqs);
+
+            // Bonus for overloading on defenseless squares
+            kingSafetyPts += KING_DEFENSELESS_SQUARE * count(legal & kingDefenseless);
+        }
+    }
+
+    // Give a decent bonus for each additional piece participating
+    kingSafetyPts += kingAttackPieces * kingAttackPts;
+
+    // Adjust based on pawn shield and pawn storms
+    kingSafetyPts -= KS_PAWN_FACTOR * pawnScore / 32;
+
+    // Add bonuses for safe checks
+    uint64_t checkMaps[4];
+    b.getCheckMaps(attackingColor^1, checkMaps);
+    for (unsigned int i = 0; i < attackers.size(); i++) {
+        PieceMoveInfo pmi = attackers.get(i);
+        int pieceIndex = pmi.pieceID - 1;
+        uint64_t legal = pmi.legal;
+
+        if (legal & checkMaps[pieceIndex] & ~kingSqs & ~defendMap)
+            kingSafetyPts += SAFE_CHECK_BONUS[pieceIndex];
+    }
+
+    kingSafetyPts = std::max(0, kingSafetyPts);
+    return std::min(kingSafetyPts * kingSafetyPts / KS_ARRAY_FACTOR, 600);
 }
 
 // Check special endgame cases: where help mate is possible (detecting this
