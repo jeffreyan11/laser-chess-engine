@@ -48,7 +48,25 @@ struct PieceMoveInfo {
     }
 };
 
-typedef SearchArrayList<PieceMoveInfo> PieceMoveList;
+struct PieceMoveList {
+    PieceMoveInfo arrayList[32];
+    unsigned int length;
+    unsigned int starts[5];
+
+    PieceMoveList() {
+        length = 0;
+    }
+    ~PieceMoveList() {}
+
+    unsigned int size() { return length; }
+
+    void add(PieceMoveInfo o) {
+        arrayList[length] = o;
+        length++;
+    }
+
+    PieceMoveInfo get(int i) { return arrayList[i]; }
+};
 
 void initZobristTable();
 

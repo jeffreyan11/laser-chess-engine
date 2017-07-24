@@ -165,7 +165,7 @@ struct EvalInfo {
 template <int color>
 void getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg);
 template <int attackingColor>
-int getKingSafety(Board &b, PieceMoveList &attackers, PieceMoveList &defenders, uint64_t kingSqs, int pawnScore);
+int getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, int pawnScore);
 int checkEndgameCases();
 int scoreSimpleKnownWin(int winningColor);
 int scoreCornerDistance(int winningColor, int wKingSq, int bKingSq);
@@ -418,8 +418,8 @@ int evaluate(Board &b) {
         }
 
         // Piece attacks
-        ksValue[BLACK] -= getKingSafety<WHITE>(b, pmlWhite, pmlBlack, kingNeighborhood[BLACK], ksValue[BLACK]);
-        ksValue[WHITE] -= getKingSafety<BLACK>(b, pmlBlack, pmlWhite, kingNeighborhood[WHITE], ksValue[WHITE]);
+        ksValue[BLACK] -= getKingSafety<WHITE>(b, pmlWhite, kingNeighborhood[BLACK], ksValue[BLACK]);
+        ksValue[WHITE] -= getKingSafety<BLACK>(b, pmlBlack, kingNeighborhood[WHITE], ksValue[WHITE]);
 
         // Castling rights
         ksValue[WHITE] += CASTLING_RIGHTS_VALUE[count(b.getCastlingRights() & WHITECASTLE)];
@@ -978,30 +978,24 @@ void getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, 
 
 
     // Iterate over piece move information to extract all mobility-related scores
-    for (unsigned int i = 0; i < pml.size(); i++) {
+    for (unsigned int i = 0; i < pml.starts[QUEENS]; i++) {
         PieceMoveInfo pmi = pml.get(i);
         int pieceIndex = pmi.pieceID - 1;
         uint64_t legal = pmi.legal;
 
-        // Get mobility score
-        if (pieceIndex == QUEENS - 1) {
-            mgMobility += mobilityScore[MG][pieceIndex][count(legal & openSqs & ~oppAttackMap)];
-            egMobility += mobilityScore[EG][pieceIndex][count(legal & openSqs & ~oppAttackMap)];
-        }
-        else {
-            mgMobility += mobilityScore[MG][pieceIndex][count(legal & openSqs)];
-            egMobility += mobilityScore[EG][pieceIndex][count(legal & openSqs)];
-        }
+        mgMobility += mobilityScore[MG][pieceIndex][count(legal & openSqs)];
+        egMobility += mobilityScore[EG][pieceIndex][count(legal & openSqs)];
+        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS & ~oppPawnAttackMap);
+        centerControl += CENTER_BONUS * count(legal & CENTER_SQS & ~oppPawnAttackMap);
+    }
+    for (unsigned int i = pml.starts[QUEENS]; i < pml.size(); i++) {
+        PieceMoveInfo pmi = pml.get(i);
+        uint64_t legal = pmi.legal;
 
-        // Get center control score
-        if (pieceIndex == QUEENS - 1) {
-            centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS & ~oppPawnAttackMap & ~oppAttackMap);
-            centerControl += CENTER_BONUS * count(legal & CENTER_SQS & ~oppPawnAttackMap & ~oppAttackMap);
-        }
-        else {
-            centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS & ~oppPawnAttackMap);
-            centerControl += CENTER_BONUS * count(legal & CENTER_SQS & ~oppPawnAttackMap);
-        }
+        mgMobility += mobilityScore[MG][QUEENS-1][count(legal & openSqs & ~oppAttackMap)];
+        egMobility += mobilityScore[EG][QUEENS-1][count(legal & openSqs & ~oppAttackMap)];
+        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS & ~oppPawnAttackMap & ~oppAttackMap);
+        centerControl += CENTER_BONUS * count(legal & CENTER_SQS & ~oppPawnAttackMap & ~oppAttackMap);
     }
 
     valueMg = mgMobility + centerControl;
@@ -1012,7 +1006,7 @@ void getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, 
 // The lookup table approach is inspired by Ed Schroder's Rebel chess engine,
 // and by Stockfish
 template <int attackingColor>
-int getKingSafety(Board &b, PieceMoveList &attackers, PieceMoveList &defenders, uint64_t kingSqs, int pawnScore) {
+int getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, int pawnScore) {
     // Precalculate a few things
     uint64_t kingNeighborhood = (attackingColor == WHITE) ? ((pieces[BLACK][KINGS] & RANKS[7]) ? (kingSqs | (kingSqs >> 8)) : kingSqs)
                                                           : ((pieces[WHITE][KINGS] & RANKS[0]) ? (kingSqs | (kingSqs << 8)) : kingSqs);

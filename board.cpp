@@ -403,6 +403,7 @@ PieceMoveList Board::getPieceMoveList(int color) {
         pml.add(PieceMoveInfo(KNIGHTS, stSq, nSq));
     }
 
+    pml.starts[BISHOPS] = pml.size();
     uint64_t occ = allPieces[color^1] | pieces[color][PAWNS] | pieces[color][KNIGHTS] | pieces[color][KINGS];
     uint64_t bishops = pieces[color][BISHOPS];
     while (bishops) {
@@ -413,6 +414,7 @@ PieceMoveList Board::getPieceMoveList(int color) {
         pml.add(PieceMoveInfo(BISHOPS, stSq, bSq));
     }
 
+    pml.starts[ROOKS] = pml.size();
     uint64_t rooks = pieces[color][ROOKS];
     while (rooks) {
         int stSq = bitScanForward(rooks);
@@ -422,6 +424,7 @@ PieceMoveList Board::getPieceMoveList(int color) {
         pml.add(PieceMoveInfo(ROOKS, stSq, rSq));
     }
 
+    pml.starts[QUEENS] = pml.size();
     uint64_t queens = pieces[color][QUEENS];
     while (queens) {
         int stSq = bitScanForward(queens);
