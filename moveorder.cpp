@@ -23,14 +23,8 @@ const int SCORE_IID_MOVE = (1 << 20);
 const int SCORE_WINNING_CAPTURE = (1 << 18);
 const int SCORE_QUEEN_PROMO = (1 << 17);
 const int SCORE_EVEN_CAPTURE = (1 << 16);
-const int SCORE_LOSING_CAPTURE = -(1 << 30) - (1 << 28);
 const int SCORE_QUIET_MOVE = -(1 << 30);
-const int SCORE_LOSING_QUIET = -(1 << 30) - (1 << 29) - (1 << 28);
-
-// The depth at which we start using SEE on quiet moves. On at least this depth,
-// we place losing captures below non-losing quiets. Below this depth, we place
-// losing captures before all quiets.
-const int QUIET_SEE_DEPTH = 3;
+const int SCORE_LOSING_CAPTURE = -(1 << 30) - (1 << 28);
 
 
 MoveOrder::MoveOrder(Board *_b, int _color, int _depth, int _threadID, bool _isPVNode,
@@ -120,7 +114,7 @@ void MoveOrder::scoreCaptures(bool isIIDMove) {
                 scores.add(SCORE_EVEN_CAPTURE + b->getMVVLVAScore(color, m));
             else
                 // If we are doing SEE on quiets, score losing captures lower
-                scores.add(((depth >= QUIET_SEE_DEPTH) ? 0 : SCORE_LOSING_CAPTURE)
+                scores.add(SCORE_LOSING_CAPTURE
                     + 8 * see + b->getMVVLVAScore(color, m));
         }
 
@@ -147,7 +141,7 @@ void MoveOrder::scoreCaptures(bool isIIDMove) {
                 else if (see == 0)
                     scores.add(SCORE_EVEN_CAPTURE + b->getMVVLVAScore(color, m));
                 else
-                    scores.add(((depth >= QUIET_SEE_DEPTH) ? 0 : SCORE_LOSING_CAPTURE)
+                    scores.add(SCORE_LOSING_CAPTURE
                         + 8 * see + b->getMVVLVAScore(color, m));
             }
         }
@@ -172,18 +166,9 @@ void MoveOrder::scoreQuiets() {
             int endSq = getEndSq(m);
             int pieceID = b->getPieceOnSquare(color, startSq);
 
-            // Sort by SEE at higher depths
-            if (depth >= QUIET_SEE_DEPTH) {
-                int see = b->getSEEForMove(color, m);
-                scores.add(((see < 0) ? SCORE_LOSING_QUIET : SCORE_QUIET_MOVE)
-                    + searchParams->historyTable[color][pieceID][endSq]
-                    + ((ssi->counterMoveHistory != nullptr) ? ssi->counterMoveHistory[pieceID][endSq] : 0));
-            }
-            else {
-                scores.add(SCORE_QUIET_MOVE
-                    + searchParams->historyTable[color][pieceID][endSq]
-                    + ((ssi->counterMoveHistory != nullptr) ? ssi->counterMoveHistory[pieceID][endSq] : 0));
-            }
+            scores.add(SCORE_QUIET_MOVE
+                + searchParams->historyTable[color][pieceID][endSq]
+                + ((ssi->counterMoveHistory != nullptr) ? ssi->counterMoveHistory[pieceID][endSq] : 0));
         }
     }
 }
