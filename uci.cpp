@@ -158,9 +158,9 @@ int main() {
                         (color == WHITE) ? "wtime" : "btime");
                 it++;
                 value = std::stoi(*it);
-                value -= BUFFER_TIME;
-                value = std::max(0, value);
+                int minValue = std::min(value, BUFFER_TIME) / 100;
 
+                value -= BUFFER_TIME;
                 int maxValue = value / MAX_TIME_FACTOR;
 
                 // recurring time controls
@@ -180,6 +180,9 @@ int main() {
                     value += std::stoi(*it);
                     value = std::min(value, maxValue);
                 }
+
+                // minimum thinking time
+                value = std::max(value, minValue);
             }
 
             bestMove = NULL_MOVE;
