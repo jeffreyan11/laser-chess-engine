@@ -168,7 +168,7 @@ int main() {
                 if (it != inputVector.end()) {
                     it++;
                     int movesToGo = std::stoi(*it);
-                    value /= MAX_TIME_FACTOR + movesToGo - 1;
+                    value /= std::max(movesToGo, (int) (MAX_TIME_FACTOR + movesToGo / 2.0));
                 }
                 else value /= MOVE_HORIZON;
 
