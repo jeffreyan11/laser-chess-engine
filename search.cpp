@@ -917,13 +917,6 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             continue;
 
 
-        // Futility pruning using SEE
-        // if (moveIsPrunable && bestScore > -INFTY
-        //  && depth == 1 && staticEval <= alpha
-        //  && b.getSEEForMove(color, m) < 0)
-        //     continue;
-
-
         // Move count based pruning / Late move pruning
         // At low depths, moves late in the list with poor history are pruned
         // As used in Fruit/Stockfish:
@@ -931,6 +924,13 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         if (moveIsPrunable
          && depth <= 7
          && movesSearched > LMP_MOVE_COUNTS[evalImproving][depth] + (isPVNode ? depth : 0))
+            continue;
+
+
+        // Futility pruning using SEE
+        if (!isPVNode && !isInCheck && abs(alpha) < NEAR_MATE_SCORE
+         && bestScore > -INFTY && depth <= 3
+         && b.getSEEForMove(color, m) < 100 - 100*depth)
             continue;
 
 
