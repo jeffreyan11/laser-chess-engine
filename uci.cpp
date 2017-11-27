@@ -309,7 +309,8 @@ int main() {
             cerr << "Nodes/second: " << 1000 * totalNodes / time << endl;
         }
         else if (input == "eval") {
-            evaluate<true>(board);
+            Eval e;
+            e.evaluate<true>(board);
         }
 
         // According to UCI protocol, inputs that do not make sense are ignored

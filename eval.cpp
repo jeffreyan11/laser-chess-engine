@@ -149,40 +149,12 @@ void setKingSafetyScale(int s) {
 }
 
 
-struct EvalInfo {
-    uint64_t attackMaps[2][5];
-    uint64_t fullAttackMaps[2];
-    uint64_t rammedPawns[2];
-
-    void clear() {
-        std::memset(this, 0, sizeof(EvalInfo));
-    }
-};
-
-
-
-// Eval helpers
-template <int color>
-void getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg);
-template <int attackingColor>
-int getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, int pawnScore);
-int checkEndgameCases();
-int scoreSimpleKnownWin(int winningColor);
-int scoreCornerDistance(int winningColor, int wKingSq, int bKingSq);
-int getManhattanDistance(int sq1, int sq2);
-
-// Global eval variables
-EvalInfo ei;
-uint64_t pieces[2][6];
-uint64_t allPieces[2];
-int playerToMove;
-
 /*
  * Evaluates the current board position in hundredths of pawns. White is
  * positive and black is negative in traditional negamax format.
  */
 template <bool debug>
-int evaluate(Board &b) {
+int Eval::evaluate(Board &b) {
     // Copy necessary values from Board
     for (int color = WHITE; color <= BLACK; color++) {
         for (int pieceID = PAWNS; pieceID <= KINGS; pieceID++)
@@ -941,15 +913,15 @@ int evaluate(Board &b) {
 }
 
 // Explicitly instantiate templates
-template int evaluate<true>(Board &b);
-template int evaluate<false>(Board &b);
+template int Eval::evaluate<true>(Board &b);
+template int Eval::evaluate<false>(Board &b);
 
 /* Scores the board for a player based on estimates of mobility
  * This function also provides a bonus for having mobile pieces near the
  * opponent's king, and deals with control of center.
  */
 template <int color>
-void getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg) {
+void Eval::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg) {
     // Bitboard of center 4 squares: d4, e4, d5, e5
     const uint64_t CENTER_SQS = 0x0000001818000000;
     // Extended center: center, plus c4, f4, c5, f5, and d6/d3, e6/e3
@@ -1006,7 +978,7 @@ void getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, 
 // The lookup table approach is inspired by Ed Schroder's Rebel chess engine,
 // and by Stockfish
 template <int attackingColor>
-int getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, int pawnScore) {
+int Eval::getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, int pawnScore) {
     // Precalculate a few things
     uint64_t kingNeighborhood = (attackingColor == WHITE) ? ((pieces[BLACK][KINGS] & RANKS[7]) ? (kingSqs | (kingSqs >> 8)) : kingSqs)
                                                           : ((pieces[WHITE][KINGS] & RANKS[0]) ? (kingSqs | (kingSqs << 8)) : kingSqs);
@@ -1062,7 +1034,7 @@ int getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, int pawn
 // Check special endgame cases: where help mate is possible (detecting this
 // is delegated to search), but forced mate is not, or where a simple
 // forced mate is possible.
-int checkEndgameCases() {
+int Eval::checkEndgameCases() {
     int numWPieces = count(allPieces[WHITE]) - 1;
     int numBPieces = count(allPieces[BLACK]) - 1;
     int numPieces = numWPieces + numBPieces;
@@ -1200,14 +1172,14 @@ int checkEndgameCases() {
 
 // A function for scoring the most basic mating cases, when it is only necessary
 // to get the opposing king into a corner.
-int scoreSimpleKnownWin(int winningColor) {
+int Eval::scoreSimpleKnownWin(int winningColor) {
     int wKingSq = bitScanForward(pieces[WHITE][KINGS]);
     int bKingSq = bitScanForward(pieces[BLACK][KINGS]);
     int winScore = (winningColor == WHITE) ? KNOWN_WIN : -KNOWN_WIN;
     return winScore + scoreCornerDistance(winningColor, wKingSq, bKingSq);
 }
 
-inline int scoreCornerDistance(int winningColor, int wKingSq, int bKingSq) {
+inline int Eval::scoreCornerDistance(int winningColor, int wKingSq, int bKingSq) {
     int wf = wKingSq & 7;
     int wr = wKingSq >> 3;
     int bf = bKingSq & 7;
@@ -1217,6 +1189,6 @@ inline int scoreCornerDistance(int winningColor, int wKingSq, int bKingSq) {
     return (winningColor == WHITE) ? wDist - 2*bDist : 2*wDist - bDist;
 }
 
-inline int getManhattanDistance(int sq1, int sq2) {
+inline int Eval::getManhattanDistance(int sq1, int sq2) {
     return std::abs((sq1 >> 3) - (sq2 >> 3)) + std::abs((sq1 & 7) - (sq2 & 7));
 }

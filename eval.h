@@ -19,6 +19,8 @@
 #ifndef __EVAL_H__
 #define __EVAL_H__
 
+#include <cstring>
+#include "board.h"
 #include "common.h"
 
 class Board;
@@ -27,7 +29,36 @@ void initPSQT();
 void setMaterialScale(int s);
 void setKingSafetyScale(int s);
 
-template <bool debug = false> int evaluate(Board &b);
+struct EvalInfo {
+    uint64_t attackMaps[2][5];
+    uint64_t fullAttackMaps[2];
+    uint64_t rammedPawns[2];
+
+    void clear() {
+        std::memset(this, 0, sizeof(EvalInfo));
+    }
+};
+
+class Eval {
+public:
+  template <bool debug = false> int evaluate(Board &b);
+
+private:
+  EvalInfo ei;
+  uint64_t pieces[2][6];
+  uint64_t allPieces[2];
+  int playerToMove;
+
+  // Eval helpers
+  template <int color>
+  void getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg);
+  template <int attackingColor>
+  int getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, int pawnScore);
+  int checkEndgameCases();
+  int scoreSimpleKnownWin(int winningColor);
+  int scoreCornerDistance(int winningColor, int wKingSq, int bKingSq);
+  int getManhattanDistance(int sq1, int sq2);
+};
 
 
 const int SEE_PIECE_VALS[6] = {100, 400, 400, 600, 1150, MATE_SCORE/2};
