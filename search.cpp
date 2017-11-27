@@ -929,8 +929,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
         // Futility pruning using SEE
         if (!isPVNode && !isInCheck && abs(alpha) < NEAR_MATE_SCORE
-         && bestScore > -INFTY && depth <= 3
-         && b.getSEEForMove(color, m) < 100 - 100*depth)
+         && bestScore > -INFTY && depth <= 5
+         && b.getSEEForMove(color, m) < -100*depth)
             continue;
 
 
