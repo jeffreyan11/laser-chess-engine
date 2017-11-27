@@ -1001,9 +1001,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         if (depth >= 7 && reduction == 0 && extension == 0
          && m == hashed
          && abs(hashScore) < NEAR_MATE_SCORE
-         && ((hashScore >= beta && (nodeType == CUT_NODE || nodeType == PV_NODE)
-                                && hashDepth >= depth - 3)
-          || (isPVNode && nodeType == PV_NODE && hashDepth >= depth - 2))) {
+         && (nodeType == CUT_NODE || nodeType == PV_NODE)
+         && hashDepth >= depth - 3) {
             bool isSingular = true;
 
             // Do a reduced depth search with a lowered window for a fail low check
@@ -1020,8 +1019,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
                     [b.getPieceOnSquare(color, getStartSq(seMove))][getEndSq(seMove)];
 
                 // The window is lowered more for higher depths
-                int SEWindow = isPVNode ? hashScore - 10 - depth
-                                        : alpha - 10 - depth;
+                int SEWindow = hashScore - 10 - depth;
                 // Do a reduced search for fail-low confirmation
                 int SEDepth = depth / 2 - 1;
 
