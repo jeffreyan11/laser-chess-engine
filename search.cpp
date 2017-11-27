@@ -1213,9 +1213,11 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         return 0;
 
     // Qsearch hash table probe
+    int hashScore = -INFTY;
     uint64_t hashEntry = transpositionTable.get(b);
+    uint8_t nodeType = NO_NODE_INFO;
     if (hashEntry != 0) {
-        int hashScore = getHashScore(hashEntry);
+        hashScore = getHashScore(hashEntry);
 
         // Adjust the hash score to mate distance from root if necessary
         if (hashScore >= MATE_SCORE - MAX_DEPTH)
@@ -1223,7 +1225,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         else if (hashScore <= -MATE_SCORE + MAX_DEPTH)
             hashScore += searchParams->ply + plies;
 
-        uint8_t nodeType = getHashNodeType(hashEntry);
+        nodeType = getHashNodeType(hashEntry);
         // Only used a hashed score if the search depth was at least
         // the current depth
         if (getHashDepth(hashEntry) >= -plies) {
@@ -1249,6 +1251,14 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     else {
         standPat = (color == WHITE) ? evaluate(b) : -evaluate(b);
         evalCache.add(b, standPat);
+    }
+
+    // Use the TT score as a better "static" eval, if available.
+    if (hashScore != -INFTY) {
+        if ((nodeType == ALL_NODE && hashScore < standPat)
+         || (nodeType == CUT_NODE && hashScore > standPat)
+         || (nodeType == PV_NODE))
+            standPat = hashScore;
     }
 
     // The stand pat cutoff
