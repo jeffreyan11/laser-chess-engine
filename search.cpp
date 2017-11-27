@@ -859,7 +859,12 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         searchParams->nullMoveCount = 0;
 
         if (nullScore >= beta) {
-            return nullScore;
+            if (depth >= 10) {
+                int verifyScore = PVS(b, depth-1-reduction, alpha, beta, threadID, false, ssi, &line);
+                if (verifyScore >= beta)
+                    return verifyScore;
+            }
+            else return nullScore;
         }
     }
 
