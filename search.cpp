@@ -1262,7 +1262,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     }
 
     // The stand pat cutoff
-    if (standPat >= beta || standPat < alpha - MAX_POS_SCORE - PIECE_VALUES[MG][QUEENS])
+    if (standPat >= beta)
         return standPat;
 
     if (alpha < standPat)
@@ -1335,7 +1335,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         Move m = legalMoves.get(i);
 
         // Static exchange evaluation pruning
-        if (b.getSEEForMove(color, m) < 0)
+        if (!isCapture(m) && b.getSEEForMove(color, m) < 0)
             continue;
 
         Board copy = b.staticCopy();
