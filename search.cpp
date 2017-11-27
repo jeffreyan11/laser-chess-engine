@@ -1286,8 +1286,11 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         // Delta prune
         if (standPat + b.valueOfPiece(b.getPieceOnSquare(color^1, getEndSq(m))) < alpha - MAX_POS_SCORE)
             continue;
+        // Futility pruning
+        if (standPat < alpha - 70 && b.getSEEForMove(color, m) <= 0)
+            continue;
         // Static exchange evaluation pruning
-        if (b.getExchangeScore(color, m) < 0 && b.getSEEForMove(color, m) < -MAX_POS_SCORE)
+        if (b.getExchangeScore(color, m) < 0 && b.getSEEForMove(color, m) < 0)
             continue;
 
 
@@ -1366,13 +1369,17 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     }
 
     // Checks: only on the first two plies of q-search
-    if (plies <= 1) {
+    // Only do checks if a futility pruning condition is met
+    if (plies <= 1 && standPat >= alpha - 100) {
         legalMoves.clear();
         b.getPseudoLegalChecks(legalMoves, color);
 
         for (unsigned int i = 0; i < legalMoves.size(); i++) {
             Move m = legalMoves.get(i);
 
+            // Futility pruning
+            if (standPat < alpha - 100)
+                continue;
             // Static exchange evaluation pruning
             if (b.getSEEForMove(color, m) < 0)
                 continue;
