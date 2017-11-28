@@ -386,7 +386,7 @@ const Score OWN_KING_DIST = E(0, 2);
 const Score OPP_KING_DIST = E(0, 4);
 
 // Doubled pawns
-const Score DOUBLED_PENALTY = E(-14, -17);
+const Score DOUBLED_PENALTY = E(-14, -19);
 // Isolated pawns
 const Score ISOLATED_PENALTY = E(-16, -13);
 const Score ISOLATED_SEMIOPEN_PENALTY = E(-6, -3);

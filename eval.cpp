@@ -708,10 +708,8 @@ int Eval::evaluate(Board &b) {
     }
 
     // Doubled pawns
-    for (int i = 0; i < 8; i++) {
-        whitePawnScore += DOUBLED_PENALTY * (((wPawnCtByFile[i] - 1) * wPawnCtByFile[i]) / 2);
-        blackPawnScore += DOUBLED_PENALTY * (((bPawnCtByFile[i] - 1) * bPawnCtByFile[i]) / 2);
-    }
+    whitePawnScore += DOUBLED_PENALTY * count(pieces[WHITE][PAWNS] & (pieces[WHITE][PAWNS] << 8));
+    blackPawnScore += DOUBLED_PENALTY * count(pieces[BLACK][PAWNS] & (pieces[BLACK][PAWNS] >> 8));
 
     // Isolated pawns
     // Fill a bitmap of which files have pawns
