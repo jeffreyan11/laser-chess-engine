@@ -559,6 +559,11 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
     // Push current position to two fold stack
     twoFoldPositions[threadID].push(b->getZobristKey());
 
+    // Helps prevent stalls when using more threads than physical cores,
+    // presumably by preventing this function from completing before the thread
+    // is able to detach.
+    std::this_thread::yield();
+
     for (unsigned int i = startMove; i < legalMoves->size(); i++) {
         // Output current move info to the GUI. Only do so if 5 seconds of
         // search have elapsed to avoid clutter
