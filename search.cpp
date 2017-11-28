@@ -1220,7 +1220,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     if (b.isInsufficientMaterial())
         return 0;
     // Check for repetition draws while we are still considering checks
-    if (plies <= 2 && twoFoldPositions[threadID].find(b.getZobristKey()))
+    if (b.getFiftyMoveCounter() >= 2 && twoFoldPositions[threadID].find(b.getZobristKey()))
         return 0;
 
     // Qsearch hash table probe
@@ -1443,7 +1443,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
  * not just captures, necessitating this function.
  */
 int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID) {
-    if (twoFoldPositions[threadID].find(b.getZobristKey()))
+    if (b.getFiftyMoveCounter() >= 2 && twoFoldPositions[threadID].find(b.getZobristKey()))
         return 0;
 
     SearchParameters *searchParams = searchParamsArray[threadID];
