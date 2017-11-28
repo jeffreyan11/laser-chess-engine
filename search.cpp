@@ -145,6 +145,10 @@ std::atomic<bool> stopSignal(false);
 std::atomic<int> threadsRunning;
 std::mutex threadsRunningMutex;
 
+// Dummy variables for lazy SMP since we don't care about these results
+int dummyBestIndex[MAX_THREADS-1];
+int dummyBestScore[MAX_THREADS-1];
+
 // Values for UCI options
 unsigned int multiPV;
 int numThreads;
@@ -295,11 +299,6 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 if (rootDepth >= 7 && numThreads > 1) {
                     std::thread *threadPool = new std::thread[numThreads-1];
 
-                    // Dummy variables since we don't care about these results
-                    int *dummyBestIndex = new int[numThreads-1];
-                    int *dummyBestScore = new int[numThreads-1];
-                    SearchPV *dummyPVLine = new SearchPV[numThreads-1];
-
                     // Start secondary threads
                     // Start even threads with depth = rootDepth+1
                     //   (idea from Dan Homan, author of ExChess)
@@ -309,7 +308,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                         threadPool[i-1] = std::thread(getBestMoveAtDepthHelper, b,
                             &legalMoves, rootDepth + (i % 2), aspAlpha, aspBeta,
                             dummyBestIndex+i-1, dummyBestScore+i-1,
-                            multiPVNum-1, i, dummyPVLine+i-1);
+                            multiPVNum-1, i, nullptr);
                         // Detach secondary threads
                         threadPool[i-1].detach();
                     }
@@ -325,9 +324,6 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     stopSignal = false;
 
                     delete[] threadPool;
-                    delete[] dummyBestIndex;
-                    delete[] dummyBestScore;
-                    delete[] dummyPVLine;
                 }
                 // Otherwise, just search with one thread
                 else {
@@ -589,10 +585,11 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
             if (score > alpha) {
                 alpha = score;
                 tempMove = (int) i;
-                changePV(legalMoves->get(i), pvLine, &line);
+                if (pvLine != nullptr)
+                    changePV(legalMoves->get(i), pvLine, &line);
             }
             // To get a PV if failing low
-            else if (i == 0)
+            else if (pvLine != nullptr && i == 0)
                 changePV(legalMoves->get(i), pvLine, &line);
         }
 
