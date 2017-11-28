@@ -396,8 +396,9 @@ const Score BACKWARD_SEMIOPEN_PENALTY = E(-12, -2);
 // Undefended pawns that are not backwards or isolated
 const Score UNDEFENDED_PAWN_PENALTY = E(-6, -3);
 // Pawn phalanxes
-const Score PAWN_PHALANX_BONUS = E(2, 2);
 const Score PAWN_PHALANX_RANK_BONUS = E(14, 14);
+// Connected pawns
+const Score PAWN_CONNECTED_RANK_BONUS = E(4, 4);
 // King-pawn tropism
 const int KING_TROPISM_VALUE = 18;
 
