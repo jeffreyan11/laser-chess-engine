@@ -84,6 +84,10 @@ void setNumThreads(int n);
 void initPerThreadMemory();
 void initSSI();
 
+// Pondering
+void startPonder();
+void stopPonder();
+
 int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID, SearchStackInfo *ssi);
 
 // Search modes

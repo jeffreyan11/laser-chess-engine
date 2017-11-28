@@ -152,6 +152,7 @@ int dummyBestScore[MAX_THREADS-1];
 // Values for UCI options
 unsigned int multiPV;
 int numThreads;
+bool isPonderSearch = false;
 
 // Accessible from tbcore.c
 int TBlargest = 0;
@@ -198,6 +199,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
 
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
+    Move ponder = NULL_MOVE;
 
     // Special case if we are given a mate/stalemate position
     if (legalMoves.size() <= 0) {
@@ -335,6 +337,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 // Calculate values for printing
                 uint64_t nps = 1000 * getNodes() / timeSoFar;
                 std::string pvStr = retrievePV(&pvLine);
+                if (pvLine.pvLength > 1)
+                    ponder = pvLine.pv[1];
 
                 // Handle fail highs and fail lows
                 // Fail low: no best move found
@@ -462,7 +466,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
         }
 
         // Easymove confirmation
-        if (mode == TIME && multiPV == 1
+        if (!isPonderSearch && mode == TIME && multiPV == 1
          && timeSoFar > (uint64_t) value / 16
          && timeSoFar < (uint64_t) value / 2
          && abs(bestScore) < MATE_SCORE - MAX_DEPTH) {
@@ -486,7 +490,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     }
     // Conditions for iterative deepening loop
     while (!isStop
-        && ((mode == TIME && timeSoFar < (uint64_t) value * TIME_FACTOR
+        && ((((mode == TIME && timeSoFar < (uint64_t) value * TIME_FACTOR) || isPonderSearch)
                           && rootDepth <= MAX_DEPTH)
          || (mode == MOVETIME && timeSoFar < (uint64_t) value
                               && rootDepth <= MAX_DEPTH)
@@ -498,6 +502,10 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     }
     else
         easyMoveInfo.reset();
+
+    // When pondering, we must continue "searching" until given a stop or ponderhit command.
+    while (isPonderSearch && !isStop)
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     printStatistics();
 
@@ -511,7 +519,10 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     // Output best move to UCI interface
     stopSignal = true;
     isStop = true;
-    cout << "bestmove " << moveToString(*bestMove) << endl;
+    if (ponder != NULL_MOVE)
+        cout << "bestmove " << moveToString(*bestMove) << " ponder " << moveToString(ponder) << endl;
+    else
+        cout << "bestmove " << moveToString(*bestMove) << endl;
     return;
 }
 
@@ -898,10 +909,12 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     for (Move m = moveSorter.nextMove(); m != NULL_MOVE;
               m = moveSorter.nextMove()) {
         // Check for a timeout
-        uint64_t timeSoFar = getTimeElapsed(searchParamsArray[0]->startTime);
-        if (timeSoFar > searchParamsArray[0]->timeLimit) {
-            isStop = true;
-            stopSignal = true;
+        if (!isPonderSearch) {
+            uint64_t timeSoFar = getTimeElapsed(searchParamsArray[0]->startTime);
+            if (timeSoFar > searchParamsArray[0]->timeLimit) {
+                isStop = true;
+                stopSignal = true;
+            }
         }
         // Stop condition to help break out as quickly as possible
         if (stopSignal.load(std::memory_order_relaxed))
@@ -1523,6 +1536,16 @@ int adjustHashScore(int score, int plies) {
     if (score <= -MATE_SCORE + MAX_DEPTH)
         return score - plies;
     return score;
+}
+
+
+// Pondering
+void startPonder() {
+    isPonderSearch = true;
+}
+
+void stopPonder() {
+    isPonderSearch = false;
 }
 
 

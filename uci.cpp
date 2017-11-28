@@ -103,8 +103,8 @@ int main() {
         inputVector = split(input, ' ');
         std::cin.clear();
 
-        // Ignore all input other than "stop" while running a search.
-        if (!isStop && input != "stop")
+        // Ignore all input other than "stop" and "ponderhit" while running a search.
+        if (!isStop && input != "stop" && input != "ponderhit")
             continue;
 
         if (input == "uci") {
@@ -116,6 +116,7 @@ int main() {
                  << " min " << MIN_HASH_SIZE << " max " << MAX_HASH_SIZE << endl;
             cout << "option name EvalCache type spin default " << DEFAULT_HASH_SIZE
                  << " min " << MIN_HASH_SIZE << " max " << MAX_HASH_SIZE << endl;
+            cout << "option name Ponder type check default false" << endl;
             cout << "option name MultiPV type spin default " << DEFAULT_MULTI_PV
                  << " min " << MIN_MULTI_PV << " max " << MAX_MULTI_PV << endl;
             cout << "option name BufferTime type spin default " << DEFAULT_BUFFER_TIME
@@ -133,6 +134,9 @@ int main() {
         else if (input.substr(0, 2) == "go" && isStop) {
             int mode = DEPTH, value = 1;
             std::vector<string>::iterator it;
+
+            if (input.find("ponder") != string::npos)
+                startPonder();
 
             if (input.find("movetime") != string::npos && inputVector.size() > 2) {
                 mode = MOVETIME;
@@ -192,8 +196,12 @@ int main() {
             searchThread = std::thread(getBestMove, &board, mode, value, &bestMove);
             searchThread.detach();
         }
+        else if (input == "ponderhit") {
+            stopPonder();
+        }
 
         else if (input == "stop") {
+            stopPonder();
             isStop = true;
             stopSignal = true;
             std::this_thread::yield();
@@ -226,6 +234,9 @@ int main() {
                     if (MB > MAX_HASH_SIZE)
                         MB = MAX_HASH_SIZE;
                     setEvalCacheSize(MB);
+                }
+                else if (inputVector.at(2) == "ponder") {
+                    // do nothing
                 }
                 else if (inputVector.at(2) == "multipv") {
                     int multiPV = std::stoi(inputVector.at(4));
