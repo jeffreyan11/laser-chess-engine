@@ -68,7 +68,9 @@ uint64_t perft(Board &b, int color, int depth, uint64_t &captures);
 
 
 static int BUFFER_TIME = DEFAULT_BUFFER_TIME;
-std::atomic<bool> isStop(true);
+// Declared in search.cpp
+extern std::atomic<bool> isStop;
+extern std::atomic<bool> stopSignal;
 extern TwoFoldStack twoFoldPositions[MAX_THREADS];
 
 
@@ -129,7 +131,6 @@ int main() {
         else if (input == "ucinewgame") clearAll(board);
         else if (input.substr(0, 8) == "position") setPosition(input, inputVector, board);
         else if (input.substr(0, 2) == "go" && isStop) {
-            isStop = false;
             int mode = DEPTH, value = 1;
             std::vector<string>::iterator it;
 
@@ -186,12 +187,15 @@ int main() {
             }
 
             bestMove = NULL_MOVE;
+            isStop = false;
+            stopSignal = false;
             searchThread = std::thread(getBestMove, &board, mode, value, &bestMove);
             searchThread.detach();
         }
 
         else if (input == "stop") {
             isStop = true;
+            stopSignal = true;
             std::this_thread::yield();
         }
         else if (input.substr(0, 9) == "setoption" && inputVector.size() >= 5) {
@@ -294,9 +298,13 @@ int main() {
                 clearAll(board);
                 board = fenToBoard(positions.at(i));
                 bestMove = NULL_MOVE;
-                isStop = false;
 
+                isStop = false;
+                stopSignal = false;
                 getBestMove(&board, DEPTH, 10, &bestMove);
+                isStop = true;
+                stopSignal = true;
+
                 totalNodes += getNodes();
             }
 

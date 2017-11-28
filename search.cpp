@@ -138,9 +138,9 @@ static SearchStackInfo **ssInfo;
 TwoFoldStack twoFoldPositions[MAX_THREADS];
 
 // Used to break out of the search thread if the stop command is given
-extern std::atomic<bool> isStop;
+std::atomic<bool> isStop(true);
 // Additional stop signal to stop helper threads during SMP
-std::atomic<bool> stopSignal(false);
+std::atomic<bool> stopSignal(true);
 // Used to ensure all threads have terminated
 std::atomic<int> threadsRunning;
 std::mutex threadsRunningMutex;
@@ -292,7 +292,6 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     searchParamsArray[i]->reset();
                 pvLine.pvLength = 0;
                 threadsRunning = numThreads-1;
-                stopSignal = false;
 
                 // Get the index of the best move
                 // If depth >= 7 create threads for SMP
@@ -509,15 +508,16 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     transpositionTable.keys = 0;
 
     // Output best move to UCI interface
-    isStop = true;
     cout << "bestmove " << moveToString(*bestMove) << endl;
+    stopSignal = true;
+    isStop = true;
     return;
 }
 
 void getBestMoveAtDepthHelper(Board *b, MoveList *legalMoves, int depth, int alpha,
         int beta, int *bestMoveIndex, int *bestScore, unsigned int startMove,
         int threadID, SearchPV *pvLine) {
-    while (depth <= MAX_DEPTH && !isStop && !stopSignal) {
+    while (depth <= MAX_DEPTH && !stopSignal) {
         getBestMoveAtDepth(b, legalMoves, depth, alpha, beta,
                            bestMoveIndex, bestScore, startMove, threadID, pvLine);
         depth++;
@@ -577,7 +577,7 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
 
         // Stop condition. If stopping, return search results from incomplete
         // search, if any.
-        if (isStop || stopSignal)
+        if (stopSignal.load(std::memory_order_seq_cst))
             break;
 
         if (score > *bestScore) {
@@ -637,7 +637,7 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID, 
         }
 
         // Stop condition to break out as quickly as possible
-        if (isStop || stopSignal)
+        if (stopSignal.load(std::memory_order_relaxed))
             return i;
 
         if (score > alpha) {
@@ -898,10 +898,12 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
               m = moveSorter.nextMove()) {
         // Check for a timeout
         uint64_t timeSoFar = getTimeElapsed(searchParamsArray[0]->startTime);
-        if (timeSoFar > searchParamsArray[0]->timeLimit)
-            isStop = stopSignal = true;
+        if (timeSoFar > searchParamsArray[0]->timeLimit) {
+            isStop = true;
+            stopSignal = true;
+        }
         // Stop condition to help break out as quickly as possible
-        if (isStop || stopSignal)
+        if (stopSignal.load(std::memory_order_relaxed))
             return INFTY;
 
         // Conditions for whether to do futility and move count pruning
@@ -1075,7 +1077,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         twoFoldPositions[threadID].pop();
 
         // Stop condition to help break out as quickly as possible
-        if (isStop || stopSignal)
+        if (stopSignal.load(std::memory_order_relaxed))
             return INFTY;
 
         // Beta cutoff
@@ -1312,7 +1314,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
 
         // Stop condition to help break out as quickly as possible
-        if (isStop || stopSignal)
+        if (stopSignal.load(std::memory_order_relaxed))
             return INFTY;
 
         if (score >= beta) {
