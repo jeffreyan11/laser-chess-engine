@@ -450,20 +450,11 @@ int Eval::evaluate(Board &b) {
                                                         & (RANKS[6] | RANKS[5] | RANKS[4]));
 
     // Outposts
-    // Region 1: Ranks 4/5/6 on files D/E, ranks 5/6 on files C/F, rank 6 on files B/G
-    const uint64_t OUTPOST1[2] = {((FILES[3] | FILES[4]) & (RANKS[3] | RANKS[4] | RANKS[5]))
-                                | ((FILES[2] | FILES[5]) & (RANKS[4] | RANKS[5]))
-                                | ((FILES[1] | FILES[6]) &  RANKS[5]),
-                                  ((FILES[3] | FILES[4]) & (RANKS[4] | RANKS[3] | RANKS[2]))
-                                | ((FILES[2] | FILES[5]) & (RANKS[3] | RANKS[2]))
-                                | ((FILES[1] | FILES[6]) &  RANKS[2])};
-    // Region 2: Rank 4 on files C/F, rank 5 on files B/G, ranks 5/6 on files A/H
-    const uint64_t OUTPOST2[2] = {((FILES[2] | FILES[5]) &  RANKS[3])
-                                | ((FILES[1] | FILES[6]) &  RANKS[4])
-                                | ((FILES[0] | FILES[7]) & (RANKS[4] | RANKS[5])),
-                                  ((FILES[2] | FILES[5]) &  RANKS[4])
-                                | ((FILES[1] | FILES[6]) &  RANKS[3])
-                                | ((FILES[0] | FILES[7]) & (RANKS[3] | RANKS[2]))};
+    // Ranks 4/5/6 on files C/D/E/F, ranks 5/6 on files B/G
+    const uint64_t OUTPOST_SQS[2] = {((FILES[2] | FILES[3] | FILES[4] | FILES[5]) & (RANKS[3] | RANKS[4] | RANKS[5]))
+                                   | ((FILES[1] | FILES[6]) &  (RANKS[4] | RANKS[5])),
+                                     ((FILES[2] | FILES[3] | FILES[4] | FILES[5]) & (RANKS[4] | RANKS[3] | RANKS[2]))
+                                   | ((FILES[1] | FILES[6]) &  (RANKS[3] | RANKS[2]))};
 
     for (int color = WHITE; color <= BLACK; color++) {
         //-----------------------------------Knights--------------------------------
@@ -476,11 +467,8 @@ int Eval::evaluate(Board &b) {
             psqtScores[color] += PSQT[color][KNIGHTS][knightSq];
 
             // Outposts
-            if (bit & ~pawnStopAtt[color^1] & (OUTPOST1[color] | OUTPOST2[color])) {
-                if (bit & OUTPOST1[color])
-                    pieceEvalScore[color] += KNIGHT_OUTPOST_BONUS1;
-                else
-                    pieceEvalScore[color] += KNIGHT_OUTPOST_BONUS2;
+            if (bit & ~pawnStopAtt[color^1] & OUTPOST_SQS[color]) {
+                pieceEvalScore[color] += KNIGHT_OUTPOST_BONUS;
                 // Defended by pawn
                 if (bit & ei.attackMaps[color][PAWNS])
                     pieceEvalScore[color] += KNIGHT_OUTPOST_PAWN_DEF_BONUS;
@@ -496,11 +484,8 @@ int Eval::evaluate(Board &b) {
 
             psqtScores[color] += PSQT[color][BISHOPS][bishopSq];
 
-            if (bit & ~pawnStopAtt[color^1] & (OUTPOST1[color] | OUTPOST2[color])) {
-                if (bit & OUTPOST1[color])
-                    pieceEvalScore[color] += BISHOP_OUTPOST_BONUS1;
-                else
-                    pieceEvalScore[color] += BISHOP_OUTPOST_BONUS2;
+            if (bit & ~pawnStopAtt[color^1] & OUTPOST_SQS[color]) {
+                pieceEvalScore[color] += BISHOP_OUTPOST_BONUS;
                 if (bit & ei.attackMaps[color][PAWNS])
                     pieceEvalScore[color] += BISHOP_OUTPOST_PAWN_DEF_BONUS;
             }

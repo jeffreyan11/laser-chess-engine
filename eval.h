@@ -116,10 +116,10 @@ const int pieceSquareTable[2][6][32] = {
 },
 { // Knights
 -110,-36,-28,-19,
--29, -9, 12, 17,
--16,  4, 18, 25,
-  9, 10, 21, 25,
-  0, 10, 16, 19,
+-29, -9, 10, 15,
+-12,  4, 18, 25,
+  9,  9, 21, 25,
+  0,  9, 16, 19,
 -15,  3,  5, 15,
 -22, -9, -4,  6,
 -68,-25,-14, -7
@@ -179,10 +179,10 @@ const int pieceSquareTable[2][6][32] = {
 },
 { // Knights
 -57,-15,-12, -8,
-  0,  7, 11, 17,
-  2, 10, 16, 20,
-  4, 14, 18, 25,
-  4, 14, 17, 21,
+ -4,  3,  7, 13,
+  0,  8, 16, 20,
+  4, 12, 18, 25,
+  4, 12, 17, 21,
  -6,  3,  7, 20,
 -21, -4, -2,  5,
 -44,-24,-18,-12
@@ -348,13 +348,11 @@ const Score BISHOP_RAMMED_PAWN_COLOR_PENALTY = E(-3, -9);
 // Minors shielded by own pawn in front
 const Score SHIELDED_MINOR_BONUS = E(14, 0);
 // A bonus for strong outpost knights
-const Score KNIGHT_OUTPOST_BONUS1 = E(25, 13);
-const Score KNIGHT_OUTPOST_BONUS2 = E(15, 10);
-const Score KNIGHT_OUTPOST_PAWN_DEF_BONUS = E(14, 9);
+const Score KNIGHT_OUTPOST_BONUS = E(25, 13);
+const Score KNIGHT_OUTPOST_PAWN_DEF_BONUS = E(14, 7);
 // A smaller bonus for bishops
-const Score BISHOP_OUTPOST_BONUS1 = E(13, 6);
-const Score BISHOP_OUTPOST_BONUS2 = E(9, 4);
-const Score BISHOP_OUTPOST_PAWN_DEF_BONUS = E(14, 5);
+const Score BISHOP_OUTPOST_BONUS = E(14, 8);
+const Score BISHOP_OUTPOST_PAWN_DEF_BONUS = E(15, 7);
 
 // Rooks
 const Score ROOK_OPEN_FILE_BONUS = E(28, 12);
