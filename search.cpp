@@ -202,6 +202,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     // Special case if we are given a mate/stalemate position
     if (legalMoves.size() <= 0) {
         *bestMove = NULL_MOVE;
+        stopSignal = true;
         isStop = true;
         cout << "bestmove none" << endl;
         return;
@@ -508,9 +509,9 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     transpositionTable.keys = 0;
 
     // Output best move to UCI interface
-    cout << "bestmove " << moveToString(*bestMove) << endl;
     stopSignal = true;
     isStop = true;
+    cout << "bestmove " << moveToString(*bestMove) << endl;
     return;
 }
 
