@@ -142,7 +142,7 @@ extern std::atomic<bool> isStop;
 // Additional stop signal to stop helper threads during SMP
 std::atomic<bool> stopSignal(false);
 // Used to ensure all threads have terminated
-static volatile int threadsRunning;
+std::atomic<int> threadsRunning;
 std::mutex threadsRunningMutex;
 
 // Values for UCI options
@@ -156,6 +156,9 @@ static int probeLimit = 0;
 
 // Search functions
 void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
+    int beta, int *bestMoveIndex, int *bestScore, unsigned int startMove,
+    int threadID, SearchPV *pvLine);
+void getBestMoveAtDepthHelper(Board *b, MoveList *legalMoves, int depth, int alpha,
     int beta, int *bestMoveIndex, int *bestScore, unsigned int startMove,
     int threadID, SearchPV *pvLine);
 int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, SearchStackInfo *ssi, SearchPV *pvLine);
@@ -252,7 +255,6 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     int rootDepth = 1;
     Move prevBest = NULL_MOVE;
     int pvStreak = 0;
-    stopSignal = false;
 
     // Iterative deepening loop
     do {
@@ -285,12 +287,13 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 for (int i = 0; i < numThreads; i++)
                     searchParamsArray[i]->reset();
                 pvLine.pvLength = 0;
+                threadsRunning = numThreads-1;
+                stopSignal = false;
 
                 // Get the index of the best move
                 // If depth >= 7 create threads for SMP
                 if (rootDepth >= 7 && numThreads > 1) {
                     std::thread *threadPool = new std::thread[numThreads-1];
-                    threadsRunning = numThreads;
 
                     // Dummy variables since we don't care about these results
                     int *dummyBestIndex = new int[numThreads-1];
@@ -303,7 +306,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     for (int i = 1; i < numThreads; i++) {
                         // Copy over the two-fold stack to use
                         twoFoldPositions[i] = twoFoldPositions[0];
-                        threadPool[i-1] = std::thread(getBestMoveAtDepth, b,
+                        threadPool[i-1] = std::thread(getBestMoveAtDepthHelper, b,
                             &legalMoves, rootDepth + (i % 2), aspAlpha, aspBeta,
                             dummyBestIndex+i-1, dummyBestScore+i-1,
                             multiPVNum-1, i, dummyPVLine+i-1);
@@ -515,6 +518,21 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
     return;
 }
 
+void getBestMoveAtDepthHelper(Board *b, MoveList *legalMoves, int depth, int alpha,
+        int beta, int *bestMoveIndex, int *bestScore, unsigned int startMove,
+        int threadID, SearchPV *pvLine) {
+    while (depth <= MAX_DEPTH && !isStop && !stopSignal) {
+        getBestMoveAtDepth(b, legalMoves, depth, alpha, beta,
+                           bestMoveIndex, bestScore, startMove, threadID, pvLine);
+        depth++;
+    }
+
+    // This thread is finished running.
+    threadsRunningMutex.lock();
+    threadsRunning--;
+    threadsRunningMutex.unlock();
+}
+
 /**
  * @brief Returns the index of the best move in legalMoves.
  */
@@ -532,11 +550,6 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
 
     // Push current position to two fold stack
     twoFoldPositions[threadID].push(b->getZobristKey());
-
-    // Helps prevent stalls when using more threads than physical cores,
-    // presumably by preventing this function from completing before the thread
-    // is able to detach.
-    std::this_thread::yield();
 
     for (unsigned int i = startMove; i < legalMoves->size(); i++) {
         // Output current move info to the GUI. Only do so if 5 seconds of
@@ -588,13 +601,7 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
     }
 
     twoFoldPositions[threadID].pop();
-
     *bestMoveIndex = tempMove;
-
-    // This thread is finished running.
-    threadsRunningMutex.lock();
-    threadsRunning--;
-    threadsRunningMutex.unlock();
 }
 
 // Gets a best move to try first when a hash move is not available.
