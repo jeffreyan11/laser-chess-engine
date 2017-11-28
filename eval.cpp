@@ -890,7 +890,7 @@ int Eval::evaluate(Board &b) {
     }
     // Reduce eval for lack of pawns
     if (whiteMaterial - blackMaterial > 0
-     && whiteMaterial - blackMaterial <= PIECE_VALUES[MG][BISHOPS]
+     && whiteMaterial - blackMaterial <= PIECE_VALUES[MG][KNIGHTS]
      && pieceCounts[WHITE][PAWNS] <= 1) {
         if (pieceCounts[WHITE][PAWNS] == 0) {
             if (whiteMaterial < PIECE_VALUES[MG][BISHOPS] + 50)
@@ -905,7 +905,7 @@ int Eval::evaluate(Board &b) {
         }
     }
     if (blackMaterial - whiteMaterial > 0
-     && blackMaterial - whiteMaterial <= PIECE_VALUES[MG][BISHOPS]
+     && blackMaterial - whiteMaterial <= PIECE_VALUES[MG][KNIGHTS]
      && pieceCounts[BLACK][PAWNS] <= 1) {
         if (pieceCounts[BLACK][PAWNS] == 0) {
             if (blackMaterial < PIECE_VALUES[MG][BISHOPS] + 50)
