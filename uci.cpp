@@ -208,20 +208,20 @@ int main() {
                     setNumThreads(threads);
                 }
                 else if (inputVector.at(2) == "hash") {
-                    int MB = std::stoi(inputVector.at(4));
+                    uint64_t MB = std::stoull(inputVector.at(4));
                     if (MB < MIN_HASH_SIZE)
                         MB = MIN_HASH_SIZE;
                     if (MB > MAX_HASH_SIZE)
                         MB = MAX_HASH_SIZE;
-                    setHashSize((uint64_t) MB);
+                    setHashSize(MB);
                 }
                 else if (inputVector.at(2) == "evalcache") {
-                    int MB = std::stoi(inputVector.at(4));
+                    uint64_t MB = std::stoull(inputVector.at(4));
                     if (MB < MIN_HASH_SIZE)
                         MB = MIN_HASH_SIZE;
                     if (MB > MAX_HASH_SIZE)
                         MB = MAX_HASH_SIZE;
-                    setEvalCacheSize((uint64_t) MB);
+                    setEvalCacheSize(MB);
                 }
                 else if (inputVector.at(2) == "multipv") {
                     int multiPV = std::stoi(inputVector.at(4));

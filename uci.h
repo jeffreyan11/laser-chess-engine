@@ -19,11 +19,12 @@
 #ifndef __UCI_H__
 #define __UCI_H__
 
+#include <cstdint>
 #include <string>
 
-const int DEFAULT_HASH_SIZE = 16;
-const int MIN_HASH_SIZE = 1;
-const int MAX_HASH_SIZE = 1024 * 1024;
+const uint64_t DEFAULT_HASH_SIZE = 16;
+const uint64_t MIN_HASH_SIZE = 1;
+const uint64_t MAX_HASH_SIZE = 1024 * 1024;
 const int DEFAULT_MULTI_PV = 1;
 const int MIN_MULTI_PV = 1;
 const int MAX_MULTI_PV = 256;

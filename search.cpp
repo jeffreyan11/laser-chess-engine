@@ -620,7 +620,7 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID, 
 
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Board copy = b->staticCopy();
-        if(!copy.doPseudoLegalMove(legalMoves.get(i), color))
+        if (!copy.doPseudoLegalMove(legalMoves.get(i), color))
             continue;
         searchStats->nodes++;
 

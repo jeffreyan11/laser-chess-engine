@@ -185,11 +185,6 @@ bool MoveOrder::doIID() {
 // IID: get a best move (hoping for a first move cutoff) if we don't
 // have a hash move available
 void MoveOrder::scoreIIDMove() {
-    // Sort the moves with what we have so far
-    /*for (Move m = nextMove(); m != NULL_MOVE;
-              m = nextMove());
-    index = 0;*/
-
     int iidDepth = isPVNode ? depth - depth/4 - 1 : (depth - 5) / 2;
     int bestIndex = getBestMoveForSort(b, legalMoves, iidDepth, threadID, ssi);
 
