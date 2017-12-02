@@ -47,8 +47,10 @@ void initPSQT() {
 
 struct EvalDebug {
     int totalEval;
+    int totalMg, totalEg;
     int totalMaterialMg, totalMaterialEg;
     int totalImbalanceMg, totalImbalanceEg;
+    Score whitePsqtScore, blackPsqtScore;
     int whiteMobilityMg, whiteMobilityEg, blackMobilityMg, blackMobilityEg;
     int whiteKingSafety, blackKingSafety;
     Score whitePieceScore, blackPieceScore;
@@ -61,8 +63,10 @@ struct EvalDebug {
 
     void clear() {
         totalEval = 0;
+        totalMg = totalEg = 0;
         totalMaterialMg = totalMaterialEg = 0;
         totalImbalanceMg = totalImbalanceEg = 0;
+        whitePsqtScore = blackPsqtScore = EVAL_ZERO;
         whiteMobilityMg = whiteMobilityEg = blackMobilityMg = blackMobilityEg = 0;
         whiteKingSafety = blackKingSafety = 0;
         whitePieceScore = blackPieceScore = EVAL_ZERO;
@@ -89,6 +93,13 @@ struct EvalDebug {
                   << " -- " << "   |   "
                   << std::setw(4) << S(totalImbalanceMg) << "   "
                   << std::setw(4) << S(totalImbalanceEg) << std::endl;
+        std::cerr << "    PSQT          |   "
+                  << std::setw(4) << S(decEvalMg(whitePsqtScore)) << "   "
+                  << std::setw(4) << S(decEvalEg(whitePsqtScore)) << "   |   "
+                  << std::setw(4) << S(decEvalMg(blackPsqtScore)) << "   "
+                  << std::setw(4) << S(decEvalEg(blackPsqtScore)) << "   |   "
+                  << std::setw(4) << S(decEvalMg(whitePsqtScore)) - S(decEvalMg(blackPsqtScore)) << "   "
+                  << std::setw(4) << S(decEvalEg(whitePsqtScore)) - S(decEvalEg(blackPsqtScore)) << std::endl;
         std::cerr << "    Mobility      |   "
                   << std::setw(4) << S(whiteMobilityMg) << "   "
                   << std::setw(4) << S(whiteMobilityEg) << "   |   "
@@ -125,6 +136,9 @@ struct EvalDebug {
                   << std::setw(4) << S(decEvalMg(whitePawnScore)) - S(decEvalMg(blackPawnScore)) << "   "
                   << std::setw(4) << S(decEvalEg(whitePawnScore)) - S(decEvalEg(blackPawnScore)) << std::endl;
         std::cerr << std::string(70, '-') << std::endl;
+        std::cerr << std::string(54, ' ') << "|  "
+                  << std::setw(4) << S(totalMg) << "   "
+                  << std::setw(4) << S(totalEg) << std::endl;
         std::cerr << "Static evaluation: " << S(totalEval) << std::endl;
         std::cerr << std::endl;
     }
@@ -311,7 +325,7 @@ int Eval::evaluate(Board &b) {
             psqtScores[color] += PSQT[color][PAWNS][sq];
         }
     }
-
+    // Queen piece square tables
     for (int color = WHITE; color <= BLACK; color++) {
         uint64_t bitboard = pieces[color][QUEENS];
         while (bitboard) {
@@ -324,8 +338,8 @@ int Eval::evaluate(Board &b) {
     //--------------------------------Mobility----------------------------------
     int whiteMobilityMg, whiteMobilityEg;
     int blackMobilityMg, blackMobilityEg;
-    getPseudoMobility<WHITE>(pmlWhite, pmlBlack, whiteMobilityMg, whiteMobilityEg);
-    getPseudoMobility<BLACK>(pmlBlack, pmlWhite, blackMobilityMg, blackMobilityEg);
+    getMobility<WHITE>(pmlWhite, pmlBlack, whiteMobilityMg, whiteMobilityEg);
+    getMobility<BLACK>(pmlBlack, pmlWhite, blackMobilityMg, blackMobilityEg);
     valueMg += whiteMobilityMg - blackMobilityMg;
     valueEg += whiteMobilityEg - blackMobilityEg;
 
@@ -338,10 +352,10 @@ int Eval::evaluate(Board &b) {
 
 
     //------------------------------King Safety---------------------------------
-    // Consider squares near king
     int kingSq[2] = {bitScanForward(pieces[WHITE][KINGS]),
                      bitScanForward(pieces[BLACK][KINGS])};
-    uint64_t kingNeighborhood[2] = {b.getKingSquares(kingSq[WHITE]), b.getKingSquares(kingSq[BLACK])};
+    uint64_t kingNeighborhood[2] = {b.getKingSquares(kingSq[WHITE]),
+                                    b.getKingSquares(kingSq[BLACK])};
 
     // Calculate king piece square table scores
     psqtScores[WHITE] += PSQT[WHITE][KINGS][kingSq[WHITE]];
@@ -352,9 +366,8 @@ int Eval::evaluate(Board &b) {
     // All king safety terms are midgame only, so don't calculate them in the endgame
     if (egFactor < EG_FACTOR_RES) {
         for (int color = WHITE; color <= BLACK; color++) {
-            // Pawn shield and storm values
+            // Pawn shield and storm values: king file and the two adjacent files
             int kingFile = kingSq[color] & 7;
-
             for (int i = kingFile-1; i <= kingFile+1; i++) {
                 if (i < 0 || i > 7)
                     continue;
@@ -400,7 +413,9 @@ int Eval::evaluate(Board &b) {
 
     ksValue[WHITE] = ksValue[WHITE] * scaleKingSafety / DEFAULT_EVAL_SCALE;
     ksValue[BLACK] = ksValue[BLACK] * scaleKingSafety / DEFAULT_EVAL_SCALE;
+
     valueMg += ksValue[WHITE] - ksValue[BLACK];
+
     if (debug) {
         evalDebugStats.whiteKingSafety = ksValue[WHITE];
         evalDebugStats.blackKingSafety = ksValue[BLACK];
@@ -524,39 +539,50 @@ int Eval::evaluate(Board &b) {
     valueMg += decEvalMg(psqtScores[WHITE]) - decEvalMg(psqtScores[BLACK]);
     valueEg += decEvalEg(psqtScores[WHITE]) - decEvalEg(psqtScores[BLACK]);
 
+    if (debug) {
+        evalDebugStats.whitePsqtScore = psqtScores[WHITE];
+        evalDebugStats.blackPsqtScore = psqtScores[BLACK];
+    }
+
 
     //-------------------------------Threats------------------------------------
     Score threatScore[2] = {EVAL_ZERO, EVAL_ZERO};
+    // Pawns attacked by opposing pieces and not defended by own pawns
     if (uint64_t upawns = pieces[WHITE][PAWNS] & ei.fullAttackMaps[BLACK] & ~ei.attackMaps[WHITE][PAWNS]) {
         threatScore[WHITE] += UNDEFENDED_PAWN * count(upawns);
     }
     if (uint64_t upawns = pieces[BLACK][PAWNS] & ei.fullAttackMaps[WHITE] & ~ei.attackMaps[BLACK][PAWNS]) {
         threatScore[BLACK] += UNDEFENDED_PAWN * count(upawns);
     }
+    // Minors attacked by opposing pieces and not defended by own pawns
     if (uint64_t minors = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & ei.fullAttackMaps[BLACK] & ~ei.attackMaps[WHITE][PAWNS]) {
         threatScore[WHITE] += UNDEFENDED_MINOR * count(minors);
     }
     if (uint64_t minors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & ei.fullAttackMaps[WHITE] & ~ei.attackMaps[BLACK][PAWNS]) {
         threatScore[BLACK] += UNDEFENDED_MINOR * count(minors);
     }
+    // Rooks attacked by opposing minors
     if (uint64_t rooks = pieces[WHITE][ROOKS] & (ei.attackMaps[BLACK][KNIGHTS] | ei.attackMaps[BLACK][BISHOPS])) {
         threatScore[WHITE] += MINOR_ROOK_THREAT * count(rooks);
     }
     if (uint64_t rooks = pieces[BLACK][ROOKS] & (ei.attackMaps[WHITE][KNIGHTS] | ei.attackMaps[WHITE][BISHOPS])) {
         threatScore[BLACK] += MINOR_ROOK_THREAT * count(rooks);
     }
+    // Queens attacked by opposing minors
     if (uint64_t queens = pieces[WHITE][QUEENS] & (ei.attackMaps[BLACK][KNIGHTS] | ei.attackMaps[BLACK][BISHOPS])) {
         threatScore[WHITE] += MINOR_QUEEN_THREAT * count(queens);
     }
     if (uint64_t queens = pieces[BLACK][QUEENS] & (ei.attackMaps[WHITE][KNIGHTS] | ei.attackMaps[WHITE][BISHOPS])) {
         threatScore[BLACK] += MINOR_QUEEN_THREAT * count(queens);
     }
+    // Queens attacked by opposing rooks
     if (uint64_t queens = pieces[WHITE][QUEENS] & ei.attackMaps[BLACK][ROOKS]) {
         threatScore[WHITE] += ROOK_QUEEN_THREAT * count(queens);
     }
     if (uint64_t queens = pieces[BLACK][QUEENS] & ei.attackMaps[WHITE][ROOKS]) {
         threatScore[BLACK] += ROOK_QUEEN_THREAT * count(queens);
     }
+    // Pieces attacked by opposing pawns
     if (uint64_t threatened = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]
                              | pieces[WHITE][ROOKS]   | pieces[WHITE][QUEENS]) & ei.attackMaps[BLACK][PAWNS]) {
         threatScore[WHITE] += PAWN_PIECE_THREAT * count(threatened);
@@ -566,8 +592,7 @@ int Eval::evaluate(Board &b) {
         threatScore[BLACK] += PAWN_PIECE_THREAT * count(threatened);
     }
 
-    // Loose pawns
-    // Defined as pawns in opponent's half of the board with no defenders
+    // Loose pawns: pawns in opponent's half of the board with no defenders
     const uint64_t WHITE_HALF = RANKS[0] | RANKS[1] | RANKS[2] | RANKS[3];
     const uint64_t BLACK_HALF = RANKS[4] | RANKS[5] | RANKS[6] | RANKS[7];
     if (uint64_t lpawns = pieces[WHITE][PAWNS] & BLACK_HALF & ~(ei.fullAttackMaps[WHITE] | ei.attackMaps[WHITE][PAWNS])) {
@@ -685,18 +710,18 @@ int Eval::evaluate(Board &b) {
         }
     }
 
+    // Doubled pawns
+    whitePawnScore += DOUBLED_PENALTY * count(pieces[WHITE][PAWNS] & (pieces[WHITE][PAWNS] << 8));
+    blackPawnScore += DOUBLED_PENALTY * count(pieces[BLACK][PAWNS] & (pieces[BLACK][PAWNS] >> 8));
+
+    // Isolated pawns
+    // Count the pawns on each file
     int wPawnCtByFile[8];
     int bPawnCtByFile[8];
     for (int i = 0; i < 8; i++) {
         wPawnCtByFile[i] = count(pieces[WHITE][PAWNS] & FILES[i]);
         bPawnCtByFile[i] = count(pieces[BLACK][PAWNS] & FILES[i]);
     }
-
-    // Doubled pawns
-    whitePawnScore += DOUBLED_PENALTY * count(pieces[WHITE][PAWNS] & (pieces[WHITE][PAWNS] << 8));
-    blackPawnScore += DOUBLED_PENALTY * count(pieces[BLACK][PAWNS] & (pieces[BLACK][PAWNS] >> 8));
-
-    // Isolated pawns
     // Fill a bitmap of which files have pawns
     uint64_t wIsolated = 0, bIsolated = 0;
     for (int i = 7; i >= 0; i--) {
@@ -835,18 +860,11 @@ int Eval::evaluate(Board &b) {
         int wTropismTotal = 0, bTropismTotal = 0;
         while (pawnBits) {
             int pawnSq = bitScanForward(pawnBits);
-            // int rank = pawnSq >> 3;
             pawnBits &= pawnBits - 1;
-            // if (INDEX_TO_BIT[pawnSq] & (wBackwards | bBackwards)) {
-            //     wTropismTotal += 2 * getManhattanDistance(pawnSq, kingSq[WHITE]);
-            //     bTropismTotal += 2 * getManhattanDistance(pawnSq, kingSq[BLACK]);
-            //     pawnWeight += 2;
-            // }
-            // else {
-                wTropismTotal += getManhattanDistance(pawnSq, kingSq[WHITE]);
-                bTropismTotal += getManhattanDistance(pawnSq, kingSq[BLACK]);
-                pawnWeight++;
-            // }
+
+            wTropismTotal += getManhattanDistance(pawnSq, kingSq[WHITE]);
+            bTropismTotal += getManhattanDistance(pawnSq, kingSq[BLACK]);
+            pawnWeight++;
         }
 
         if (pawnWeight)
@@ -855,6 +873,11 @@ int Eval::evaluate(Board &b) {
         valueEg += KING_TROPISM_VALUE * kingPawnTropism;
     }
 
+
+    if (debug) {
+        evalDebugStats.totalMg = valueMg;
+        evalDebugStats.totalEg = valueEg;
+    }
 
     int totalEval = (valueMg * (EG_FACTOR_RES - egFactor) + valueEg * egFactor) / EG_FACTOR_RES;
 
@@ -921,12 +944,10 @@ int Eval::evaluate(Board &b) {
 template int Eval::evaluate<true>(Board &b);
 template int Eval::evaluate<false>(Board &b);
 
-/* Scores the board for a player based on estimates of mobility
- * This function also provides a bonus for having mobile pieces near the
- * opponent's king, and deals with control of center.
- */
+// Scores the board for a player based on estimates of mobility. This function
+// also calculates control of center.
 template <int color>
-void Eval::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg) {
+void Eval::getMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg) {
     // Bitboard of center 4 squares: d4, e4, d5, e5
     const uint64_t CENTER_SQS = 0x0000001818000000;
     // Extended center: center, plus c4, f4, c5, f5, and d6/d3, e6/e3
@@ -945,7 +966,7 @@ void Eval::getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &val
 
     // We count mobility for all squares other than ones occupied by own rammed
     // pawns, king, or attacked by opponent's pawns
-    // Idea from Stockfish
+    // Idea of using rammed pawns from Stockfish
     uint64_t openSqs = ~(ei.rammedPawns[color] | pieces[color][KINGS] | oppPawnAttackMap);
 
     // For a queen, we also exclude squares not controlled by an opponent's minor or rook
@@ -1184,6 +1205,7 @@ int Eval::scoreSimpleKnownWin(int winningColor) {
     return winScore + scoreCornerDistance(winningColor, wKingSq, bKingSq);
 }
 
+// A function for scoring knight and bishop mates.
 inline int Eval::scoreCornerDistance(int winningColor, int wKingSq, int bKingSq) {
     int wf = wKingSq & 7;
     int wr = wKingSq >> 3;

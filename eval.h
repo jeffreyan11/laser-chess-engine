@@ -51,7 +51,7 @@ private:
 
   // Eval helpers
   template <int color>
-  void getPseudoMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg);
+  void getMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg);
   template <int attackingColor>
   int getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, int pawnScore);
   int checkEndgameCases();
