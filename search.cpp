@@ -938,13 +938,16 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         int endSq = getEndSq(m);
         int pieceID = b.getPieceOnSquare(color, startSq);
 
+        // Used to adjust pruning amount so that PV nodes are pruned slightly less
+        int pruneDepth = isPVNode ? depth+1 : depth;
+
 
         // Futility pruning
         // If we are already a decent amount of material below alpha, a quiet
         // move probably won't raise our prospects much, so don't bother
         // q-searching it.
         if (moveIsPrunable && bestScore > -INFTY
-         && depth <= 6 && staticEval <= alpha - FUTILITY_MARGIN[depth] - (isPVNode ? 80 + 40*depth : 0))
+         && pruneDepth <= 6 && staticEval <= alpha - FUTILITY_MARGIN[pruneDepth])
             continue;
 
 
