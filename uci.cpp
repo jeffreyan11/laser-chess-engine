@@ -60,6 +60,7 @@ const std::vector<string> positions = {
 
 void setPosition(string &input, std::vector<string> &inputVector, Board &board);
 std::vector<string> split(const string &s, char d);
+Move stringToMove(const string &moveStr, Board &b, bool &reversible);
 string boardToString(Board &board);
 bool equalsIgnoreCase(const std::string &s1, const std::string &s2);
 void stringToLowerCase(std::string &s);
@@ -134,9 +135,22 @@ int main() {
         else if (input.substr(0, 2) == "go" && isStop) {
             int mode = DEPTH, value = 1;
             std::vector<string>::iterator it;
+            MoveList movesToSearch;
 
             if (input.find("ponder") != string::npos)
                 startPonder();
+
+            if (input.find("searchmoves") != string::npos) {
+                it = find(inputVector.begin(), inputVector.end(), "searchmoves");
+                it++;
+                std::locale loc;
+                while (it != inputVector.end() && (*it).size() >= 4 && std::isdigit((*it)[1], loc)) {
+                    string moveStr = *it;
+                    bool reversible;
+                    movesToSearch.add(stringToMove(moveStr, board, reversible));
+                    it++;
+                }
+            }
 
             if (input.find("movetime") != string::npos && inputVector.size() > 2) {
                 mode = MOVETIME;
@@ -193,7 +207,7 @@ int main() {
             bestMove = NULL_MOVE;
             isStop = false;
             stopSignal = false;
-            searchThread = std::thread(getBestMove, &board, mode, value, &bestMove);
+            searchThread = std::thread(getBestMove, &board, mode, value, &bestMove, &movesToSearch);
             searchThread.detach();
         }
         else if (input == "ponderhit") {
@@ -304,6 +318,7 @@ int main() {
         else if (input == "bench") {
             auto startTime = ChessClock::now();
             uint64_t totalNodes = 0;
+            MoveList movesToSearch;
 
             for (unsigned int i = 0; i < positions.size(); i++) {
                 clearAll(board);
@@ -312,7 +327,7 @@ int main() {
 
                 isStop = false;
                 stopSignal = false;
-                getBestMove(&board, DEPTH, 10, &bestMove);
+                getBestMove(&board, DEPTH, 10, &bestMove, &movesToSearch);
                 isStop = true;
                 stopSignal = true;
 
@@ -366,41 +381,17 @@ void setPosition(string &input, std::vector<string> &inputVector, Board &board) 
         for (unsigned i = 0; i < moveVector.size(); i++) {
             // moveStr contains the move in long algebraic notation
             string moveStr = moveVector.at(i);
-
-            int startSq = 8 * (moveStr.at(1) - '1') + (moveStr.at(0) - 'a');
-            int endSq = 8 * (moveStr.at(3) - '1') + (moveStr.at(2) - 'a');
-
-            int color = board.getPlayerToMove();
-            bool isCapture = (bool)(INDEX_TO_BIT[endSq] & board.getAllPieces(color ^ 1));
-            bool isPawnMove = (bool)(INDEX_TO_BIT[startSq] & board.getPieces(color, PAWNS));
-            bool isKingMove = (bool)(INDEX_TO_BIT[startSq] & board.getPieces(color, KINGS));
-
-            bool isEP = (isPawnMove && !isCapture && ((endSq - startSq) & 1));
-            bool isDoublePawn = (isPawnMove && abs(endSq - startSq) == 16);
-            bool isCastle = (isKingMove && abs(endSq - startSq) == 2);
-            string promotionString = " nbrq";
-            int promotion = (moveStr.length() == 5)
-                ? promotionString.find(moveStr.at(4)) : 0;
-
-            Move m = encodeMove(startSq, endSq);
-            m = setCapture(m, isCapture);
-            m = setCastle(m, isCastle);
-            if (isEP)
-                m = setFlags(m, MOVE_EP);
-            else if (promotion) {
-                m = setFlags(m, MOVE_PROMO_N + promotion - 1);
-            }
-            else if (isDoublePawn)
-                m = setFlags(m, MOVE_DOUBLE_PAWN);
+            bool reversible;
+            Move m = stringToMove(moveStr, board, reversible);
 
             // Record positions on two fold stack.
             twoFoldPositions[0].push(board.getZobristKey());
             // The stack is cleared for captures, pawn moves, and castles, which are all
             // irreversible
-            if (isCapture || isPawnMove || isCastle)
+            if (!reversible)
                 twoFoldPositions[0].clear();
 
-            board.doMove(m, color);
+            board.doMove(m, board.getPlayerToMove());
         }
     }
 }
@@ -414,6 +405,37 @@ std::vector<string> split(const string &s, char d) {
         v.push_back(item);
     }
     return v;
+}
+
+Move stringToMove(const string &moveStr, Board &b, bool &reversible) {
+    int startSq = 8 * (moveStr.at(1) - '1') + (moveStr.at(0) - 'a');
+    int endSq = 8 * (moveStr.at(3) - '1') + (moveStr.at(2) - 'a');
+
+    int color = b.getPlayerToMove();
+    bool isCapture = (bool)(INDEX_TO_BIT[endSq] & b.getAllPieces(color ^ 1));
+    bool isPawnMove = (bool)(INDEX_TO_BIT[startSq] & b.getPieces(color, PAWNS));
+    bool isKingMove = (bool)(INDEX_TO_BIT[startSq] & b.getPieces(color, KINGS));
+
+    bool isEP = (isPawnMove && !isCapture && ((endSq - startSq) & 1));
+    bool isDoublePawn = (isPawnMove && abs(endSq - startSq) == 16);
+    bool isCastle = (isKingMove && abs(endSq - startSq) == 2);
+    string promotionString = " nbrq";
+    int promotion = (moveStr.length() == 5)
+        ? promotionString.find(moveStr.at(4)) : 0;
+
+    Move m = encodeMove(startSq, endSq);
+    m = setCapture(m, isCapture);
+    m = setCastle(m, isCastle);
+    if (isEP)
+        m = setFlags(m, MOVE_EP);
+    else if (promotion) {
+        m = setFlags(m, MOVE_PROMO_N + promotion - 1);
+    }
+    else if (isDoublePawn)
+        m = setFlags(m, MOVE_DOUBLE_PAWN);
+
+    reversible = !(isCapture || isPawnMove || isCastle);
+    return m;
 }
 
 Board fenToBoard(string s) {

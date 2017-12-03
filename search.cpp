@@ -189,7 +189,7 @@ void printStatistics();
  * @param mode The search mode: time or depth
  * @param value The time limit if in time mode, or the depth to search
  */
-void getBestMove(Board *b, int mode, int value, Move *bestMove) {
+void getBestMove(Board *b, int mode, int value, Move *bestMove, MoveList *movesToSearch) {
     for (int i = 0; i < numThreads; i++) {
         searchParamsArray[i]->reset();
         searchStatsArray[i]->reset();
@@ -255,6 +255,19 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                     probeLimit = 0;
             }
         }
+    }
+
+
+    // If we were told to search specific moves, filter them here.
+    if (movesToSearch->size() > 0) {
+        MoveList temp;
+        for (unsigned int i = 0; i < legalMoves.size(); i++) {
+            for (unsigned int j = 0; j < movesToSearch->size(); j++) {
+                if (legalMoves.get(i) == movesToSearch->get(j))
+                    temp.add(legalMoves.get(i));
+            }
+        }
+        legalMoves = temp;
     }
 
 
