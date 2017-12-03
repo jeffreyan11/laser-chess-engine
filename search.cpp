@@ -339,6 +339,8 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove) {
                 std::string pvStr = retrievePV(&pvLine);
                 if (pvLine.pvLength > 1)
                     ponder = pvLine.pv[1];
+                else if (bestMoveIndex != 0)
+                    ponder = NULL_MOVE;
 
                 // Handle fail highs and fail lows
                 // Fail low: no best move found
