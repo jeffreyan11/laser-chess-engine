@@ -941,7 +941,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             return INFTY;
 
         // Conditions for whether to do futility and move count pruning
-        bool moveIsPrunable = !isCapture(m)
+        bool moveIsPrunable = !isInCheck
+                           && !isCapture(m)
                            && !isPromotion(m)
                            && m != hashed
                            && abs(alpha) < NEAR_MATE_SCORE
@@ -960,7 +961,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // If we are already a decent amount of material below alpha, a quiet
         // move probably won't raise our prospects much, so don't bother
         // q-searching it.
-        if (moveIsPrunable && !isInCheck && bestScore > -INFTY
+        if (moveIsPrunable && bestScore > -INFTY
          && pruneDepth <= 6 && staticEval <= alpha - FUTILITY_MARGIN[pruneDepth])
             continue;
 
