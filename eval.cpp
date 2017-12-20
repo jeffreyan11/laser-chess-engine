@@ -368,9 +368,8 @@ int Eval::evaluate(Board &b) {
         for (int color = WHITE; color <= BLACK; color++) {
             // Pawn shield and storm values: king file and the two adjacent files
             int kingFile = kingSq[color] & 7;
+            kingFile = std::min(6, std::max(1, kingFile));
             for (int i = kingFile-1; i <= kingFile+1; i++) {
-                if (i < 0 || i > 7)
-                    continue;
                 int f = std::min(i, 7-i);
 
                 uint64_t pawnShield = pieces[color][PAWNS] & FILES[i];
@@ -400,6 +399,18 @@ int Eval::evaluate(Board &b) {
                 else
                     ksValue[color] -= PAWN_STORM_VALUE[0][f][0];
             }
+
+            // King pressure
+            uint64_t KING_ZONE;
+            if (kingFile < 3) KING_ZONE = FILES[0] | FILES[1] | FILES[2] | FILES[3];
+            else if (kingFile < 5) KING_ZONE = FILES[2] | FILES[3] | FILES[4] | FILES[5];
+            else KING_ZONE = FILES[4] | FILES[5] | FILES[6] | FILES[7];
+            if (color == WHITE)
+                KING_ZONE &= RANKS[0] | RANKS[1] | RANKS[2] | RANKS[3] | RANKS[4];
+            else
+                KING_ZONE &= RANKS[3] | RANKS[4] | RANKS[5] | RANKS[6] | RANKS[7];
+
+            ksValue[color] -= KING_PRESSURE * count(ei.fullAttackMaps[color^1] & KING_ZONE);
         }
 
         // Piece attacks

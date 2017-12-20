@@ -333,10 +333,12 @@ const int PAWN_STORM_VALUE[3][4][8] = {
 },
 };
 
+const int KING_PRESSURE = 3;
+
 // Scale factor for pieces attacking opposing king
 const int KS_ARRAY_FACTOR = 128;
 const int KING_THREAT_MULTIPLIER[4] = {7, 5, 5, 6};
-const int KING_THREAT_SQUARE[4] = {9, 12, 9, 14};
+const int KING_THREAT_SQUARE[4] = {9, 13, 10, 14};
 const int KING_DEFENSELESS_SQUARE = 22;
 const int KS_PAWN_FACTOR = 10;
 const int SAFE_CHECK_BONUS[4] = {78, 27, 47, 51};
