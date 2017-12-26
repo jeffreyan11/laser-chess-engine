@@ -35,8 +35,8 @@ const int DEFAULT_BUFFER_TIME = 300;
 const int MIN_BUFFER_TIME = 0;
 const int MAX_BUFFER_TIME = 5000;
 const int DEFAULT_EVAL_SCALE = 100;
-const int MIN_EVAL_SCALE = 50;
-const int MAX_EVAL_SCALE = 200;
+const int MIN_EVAL_SCALE = 0;
+const int MAX_EVAL_SCALE = 500;
 
 Board fenToBoard(std::string s);
 std::string boardToFEN(Board &board);

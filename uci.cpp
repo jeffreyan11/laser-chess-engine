@@ -327,7 +327,7 @@ int main() {
 
                 isStop = false;
                 stopSignal = false;
-                getBestMove(&board, DEPTH, 10, &bestMove, &movesToSearch);
+                getBestMove(&board, DEPTH, 11, &bestMove, &movesToSearch);
                 isStop = true;
                 stopSignal = true;
 
