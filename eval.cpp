@@ -298,8 +298,8 @@ int Eval::evaluate(Board &b) {
         }
     }
 
-    valueMg += imbalanceValue[MG];
-    valueEg += imbalanceValue[EG];
+    valueMg += imbalanceValue[MG] * scaleMaterial / DEFAULT_EVAL_SCALE;
+    valueEg += imbalanceValue[EG] * scaleMaterial / DEFAULT_EVAL_SCALE;
 
     if (debug) {
         evalDebugStats.totalImbalanceMg = imbalanceValue[MG];
