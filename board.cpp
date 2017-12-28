@@ -516,7 +516,7 @@ void Board::getPseudoLegalPromotions(MoveList &moves, int color) {
     uint64_t otherPieces = allPieces[color^1];
 
     uint64_t pawns = pieces[color][PAWNS];
-    uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
+    uint64_t finalRank = (color == WHITE) ? RANK_8 : RANK_1;
 
     int leftDiff = (color == WHITE) ? -7 : 9;
     int rightDiff = (color == WHITE) ? -9 : 7;
@@ -615,7 +615,7 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
     uint64_t pAttackMap = (color == WHITE)
             ? getBPawnCaptures(INDEX_TO_BIT[kingSq])
             : getWPawnCaptures(INDEX_TO_BIT[kingSq]);
-    uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
+    uint64_t finalRank = (color == WHITE) ? RANK_8 : RANK_1;
     int sqDiff = (color == WHITE) ? -8 : 8;
 
     uint64_t pLegal = (color == WHITE) ? getWPawnSingleMoves(pawns)
@@ -785,7 +785,7 @@ void Board::getPseudoLegalCheckEscapes(MoveList &escapes, int color) {
 // determined by its end square.
 void Board::addPawnMovesToList(MoveList &quiets, int color) {
     uint64_t pawns = pieces[color][PAWNS];
-    uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
+    uint64_t finalRank = (color == WHITE) ? RANK_8 : RANK_1;
     int sqDiff = (color == WHITE) ? -8 : 8;
 
     uint64_t pLegal = (color == WHITE) ? getWPawnSingleMoves(pawns)
@@ -823,7 +823,7 @@ void Board::addPawnMovesToList(MoveList &quiets, int color) {
 // pawn is doing the capturing.
 void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherPieces, bool includePromotions) {
     uint64_t pawns = pieces[color][PAWNS];
-    uint64_t finalRank = (color == WHITE) ? RANKS[7] : RANKS[0];
+    uint64_t finalRank = (color == WHITE) ? RANK_8 : RANK_1;
     int leftDiff = (color == WHITE) ? -7 : 9;
     int rightDiff = (color == WHITE) ? -9 : 7;
 
@@ -1394,14 +1394,14 @@ inline uint64_t Board::getBPawnSingleMoves(uint64_t pawns) {
 uint64_t Board::getWPawnDoubleMoves(uint64_t pawns) {
     uint64_t open = ~getOccupancy();
     uint64_t temp = (pawns << 8) & open;
-    pawns = (temp << 8) & open & RANKS[3];
+    pawns = (temp << 8) & open & RANK_4;
     return pawns;
 }
 
 uint64_t Board::getBPawnDoubleMoves(uint64_t pawns) {
     uint64_t open = ~getOccupancy();
     uint64_t temp = (pawns >> 8) & open;
-    pawns = (temp >> 8) & open & RANKS[4];
+    pawns = (temp >> 8) & open & RANK_5;
     return pawns;
 }
 

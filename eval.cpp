@@ -402,13 +402,13 @@ int Eval::evaluate(Board &b) {
 
             // King pressure
             uint64_t KING_ZONE;
-            if (kingFile < 3) KING_ZONE = FILES[0] | FILES[1] | FILES[2] | FILES[3];
-            else if (kingFile < 5) KING_ZONE = FILES[2] | FILES[3] | FILES[4] | FILES[5];
-            else KING_ZONE = FILES[4] | FILES[5] | FILES[6] | FILES[7];
+            if (kingFile < 3) KING_ZONE = FILE_A | FILE_B | FILE_C | FILE_D;
+            else if (kingFile < 5) KING_ZONE = FILE_C | FILE_D | FILE_E | FILE_F;
+            else KING_ZONE = FILE_E | FILE_F | FILE_G | FILE_H;
             if (color == WHITE)
-                KING_ZONE &= RANKS[0] | RANKS[1] | RANKS[2] | RANKS[3] | RANKS[4];
+                KING_ZONE &= RANK_1 | RANK_2 | RANK_3 | RANK_4 | RANK_5;
             else
-                KING_ZONE &= RANKS[3] | RANKS[4] | RANKS[5] | RANKS[6] | RANKS[7];
+                KING_ZONE &= RANK_4 | RANK_5 | RANK_6 | RANK_7 | RANK_8;
 
             ksValue[color] -= KING_PRESSURE * count(ei.fullAttackMaps[color^1] & KING_ZONE);
         }
@@ -470,17 +470,16 @@ int Eval::evaluate(Board &b) {
     // Shielded minors: minors behind own pawns
     pieceEvalScore[WHITE] += SHIELDED_MINOR_BONUS * count((pieces[WHITE][PAWNS] >> 8)
                                                         & (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS])
-                                                        & (RANKS[1] | RANKS[2] | RANKS[3]));
+                                                        & (RANK_2 | RANK_3 | RANK_4));
     pieceEvalScore[BLACK] += SHIELDED_MINOR_BONUS * count((pieces[BLACK][PAWNS] << 8)
                                                         & (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS])
-                                                        & (RANKS[6] | RANKS[5] | RANKS[4]));
+                                                        & (RANK_7 | RANK_6 | RANK_5));
 
     // Outposts
-    // Ranks 4/5/6 on files C/D/E/F, ranks 5/6 on files B/G
-    const uint64_t OUTPOST_SQS[2] = {((FILES[2] | FILES[3] | FILES[4] | FILES[5]) & (RANKS[3] | RANKS[4] | RANKS[5]))
-                                   | ((FILES[1] | FILES[6]) &  (RANKS[4] | RANKS[5])),
-                                     ((FILES[2] | FILES[3] | FILES[4] | FILES[5]) & (RANKS[4] | RANKS[3] | RANKS[2]))
-                                   | ((FILES[1] | FILES[6]) &  (RANKS[3] | RANKS[2]))};
+    const uint64_t OUTPOST_SQS[2] = {((FILE_C | FILE_D | FILE_E | FILE_F) & (RANK_4 | RANK_5 | RANK_6))
+                                   | ((FILE_B | FILE_G) &  (RANK_5 | RANK_6)),
+                                     ((FILE_C | FILE_D | FILE_E | FILE_F) & (RANK_5 | RANK_4 | RANK_3))
+                                   | ((FILE_B | FILE_G) &  (RANK_4 | RANK_3))};
 
     for (int color = WHITE; color <= BLACK; color++) {
         //-----------------------------------Knights--------------------------------
@@ -604,8 +603,8 @@ int Eval::evaluate(Board &b) {
     }
 
     // Loose pawns: pawns in opponent's half of the board with no defenders
-    const uint64_t WHITE_HALF = RANKS[0] | RANKS[1] | RANKS[2] | RANKS[3];
-    const uint64_t BLACK_HALF = RANKS[4] | RANKS[5] | RANKS[6] | RANKS[7];
+    const uint64_t WHITE_HALF = RANK_1 | RANK_2 | RANK_3 | RANK_4;
+    const uint64_t BLACK_HALF = RANK_5 | RANK_6 | RANK_7 | RANK_8;
     if (uint64_t lpawns = pieces[WHITE][PAWNS] & BLACK_HALF & ~(ei.fullAttackMaps[WHITE] | ei.attackMaps[WHITE][PAWNS])) {
         threatScore[WHITE] += LOOSE_PAWN * count(lpawns);
     }
@@ -814,8 +813,8 @@ int Eval::evaluate(Board &b) {
                           | (pieces[WHITE][PAWNS] & (pieces[WHITE][PAWNS] >> 1) & NOTH);
     uint64_t bPawnPhalanx = (pieces[BLACK][PAWNS] & (pieces[BLACK][PAWNS] << 1) & NOTA)
                           | (pieces[BLACK][PAWNS] & (pieces[BLACK][PAWNS] >> 1) & NOTH);
-    wPawnPhalanx &= RANKS[2] | RANKS[3] | RANKS[4] | RANKS[5] | RANKS[6];
-    bPawnPhalanx &= RANKS[1] | RANKS[2] | RANKS[3] | RANKS[4] | RANKS[5];
+    wPawnPhalanx &= RANK_3 | RANK_4 | RANK_5 | RANK_6 | RANK_7;
+    bPawnPhalanx &= RANK_2 | RANK_3 | RANK_4 | RANK_5 | RANK_6;
     wPawnPhalanx &= ~(pieces[BLACK][PAWNS] >> 8);
     bPawnPhalanx &= ~(pieces[WHITE][PAWNS] << 8);
     while (wPawnPhalanx) {
@@ -1017,8 +1016,8 @@ void Eval::getMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, 
 template <int attackingColor>
 int Eval::getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, int pawnScore) {
     // Precalculate a few things
-    uint64_t kingNeighborhood = (attackingColor == WHITE) ? ((pieces[BLACK][KINGS] & RANKS[7]) ? (kingSqs | (kingSqs >> 8)) : kingSqs)
-                                                          : ((pieces[WHITE][KINGS] & RANKS[0]) ? (kingSqs | (kingSqs << 8)) : kingSqs);
+    uint64_t kingNeighborhood = (attackingColor == WHITE) ? ((pieces[BLACK][KINGS] & RANK_8) ? (kingSqs | (kingSqs >> 8)) : kingSqs)
+                                                          : ((pieces[WHITE][KINGS] & RANK_1) ? (kingSqs | (kingSqs << 8)) : kingSqs);
     uint64_t defendMap = ei.attackMaps[attackingColor^1][PAWNS] | ei.fullAttackMaps[attackingColor^1];
     // Analyze undefended squares directly adjacent to king
     uint64_t kingDefenseless = defendMap & kingSqs;
