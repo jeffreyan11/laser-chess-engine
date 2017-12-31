@@ -378,10 +378,10 @@ const Score PASSER_BONUS[8] = {E(  0,   0), E(  4,   8), E(  5,  9), E(  7,  15)
                                E( 22,  25), E( 56,  64), E(100,100), E(  0,   0)};
 const Score PASSER_FILE_BONUS[8] = {E( 16, 13), E(  6, 10), E( -8, -2), E(-10, -8),
                                     E(-10, -8), E( -8, -2), E(  6, 10), E( 16, 13)};
-const Score FREE_PROMOTION_BONUS = E(13, 18);
-const Score FREE_STOP_BONUS = E(5, 6);
-const Score FULLY_DEFENDED_PASSER_BONUS = E(10, 9);
-const Score DEFENDED_PASSER_BONUS = E(7, 7);
+const Score FREE_PROMOTION_BONUS = E(14, 18);
+const Score FREE_STOP_BONUS = E(6, 7);
+const Score FULLY_DEFENDED_PASSER_BONUS = E(9, 8);
+const Score DEFENDED_PASSER_BONUS = E(6, 6);
 const Score OWN_KING_DIST = E(0, 2);
 const Score OPP_KING_DIST = E(0, 5);
 
