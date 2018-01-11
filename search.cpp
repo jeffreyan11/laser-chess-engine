@@ -524,10 +524,6 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove, MoveList *movesT
 
     printStatistics();
 
-    // Aging for the history heuristic table
-    for (int i = 0; i < numThreads; i++)
-        searchParamsArray[i]->ageHistoryTable(rootDepth);
-
     // Reset the hashfull counter
     transpositionTable.keys = 0;
 
