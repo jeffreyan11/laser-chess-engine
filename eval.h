@@ -352,9 +352,13 @@ const Score SHIELDED_MINOR_BONUS = E(15, 0);
 // A bonus for strong outpost knights
 const Score KNIGHT_OUTPOST_BONUS = E(25, 14);
 const Score KNIGHT_OUTPOST_PAWN_DEF_BONUS = E(12, 7);
+const Score KNIGHT_POTENTIAL_OUTPOST_BONUS = E(10, 6);
+const Score KNIGHT_POTENTIAL_OUTPOST_PAWN_DEF_BONUS = E(5, 3);
 // A smaller bonus for bishops
 const Score BISHOP_OUTPOST_BONUS = E(15, 8);
 const Score BISHOP_OUTPOST_PAWN_DEF_BONUS = E(17, 7);
+const Score BISHOP_POTENTIAL_OUTPOST_BONUS = E(6, 3);
+const Score BISHOP_POTENTIAL_OUTPOST_PAWN_DEF_BONUS = E(6, 3);
 
 // Rooks
 const Score ROOK_OPEN_FILE_BONUS = E(29, 12);

@@ -482,11 +482,10 @@ int Eval::evaluate(Board &b) {
                                    | ((FILE_B | FILE_G) &  (RANK_4 | RANK_3))};
 
     for (int color = WHITE; color <= BLACK; color++) {
+        PieceMoveList &pml = (color == WHITE) ? pmlWhite : pmlBlack;
         //-----------------------------------Knights--------------------------------
-        uint64_t knightsTemp = pieces[color][KNIGHTS];
-        while (knightsTemp) {
-            int knightSq = bitScanForward(knightsTemp);
-            knightsTemp &= knightsTemp - 1;
+        for (unsigned int i = 0; i < pml.starts[BISHOPS]; i++) {
+            int knightSq = pml.get(i).startSq;
             uint64_t bit = INDEX_TO_BIT[knightSq];
 
             psqtScores[color] += PSQT[color][KNIGHTS][knightSq];
@@ -498,13 +497,16 @@ int Eval::evaluate(Board &b) {
                 if (bit & ei.attackMaps[color][PAWNS])
                     pieceEvalScore[color] += KNIGHT_OUTPOST_PAWN_DEF_BONUS;
             }
+            else if (uint64_t potential = pml.get(i).legal & ~pawnStopAtt[color^1] & OUTPOST_SQS[color] & ~allPieces[color]) {
+                pieceEvalScore[color] += KNIGHT_POTENTIAL_OUTPOST_BONUS;
+                if (potential & ei.attackMaps[color][PAWNS])
+                    pieceEvalScore[color] += KNIGHT_POTENTIAL_OUTPOST_PAWN_DEF_BONUS;
+            }
         }
 
         //-----------------------------------Bishops--------------------------------
-        uint64_t bishopsTemp = pieces[color][BISHOPS];
-        while (bishopsTemp) {
-            int bishopSq = bitScanForward(bishopsTemp);
-            bishopsTemp &= bishopsTemp - 1;
+        for (unsigned int i = pml.starts[BISHOPS]; i < pml.starts[ROOKS]; i++) {
+            int bishopSq = pml.get(i).startSq;
             uint64_t bit = INDEX_TO_BIT[bishopSq];
 
             psqtScores[color] += PSQT[color][BISHOPS][bishopSq];
@@ -513,6 +515,11 @@ int Eval::evaluate(Board &b) {
                 pieceEvalScore[color] += BISHOP_OUTPOST_BONUS;
                 if (bit & ei.attackMaps[color][PAWNS])
                     pieceEvalScore[color] += BISHOP_OUTPOST_PAWN_DEF_BONUS;
+            }
+            else if (uint64_t potential = pml.get(i).legal & ~pawnStopAtt[color^1] & OUTPOST_SQS[color] & ~allPieces[color]) {
+                pieceEvalScore[color] += BISHOP_POTENTIAL_OUTPOST_BONUS;
+                if (potential & ei.attackMaps[color][PAWNS])
+                    pieceEvalScore[color] += BISHOP_POTENTIAL_OUTPOST_PAWN_DEF_BONUS;
             }
         }
 
