@@ -380,11 +380,10 @@ void setPosition(string &input, std::vector<string> &inputVector, Board &board) 
         // Check for a non-empty movelist
         if (moveListStart < input.length()) {
             string moveList = input.substr(moveListStart);
-            std::vector<string> moveVector = split(moveList, ' ');
-
-            for (unsigned i = 0; i < moveVector.size(); i++) {
-                // moveStr contains the move in long algebraic notation
-                string moveStr = moveVector.at(i);
+            std::istringstream is(moveList);
+            // moveStr contains the move in long algebraic notation
+            string moveStr;
+            while (is >> moveStr) {
                 bool reversible;
                 Move m = stringToMove(moveStr, board, reversible);
 
