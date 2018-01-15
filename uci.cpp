@@ -374,24 +374,29 @@ void setPosition(string &input, std::vector<string> &inputVector, Board &board) 
     board = fenToBoard(pos);
     twoFoldPositions[0].clear();
 
-    if (input.find("moves") != string::npos) {
-        string moveList = input.substr(input.find("moves") + 6);
-        std::vector<string> moveVector = split(moveList, ' ');
+    size_t moveListStart = input.find("moves");
+    if (moveListStart != string::npos) {
+        moveListStart += 6;
+        // Check for a non-empty movelist
+        if (moveListStart < input.length()) {
+            string moveList = input.substr(moveListStart);
+            std::vector<string> moveVector = split(moveList, ' ');
 
-        for (unsigned i = 0; i < moveVector.size(); i++) {
-            // moveStr contains the move in long algebraic notation
-            string moveStr = moveVector.at(i);
-            bool reversible;
-            Move m = stringToMove(moveStr, board, reversible);
+            for (unsigned i = 0; i < moveVector.size(); i++) {
+                // moveStr contains the move in long algebraic notation
+                string moveStr = moveVector.at(i);
+                bool reversible;
+                Move m = stringToMove(moveStr, board, reversible);
 
-            // Record positions on two fold stack.
-            twoFoldPositions[0].push(board.getZobristKey());
-            // The stack is cleared for captures, pawn moves, and castles, which are all
-            // irreversible
-            if (!reversible)
-                twoFoldPositions[0].clear();
+                // Record positions on two fold stack.
+                twoFoldPositions[0].push(board.getZobristKey());
+                // The stack is cleared for captures, pawn moves, and castles, which are all
+                // irreversible
+                if (!reversible)
+                    twoFoldPositions[0].clear();
 
-            board.doMove(m, board.getPlayerToMove());
+                board.doMove(m, board.getPlayerToMove());
+            }
         }
     }
 }
