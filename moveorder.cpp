@@ -253,9 +253,24 @@ Move MoveOrder::nextMove() {
     return legalMoves.get(index++);
 }
 
-// When a PV or cut move is found, the histories of all
-// quiet moves searched prior to the best move are reduced
-void MoveOrder::reduceBadHistories(Move bestMove) {
+// When a PV or cut move is found, the history of the best move in increased,
+// and the histories of all quiet moves searched prior to the best move are reduced.
+void MoveOrder::updateHistories(Move bestMove) {
+    int histDepth = std::min(depth, 12);
+
+    // Increase history for the best move
+    int startSq = getStartSq(bestMove);
+    int endSq = getEndSq(bestMove);
+    int pieceID = b->getPieceOnSquare(color, startSq);
+    searchParams->historyTable[color][pieceID][endSq] -=
+        histDepth * searchParams->historyTable[color][pieceID][endSq] / 64;
+    searchParams->historyTable[color][pieceID][endSq] += histDepth * histDepth;
+    if (ssi->counterMoveHistory != nullptr) {
+        ssi->counterMoveHistory[pieceID][endSq] -=
+            histDepth * ssi->counterMoveHistory[pieceID][endSq] / 64;
+        ssi->counterMoveHistory[pieceID][endSq] += histDepth * histDepth;
+    }
+
     // If we searched only the hash move, return to prevent crashes
     if (index <= 0)
         return;
@@ -265,11 +280,10 @@ void MoveOrder::reduceBadHistories(Move bestMove) {
         if (isCapture(legalMoves.get(i)))
             continue;
 
-        int startSq = getStartSq(legalMoves.get(i));
-        int endSq = getEndSq(legalMoves.get(i));
-        int pieceID = b->getPieceOnSquare(color, startSq);
+        startSq = getStartSq(legalMoves.get(i));
+        endSq = getEndSq(legalMoves.get(i));
+        pieceID = b->getPieceOnSquare(color, startSq);
 
-        int histDepth = std::min(depth, 12);
         searchParams->historyTable[color][pieceID][endSq] -=
             histDepth * searchParams->historyTable[color][pieceID][endSq] / 64;
         searchParams->historyTable[color][pieceID][endSq] -= histDepth * histDepth;
