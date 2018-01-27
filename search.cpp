@@ -592,6 +592,7 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
         int endSq = getEndSq(legalMoves->get(i));
         int pieceID = b->getPieceOnSquare(color, startSq);
         ssi->counterMoveHistory = searchParamsArray[threadID]->counterMoveHistory[pieceID][endSq];
+        (ssi+1)->followupMoveHistory = searchParamsArray[threadID]->followupMoveHistory[pieceID][endSq];
 
         if (i != 0) {
             score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, true, ssi, &line);
@@ -653,6 +654,7 @@ int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID, 
         int endSq = getEndSq(legalMoves.get(i));
         int pieceID = b->getPieceOnSquare(color, startSq);
         (ssi+1)->counterMoveHistory = searchParamsArray[threadID]->counterMoveHistory[pieceID][endSq];
+        (ssi+2)->followupMoveHistory = searchParamsArray[threadID]->followupMoveHistory[pieceID][endSq];
 
         if (i != 0) {
             score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, true, ssi+1, &line);
@@ -885,6 +887,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         b.doNullMove();
         searchParams->nullMoveCount++;
         (ssi+1)->counterMoveHistory = nullptr;
+        (ssi+2)->followupMoveHistory = nullptr;
         int nullScore = -PVS(b, depth-1-reduction, -beta, -alpha, threadID, !isCutNode, ssi+1, &line);
 
         // Undo the null move
@@ -972,6 +975,14 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             continue;
 
 
+        // Prune moves with low history
+        if (moveIsPrunable
+         && depth <= 2
+         && ((ssi->counterMoveHistory != nullptr) ? ssi->counterMoveHistory[pieceID][endSq] : 0) < 3 - 3 * depth * depth
+         && ((ssi->followupMoveHistory != nullptr) ? ssi->followupMoveHistory[pieceID][endSq] : 0) < 3 - 3 * depth * depth)
+            continue;
+
+
         // Futility pruning using SEE
         if (!isPVNode && !isInCheck && abs(alpha) < NEAR_MATE_SCORE
          && bestScore > -INFTY && depth <= 5
@@ -1016,8 +1027,10 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             if (isInCheck)
                 reduction--;
             // Reduce more for moves with poor history
-            int historyValue = searchParams->historyTable[color][pieceID][endSq];
-            reduction -= historyValue / 256;
+            int historyValue = searchParams->historyTable[color][pieceID][endSq]
+                + ((ssi->counterMoveHistory != nullptr) ? ssi->counterMoveHistory[pieceID][endSq] : 0)
+                + ((ssi->followupMoveHistory != nullptr) ? ssi->followupMoveHistory[pieceID][endSq] : 0);
+            reduction -= historyValue / 512;
             // Reduce more for expected cut nodes
             if (isCutNode)
                 reduction++;
@@ -1062,6 +1075,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
                 (ssi+1)->counterMoveHistory = searchParams->counterMoveHistory
                     [b.getPieceOnSquare(color, getStartSq(seMove))][getEndSq(seMove)];
+                (ssi+2)->followupMoveHistory = searchParams->followupMoveHistory
+                    [b.getPieceOnSquare(color, getStartSq(seMove))][getEndSq(seMove)];
 
                 // The window is lowered more for higher depths
                 int SEWindow = hashScore - 10 - depth;
@@ -1085,6 +1100,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
 
         (ssi+1)->counterMoveHistory = searchParams->counterMoveHistory[pieceID][endSq];
+        (ssi+2)->followupMoveHistory = searchParams->followupMoveHistory[pieceID][endSq];
 
         // Null-window search, with re-search if applicable
         if (movesSearched != 0) {
@@ -1659,8 +1675,8 @@ int getSelectiveDepth() {
 void initSSI() {
     ssInfo = new SearchStackInfo *[MAX_THREADS];
     for (int i = 0; i < MAX_THREADS; i++) {
-        ssInfo[i] = new SearchStackInfo[128];
-        for (int j = 0; j < 128; j++)
+        ssInfo[i] = new SearchStackInfo[129];
+        for (int j = 0; j < 129; j++)
             ssInfo[i][j].ply = j;
     }
 }

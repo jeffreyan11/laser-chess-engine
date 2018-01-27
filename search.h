@@ -72,6 +72,7 @@ struct SearchStackInfo {
     int ply;
     int staticEval;
     int **counterMoveHistory;
+    int **followupMoveHistory;
 };
 
 void getBestMove(Board *b, int mode, int value, Move *bestMove, MoveList *movesToSearch);

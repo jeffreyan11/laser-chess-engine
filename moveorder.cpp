@@ -166,7 +166,8 @@ void MoveOrder::scoreQuiets() {
 
             scores.add(SCORE_QUIET_MOVE
                 + searchParams->historyTable[color][pieceID][endSq]
-                + ((ssi->counterMoveHistory != nullptr) ? ssi->counterMoveHistory[pieceID][endSq] : 0));
+                + ((ssi->counterMoveHistory != nullptr) ? ssi->counterMoveHistory[pieceID][endSq] : 0)
+                + ((ssi->followupMoveHistory != nullptr) ? ssi->followupMoveHistory[pieceID][endSq] : 0));
         }
     }
 }
@@ -270,6 +271,11 @@ void MoveOrder::updateHistories(Move bestMove) {
             histDepth * ssi->counterMoveHistory[pieceID][endSq] / 64;
         ssi->counterMoveHistory[pieceID][endSq] += histDepth * histDepth;
     }
+    if (ssi->followupMoveHistory != nullptr) {
+        ssi->followupMoveHistory[pieceID][endSq] -=
+            histDepth * ssi->followupMoveHistory[pieceID][endSq] / 64;
+        ssi->followupMoveHistory[pieceID][endSq] += histDepth * histDepth;
+    }
 
     // If we searched only the hash move, return to prevent crashes
     if (index <= 0)
@@ -291,6 +297,11 @@ void MoveOrder::updateHistories(Move bestMove) {
             ssi->counterMoveHistory[pieceID][endSq] -=
                 histDepth * ssi->counterMoveHistory[pieceID][endSq] / 64;
             ssi->counterMoveHistory[pieceID][endSq] -= histDepth * histDepth;
+        }
+        if (ssi->followupMoveHistory != nullptr) {
+            ssi->followupMoveHistory[pieceID][endSq] -=
+                histDepth * ssi->followupMoveHistory[pieceID][endSq] / 64;
+            ssi->followupMoveHistory[pieceID][endSq] -= histDepth * histDepth;
         }
     }
 }
