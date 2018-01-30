@@ -58,6 +58,7 @@ private:
   int scoreSimpleKnownWin(int winningColor);
   int scoreCornerDistance(int winningColor, int wKingSq, int bKingSq);
   int getManhattanDistance(int sq1, int sq2);
+  int getKingDistance(int sq1, int sq2);
 };
 
 

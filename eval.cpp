@@ -704,8 +704,8 @@ int Eval::evaluate(Board &b) {
             }
 
             // Bonuses and penalties for king distance
-            whitePawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq+8, kingSq[WHITE]) * rFactor;
-            whitePawnScore += OPP_KING_DIST * getManhattanDistance(passerSq+8, kingSq[BLACK]) * rFactor;
+            whitePawnScore -= OWN_KING_DIST * getKingDistance(passerSq+8, kingSq[WHITE]) * rFactor;
+            whitePawnScore += OPP_KING_DIST * getKingDistance(passerSq+8, kingSq[BLACK]) * rFactor;
         }
     }
     uint64_t bPasserTemp = bPassedPawns;
@@ -746,8 +746,8 @@ int Eval::evaluate(Board &b) {
                     blackPawnScore += rFactor * DEFENDED_PASSER_BONUS;
             }
 
-            blackPawnScore += OPP_KING_DIST * getManhattanDistance(passerSq-8, kingSq[WHITE]) * rFactor;
-            blackPawnScore -= OWN_KING_DIST * getManhattanDistance(passerSq-8, kingSq[BLACK]) * rFactor;
+            blackPawnScore += OPP_KING_DIST * getKingDistance(passerSq-8, kingSq[WHITE]) * rFactor;
+            blackPawnScore -= OWN_KING_DIST * getKingDistance(passerSq-8, kingSq[BLACK]) * rFactor;
         }
     }
 
@@ -1259,4 +1259,8 @@ inline int Eval::scoreCornerDistance(int winningColor, int wKingSq, int bKingSq)
 
 inline int Eval::getManhattanDistance(int sq1, int sq2) {
     return std::abs((sq1 >> 3) - (sq2 >> 3)) + std::abs((sq1 & 7) - (sq2 & 7));
+}
+
+inline int Eval::getKingDistance(int sq1, int sq2) {
+    return std::min(5, std::max(std::abs((sq1 >> 3) - (sq2 >> 3)), std::abs((sq1 & 7) - (sq2 & 7))));
 }
