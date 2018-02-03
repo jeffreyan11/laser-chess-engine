@@ -399,23 +399,11 @@ int Eval::evaluate(Board &b) {
                 else
                     ksValue[color] -= PAWN_STORM_VALUE[0][f][0];
             }
-
-            // King pressure
-            uint64_t KING_ZONE;
-            if (kingFile < 3) KING_ZONE = FILE_A | FILE_B | FILE_C | FILE_D;
-            else if (kingFile < 5) KING_ZONE = FILE_C | FILE_D | FILE_E | FILE_F;
-            else KING_ZONE = FILE_E | FILE_F | FILE_G | FILE_H;
-            if (color == WHITE)
-                KING_ZONE &= RANK_1 | RANK_2 | RANK_3 | RANK_4 | RANK_5;
-            else
-                KING_ZONE &= RANK_4 | RANK_5 | RANK_6 | RANK_7 | RANK_8;
-
-            ksValue[color] -= KING_PRESSURE * count(ei.fullAttackMaps[color^1] & KING_ZONE);
         }
 
         // Piece attacks
-        ksValue[BLACK] -= getKingSafety<WHITE>(b, pmlWhite, kingNeighborhood[BLACK], ksValue[BLACK]);
-        ksValue[WHITE] -= getKingSafety<BLACK>(b, pmlBlack, kingNeighborhood[WHITE], ksValue[WHITE]);
+        ksValue[BLACK] -= getKingSafety<WHITE>(b, pmlWhite, kingNeighborhood[BLACK], ksValue[BLACK], kingSq[BLACK] & 7);
+        ksValue[WHITE] -= getKingSafety<BLACK>(b, pmlBlack, kingNeighborhood[WHITE], ksValue[WHITE], kingSq[WHITE] & 7);
 
         // Castling rights
         ksValue[WHITE] += CASTLING_RIGHTS_VALUE[count(b.getCastlingRights() & WHITECASTLE)];
@@ -1045,7 +1033,7 @@ void Eval::getMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, 
 // The lookup table approach is inspired by Ed Schroder's Rebel chess engine,
 // and by Stockfish
 template <int attackingColor>
-int Eval::getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, int pawnScore) {
+int Eval::getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, int pawnScore, int kingFile) {
     // Precalculate a few things
     uint64_t kingNeighborhood = (attackingColor == WHITE) ? ((pieces[BLACK][KINGS] & RANK_8) ? (kingSqs | (kingSqs >> 8)) : kingSqs)
                                                           : ((pieces[WHITE][KINGS] & RANK_1) ? (kingSqs | (kingSqs << 8)) : kingSqs);
@@ -1089,13 +1077,26 @@ int Eval::getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, in
     // Give a decent bonus for each additional piece participating
     kingSafetyPts += kingAttackPieces * kingAttackPts;
 
-    // Adjust based on pawn shield and pawn storms
-    kingSafetyPts -= KS_PAWN_FACTOR * pawnScore / 32;
+    // King pressure: a smaller bonus for attacker's pieces generally pointed at
+    // the region of the opposing king
+    uint64_t KING_ZONE;
+    if (kingFile < 3) KING_ZONE = FILE_A | FILE_B | FILE_C | FILE_D;
+    else if (kingFile < 5) KING_ZONE = FILE_C | FILE_D | FILE_E | FILE_F;
+    else KING_ZONE = FILE_E | FILE_F | FILE_G | FILE_H;
+    if ((attackingColor^1) == WHITE)
+        KING_ZONE &= RANK_1 | RANK_2 | RANK_3 | RANK_4 | RANK_5;
+    else
+        KING_ZONE &= RANK_4 | RANK_5 | RANK_6 | RANK_7 | RANK_8;
+
+    int kingPressure = KING_PRESSURE * count(ei.fullAttackMaps[attackingColor] & KING_ZONE);
+
+    // Adjust based on pawn shield, storms, and king pressure
+    kingSafetyPts += (-KS_PAWN_FACTOR * pawnScore + KS_KING_PRESSURE_FACTOR * kingPressure) / 32;
 
 
     // Convert king safety points into centipawns using a quadratic relationship
     kingSafetyPts = std::max(0, kingSafetyPts);
-    return std::min(kingSafetyPts * kingSafetyPts / KS_ARRAY_FACTOR, 600);
+    return std::min(kingSafetyPts * kingSafetyPts / KS_ARRAY_FACTOR, 600) + kingPressure;
 }
 
 // Check special endgame cases: where help mate is possible (detecting this

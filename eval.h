@@ -53,7 +53,7 @@ private:
   template <int color>
   void getMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg);
   template <int attackingColor>
-  int getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, int pawnScore);
+  int getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, int pawnScore, int kingFile);
   int checkEndgameCases();
   int scoreSimpleKnownWin(int winningColor);
   int scoreCornerDistance(int winningColor, int wKingSq, int bKingSq);
@@ -334,14 +334,14 @@ const int PAWN_STORM_VALUE[3][4][8] = {
 },
 };
 
-const int KING_PRESSURE = 2;
-
 // Scale factor for pieces attacking opposing king
 const int KS_ARRAY_FACTOR = 128;
 const int KING_THREAT_MULTIPLIER[4] = {7, 5, 5, 5};
 const int KING_THREAT_SQUARE[4] = {8, 12, 9, 13};
 const int KING_DEFENSELESS_SQUARE = 22;
 const int KS_PAWN_FACTOR = 10;
+const int KING_PRESSURE = 2;
+const int KS_KING_PRESSURE_FACTOR = 10;
 const int SAFE_CHECK_BONUS[4] = {78, 27, 47, 51};
 
 // Minor pieces
