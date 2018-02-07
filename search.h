@@ -107,8 +107,8 @@ const int MAX_POS_SCORE = 120;
 const int NEAR_MATE_SCORE = 2500;
 
 // Time management constants
-const int MOVE_HORIZON = 36; // expect this many moves left in the game
+const int MOVE_HORIZON = 33; // expect this many moves left in the game
 const double TIME_FACTOR = 0.7; // timeFactor = log b / (b - 1) where b is branch factor
-const double MAX_TIME_FACTOR = 3.75; // do not spend more than this multiple of time over the limit
+const double MAX_TIME_FACTOR = 4.0; // do not spend more than this multiple of time over the limit
 
 #endif
