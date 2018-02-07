@@ -59,16 +59,12 @@ void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
 
     // Decide whether to replace the entry
     // A more recent update to the same position should always be chosen
-    if ((node->slot1.zobristKey ^ node->slot1.data) == b.getZobristKey()) {
-        if (getHashAge(node->slot1.data) != age)
-            keys++;
+    if ((node->slot1.zobristKey ^ node->slot1.data) == b.getZobristKey())
         node->slot1.setEntry(b, data);
-    }
-    else if ((node->slot2.zobristKey ^ node->slot2.data) == b.getZobristKey()) {
-        if (getHashAge(node->slot2.data) != age)
-            keys++;
+    
+    else if ((node->slot2.zobristKey ^ node->slot2.data) == b.getZobristKey())
         node->slot2.setEntry(b, data);
-    }
+    
     // Replace an entry from a previous search space, or the lowest
     // depth entry with the new entry if the new entry's depth is higher
     else {
@@ -86,11 +82,8 @@ void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
         if (score1 < -2 && score2 < -2)
             toReplace = NULL;
 
-        if (toReplace != NULL) {
-            if (getHashAge(toReplace->data) != age)
-                keys++;
+        if (toReplace != NULL) 
             toReplace->setEntry(b, data);
-        }
     }
 }
 
@@ -129,10 +122,20 @@ void Hash::init(uint64_t MB) {
     size >>= 1;
 
     table = (HashNode *) calloc(size,  sizeof(HashNode));
-    keys = 0;
 }
 
 void Hash::clear() {
     std::memset(table, 0, size * sizeof(HashNode));
-    keys = 0;
+}
+
+int Hash::estimateHashfull(uint8_t age) {
+    
+    int i, used = 0;
+    
+    for (i = 0; i < 2500 && i < (int64_t)size; i++) {
+        used += getHashAge((table + i)->slot1.data) == age;
+        used += getHashAge((table + i)->slot2.data) == age;
+    }
+    
+    return 1000 * used / (i * 2);
 }
