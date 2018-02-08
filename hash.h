@@ -98,7 +98,6 @@ private:
     void init(uint64_t MB);
 
 public:
-    uint64_t keys;
 
     Hash(uint64_t MB);
     Hash(const Hash &other) = delete;
@@ -110,6 +109,7 @@ public:
     uint64_t getSize();
     void setSize(uint64_t MB);
     void clear();
+    int estimateHashfull(uint8_t age);
 };
 
 #endif

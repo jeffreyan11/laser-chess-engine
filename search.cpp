@@ -366,8 +366,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove, MoveList *movesT
                     cout << " time " << timeSoFar
                          << " nodes " << getNodes() << " nps " << nps
                          << " tbhits " << getTBHits()
-                         << " hashfull " << 1000 * transpositionTable.keys
-                                                 / transpositionTable.getSize()
+                         << " hashfull " << transpositionTable.estimateHashfull(searchParamsArray[0]->rootMoveNumber)
                          << " pv " << pvStr << endl;
 
                     aspAlpha = bestScore - deltaAlpha;
@@ -385,8 +384,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove, MoveList *movesT
                     cout << " time " << timeSoFar
                          << " nodes " << getNodes() << " nps " << nps
                          << " tbhits " << getTBHits()
-                         << " hashfull " << 1000 * transpositionTable.keys
-                                                 / transpositionTable.getSize()
+                         << " hashfull " << transpositionTable.estimateHashfull(searchParamsArray[0]->rootMoveNumber)
                          << " pv " << pvStr << endl;
 
                     aspBeta = bestScore + deltaBeta;
@@ -422,8 +420,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove, MoveList *movesT
                 cout << " time " << timeSoFar
                      << " nodes " << getNodes() << " nps " << nps
                      << " tbhits " << getTBHits()
-                     << " hashfull " << 1000 * transpositionTable.keys
-                                             / transpositionTable.getSize()
+                     << " hashfull " << transpositionTable.estimateHashfull(searchParamsArray[0]->rootMoveNumber)
                      << endl;
                 break;
             }
@@ -455,8 +452,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove, MoveList *movesT
             cout << " time " << timeSoFar
                  << " nodes " << getNodes() << " nps " << nps
                  << " tbhits " << getTBHits()
-                 << " hashfull " << 1000 * transpositionTable.keys
-                                         / transpositionTable.getSize()
+                 << " hashfull " << transpositionTable.estimateHashfull(searchParamsArray[0]->rootMoveNumber)
                  << " pv " << pvStr << endl;
         }
         // End multiPV loop
@@ -523,9 +519,6 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove, MoveList *movesT
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     printStatistics();
-
-    // Reset the hashfull counter
-    transpositionTable.keys = 0;
 
     // Output best move to UCI interface
     stopSignal = true;
