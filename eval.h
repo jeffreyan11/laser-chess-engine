@@ -63,7 +63,7 @@ private:
 
 
 const int SEE_PIECE_VALS[6] = {100, 400, 400, 600, 1150, MATE_SCORE/2};
-const int EG_FACTOR_PIECE_VALS[5] = {48, 383, 388, 677, 1618};
+const int EG_FACTOR_PIECE_VALS[5] = {48, 382, 389, 678, 1620};
 const int EG_FACTOR_ALPHA = 2500;
 const int EG_FACTOR_BETA = 6010;
 const int EG_FACTOR_RES = 1000;
@@ -95,8 +95,8 @@ const int EG = 1;
 
 // Material constants
 const int PIECE_VALUES[2][5] = {
-  {100, 389, 434, 650, 1339},
-  {139, 391, 446, 711, 1380}
+  {100, 389, 434, 656, 1345},
+  {137, 393, 446, 710, 1385}
 };
 const int KNOWN_WIN = PIECE_VALUES[EG][PAWNS] * 75;
 const int TB_WIN = PIECE_VALUES[EG][PAWNS] * 125;
@@ -107,33 +107,33 @@ const int pieceSquareTable[2][6][32] = {
 {
 { // Pawns
   0,  0,  0,  0,
- 29, 38, 54, 64,
- 19, 34, 52, 58,
-  8, 12, 16, 28,
+ 28, 38, 54, 64,
+ 18, 33, 50, 57,
+  8, 11, 16, 28,
  -3, -2,  8, 10,
  -1,  5,  6,  8,
- -1,  8,  3,  0,
+ -1,  8,  3,  2,
   0,  0,  0,  0
 },
 { // Knights
--110,-36,-28,-19,
--29, -9, 10, 14,
--12,  4, 18, 25,
-  9,  9, 21, 25,
+-110,-38,-30,-24,
+-24,-10,  4, 10,
+-10,  4, 16, 25,
+  5,  9, 21, 25,
   0,  9, 16, 21,
--15,  3,  5, 14,
--22, -9, -4,  6,
--68,-24,-14, -9
+-15,  1,  5, 12,
+-22,-13, -6,  7,
+-65,-22,-14, -8
 },
 { // Bishops
 -20,-15,-10,-10,
--15, -8, -6,  2,
+-15, -8, -4,  0,
   3,  4,  3,  2,
-  2, 11,  5,  5,
-  3,  9,  4, 10,
-  0, 12,  8,  5,
- -2, 14,  8,  5,
--15, -5, -5, -2
+  2, 10,  5,  5,
+  3,  8,  4,  9,
+  0, 10,  7,  5,
+ -2, 12,  7,  5,
+-10, -5, -5, -2
 },
 { // Rooks
  -5,  0,  0,  0,
@@ -146,14 +146,14 @@ const int pieceSquareTable[2][6][32] = {
  -5,  0,  0,  0
 },
 { // Queens
--34,-26,-17,-11,
--11,-23, -7, -4,
+-29,-21,-12, -8,
+-11,-18, -7, -4,
  -3,  0,  0,  2,
- -3, -3, -3, -6,
- -3, -3, -3, -6,
+ -3, -3, -3, -3,
+ -3, -3, -3, -3,
  -5,  4, -4, -3,
--11,  0,  5,  4,
--16,-11, -7,  5
+-11,  0,  2,  2,
+-16,-11, -7,  2
 },
 { // Kings
 -42,-37,-39,-41,
@@ -162,8 +162,8 @@ const int pieceSquareTable[2][6][32] = {
 -28,-24,-30,-31,
 -25,-10,-25,-25,
  -4, 21,-12,-15,
- 37, 42, 10,  0,
- 29, 53, 20,  0
+ 35, 42, 10,  0,
+ 32, 53, 20,  0
 }
 },
 // Endgame
@@ -179,14 +179,14 @@ const int pieceSquareTable[2][6][32] = {
   0,  0,  0,  0
 },
 { // Knights
--59,-16,-14, -9,
- -4,  3,  6, 10,
-  0,  8, 13, 18,
-  4, 11, 18, 25,
-  4, 11, 17, 21,
+-61,-20,-15,-12,
+ -6,  0,  5, 10,
+ -2,  8, 13, 18,
+  4, 10, 18, 25,
+  4, 10, 17, 21,
  -6,  3,  7, 19,
 -20, -4, -2,  5,
--40,-22,-16,-10
+-40,-22,-16, -8
 },
 { // Bishops
 -12, -7, -5, -5
@@ -199,14 +199,14 @@ const int pieceSquareTable[2][6][32] = {
 -13,-10, -7, -4
 },
 { // Rooks
- -5,  0,  0,  0,
-  5, 10, 10, 10,
- -5,  0,  0,  0,
- -5,  0,  0,  0,
- -5,  0,  0,  0,
- -5,  0,  0,  0,
- -5,  0,  0,  0,
- -5,  0,  0,  0
+  0,  0,  0,  0,
+  0,  0,  0,  0,
+  0,  0,  0,  0,
+  0,  0,  0,  0,
+  0,  0,  0,  0,
+  0,  0,  0,  0,
+  0,  0,  0,  0,
+  0,  0,  0,  0
 },
 { // Queens
 -14, -8, -4, -2,
@@ -219,7 +219,7 @@ const int pieceSquareTable[2][6][32] = {
 -23,-20,-19,-11
 },
 { // Kings
--97,-20,-14,-10,
+-85,-20,-14,-10,
 -10, 20, 24, 24,
  12, 32, 34, 36,
   0, 19, 24, 26,
@@ -237,7 +237,7 @@ const int TEMPO_VALUE = 16;
 
 // Material imbalance terms
 const int KNIGHT_PAIR_PENALTY = 0;
-const int ROOK_PAIR_PENALTY = -3;
+const int ROOK_PAIR_PENALTY = 0;
 
 const int OWN_OPP_IMBALANCE[2][5][5] = {
 {
@@ -246,20 +246,20 @@ const int OWN_OPP_IMBALANCE[2][5][5] = {
     { 0},                   // Own pawns
     { 3,  0},               // Own knights
     { 1, -5,  0},           // Own bishops
-    { 0, -5,-12,  0},       // Own rooks
-    { 0, -9, -4,-16,  0}    // Own queens
+    {-1, -5,-12,  0},       // Own rooks
+    {-1, -9, -4,-16,  0}    // Own queens
 },
 {
     { 0},                   // Own pawns
     { 6,  0},               // Own knights
     { 1, -1,  0},           // Own bishops
-    { 3, -7,-11,  0},       // Own rooks
+    { 3, -6,-11,  0},       // Own rooks
     {19, -3,  0, 16,  0}    // Own queens
 }
 };
 
 // Bonus for knight in closed positions
-const int KNIGHT_CLOSED_BONUS[2] = {4, 5};
+const int KNIGHT_CLOSED_BONUS[2] = {3, 4};
 
 //------------------------Positional eval constants-----------------------------
 // Mobility tables
@@ -303,9 +303,9 @@ const int CASTLING_RIGHTS_VALUE[3] = {0, 25, 61};
 // The value of a pawn shield per pawn. First rank value is used for the
 // penalty when the pawn is missing.
 const int PAWN_SHIELD_VALUE[4][8] = {
-    {-11, 20, 24, 11,  8,  5,-11,  0}, // open h file, h2, h3, ...
-    {-20, 39, 24, -1, -2, -5,-17,  0}, // g/b file
-    {-12, 38,  4, -3, -4, -5, -7,  0}, // f/c file
+    {-12, 22, 26, 11,  8,  5,-11,  0}, // open h file, h2, h3, ...
+    {-18, 38, 24, -1, -2, -5,-17,  0}, // g/b file
+    {-13, 38,  5, -3, -4, -5, -7,  0}, // f/c file
     { -8, 15,  8,  6, -1, -6, -8,  0}  // d/e file
 };
 // Array for pawn storm values. Rank 1 of open is used for penalty
@@ -313,31 +313,31 @@ const int PAWN_SHIELD_VALUE[4][8] = {
 const int PAWN_STORM_VALUE[3][4][8] = {
 // Open file
 {
-    {11,-45, 12, 13,  8,  0,  0,  0},
-    {14,-15, 41, 16,  7,  0,  0,  0},
-    { 6,  8, 48, 16, 10,  0,  0,  0},
+    {10,-45, 12, 13,  8,  0,  0,  0},
+    {13,-15, 41, 16,  7,  0,  0,  0},
+    { 6, 12, 48, 18, 10,  0,  0,  0},
     { 5,  8, 34, 18,  9,  0,  0,  0}
 },
 // Blocked pawn
 {
     { 0,  0, 28,  2,  0,  0,  0,  0},
-    { 0,  0, 55,  4,  1,  0,  0,  0},
-    { 0,  0, 56,  7,  0,  0,  0,  0},
+    { 0,  0, 57,  4,  1,  0,  0,  0},
+    { 0,  0, 60,  7,  0,  0,  0,  0},
     { 0,  0, 56, 10,  2,  0,  0,  0}
 },
 // Non-blocked pawn
 {
-    { 0, -6, 27, 10,  2,  0,  0,  0},
-    { 0,  5, 30, 11,  5,  0,  0,  0},
-    { 0,  5, 36, 14,  5,  0,  0,  0},
-    { 0,  4, 22, 20,  8,  0,  0,  0}
+    { 0, -3, 27, 10,  2,  0,  0,  0},
+    { 0,  8, 30, 12,  5,  0,  0,  0},
+    { 0,  3, 36, 16,  5,  0,  0,  0},
+    { 0,  3, 22, 20,  8,  0,  0,  0}
 },
 };
 
 // Scale factor for pieces attacking opposing king
 const int KS_ARRAY_FACTOR = 128;
-const int KING_THREAT_MULTIPLIER[4] = {7, 5, 5, 5};
-const int KING_THREAT_SQUARE[4] = {8, 12, 9, 13};
+const int KING_THREAT_MULTIPLIER[4] = {7, 4, 5, 5};
+const int KING_THREAT_SQUARE[4] = {8, 13, 11, 13};
 const int KING_DEFENSELESS_SQUARE = 22;
 const int KS_PAWN_FACTOR = 10;
 const int KING_PRESSURE = 2;
@@ -347,46 +347,46 @@ const int SAFE_CHECK_BONUS[4] = {78, 27, 47, 51};
 // Minor pieces
 // A penalty for each own pawn that is on a square of the same color as your bishop
 const Score BISHOP_PAWN_COLOR_PENALTY = E(-3, -1);
-const Score BISHOP_RAMMED_PAWN_COLOR_PENALTY = E(-4, -8);
+const Score BISHOP_RAMMED_PAWN_COLOR_PENALTY = E(-5, -8);
 // Minors shielded by own pawn in front
-const Score SHIELDED_MINOR_BONUS = E(15, 0);
+const Score SHIELDED_MINOR_BONUS = E(14, 0);
 // A bonus for strong outpost knights
-const Score KNIGHT_OUTPOST_BONUS = E(25, 14);
-const Score KNIGHT_OUTPOST_PAWN_DEF_BONUS = E(12, 7);
+const Score KNIGHT_OUTPOST_BONUS = E(26, 14);
+const Score KNIGHT_OUTPOST_PAWN_DEF_BONUS = E(15, 9);
 const Score KNIGHT_POTENTIAL_OUTPOST_BONUS = E(10, 6);
-const Score KNIGHT_POTENTIAL_OUTPOST_PAWN_DEF_BONUS = E(5, 3);
+const Score KNIGHT_POTENTIAL_OUTPOST_PAWN_DEF_BONUS = E(7, 4);
 // A smaller bonus for bishops
-const Score BISHOP_OUTPOST_BONUS = E(15, 8);
+const Score BISHOP_OUTPOST_BONUS = E(17, 9);
 const Score BISHOP_OUTPOST_PAWN_DEF_BONUS = E(17, 7);
-const Score BISHOP_POTENTIAL_OUTPOST_BONUS = E(6, 3);
-const Score BISHOP_POTENTIAL_OUTPOST_PAWN_DEF_BONUS = E(6, 3);
+const Score BISHOP_POTENTIAL_OUTPOST_BONUS = E(7, 3);
+const Score BISHOP_POTENTIAL_OUTPOST_PAWN_DEF_BONUS = E(7, 3);
 
 // Rooks
-const Score ROOK_OPEN_FILE_BONUS = E(29, 12);
-const Score ROOK_SEMIOPEN_FILE_BONUS = E(14, 2);
-const Score ROOK_PAWN_RANK_THREAT = E(3, 7);
+const Score ROOK_OPEN_FILE_BONUS = E(31, 12);
+const Score ROOK_SEMIOPEN_FILE_BONUS = E(16, 2);
+const Score ROOK_PAWN_RANK_THREAT = E(2, 7);
 
 // Threats
-const Score UNDEFENDED_PAWN = E(-5, -18);
-const Score UNDEFENDED_MINOR = E(-21, -48);
-const Score PAWN_PIECE_THREAT = E(-70, -43);
-const Score MINOR_ROOK_THREAT = E(-53, -33);
-const Score MINOR_QUEEN_THREAT = E(-56, -22);
-const Score ROOK_QUEEN_THREAT = E(-56, -18);
+const Score UNDEFENDED_PAWN = E(-2, -18);
+const Score UNDEFENDED_MINOR = E(-21, -47);
+const Score PAWN_PIECE_THREAT = E(-72, -43);
+const Score MINOR_ROOK_THREAT = E(-54, -32);
+const Score MINOR_QUEEN_THREAT = E(-61, -25);
+const Score ROOK_QUEEN_THREAT = E(-61, -24);
 
-const Score LOOSE_PAWN = E(-15, -11);
+const Score LOOSE_PAWN = E(-16, -10);
 const Score LOOSE_MINOR = E(-10, -9);
 
 // Pawn structure
 // Passed pawns
 const Score PASSER_BONUS[8] = {E(  0,   0), E(  4,   8), E(  5,  9), E(  7,  15),
-                               E( 22,  25), E( 56,  64), E(100,100), E(  0,   0)};
-const Score PASSER_FILE_BONUS[8] = {E( 16, 13), E(  6, 10), E( -8, -2), E(-10, -8),
-                                    E(-10, -8), E( -8, -2), E(  6, 10), E( 16, 13)};
+                               E( 23,  25), E( 54,  62), E(100,100), E(  0,   0)};
+const Score PASSER_FILE_BONUS[8] = {E( 16, 13), E(  5, 11), E( -8, -2), E(-10, -8),
+                                    E(-10, -8), E( -8, -2), E(  5, 11), E( 16, 13)};
 const Score FREE_PROMOTION_BONUS = E(14, 18);
-const Score FREE_STOP_BONUS = E(6, 7);
-const Score FULLY_DEFENDED_PASSER_BONUS = E(9, 8);
-const Score DEFENDED_PASSER_BONUS = E(6, 6);
+const Score FREE_STOP_BONUS = E(6, 8);
+const Score FULLY_DEFENDED_PASSER_BONUS = E(8, 9);
+const Score DEFENDED_PASSER_BONUS = E(7, 8);
 const Score OWN_KING_DIST = E(0, 2);
 const Score OPP_KING_DIST = E(0, 5);
 
@@ -394,16 +394,16 @@ const Score OPP_KING_DIST = E(0, 5);
 const Score DOUBLED_PENALTY = E(-9, -20);
 // Isolated pawns
 const Score ISOLATED_PENALTY = E(-23, -14);
-const Score ISOLATED_SEMIOPEN_PENALTY = E(-6, -6);
+const Score ISOLATED_SEMIOPEN_PENALTY = E(-6, -7);
 // Backward pawns
-const Score BACKWARD_PENALTY = E(-18, -10);
-const Score BACKWARD_SEMIOPEN_PENALTY = E(-15, -10);
+const Score BACKWARD_PENALTY = E(-18, -12);
+const Score BACKWARD_SEMIOPEN_PENALTY = E(-14, -11);
 // Undefended pawns that are not backwards or isolated
-const Score UNDEFENDED_PAWN_PENALTY = E(-6, -6);
+const Score UNDEFENDED_PAWN_PENALTY = E(-7, -6);
 // Pawn phalanxes
-const Score PAWN_PHALANX_RANK_BONUS = E(13, 14);
+const Score PAWN_PHALANX_RANK_BONUS = E(17, 11);
 // Connected pawns
-const Score PAWN_CONNECTED_RANK_BONUS = E(5, 3);
+const Score PAWN_CONNECTED_RANK_BONUS = E(7, 3);
 // King-pawn tropism
 const int KING_TROPISM_VALUE = 18;
 
