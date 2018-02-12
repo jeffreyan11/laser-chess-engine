@@ -189,7 +189,7 @@ void printStatistics();
  * @param mode The search mode: time or depth
  * @param value The time limit if in time mode, or the depth to search
  */
-void getBestMove(Board *b, int mode, int value, Move *bestMove, MoveList *movesToSearch) {
+void getBestMove(Board *b, int mode, int value, MoveList *movesToSearch) {
     for (int i = 0; i < numThreads; i++) {
         searchParamsArray[i]->reset();
         searchStatsArray[i]->reset();
@@ -203,14 +203,13 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove, MoveList *movesT
 
     // Special case if we are given a mate/stalemate position
     if (legalMoves.size() <= 0) {
-        *bestMove = NULL_MOVE;
         stopSignal = true;
         isStop = true;
         cout << "bestmove none" << endl;
         return;
     }
 
-    *bestMove = legalMoves.get(0);
+    Move bestMove = legalMoves.get(0);
 
     // Set up timing
     searchParamsArray[0]->timeLimit = (mode == TIME) ? (uint64_t) (MAX_TIME_FACTOR * value)
@@ -395,13 +394,13 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove, MoveList *movesT
                     // If the best move is still the same, do not necessarily
                     // resolve the fail high
                     if ((int) multiPVNum - 1 == bestMoveIndex
-                     && *bestMove == prevBest
+                     && bestMove == prevBest
                      && mode == TIME
                      && (timeSoFar >= value * TIME_FACTOR))
                         break;
 
                     legalMoves.swap(multiPVNum-1, bestMoveIndex);
-                    *bestMove = legalMoves.get(0);
+                    bestMove = legalMoves.get(0);
                 }
                 // If no fails, we are done
                 else break;
@@ -427,7 +426,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove, MoveList *movesT
 
             // Swap the PV to be searched first next iteration
             legalMoves.swap(multiPVNum-1, bestMoveIndex);
-            *bestMove = legalMoves.get(0);
+            bestMove = legalMoves.get(0);
 
             // Output info using UCI protocol
             cout << "info depth " << rootDepth;
@@ -468,11 +467,11 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove, MoveList *movesT
             }
         }
 
-        if (*bestMove == prevBest) {
+        if (bestMove == prevBest) {
             pvStreak++;
         }
         else {
-            prevBest = *bestMove;
+            prevBest = bestMove;
             pvStreak = 1;
         }
 
@@ -481,7 +480,7 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove, MoveList *movesT
          && timeSoFar > (uint64_t) value / 16
          && timeSoFar < (uint64_t) value / 2
          && abs(bestScore) < MATE_SCORE - MAX_DEPTH) {
-            if ((*bestMove == easyMoveInfo.prevBest && pvStreak >= 7)
+            if ((bestMove == easyMoveInfo.prevBest && pvStreak >= 7)
                 || pvStreak >= 10) {
                 int secondBestMove;
                 int secondBestScore;
@@ -524,9 +523,9 @@ void getBestMove(Board *b, int mode, int value, Move *bestMove, MoveList *movesT
     stopSignal = true;
     isStop = true;
     if (ponder != NULL_MOVE)
-        cout << "bestmove " << moveToString(*bestMove) << " ponder " << moveToString(ponder) << endl;
+        cout << "bestmove " << moveToString(bestMove) << " ponder " << moveToString(ponder) << endl;
     else
-        cout << "bestmove " << moveToString(*bestMove) << endl;
+        cout << "bestmove " << moveToString(bestMove) << endl;
     return;
 }
 

@@ -69,6 +69,7 @@ uint64_t perft(Board &b, int color, int depth, uint64_t &captures);
 
 
 static int BUFFER_TIME = DEFAULT_BUFFER_TIME;
+MoveList movesToSearch;
 // Declared in search.cpp
 extern std::atomic<bool> isStop;
 extern std::atomic<bool> stopSignal;
@@ -92,7 +93,6 @@ int main() {
     string version = "1.6 beta";
     string author = "Jeffrey An and Michael An";
     std::thread searchThread;
-    Move bestMove = NULL_MOVE;
 
     Board board = fenToBoard(STARTPOS);
 
@@ -135,12 +135,12 @@ int main() {
         else if (input.substr(0, 2) == "go" && isStop) {
             int mode = DEPTH, value = 1;
             std::vector<string>::iterator it;
-            MoveList movesToSearch;
 
             if (input.find("ponder") != string::npos)
                 startPonder();
 
             if (input.find("searchmoves") != string::npos) {
+                movesToSearch.clear();
                 it = find(inputVector.begin(), inputVector.end(), "searchmoves");
                 it++;
                 std::locale loc;
@@ -204,10 +204,9 @@ int main() {
                 value = std::max(value, minValue);
             }
 
-            bestMove = NULL_MOVE;
             isStop = false;
             stopSignal = false;
-            searchThread = std::thread(getBestMove, &board, mode, value, &bestMove, &movesToSearch);
+            searchThread = std::thread(getBestMove, &board, mode, value, &movesToSearch);
             searchThread.detach();
         }
         else if (input == "ponderhit") {
@@ -323,11 +322,10 @@ int main() {
             for (unsigned int i = 0; i < positions.size(); i++) {
                 clearAll(board);
                 board = fenToBoard(positions.at(i));
-                bestMove = NULL_MOVE;
 
                 isStop = false;
                 stopSignal = false;
-                getBestMove(&board, DEPTH, 11, &bestMove, &movesToSearch);
+                getBestMove(&board, DEPTH, 11, &movesToSearch);
                 isStop = true;
                 stopSignal = true;
 

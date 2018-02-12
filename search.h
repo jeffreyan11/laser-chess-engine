@@ -75,7 +75,7 @@ struct SearchStackInfo {
     int **followupMoveHistory;
 };
 
-void getBestMove(Board *b, int mode, int value, Move *bestMove, MoveList *movesToSearch);
+void getBestMove(Board *b, int mode, int value, MoveList *movesToSearch);
 void clearTables();
 void setHashSize(uint64_t MB);
 void setEvalCacheSize(uint64_t MB);
