@@ -328,12 +328,15 @@ int main() {
             cerr << "Time: " << time << endl;
             cerr << "Nodes/second: " << 1000 * nodes / time << endl;
         }
-        else if (input == "bench") {
+        else if (input.substr(0, 5) == "bench") {
             auto startTime = ChessClock::now();
             uint64_t totalNodes = 0;
             movesToSearch.clear();
             timeParams.searchMode = DEPTH;
             timeParams.allotment = 11;
+            // Allow an alternate bench depth argument
+            if (inputVector.size() == 2)
+                timeParams.allotment = std::stoi(inputVector.at(1));
 
             for (unsigned int i = 0; i < positions.size(); i++) {
                 clearAll(board);
