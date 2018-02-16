@@ -30,6 +30,7 @@
 #include "search.h"
 #include "moveorder.h"
 #include "searchparams.h"
+#include "timeman.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
@@ -184,12 +185,8 @@ double getPercentage(uint64_t numerator, uint64_t denominator);
 void printStatistics();
 
 
-/**
- * @brief Finds a best move for a position according to the given search parameters.
- * @param mode The search mode: time or depth
- * @param value The time limit if in time mode, or the depth to search
- */
-void getBestMove(Board *b, int mode, int value, MoveList *movesToSearch) {
+// Finds a best move for a position according to the given search parameters.
+void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) {
     for (int i = 0; i < numThreads; i++) {
         searchParamsArray[i]->reset();
         searchStatsArray[i]->reset();
@@ -212,15 +209,16 @@ void getBestMove(Board *b, int mode, int value, MoveList *movesToSearch) {
     Move bestMove = legalMoves.get(0);
 
     // Set up timing
-    searchParamsArray[0]->timeLimit = (mode == TIME) ? (uint64_t) (MAX_TIME_FACTOR * value)
-                                                    : (mode == MOVETIME) ? value
-                                                                         : MAX_TIME;
+    searchParamsArray[0]->timeLimit =
+        (timeParams->searchMode == TIME) ? timeParams->maxAllotment
+                                         : (timeParams->searchMode == MOVETIME) ? timeParams->allotment
+                                                                                : MAX_TIME;
     searchParamsArray[0]->startTime = ChessClock::now();
     uint64_t timeSoFar = getTimeElapsed(searchParamsArray[0]->startTime);
 
     // Special case if there is only one legal move: use less search time,
     // only to get a rough PV/score
-    if (legalMoves.size() == 1 && mode == TIME) {
+    if (legalMoves.size() == 1 && timeParams->searchMode == TIME) {
         searchParamsArray[0]->timeLimit = std::min(searchParamsArray[0]->timeLimit / 32, ONE_SECOND);
     }
 
@@ -395,8 +393,8 @@ void getBestMove(Board *b, int mode, int value, MoveList *movesToSearch) {
                     // resolve the fail high
                     if ((int) multiPVNum - 1 == bestMoveIndex
                      && bestMove == prevBest
-                     && mode == TIME
-                     && (timeSoFar >= value * TIME_FACTOR))
+                     && timeParams->searchMode == TIME
+                     && (timeSoFar >= timeParams->allotment * TIME_FACTOR))
                         break;
 
                     legalMoves.swap(multiPVNum-1, bestMoveIndex);
@@ -476,9 +474,9 @@ void getBestMove(Board *b, int mode, int value, MoveList *movesToSearch) {
         }
 
         // Easymove confirmation
-        if (!isPonderSearch && mode == TIME && multiPV == 1
-         && timeSoFar > (uint64_t) value / 16
-         && timeSoFar < (uint64_t) value / 2
+        if (!isPonderSearch && timeParams->searchMode == TIME && multiPV == 1
+         && timeSoFar > (uint64_t) timeParams->allotment / 16
+         && timeSoFar < (uint64_t) timeParams->allotment / 2
          && abs(bestScore) < MATE_SCORE - MAX_DEPTH) {
             if ((bestMove == easyMoveInfo.prevBest && pvStreak >= 7)
                 || pvStreak >= 10) {
@@ -500,11 +498,10 @@ void getBestMove(Board *b, int mode, int value, MoveList *movesToSearch) {
     }
     // Conditions for iterative deepening loop
     while (!isStop
-        && ((((mode == TIME && timeSoFar < (uint64_t) value * TIME_FACTOR) || isPonderSearch)
-                          && rootDepth <= MAX_DEPTH)
-         || (mode == MOVETIME && timeSoFar < (uint64_t) value
-                              && rootDepth <= MAX_DEPTH)
-         || (mode == DEPTH && rootDepth <= value)));
+        && ((((timeParams->searchMode == TIME && timeSoFar < (uint64_t) timeParams->allotment * TIME_FACTOR)
+            || isPonderSearch) && rootDepth <= MAX_DEPTH)
+         || (timeParams->searchMode == MOVETIME && timeSoFar < (uint64_t) timeParams->allotment && rootDepth <= MAX_DEPTH)
+         || (timeParams->searchMode == DEPTH && rootDepth <= timeParams->allotment)));
 
     // If we found a candidate easymove for the next ply this search
     if (easyMoveInfo.pvStreak >= 8) {

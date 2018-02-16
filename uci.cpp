@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <cstring>
 #include <iostream>
 #include <sstream>
@@ -30,6 +31,7 @@
 #include "board.h"
 #include "eval.h"
 #include "search.h"
+#include "timeman.h"
 #include "uci.h"
 #include "syzygy/tbprobe.h"
 
@@ -70,6 +72,7 @@ uint64_t perft(Board &b, int color, int depth, uint64_t &captures);
 
 static int BUFFER_TIME = DEFAULT_BUFFER_TIME;
 MoveList movesToSearch;
+TimeManagement timeParams;
 // Declared in search.cpp
 extern std::atomic<bool> isStop;
 extern std::atomic<bool> stopSignal;
@@ -133,7 +136,6 @@ int main() {
         else if (input == "ucinewgame") clearAll(board);
         else if (input.substr(0, 8) == "position") setPosition(input, inputVector, board);
         else if (input.substr(0, 2) == "go" && isStop) {
-            int mode = DEPTH, value = 1;
             std::vector<string>::iterator it;
 
             if (input.find("ponder") != string::npos)
@@ -153,60 +155,72 @@ int main() {
             }
 
             if (input.find("movetime") != string::npos && inputVector.size() > 2) {
-                mode = MOVETIME;
+                timeParams.searchMode = MOVETIME;
                 it = find(inputVector.begin(), inputVector.end(), "movetime");
                 it++;
-                value = std::stoi(*it);
+                timeParams.allotment = std::stoi(*it);
             }
             else if (input.find("depth") != string::npos && inputVector.size() > 2) {
-                mode = DEPTH;
+                timeParams.searchMode = DEPTH;
                 it = find(inputVector.begin(), inputVector.end(), "depth");
                 it++;
-                value = std::min(MAX_DEPTH, std::stoi(*it));
+                timeParams.allotment = std::min(MAX_DEPTH, std::stoi(*it));
             }
             else if (input.find("infinite") != string::npos) {
-                mode = DEPTH;
-                value = MAX_DEPTH;
+                timeParams.searchMode = DEPTH;
+                timeParams.allotment = MAX_DEPTH;
             }
             else if (input.find("wtime") != string::npos
                   || input.find("btime") != string::npos) {
-                mode = TIME;
+                timeParams.searchMode = TIME;
                 int color = board.getPlayerToMove();
+                int moveNumber = std::min(ENDGAME_HORIZON_LIMIT, (int) board.getMoveNumber());
 
-                it = find(inputVector.begin(), inputVector.end(),
-                        (color == WHITE) ? "wtime" : "btime");
+                it = find(inputVector.begin(), inputVector.end(), (color == WHITE) ? "wtime" : "btime");
                 it++;
-                value = std::stoi(*it);
-                int minValue = std::min(value, BUFFER_TIME) / 100;
+                int timeRemaining = std::stoi(*it);
+                int minValue = std::min(timeRemaining, BUFFER_TIME) / 100;
+                timeRemaining -= BUFFER_TIME;
+                // We can never have negative time
+                timeRemaining = std::max(0, timeRemaining);
 
-                value -= BUFFER_TIME;
-                int maxValue = value / MAX_TIME_FACTOR;
+                int movesToGo = MOVE_HORIZON - MOVE_HORIZON_DEC * moveNumber / ENDGAME_HORIZON_LIMIT;
 
-                // recurring time controls
+                // Parse recurring time controls, and set a different movestogo if necessary
                 it = find(inputVector.begin(), inputVector.end(), "movestogo");
                 if (it != inputVector.end()) {
                     it++;
-                    int movesToGo = std::stoi(*it);
-                    value /= std::max(movesToGo, (int) (MAX_TIME_FACTOR + movesToGo / 2.0));
+                    movesToGo = std::min(movesToGo, std::stoi(*it));
                 }
-                else value /= MOVE_HORIZON;
 
-                // increment time controls
-                it = find(inputVector.begin(), inputVector.end(),
-                        (color == WHITE) ? "winc" : "binc");
+                int value = timeRemaining / movesToGo;
+
+                // Parse the increment if available
+                int increment = 0;
+                it = find(inputVector.begin(), inputVector.end(), (color == WHITE) ? "winc" : "binc");
                 if (it != inputVector.end()) {
                     it++;
-                    value += std::stoi(*it);
-                    value = std::min(value, maxValue);
+                    increment = std::stoi(*it);
                 }
+                value += increment;
 
-                // minimum thinking time
+                // Minimum thinking time
                 value = std::max(value, minValue);
+
+                // Use special factors for recurring time controls with movestogo < 8
+                if (increment == 0 && movesToGo < 8) {
+                    timeParams.maxAllotment = (int) std::min(value * MAX_TIME_FACTOR, timeRemaining * MAX_USAGE_FACTORS[movesToGo]);
+                    timeParams.allotment = std::max(value, (int) (timeRemaining * ALLOTMENT_FACTORS[movesToGo]));
+                }
+                else {
+                    timeParams.maxAllotment = (int) std::min(value * MAX_TIME_FACTOR, timeRemaining * 0.95);
+                    timeParams.allotment = std::min(value, timeParams.maxAllotment / 3);
+                }
             }
 
             isStop = false;
             stopSignal = false;
-            searchThread = std::thread(getBestMove, &board, mode, value, &movesToSearch);
+            searchThread = std::thread(getBestMove, &board, &timeParams, &movesToSearch);
             searchThread.detach();
         }
         else if (input == "ponderhit") {
@@ -317,7 +331,9 @@ int main() {
         else if (input == "bench") {
             auto startTime = ChessClock::now();
             uint64_t totalNodes = 0;
-            MoveList movesToSearch;
+            movesToSearch.clear();
+            timeParams.searchMode = DEPTH;
+            timeParams.allotment = 11;
 
             for (unsigned int i = 0; i < positions.size(); i++) {
                 clearAll(board);
@@ -325,7 +341,7 @@ int main() {
 
                 isStop = false;
                 stopSignal = false;
-                getBestMove(&board, DEPTH, 11, &movesToSearch);
+                getBestMove(&board, &timeParams, &movesToSearch);
                 isStop = true;
                 stopSignal = true;
 

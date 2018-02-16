@@ -21,6 +21,7 @@
 
 #include "board.h"
 #include "common.h"
+#include "timeman.h"
 
 /*
  * This struct is a simple stack implementation that stores Zobrist keys to
@@ -75,7 +76,7 @@ struct SearchStackInfo {
     int **followupMoveHistory;
 };
 
-void getBestMove(Board *b, int mode, int value, MoveList *movesToSearch);
+void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch);
 void clearTables();
 void setHashSize(uint64_t MB);
 void setEvalCacheSize(uint64_t MB);
@@ -91,12 +92,6 @@ void stopPonder();
 
 int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID, SearchStackInfo *ssi);
 
-// Search modes
-const int TIME = 1;
-const int DEPTH = 2;
-// const int NODES = 3;
-const int MOVETIME = 4;
-
 // Time constants
 const uint64_t ONE_SECOND = 1000;
 const uint64_t MAX_TIME = (1ULL << 63) - 1;
@@ -105,10 +100,5 @@ const uint64_t MAX_TIME = (1ULL << 63) - 1;
 const int EASYMOVE_MARGIN = 150;
 const int MAX_POS_SCORE = 120;
 const int NEAR_MATE_SCORE = 2500;
-
-// Time management constants
-const int MOVE_HORIZON = 33; // expect this many moves left in the game
-const double TIME_FACTOR = 0.9; // timeFactor = log b / (b - 1) where b is branch factor
-const double MAX_TIME_FACTOR = 4.0; // do not spend more than this multiple of time over the limit
 
 #endif
