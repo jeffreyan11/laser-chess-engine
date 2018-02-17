@@ -115,9 +115,9 @@ const int REVERSE_FUTILITY_MARGIN[7] = {0,
 // Razor margins indexed by depth. If static eval is far below alpha, use a
 // qsearch to confirm fail low and then return.
 const int RAZOR_MARGIN[4] = {0,
-    240,
     280,
-    300
+    300,
+    320
 };
 
 // Move count pruning
@@ -870,7 +870,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
      && searchParams->nullMoveCount < 2
      && b.getNonPawnMaterial(color)) {
         // Reduce more if we are further ahead
-        int reduction = 2 + (32 * depth + std::min(staticEval - beta, 512)) / 128;
+        int reduction = 2 + (32 * depth + std::min(staticEval - beta, 384)) / 128;
 
         uint16_t epCaptureFile = b.getEPCaptureFile();
         b.doNullMove();
