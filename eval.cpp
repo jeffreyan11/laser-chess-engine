@@ -986,13 +986,7 @@ void Eval::getMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, 
     // Holds the center control score
     int centerControl = 0;
 
-    // Calculate center control only for pawns
-    uint64_t pawnAttackMap = ei.attackMaps[color][PAWNS];
-    centerControl += EXTENDED_CENTER_VAL * count(pawnAttackMap & EXTENDED_CENTER_SQS);
-    centerControl += CENTER_BONUS * count(pawnAttackMap & CENTER_SQS);
-
     uint64_t oppPawnAttackMap = ei.attackMaps[color^1][PAWNS];
-
     // We count mobility for all squares other than ones occupied by own rammed
     // pawns, king, or attacked by opponent's pawns
     // Idea of using rammed pawns from Stockfish
@@ -1021,8 +1015,6 @@ void Eval::getMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, 
 
         mgMobility += mobilityScore[MG][QUEENS-1][count(legal & openSqs & ~oppAttackMap)];
         egMobility += mobilityScore[EG][QUEENS-1][count(legal & openSqs & ~oppAttackMap)];
-        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS & ~oppPawnAttackMap & ~oppAttackMap);
-        centerControl += CENTER_BONUS * count(legal & CENTER_SQS & ~oppPawnAttackMap & ~oppAttackMap);
     }
 
     valueMg = mgMobility + centerControl;
