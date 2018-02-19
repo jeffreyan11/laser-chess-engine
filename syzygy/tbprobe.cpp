@@ -37,7 +37,6 @@
 #include "tbcore.h"
 
 extern uint64_t zobristTable[794];
-extern TwoFoldStack twoFoldPositions[MAX_THREADS];
 
 // int TBlargest = 0;
 
@@ -572,13 +571,13 @@ int probe_dtz(Board &b, int *success) {
 // Check whether there has been at least one repetition of positions
 // since the last capture or pawn move.
 static int has_repeated() {
-    TwoFoldStack &tfp = twoFoldPositions[0];
-    if (tfp.length < 3)
+    TwoFoldStack *tfp = getTwoFoldStackPointer();
+    if (tfp->length < 3)
         return false;
 
-    uint64_t pos = tfp.keys[tfp.length-1];
-    for (unsigned int i = tfp.length-1; i > 0; i--) {
-        if (tfp.keys[i-1] == pos)
+    uint64_t pos = tfp->keys[tfp->length-1];
+    for (unsigned int i = tfp->length-1; i > 0; i--) {
+        if (tfp->keys[i-1] == pos)
             return true;
     }
     return false;

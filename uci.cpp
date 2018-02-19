@@ -76,7 +76,6 @@ TimeManagement timeParams;
 // Declared in search.cpp
 extern std::atomic<bool> isStop;
 extern std::atomic<bool> stopSignal;
-extern TwoFoldStack twoFoldPositions[MAX_THREADS];
 
 
 int main() {
@@ -85,7 +84,6 @@ int main() {
     initZobristTable();
     initInBetweenTable();
     initPerThreadMemory();
-    initSSI();
 
     setMultiPV(DEFAULT_MULTI_PV);
     setNumThreads(DEFAULT_THREADS);
@@ -389,7 +387,8 @@ void setPosition(string &input, std::vector<string> &inputVector, Board &board) 
     }
 
     board = fenToBoard(pos);
-    twoFoldPositions[0].clear();
+    TwoFoldStack *twoFoldPositions = getTwoFoldStackPointer();
+    twoFoldPositions->clear();
 
     size_t moveListStart = input.find("moves");
     if (moveListStart != string::npos) {
@@ -405,11 +404,11 @@ void setPosition(string &input, std::vector<string> &inputVector, Board &board) 
                 Move m = stringToMove(moveStr, board, reversible);
 
                 // Record positions on two fold stack.
-                twoFoldPositions[0].push(board.getZobristKey());
+                twoFoldPositions->push(board.getZobristKey());
                 // The stack is cleared for captures, pawn moves, and castles, which are all
                 // irreversible
                 if (!reversible)
-                    twoFoldPositions[0].clear();
+                    twoFoldPositions->clear();
 
                 board.doMove(m, board.getPlayerToMove());
             }
