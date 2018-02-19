@@ -25,8 +25,6 @@ struct SearchParameters {
     int ply;
     int nullMoveCount;
     int selectiveDepth;
-    ChessTime startTime;
-    uint64_t timeLimit;
     uint8_t rootMoveNumber;
     Move killers[MAX_DEPTH][2];
     int historyTable[2][6][64];

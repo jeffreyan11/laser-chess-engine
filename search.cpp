@@ -148,6 +148,10 @@ static EvalHash evalCache(DEFAULT_HASH_SIZE);
 static std::vector<ThreadMemory *> threadMemoryArray;
 static EasyMove easyMoveInfo;
 
+// Variables for time management
+ChessTime startTime;
+uint64_t timeLimit;
+
 // Used to break out of the search thread if the stop command is given
 std::atomic<bool> isStop(true);
 // Additional stop signal to stop helper threads during SMP
@@ -219,17 +223,16 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
     Move bestMove = legalMoves.get(0);
 
     // Set up timing
-    threadMemoryArray[0]->searchParams.timeLimit =
-        (timeParams->searchMode == TIME) ? timeParams->maxAllotment
-                                         : (timeParams->searchMode == MOVETIME) ? timeParams->allotment
-                                                                                : MAX_TIME;
-    threadMemoryArray[0]->searchParams.startTime = ChessClock::now();
-    uint64_t timeSoFar = getTimeElapsed(threadMemoryArray[0]->searchParams.startTime);
+    timeLimit = (timeParams->searchMode == TIME) ? timeParams->maxAllotment
+                                                 : (timeParams->searchMode == MOVETIME) ? timeParams->allotment
+                                                                                        : MAX_TIME;
+    startTime = ChessClock::now();
+    uint64_t timeSoFar = getTimeElapsed(startTime);
 
     // Special case if there is only one legal move: use less search time,
     // only to get a rough PV/score
     if (legalMoves.size() == 1 && timeParams->searchMode == TIME) {
-        threadMemoryArray[0]->searchParams.timeLimit = std::min(threadMemoryArray[0]->searchParams.timeLimit / 32, ONE_SECOND);
+        timeLimit = std::min(timeLimit / 32, ONE_SECOND);
     }
 
 
@@ -353,7 +356,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
                         &bestMoveIndex, &bestScore, multiPVNum-1, 0, &pvLine);
                 }
 
-                timeSoFar = getTimeElapsed(threadMemoryArray[0]->searchParams.startTime);
+                timeSoFar = getTimeElapsed(startTime);
                 // Calculate values for printing
                 uint64_t nps = 1000 * getNodes() / timeSoFar;
                 std::string pvStr = retrievePV(&pvLine);
@@ -416,7 +419,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
             // End aspiration loop
 
             // Calculate values for printing
-            timeSoFar = getTimeElapsed(threadMemoryArray[0]->searchParams.startTime);
+            timeSoFar = getTimeElapsed(startTime);
             uint64_t nps = 1000 * getNodes() / timeSoFar;
             std::string pvStr = retrievePV(&pvLine);
 
@@ -577,7 +580,7 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
     for (unsigned int i = startMove; i < legalMoves->size(); i++) {
         // Output current move info to the GUI. Only do so if 5 seconds of
         // search have elapsed to avoid clutter
-        uint64_t timeSoFar = getTimeElapsed(threadMemoryArray[0]->searchParams.startTime);
+        uint64_t timeSoFar = getTimeElapsed(startTime);
         uint64_t nps = 1000 * getNodes() / timeSoFar;
         if (threadID == 0 && timeSoFar > 5 * ONE_SECOND)
             cout << "info depth " << depth << " currmove " << moveToString(legalMoves->get(i))
@@ -928,8 +931,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
               m = moveSorter.nextMove()) {
         // Check for a timeout
         if (!isPonderSearch) {
-            uint64_t timeSoFar = getTimeElapsed(threadMemoryArray[0]->searchParams.startTime);
-            if (timeSoFar > threadMemoryArray[0]->searchParams.timeLimit) {
+            uint64_t timeSoFar = getTimeElapsed(startTime);
+            if (timeSoFar > timeLimit) {
                 isStop = true;
                 stopSignal = true;
             }
