@@ -236,9 +236,6 @@ const int BISHOP_PAIR_VALUE = 55;
 const int TEMPO_VALUE = 16;
 
 // Material imbalance terms
-const int KNIGHT_PAIR_PENALTY = 0;
-const int ROOK_PAIR_PENALTY = 0;
-
 const int OWN_OPP_IMBALANCE[2][5][5] = {
 {
 //       Opponent's

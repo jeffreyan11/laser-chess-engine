@@ -268,24 +268,7 @@ int Eval::evaluate(Board &b) {
 
     int imbalanceValue[2] = {0, 0};
     // Material imbalance evaluation
-    if (pieceCounts[WHITE][KNIGHTS] == 2) {
-        imbalanceValue[MG] += KNIGHT_PAIR_PENALTY;
-        imbalanceValue[EG] += KNIGHT_PAIR_PENALTY;
-    }
-    if (pieceCounts[BLACK][KNIGHTS] == 2) {
-        imbalanceValue[MG] -= KNIGHT_PAIR_PENALTY;
-        imbalanceValue[EG] -= KNIGHT_PAIR_PENALTY;
-    }
-
-    if (pieceCounts[WHITE][ROOKS] == 2) {
-        imbalanceValue[MG] += ROOK_PAIR_PENALTY;
-        imbalanceValue[EG] += ROOK_PAIR_PENALTY;
-    }
-    if (pieceCounts[BLACK][ROOKS] == 2) {
-        imbalanceValue[MG] -= ROOK_PAIR_PENALTY;
-        imbalanceValue[EG] -= ROOK_PAIR_PENALTY;
-    }
-
+	
     // Own-opp imbalance terms
     // Gain OWN_OPP_IMBALANCE[][ownID][oppID] centipawns for each ownID piece
     // you have and each oppID piece the opponent has
