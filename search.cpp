@@ -105,6 +105,11 @@ struct ThreadMemory {
 };
 
 //-------------------------------Search Constants-------------------------------
+// Lazy SMP depths
+const int SMP_DEPTHS[16] = {
+    0, 1, 0, 1, 0, 1, 0, 2, 0, 1, 0, 2, 0, 1, 0, 3
+};
+
 // Futility pruning margins indexed by depth. If static eval is at least this
 // amount below alpha, we skip quiet moves for this position.
 const int FUTILITY_MARGIN[7] = {0,
@@ -324,14 +329,12 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
                 if (rootDepth >= 7 && numThreads > 1) {
                     std::thread *threadPool = new std::thread[numThreads-1];
 
-                    // Start secondary threads
-                    // Start even threads with depth = rootDepth+1
-                    //   (idea from Dan Homan, author of ExChess)
+                    // Start secondary threads at various depths according to array SMP_DEPTHS
                     for (int i = 1; i < numThreads; i++) {
                         // Copy over the two-fold stack to use
                         threadMemoryArray[i]->twoFoldPositions = threadMemoryArray[0]->twoFoldPositions;
                         threadPool[i-1] = std::thread(getBestMoveAtDepthHelper, b,
-                            &legalMoves, rootDepth + (i % 2), aspAlpha, aspBeta,
+                            &legalMoves, rootDepth + SMP_DEPTHS[i % 16], aspAlpha, aspBeta,
                             dummyBestIndex+i-1, dummyBestScore+i-1,
                             multiPVNum-1, i, nullptr);
                         // Detach secondary threads
