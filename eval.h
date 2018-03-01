@@ -96,7 +96,7 @@ const int EG = 1;
 // Material constants
 const int PIECE_VALUES[2][5] = {
   {100, 389, 434, 656, 1345},
-  {137, 393, 446, 710, 1385}
+  {133, 393, 446, 710, 1385}
 };
 const int KNOWN_WIN = PIECE_VALUES[EG][PAWNS] * 75;
 const int TB_WIN = PIECE_VALUES[EG][PAWNS] * 125;
@@ -107,12 +107,12 @@ const int pieceSquareTable[2][6][32] = {
 {
 { // Pawns
   0,  0,  0,  0,
- 28, 38, 54, 64,
- 18, 33, 50, 57,
-  8, 11, 16, 28,
- -4, -2, 12, 16,
- -2,  4,  8, 14,
- -2,  6,  5,  6,
+ 10, 16, 24, 30,
+ 12, 14, 20, 28,
+  6,  8, 14, 23,
+ -5, -4, 10, 17,
+ -5,  0,  8, 10,
+ -5,  3,  1,  1,
   0,  0,  0,  0
 },
 { // Knights
@@ -170,12 +170,12 @@ const int pieceSquareTable[2][6][32] = {
 {
 { // Pawns
   0,  0,  0,  0,
- 31, 42, 52, 61,
- 27, 29, 30, 30,
- 10,  8,  8,  8,
--12,-10, -5, -5,
--18,-12, -5, -5,
--18,-12, -5, -5,
+ 17, 24, 27, 32,
+ 11, 13, 15, 15,
+ -1,  1,  3,  3,
+ -7, -3,  0,  0,
+ -7, -3,  0,  0,
+ -7, -3,  0,  0,
   0,  0,  0,  0
 },
 { // Knights
@@ -371,15 +371,15 @@ const Score MINOR_ROOK_THREAT = E(-54, -32);
 const Score MINOR_QUEEN_THREAT = E(-61, -25);
 const Score ROOK_QUEEN_THREAT = E(-61, -24);
 
-const Score LOOSE_PAWN = E(-16, -10);
+const Score LOOSE_PAWN = E(-8, -5);
 const Score LOOSE_MINOR = E(-10, -9);
 
 // Pawn structure
 // Passed pawns
-const Score PASSER_BONUS[8] = {E(  0,   0), E(  4,   8), E(  5,  9), E(  7,  15),
-                               E( 23,  25), E( 54,  62), E(100,100), E(  0,   0)};
-const Score PASSER_FILE_BONUS[8] = {E( 16, 13), E(  5, 11), E( -8, -2), E(-10, -8),
-                                    E(-10, -8), E( -8, -2), E(  5, 11), E( 16, 13)};
+const Score PASSER_BONUS[8] = {E(  0,   0), E(  4,   7), E(  4,  8), E(  8,  15),
+                               E( 25,  25), E( 60,  60), E(107,107), E(  0,   0)};
+const Score PASSER_FILE_BONUS[8] = {E( 14, 13), E(  6,  8), E( -8, -2), E(-10, -6),
+                                    E(-10, -6), E( -8, -2), E(  6,  8), E( 14, 13)};
 const Score FREE_PROMOTION_BONUS = E(14, 18);
 const Score FREE_STOP_BONUS = E(6, 8);
 const Score FULLY_DEFENDED_PASSER_BONUS = E(8, 9);
@@ -398,9 +398,11 @@ const Score BACKWARD_SEMIOPEN_PENALTY = E(-14, -11);
 // Undefended pawns that are not backwards or isolated
 const Score UNDEFENDED_PAWN_PENALTY = E(-7, -6);
 // Pawn phalanxes
-const Score PAWN_PHALANX_RANK_BONUS = E(17, 11);
+const Score PAWN_PHALANX_BONUS[8] = {E(0, 0), E(4, -1), E(4, 0), E(12, 5),
+                                     E(27, 22), E(54, 35), E(84, 75), E(0, 0)};
 // Connected pawns
-const Score PAWN_CONNECTED_RANK_BONUS = E(7, 3);
+const Score PAWN_CONNECTED_BONUS[8] = {E(0, 0), E(0, 0), E(7, 1), E(6, 2),
+                                       E(17, 7), E(27, 24), E(60, 48), E(0, 0)};
 // King-pawn tropism
 const int KING_TROPISM_VALUE = 18;
 

@@ -815,21 +815,25 @@ int Eval::evaluate(Board &b) {
                           | (pieces[WHITE][PAWNS] & (pieces[WHITE][PAWNS] >> 1) & NOTH);
     uint64_t bPawnPhalanx = (pieces[BLACK][PAWNS] & (pieces[BLACK][PAWNS] << 1) & NOTA)
                           | (pieces[BLACK][PAWNS] & (pieces[BLACK][PAWNS] >> 1) & NOTH);
-    wPawnPhalanx &= RANK_3 | RANK_4 | RANK_5 | RANK_6 | RANK_7;
-    bPawnPhalanx &= RANK_2 | RANK_3 | RANK_4 | RANK_5 | RANK_6;
-    wPawnPhalanx &= ~(pieces[BLACK][PAWNS] >> 8);
-    bPawnPhalanx &= ~(pieces[WHITE][PAWNS] << 8);
     while (wPawnPhalanx) {
         int pawnSq = bitScanForward(wPawnPhalanx);
         wPawnPhalanx &= wPawnPhalanx - 1;
         int r = pawnSq >> 3;
-        whitePawnScore += PAWN_PHALANX_RANK_BONUS * (r-2);
+        int bonus = PAWN_PHALANX_BONUS[r];
+        whitePawnScore += bonus;
+        int f = pawnSq & 7;
+        if (!(FILES[f] & pieces[BLACK][PAWNS]))
+            whitePawnScore += bonus;
     }
     while (bPawnPhalanx) {
         int pawnSq = bitScanForward(bPawnPhalanx);
         bPawnPhalanx &= bPawnPhalanx - 1;
         int r = 7 - (pawnSq >> 3);
-        blackPawnScore += PAWN_PHALANX_RANK_BONUS * (r-2);
+        int bonus = PAWN_PHALANX_BONUS[r];
+        blackPawnScore += bonus;
+        int f = pawnSq & 7;
+        if (!(FILES[f] & pieces[WHITE][PAWNS]))
+            blackPawnScore += bonus;
     }
 
     // Other connected pawns
@@ -839,19 +843,21 @@ int Eval::evaluate(Board &b) {
         int pawnSq = bitScanForward(wConnected);
         wConnected &= wConnected - 1;
         int r = pawnSq >> 3;
-        whitePawnScore += PAWN_CONNECTED_RANK_BONUS * (r-2);
+        int bonus = PAWN_CONNECTED_BONUS[r];
+        whitePawnScore += bonus;
         int f = pawnSq & 7;
         if (!(FILES[f] & pieces[BLACK][PAWNS]))
-            whitePawnScore += PAWN_CONNECTED_RANK_BONUS * (r-2);
+            whitePawnScore += bonus;
     }
     while (bConnected) {
         int pawnSq = bitScanForward(bConnected);
         bConnected &= bConnected - 1;
         int r = 7 - (pawnSq >> 3);
-        blackPawnScore += PAWN_CONNECTED_RANK_BONUS * (r-2);
+        int bonus = PAWN_CONNECTED_BONUS[r];
+        blackPawnScore += bonus;
         int f = pawnSq & 7;
         if (!(FILES[f] & pieces[WHITE][PAWNS]))
-            blackPawnScore += PAWN_CONNECTED_RANK_BONUS * (r-2);
+            blackPawnScore += bonus;
     }
     
     valueMg += decEvalMg(whitePawnScore) - decEvalMg(blackPawnScore);
