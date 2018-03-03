@@ -1307,6 +1307,8 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     if (alpha < standPat)
         alpha = standPat;
 
+    int bestScore = standPat;
+
 
     // Generate captures and order by MVV/LVA
     MoveList legalMoves;
@@ -1316,18 +1318,22 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         scores.add(b.getMVVLVAScore(color, legalMoves.get(i)));
     }
 
-    int bestScore = -INFTY;
     int score = -INFTY;
     unsigned int i = 0;
     unsigned int j = 0; // separate counter only incremented when valid move is searched
     for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
               m = nextMove(legalMoves, scores, ++i)) {
         // Delta prune
-        if (standPat + b.valueOfPiece(b.getPieceOnSquare(color^1, getEndSq(m))) < alpha - MAX_POS_SCORE)
+        int potentialEval = standPat + b.valueOfPiece(b.getPieceOnSquare(color^1, getEndSq(m)));
+        if (potentialEval < alpha - MAX_POS_SCORE) {
+            bestScore = std::max(bestScore, potentialEval + MAX_POS_SCORE);
             continue;
+        }
         // Futility pruning
-        if (standPat < alpha - 70 && b.getSEEForMove(color, m) <= 0)
+        if (standPat < alpha - 70 && b.getSEEForMove(color, m) <= 0) {
+            bestScore = std::max(bestScore, standPat + 70);
             continue;
+        }
         // Static exchange evaluation pruning
         if (b.getExchangeScore(color, m) < 0 && b.getSEEForMove(color, m) < 0)
             continue;
@@ -1408,59 +1414,61 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     }
 
     // Checks: only on the first two plies of q-search
-    // Only do checks if a futility pruning condition is met
-    if (plies <= 1 && standPat >= alpha - 100) {
-        legalMoves.clear();
-        b.getPseudoLegalChecks(legalMoves, color);
+    if (plies <= 1) {
+        // Only do checks if a futility pruning condition is met
+        if (standPat >= alpha - 100) {
+            legalMoves.clear();
+            b.getPseudoLegalChecks(legalMoves, color);
 
-        for (unsigned int i = 0; i < legalMoves.size(); i++) {
-            Move m = legalMoves.get(i);
+            for (unsigned int i = 0; i < legalMoves.size(); i++) {
+                Move m = legalMoves.get(i);
 
-            // Futility pruning
-            if (standPat < alpha - 100)
-                continue;
-            // Static exchange evaluation pruning
-            if (b.getSEEForMove(color, m) < 0)
-                continue;
+                // Futility pruning
+                if (standPat < alpha - 100) {
+                    bestScore = std::max(bestScore, standPat + 100);
+                    continue;
+                }
+                // Static exchange evaluation pruning
+                if (b.getSEEForMove(color, m) < 0)
+                    continue;
 
-            Board copy = b.staticCopy();
-            if (!copy.doPseudoLegalMove(m, color))
-                continue;
+                Board copy = b.staticCopy();
+                if (!copy.doPseudoLegalMove(m, color))
+                    continue;
 
-            searchStats->nodes++;
-            searchStats->qsNodes++;
-            threadMemoryArray[threadID]->twoFoldPositions.push(b.getZobristKey());
+                searchStats->nodes++;
+                searchStats->qsNodes++;
+                threadMemoryArray[threadID]->twoFoldPositions.push(b.getZobristKey());
 
-            int score = -checkQuiescence(copy, plies+1, -beta, -alpha, threadID);
+                int score = -checkQuiescence(copy, plies+1, -beta, -alpha, threadID);
 
-            threadMemoryArray[threadID]->twoFoldPositions.pop();
+                threadMemoryArray[threadID]->twoFoldPositions.pop();
 
-            if (score >= beta) {
-                searchStats->qsFailHighs++;
-                if (j == 0)
-                    searchStats->qsFirstFailHighs++;
+                if (score >= beta) {
+                    searchStats->qsFailHighs++;
+                    if (j == 0)
+                        searchStats->qsFirstFailHighs++;
 
-                uint64_t hashData = packHashData(-plies, m,
-                    adjustHashScore(score, searchParams->ply + plies), CUT_NODE,
-                    searchParams->rootMoveNumber);
-                transpositionTable.add(b, hashData, -plies, searchParams->rootMoveNumber);
+                    uint64_t hashData = packHashData(-plies, m,
+                        adjustHashScore(score, searchParams->ply + plies), CUT_NODE,
+                        searchParams->rootMoveNumber);
+                    transpositionTable.add(b, hashData, -plies, searchParams->rootMoveNumber);
 
-                return score;
+                    return score;
+                }
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    if (score > alpha)
+                        alpha = score;
+                }
+
+                j++;
             }
-
-            if (score > bestScore) {
-                bestScore = score;
-                if (score > alpha)
-                    alpha = score;
-            }
-
-            j++;
         }
+        else
+            bestScore = std::max(bestScore, standPat + 100);
     }
-
-    // Fail low and hard if there are no captures
-    if (bestScore == -INFTY)
-        bestScore = alpha;
 
     return bestScore;
 }
