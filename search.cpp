@@ -113,12 +113,12 @@ const int SMP_DEPTHS[16] = {
 // Futility pruning margins indexed by depth. If static eval is at least this
 // amount below alpha, we skip quiet moves for this position.
 const int FUTILITY_MARGIN[7] = {0,
-    80,
-    170,
-    270,
-    380,
-    500,
-    630
+    90,
+    190,
+    300,
+    420,
+    550,
+    690
 };
 
 // Reverse futility pruning margins indexed by depth. If static eval is at least
@@ -1325,13 +1325,13 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
               m = nextMove(legalMoves, scores, ++i)) {
         // Delta prune
         int potentialEval = standPat + b.valueOfPiece(b.getPieceOnSquare(color^1, getEndSq(m)));
-        if (potentialEval < alpha - MAX_POS_SCORE) {
-            bestScore = std::max(bestScore, potentialEval + MAX_POS_SCORE);
+        if (potentialEval < alpha - 130) {
+            bestScore = std::max(bestScore, potentialEval + 130);
             continue;
         }
         // Futility pruning
-        if (standPat < alpha - 70 && b.getSEEForMove(color, m) <= 0) {
-            bestScore = std::max(bestScore, standPat + 70);
+        if (standPat < alpha - 80 && b.getSEEForMove(color, m) <= 0) {
+            bestScore = std::max(bestScore, standPat + 80);
             continue;
         }
         // Static exchange evaluation pruning
@@ -1416,7 +1416,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     // Checks: only on the first two plies of q-search
     if (plies <= 1) {
         // Only do checks if a futility pruning condition is met
-        if (standPat >= alpha - 100) {
+        if (standPat >= alpha - 110) {
             legalMoves.clear();
             b.getPseudoLegalChecks(legalMoves, color);
 
@@ -1424,8 +1424,8 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
                 Move m = legalMoves.get(i);
 
                 // Futility pruning
-                if (standPat < alpha - 100) {
-                    bestScore = std::max(bestScore, standPat + 100);
+                if (standPat < alpha - 110) {
+                    bestScore = std::max(bestScore, standPat + 110);
                     continue;
                 }
                 // Static exchange evaluation pruning
@@ -1467,7 +1467,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             }
         }
         else
-            bestScore = std::max(bestScore, standPat + 100);
+            bestScore = std::max(bestScore, standPat + 110);
     }
 
     return bestScore;
