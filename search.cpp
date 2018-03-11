@@ -964,9 +964,13 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // Futility pruning
         // If we are already a decent amount of material below alpha, a quiet
         // move probably won't raise our prospects much, so don't bother
-        // q-searching it.
-        if (moveIsPrunable && bestScore > -INFTY
-         && pruneDepth <= 6 && staticEval <= alpha - FUTILITY_MARGIN[pruneDepth])
+        // q-searching it, unless it is one of our killer moves
+        if (moveIsPrunable 
+         && bestScore > -INFTY
+         && pruneDepth <= 6
+         && staticEval <= alpha - FUTILITY_MARGIN[pruneDepth]
+         && m != searchParams->killers[ssi->ply][0]
+         && m != searchParams->killers[ssi->ply][1])
             continue;
 
 
