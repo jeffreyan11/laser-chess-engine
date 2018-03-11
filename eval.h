@@ -63,9 +63,9 @@ private:
 
 
 const int SEE_PIECE_VALS[6] = {100, 400, 400, 600, 1150, MATE_SCORE/2};
-const int EG_FACTOR_PIECE_VALS[5] = {48, 382, 389, 678, 1620};
-const int EG_FACTOR_ALPHA = 2500;
-const int EG_FACTOR_BETA = 6010;
+const int EG_FACTOR_PIECE_VALS[5] = {48, 382, 389, 668, 1550};
+const int EG_FACTOR_ALPHA = 2350;
+const int EG_FACTOR_BETA = 6400;
 const int EG_FACTOR_RES = 1000;
 
 // Eval scores are packed into an unsigned 32-bit integer during calculations
