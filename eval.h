@@ -408,7 +408,7 @@ const int KING_TROPISM_VALUE = 18;
 
 // Scale factors for drawish endgames
 const int MAX_SCALE_FACTOR = 32;
-const int OPPOSITE_BISHOP_SCALING[2] = {15, 30};
+const int OPPOSITE_BISHOP_SCALING[2] = {14, 28};
 const int PAWNLESS_SCALING[4] = {3, 4, 7, 25};
 
 
