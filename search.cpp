@@ -450,11 +450,11 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
             cout << " score";
 
             // Print score in mate or centipawns
-            if (bestScore >= MATE_SCORE - MAX_DEPTH)
+            if (bestScore >= MAX_PLY_MATE_SCORE)
                 // If it is our mate, it takes plies / 2 + 1 moves to mate since
                 // our move ends the game
                 cout << " mate " << (MATE_SCORE - bestScore) / 2 + 1;
-            else if (bestScore <= -MATE_SCORE + MAX_DEPTH)
+            else if (bestScore <= -MAX_PLY_MATE_SCORE)
                 // If we are being mated, it takes plies / 2 moves since our
                 // opponent's move ends the game
                 cout << " mate " << (-MATE_SCORE - bestScore) / 2;
@@ -493,7 +493,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
         if (!isPonderSearch && timeParams->searchMode == TIME && multiPV == 1
          && timeSoFar > (uint64_t) timeParams->allotment / 16
          && timeSoFar < (uint64_t) timeParams->allotment / 2
-         && abs(bestScore) < MATE_SCORE - MAX_DEPTH) {
+         && abs(bestScore) < MAX_PLY_MATE_SCORE) {
             if ((bestMove == easyMoveInfo.prevBest && pvStreak >= 7)
                 || pvStreak >= 10) {
                 int secondBestMove;
@@ -757,9 +757,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             searchStats->tbhits++;
 
         // Adjust the hash score to mate distance from root if necessary
-        if (hashScore >= MATE_SCORE - MAX_DEPTH)
+        if (hashScore >= MAX_PLY_MATE_SCORE)
             hashScore -= ssi->ply;
-        else if (hashScore <= -MATE_SCORE + MAX_DEPTH)
+        else if (hashScore <= -MAX_PLY_MATE_SCORE)
             hashScore += ssi->ply;
 
         // Return hash score failing soft if hash depth >= current depth and:
@@ -1258,9 +1258,9 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         hashScore = getHashScore(hashEntry);
 
         // Adjust the hash score to mate distance from root if necessary
-        if (hashScore >= MATE_SCORE - MAX_DEPTH)
+        if (hashScore >= MAX_PLY_MATE_SCORE)
             hashScore -= searchParams->ply + plies;
-        else if (hashScore <= -MATE_SCORE + MAX_DEPTH)
+        else if (hashScore <= -MAX_PLY_MATE_SCORE)
             hashScore += searchParams->ply + plies;
 
         nodeType = getHashNodeType(hashEntry);
@@ -1553,9 +1553,9 @@ int scoreMate(bool isInCheck, int plies) {
 // Adjust a mate score to accurately reflect distance to mate from the
 // current position, if necessary.
 int adjustHashScore(int score, int plies) {
-    if (score >= MATE_SCORE - MAX_DEPTH)
+    if (score >= MAX_PLY_MATE_SCORE)
         return score + plies;
-    if (score <= -MATE_SCORE + MAX_DEPTH)
+    if (score <= -MAX_PLY_MATE_SCORE)
         return score - plies;
     return score;
 }
