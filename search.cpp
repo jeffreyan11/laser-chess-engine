@@ -850,7 +850,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     // probably wouldn't have let us get here (a form of the null-move observation
     // adapted to low depths, also called static null move pruning)
     if (!isPVNode && !isInCheck
-     && (depth <= 6 && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta)
+     && depth <= 6
+     && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta
      && b.getNonPawnMaterial(color))
         return staticEval;
 
@@ -861,7 +862,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     // the material and trust its result since a quiet move probably can't gain
     // as much.
     if (!isPVNode && !isInCheck
-     && nodeType != CUT_NODE && nodeType != PV_NODE && abs(alpha) < NEAR_MATE_SCORE
+     && nodeType != CUT_NODE && nodeType != PV_NODE
      && depth <= 3 && staticEval <= alpha - RAZOR_MARGIN[depth]) {
         searchParams->ply = ssi->ply;
         if (depth == 1)
@@ -949,7 +950,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
                            && !isCapture(m)
                            && !isPromotion(m)
                            && m != hashed
-                           && abs(alpha) < NEAR_MATE_SCORE
+                           && bestScore > -MAX_PLY_MATE_SCORE
                            && !b.isCheckMove(color, m);
 
         // For accessing history tables
@@ -965,7 +966,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // If we are already a decent amount of material below alpha, a quiet
         // move probably won't raise our prospects much, so don't bother
         // q-searching it.
-        if (moveIsPrunable && bestScore > -INFTY
+        if (moveIsPrunable
          && pruneDepth <= 6 && staticEval <= alpha - FUTILITY_MARGIN[pruneDepth])
             continue;
 
@@ -989,8 +990,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
 
         // Futility pruning using SEE
-        if (!isPVNode && !isInCheck && abs(alpha) < NEAR_MATE_SCORE
-         && bestScore > -INFTY && depth <= 5
+        if (!isPVNode && !isInCheck
+         && bestScore > -MAX_PLY_MATE_SCORE
+         && depth <= 5
          && b.getSEEForMove(color, m) < -100*depth)
             continue;
 
