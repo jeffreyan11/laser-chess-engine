@@ -76,19 +76,6 @@ struct SearchPV {
     }
 };
 
-// Stores information about candidate easymoves.
-struct EasyMove {
-    Move prevBest;
-    Move streakBest;
-    int pvStreak;
-
-    void reset() {
-        prevBest = NULL_MOVE;
-        streakBest = NULL_MOVE;
-        pvStreak = 0;
-    }
-};
-
 // Stores all of the per-thread search structs.
 struct ThreadMemory {
     SearchParameters searchParams;
@@ -151,7 +138,6 @@ const unsigned int LMP_MOVE_COUNTS[2][8] = {{0,
 static Hash transpositionTable(DEFAULT_HASH_SIZE);
 static EvalHash evalCache(DEFAULT_HASH_SIZE);
 static std::vector<ThreadMemory *> threadMemoryArray;
-static EasyMove easyMoveInfo;
 
 // Variables for time management
 ChessTime startTime;
@@ -470,17 +456,6 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
         }
         // End multiPV loop
 
-        // Record candidate easymoves
-        if (multiPV == 1 && pvLine.pvLength >= 3) {
-            if (pvLine.pv[2] == easyMoveInfo.streakBest) {
-                easyMoveInfo.pvStreak++;
-            }
-            else {
-                easyMoveInfo.streakBest = pvLine.pv[2];
-                easyMoveInfo.pvStreak = 1;
-            }
-        }
-
         if (bestMove == prevBest) {
             pvStreak++;
         }
@@ -491,23 +466,22 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
 
         // Easymove confirmation
         if (!isPonderSearch && timeParams->searchMode == TIME && multiPV == 1
+         && pvStreak >= 8 + rootDepth / 5
          && timeSoFar > (uint64_t) timeParams->allotment / 16
          && timeSoFar < (uint64_t) timeParams->allotment / 2
-         && abs(bestScore) < MAX_PLY_MATE_SCORE) {
-            if ((bestMove == easyMoveInfo.prevBest && pvStreak >= 7)
-                || pvStreak >= 10) {
-                int secondBestMove;
-                int secondBestScore;
-                int easymoveWindow = bestScore - EASYMOVE_MARGIN - abs(bestScore) / 3;
+         && abs(bestScore) < NEAR_MATE_SCORE) {
+            int secondBestMove;
+            int secondBestScore;
+            int easymoveWindow = bestScore - EASYMOVE_MARGIN - rootDepth - abs(bestScore) / 3;
+            int easymoveDepth = rootDepth - 4 - rootDepth / 8;
 
-                getBestMoveAtDepth(b, &legalMoves, rootDepth-5, easymoveWindow - 1, easymoveWindow,//-MATE_SCORE, MATE_SCORE,
-                    &secondBestMove, &secondBestScore, 1, 0, &pvLine);
+            getBestMoveAtDepth(b, &legalMoves, easymoveDepth, easymoveWindow - 1, easymoveWindow,
+                &secondBestMove, &secondBestScore, 1, 0, &pvLine);
 
-                if (secondBestScore < easymoveWindow)
-                    break;
-                else
-                    pvStreak = -128;
-            }
+            if (secondBestScore < easymoveWindow)
+                break;
+            else
+                pvStreak = -128;
         }
 
         rootDepth++;
@@ -518,13 +492,6 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
             || isPonderSearch) && rootDepth <= MAX_DEPTH)
          || (timeParams->searchMode == MOVETIME && timeSoFar < (uint64_t) timeParams->allotment && rootDepth <= MAX_DEPTH)
          || (timeParams->searchMode == DEPTH && rootDepth <= timeParams->allotment)));
-
-    // If we found a candidate easymove for the next ply this search
-    if (easyMoveInfo.pvStreak >= 8) {
-        easyMoveInfo.prevBest = easyMoveInfo.streakBest;
-    }
-    else
-        easyMoveInfo.reset();
 
     // When pondering, we must continue "searching" until given a stop or ponderhit command.
     while (isPonderSearch && !isStop)
