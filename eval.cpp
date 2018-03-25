@@ -169,37 +169,38 @@ void setKingSafetyScale(int s) {
  */
 template <bool debug>
 int Eval::evaluate(Board &b) {
+    
     // Copy necessary values from Board
     for (int color = WHITE; color <= BLACK; color++) {
         for (int pieceID = PAWNS; pieceID <= KINGS; pieceID++)
             pieces[color][pieceID] = b.getPieces(color, pieceID);
     }
+    
     allPieces[WHITE] = b.getAllPieces(WHITE);
     allPieces[BLACK] = b.getAllPieces(BLACK);
     playerToMove = b.getPlayerToMove();
 
-    // Precompute some values
-    int pieceCounts[2][6];
+    // Save off the number of pieces for each color, and sum this material
+    
+    int pieceCounts[2][6], material[2][2] = {0}, egFactorMaterial = 0;
+    
     for (int color = 0; color < 2; color++) {
-        for (int pieceID = 0; pieceID < 6; pieceID++)
+        
+        for (int pieceID = 0; pieceID < 6; pieceID++) {
+            
             pieceCounts[color][pieceID] = count(pieces[color][pieceID]);
+            
+            material[MG][color] += PIECE_VALUES[MG][pieceID] * pieceCounts[color][pieceID];
+            
+            material[EG][color] += PIECE_VALUES[EG][pieceID] * pieceCounts[color][pieceID];
+            
+            egFactorMaterial += EG_FACTOR_PIECE_VALS[pieceID] * pieceCounts[color][pieceID];
+        }
     }
 
-    // Material
-    int whiteMaterial = 0, blackMaterial = 0;
-    for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
-        whiteMaterial += PIECE_VALUES[MG][pieceID] * pieceCounts[WHITE][pieceID];
-    for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
-        blackMaterial += PIECE_VALUES[MG][pieceID] * pieceCounts[BLACK][pieceID];
-
-    int whiteEGFactorMat = 0, blackEGFactorMat = 0;
-    for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
-        whiteEGFactorMat += EG_FACTOR_PIECE_VALS[pieceID] * pieceCounts[WHITE][pieceID];
-    for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
-        blackEGFactorMat += EG_FACTOR_PIECE_VALS[pieceID] * pieceCounts[BLACK][pieceID];
-
     // Compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
-    int egFactor = EG_FACTOR_RES - (whiteEGFactorMat + blackEGFactorMat - EG_FACTOR_ALPHA) * EG_FACTOR_RES / EG_FACTOR_BETA;
+    int egFactor = EG_FACTOR_RES - (egFactorMaterial - EG_FACTOR_ALPHA) * EG_FACTOR_RES / EG_FACTOR_BETA;
+    
     egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
 
 
@@ -233,26 +234,22 @@ int Eval::evaluate(Board &b) {
 
 
     //---------------------------Material terms---------------------------------
-    int valueMg = 0;
-    int valueEg = 0;
+    
+    // MG and EG material
+    int valueMg = material[MG][WHITE] - material[MG][BLACK];
+    int valueEg = material[EG][WHITE] - material[EG][BLACK];
 
     // Bishop pair bonus
     if ((pieces[WHITE][BISHOPS] & LIGHT) && (pieces[WHITE][BISHOPS] & DARK)) {
-        whiteMaterial += BISHOP_PAIR_VALUE;
+        material[MG][WHITE] += BISHOP_PAIR_VALUE;
+        valueMg += BISHOP_PAIR_VALUE;
         valueEg += BISHOP_PAIR_VALUE;
     }
     if ((pieces[BLACK][BISHOPS] & LIGHT) && (pieces[BLACK][BISHOPS] & DARK)) {
-        blackMaterial += BISHOP_PAIR_VALUE;
+        material[MG][BLACK] += BISHOP_PAIR_VALUE;
+        valueMg -= BISHOP_PAIR_VALUE;
         valueEg -= BISHOP_PAIR_VALUE;
     }
-
-    // MG and EG material
-    valueMg += whiteMaterial;
-    valueMg -= blackMaterial;
-    for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
-        valueEg += PIECE_VALUES[EG][pieceID] * pieceCounts[WHITE][pieceID];
-    for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
-        valueEg -= PIECE_VALUES[EG][pieceID] * pieceCounts[BLACK][pieceID];
 
     // Tempo bonus
     valueMg += (playerToMove == WHITE) ? TEMPO_VALUE : -TEMPO_VALUE;
@@ -295,7 +292,6 @@ int Eval::evaluate(Board &b) {
     valueEg += KNIGHT_CLOSED_BONUS[EG] * pieceCounts[WHITE][KNIGHTS] * numRammedPawns * numRammedPawns / 4;
     valueMg -= KNIGHT_CLOSED_BONUS[MG] * pieceCounts[BLACK][KNIGHTS] * numRammedPawns * numRammedPawns / 4;
     valueEg -= KNIGHT_CLOSED_BONUS[EG] * pieceCounts[BLACK][KNIGHTS] * numRammedPawns * numRammedPawns / 4;
-
 
     //----------------------------Positional terms------------------------------
     // Pawn piece square tables
@@ -915,13 +911,13 @@ int Eval::evaluate(Board &b) {
         }
     }
     // Reduce eval for lack of pawns
-    if (whiteMaterial - blackMaterial > 0
-     && whiteMaterial - blackMaterial <= PIECE_VALUES[MG][KNIGHTS]
+    if (material[MG][WHITE] - material[MG][BLACK] > 0
+     && material[MG][WHITE] - material[MG][BLACK] <= PIECE_VALUES[MG][KNIGHTS]
      && pieceCounts[WHITE][PAWNS] <= 1) {
         if (pieceCounts[WHITE][PAWNS] == 0) {
-            if (whiteMaterial < PIECE_VALUES[MG][BISHOPS] + 50)
+            if (material[MG][WHITE] < PIECE_VALUES[MG][BISHOPS] + 50)
                 scaleFactor = PAWNLESS_SCALING[0];
-            else if (blackMaterial <= PIECE_VALUES[MG][BISHOPS])
+            else if (material[MG][BLACK] <= PIECE_VALUES[MG][BISHOPS])
                 scaleFactor = PAWNLESS_SCALING[1];
             else
                 scaleFactor = PAWNLESS_SCALING[2];
@@ -930,13 +926,13 @@ int Eval::evaluate(Board &b) {
             scaleFactor = PAWNLESS_SCALING[3];
         }
     }
-    if (blackMaterial - whiteMaterial > 0
-     && blackMaterial - whiteMaterial <= PIECE_VALUES[MG][KNIGHTS]
+    if (material[MG][BLACK] - material[MG][WHITE] > 0
+     && material[MG][BLACK] - material[MG][WHITE] <= PIECE_VALUES[MG][KNIGHTS]
      && pieceCounts[BLACK][PAWNS] <= 1) {
         if (pieceCounts[BLACK][PAWNS] == 0) {
-            if (blackMaterial < PIECE_VALUES[MG][BISHOPS] + 50)
+            if (material[MG][BLACK] < PIECE_VALUES[MG][BISHOPS] + 50)
                 scaleFactor = PAWNLESS_SCALING[0];
-            else if (whiteMaterial <= PIECE_VALUES[MG][BISHOPS])
+            else if (material[MG][WHITE] <= PIECE_VALUES[MG][BISHOPS])
                 scaleFactor = PAWNLESS_SCALING[1];
             else
                 scaleFactor = PAWNLESS_SCALING[2];
