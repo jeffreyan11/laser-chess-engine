@@ -63,7 +63,7 @@ private:
 
 
 const int SEE_PIECE_VALS[6] = {100, 400, 400, 600, 1150, MATE_SCORE/2};
-const int EG_FACTOR_PIECE_VALS[5] = {50, 383, 387, 671, 1553};
+const int EG_FACTOR_PIECE_VALS[6] = {50, 383, 387, 671, 1553, 0};
 const int EG_FACTOR_ALPHA = 2340;
 const int EG_FACTOR_BETA = 6380;
 const int EG_FACTOR_RES = 1000;
@@ -94,9 +94,9 @@ const int MG = 0;
 const int EG = 1;
 
 // Material constants
-const int PIECE_VALUES[2][5] = {
-  {100, 392, 437, 662, 1351},
-  {136, 395, 447, 714, 1391}
+const int PIECE_VALUES[2][6] = {
+  {100, 392, 437, 662, 1351, 0},
+  {136, 395, 447, 714, 1391, 0}
 };
 const int KNOWN_WIN = PIECE_VALUES[EG][PAWNS] * 75;
 const int TB_WIN = PIECE_VALUES[EG][PAWNS] * 125;
