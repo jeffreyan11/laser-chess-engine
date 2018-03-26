@@ -128,9 +128,9 @@ const int RAZOR_MARGIN[4] = {0,
 };
 
 // Move count pruning
-const unsigned int LMP_MOVE_COUNTS[2][8] = {{0,
-    3, 5, 8, 13, 20, 30, 45},
-{0, 5, 8, 13, 21, 33, 50, 72}
+const unsigned int LMP_MOVE_COUNTS[2][13] = {
+    {0, 2, 4,  7, 11, 16, 22, 29, 37, 46,  56,  67,  79},
+    {0, 5, 8, 13, 21, 31, 43, 57, 74, 93, 114, 137, 162}
 };
 
 
@@ -943,7 +943,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // As used in Fruit/Stockfish:
         // https://chessprogramming.wikispaces.com/Futility+Pruning#MoveCountBasedPruning
         if (moveIsPrunable
-         && depth <= 7
+         && depth <= 12
          && movesSearched > LMP_MOVE_COUNTS[evalImproving][depth] + (isPVNode ? depth : 0))
             continue;
 

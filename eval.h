@@ -337,8 +337,8 @@ const int KING_THREAT_MULTIPLIER[4] = {8, 4, 6, 6};
 const int KING_THREAT_SQUARE[4] = {7, 12, 10, 13};
 const int KING_DEFENSELESS_SQUARE = 22;
 const int KS_PAWN_FACTOR = 11;
-const int KING_PRESSURE = 2;
-const int KS_KING_PRESSURE_FACTOR = 10;
+const int KING_PRESSURE = 3;
+const int KS_KING_PRESSURE_FACTOR = 9;
 const int SAFE_CHECK_BONUS[4] = {77, 24, 49, 51};
 
 // Minor pieces
