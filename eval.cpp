@@ -870,7 +870,7 @@ int Eval::evaluate(Board &b) {
             if (pieceCounts[color][PAWNS] == 0) {
                 if (material[MG][color] < PIECE_VALUES[MG][BISHOPS] + 50)
                     scaleFactor = PAWNLESS_SCALING[0];
-                else if (material[MG][BLACK] <= PIECE_VALUES[MG][BISHOPS])
+                else if (material[MG][color^1] <= PIECE_VALUES[MG][BISHOPS])
                     scaleFactor = PAWNLESS_SCALING[1];
                 else
                     scaleFactor = PAWNLESS_SCALING[2];
