@@ -169,37 +169,28 @@ void setKingSafetyScale(int s) {
  */
 template <bool debug>
 int Eval::evaluate(Board &b) {
-    // Copy necessary values from Board
+    int pieceCounts[2][6];
+    int material[2][2] = {{0, 0}, {0, 0}};
+    int egFactorMaterial = 0;
+    // Copy necessary values from Board and precompute the number of each piece on the board as well as material totals
     for (int color = WHITE; color <= BLACK; color++) {
-        for (int pieceID = PAWNS; pieceID <= KINGS; pieceID++)
+        for (int pieceID = PAWNS; pieceID <= KINGS; pieceID++) {
             pieces[color][pieceID] = b.getPieces(color, pieceID);
+            pieceCounts[color][pieceID] = count(pieces[color][pieceID]);
+            if (pieceID != KINGS) {
+                material[MG][color] += PIECE_VALUES[MG][pieceID] * pieceCounts[color][pieceID];
+                material[EG][color] += PIECE_VALUES[EG][pieceID] * pieceCounts[color][pieceID];
+                egFactorMaterial += EG_FACTOR_PIECE_VALS[pieceID] * pieceCounts[color][pieceID];
+			}
+        }
     }
     allPieces[WHITE] = b.getAllPieces(WHITE);
     allPieces[BLACK] = b.getAllPieces(BLACK);
     playerToMove = b.getPlayerToMove();
 
-    // Precompute the number of each piece on the board
-    int pieceCounts[2][6];
-    for (int color = 0; color < 2; color++) {
-        for (int pieceID = PAWNS; pieceID <= KINGS; pieceID++)
-            pieceCounts[color][pieceID] = count(pieces[color][pieceID]);
-    }
-
-    // Precompute material totals
-    int material[2][2] = {{0, 0}, {0, 0}};
-    int egFactorMaterial = 0;
-    for (int color = WHITE; color <= BLACK; color++) {
-        for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++) {
-            material[MG][color] += PIECE_VALUES[MG][pieceID] * pieceCounts[color][pieceID];
-            material[EG][color] += PIECE_VALUES[EG][pieceID] * pieceCounts[color][pieceID];
-            egFactorMaterial += EG_FACTOR_PIECE_VALS[pieceID] * pieceCounts[color][pieceID];
-        }
-    }
-
     // Compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
     int egFactor = EG_FACTOR_RES - (egFactorMaterial - EG_FACTOR_ALPHA) * EG_FACTOR_RES / EG_FACTOR_BETA;
     egFactor = std::max(0, std::min(EG_FACTOR_RES, egFactor));
-
 
     // Check for special endgames
     if (egFactor == EG_FACTOR_RES) {
@@ -207,7 +198,6 @@ int Eval::evaluate(Board &b) {
         if (endgameScore != -INFTY)
             return endgameScore;
     }
-
 
     // Precompute eval info, such as attack maps
     PieceMoveList pmlWhite = b.getPieceMoveList(WHITE);
@@ -217,9 +207,9 @@ int Eval::evaluate(Board &b) {
 
     // Get the overall attack maps
     ei.attackMaps[WHITE][PAWNS] = b.getWPawnCaptures(pieces[WHITE][PAWNS]);
+    ei.attackMaps[BLACK][PAWNS] = b.getBPawnCaptures(pieces[BLACK][PAWNS]);
     for (unsigned int i = 0; i < pmlWhite.size(); i++)
         ei.attackMaps[WHITE][pmlWhite.get(i).pieceID] |= pmlWhite.get(i).legal;
-    ei.attackMaps[BLACK][PAWNS] = b.getBPawnCaptures(pieces[BLACK][PAWNS]);
     for (unsigned int i = 0; i < pmlBlack.size(); i++)
         ei.attackMaps[BLACK][pmlBlack.get(i).pieceID] |= pmlBlack.get(i).legal;
     for (int color = WHITE; color <= BLACK; color++)
@@ -291,7 +281,7 @@ int Eval::evaluate(Board &b) {
 
 
     //----------------------------Positional terms------------------------------
-    // Pawn piece square tables
+    // Pawn/queen piece square tables
     Score psqtScores[2] = {EVAL_ZERO, EVAL_ZERO};
     for (int color = WHITE; color <= BLACK; color++) {
         uint64_t bitboard = pieces[color][PAWNS];
@@ -300,10 +290,7 @@ int Eval::evaluate(Board &b) {
             bitboard &= bitboard - 1;
             psqtScores[color] += PSQT[color][PAWNS][sq];
         }
-    }
-    // Queen piece square tables
-    for (int color = WHITE; color <= BLACK; color++) {
-        uint64_t bitboard = pieces[color][QUEENS];
+		bitboard = pieces[color][QUEENS];
         while (bitboard) {
             int sq = bitScanForward(bitboard);
             bitboard &= bitboard - 1;
@@ -529,68 +516,43 @@ int Eval::evaluate(Board &b) {
     //-------------------------------Threats------------------------------------
     Score threatScore[2] = {EVAL_ZERO, EVAL_ZERO};
 
-    // Pawns attacked by opposing pieces and not defended by own pawns
-    if (uint64_t upawns = pieces[WHITE][PAWNS] & ei.fullAttackMaps[BLACK] & ~ei.attackMaps[WHITE][PAWNS]) {
-        threatScore[WHITE] += UNDEFENDED_PAWN * count(upawns);
-    }
-    if (uint64_t upawns = pieces[BLACK][PAWNS] & ei.fullAttackMaps[WHITE] & ~ei.attackMaps[BLACK][PAWNS]) {
-        threatScore[BLACK] += UNDEFENDED_PAWN * count(upawns);
-    }
-    // Minors attacked by opposing pieces and not defended by own pawns
-    if (uint64_t minors = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & ei.fullAttackMaps[BLACK] & ~ei.attackMaps[WHITE][PAWNS]) {
-        threatScore[WHITE] += UNDEFENDED_MINOR * count(minors);
-    }
-    if (uint64_t minors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & ei.fullAttackMaps[WHITE] & ~ei.attackMaps[BLACK][PAWNS]) {
-        threatScore[BLACK] += UNDEFENDED_MINOR * count(minors);
-    }
-    // Rooks attacked by opposing minors
-    if (uint64_t rooks = pieces[WHITE][ROOKS] & (ei.attackMaps[BLACK][KNIGHTS] | ei.attackMaps[BLACK][BISHOPS])) {
-        threatScore[WHITE] += MINOR_ROOK_THREAT * count(rooks);
-    }
-    if (uint64_t rooks = pieces[BLACK][ROOKS] & (ei.attackMaps[WHITE][KNIGHTS] | ei.attackMaps[WHITE][BISHOPS])) {
-        threatScore[BLACK] += MINOR_ROOK_THREAT * count(rooks);
-    }
-    // Queens attacked by opposing minors
-    if (uint64_t queens = pieces[WHITE][QUEENS] & (ei.attackMaps[BLACK][KNIGHTS] | ei.attackMaps[BLACK][BISHOPS])) {
-        threatScore[WHITE] += MINOR_QUEEN_THREAT * count(queens);
-    }
-    if (uint64_t queens = pieces[BLACK][QUEENS] & (ei.attackMaps[WHITE][KNIGHTS] | ei.attackMaps[WHITE][BISHOPS])) {
-        threatScore[BLACK] += MINOR_QUEEN_THREAT * count(queens);
-    }
-    // Queens attacked by opposing rooks
-    if (uint64_t queens = pieces[WHITE][QUEENS] & ei.attackMaps[BLACK][ROOKS]) {
-        threatScore[WHITE] += ROOK_QUEEN_THREAT * count(queens);
-    }
-    if (uint64_t queens = pieces[BLACK][QUEENS] & ei.attackMaps[WHITE][ROOKS]) {
-        threatScore[BLACK] += ROOK_QUEEN_THREAT * count(queens);
-    }
-    // Pieces attacked by opposing pawns
-    if (uint64_t threatened = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]
-                             | pieces[WHITE][ROOKS]   | pieces[WHITE][QUEENS]) & ei.attackMaps[BLACK][PAWNS]) {
-        threatScore[WHITE] += PAWN_PIECE_THREAT * count(threatened);
-    }
-    if (uint64_t threatened = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]
-                             | pieces[BLACK][ROOKS]   | pieces[BLACK][QUEENS]) & ei.attackMaps[WHITE][PAWNS]) {
-        threatScore[BLACK] += PAWN_PIECE_THREAT * count(threatened);
-    }
+    const uint64_t HALF[2] = {RANK_1 | RANK_2 | RANK_3 | RANK_4, RANK_5 | RANK_6 | RANK_7 | RANK_8};
 
-    // Loose pawns: pawns in opponent's half of the board with no defenders
-    const uint64_t WHITE_HALF = RANK_1 | RANK_2 | RANK_3 | RANK_4;
-    const uint64_t BLACK_HALF = RANK_5 | RANK_6 | RANK_7 | RANK_8;
-    if (uint64_t lpawns = pieces[WHITE][PAWNS] & BLACK_HALF & ~(ei.fullAttackMaps[WHITE] | ei.attackMaps[WHITE][PAWNS])) {
-        threatScore[WHITE] += LOOSE_PAWN * count(lpawns);
-    }
-    if (uint64_t lpawns = pieces[BLACK][PAWNS] & WHITE_HALF & ~(ei.fullAttackMaps[BLACK] | ei.attackMaps[BLACK][PAWNS])) {
-        threatScore[BLACK] += LOOSE_PAWN * count(lpawns);
-    }
-
-    // Loose minors
-    if (uint64_t lminors = (pieces[WHITE][KNIGHTS] | pieces[WHITE][BISHOPS]) & BLACK_HALF & ~(ei.fullAttackMaps[WHITE] | ei.attackMaps[WHITE][PAWNS])) {
-        threatScore[WHITE] += LOOSE_MINOR * count(lminors);
-    }
-    if (uint64_t lminors = (pieces[BLACK][KNIGHTS] | pieces[BLACK][BISHOPS]) & WHITE_HALF & ~(ei.fullAttackMaps[BLACK] | ei.attackMaps[BLACK][PAWNS])) {
-        threatScore[BLACK] += LOOSE_MINOR * count(lminors);
-    }
+    for (int color = WHITE; color <= BLACK; color++) {
+        // Pawns attacked by opposing pieces and not defended by own pawns
+        if (uint64_t upawns = pieces[color][PAWNS] & ei.fullAttackMaps[color^1] & ~ei.attackMaps[color][PAWNS]) {
+            threatScore[color] += UNDEFENDED_PAWN * count(upawns);
+        }
+        // Minors attacked by opposing pieces and not defended by own pawns
+        if (uint64_t minors = (pieces[color][KNIGHTS] | pieces[color][BISHOPS]) & ei.fullAttackMaps[color^1] & ~ei.attackMaps[color][PAWNS]) {
+            threatScore[color] += UNDEFENDED_MINOR * count(minors);
+        }
+        // Rooks attacked by opposing minors
+        if (uint64_t rooks = pieces[color][ROOKS] & (ei.attackMaps[color^1][KNIGHTS] | ei.attackMaps[color^1][BISHOPS])) {
+            threatScore[color] += MINOR_ROOK_THREAT * count(rooks);
+        }
+        // Queens attacked by opposing minors
+        if (uint64_t queens = pieces[color][QUEENS] & (ei.attackMaps[color^1][KNIGHTS] | ei.attackMaps[color^1][BISHOPS])) {
+            threatScore[color] += MINOR_QUEEN_THREAT * count(queens);
+        }
+        // Queens attacked by opposing rooks
+        if (uint64_t queens = pieces[color][QUEENS] & ei.attackMaps[color^1][ROOKS]) {
+            threatScore[color] += ROOK_QUEEN_THREAT * count(queens);
+        }
+        // Pieces attacked by opposing pawns
+        if (uint64_t threatened = (pieces[color][KNIGHTS] | pieces[color][BISHOPS]
+                                 | pieces[color][ROOKS]   | pieces[color][QUEENS]) & ei.attackMaps[color^1][PAWNS]) {
+            threatScore[color] += PAWN_PIECE_THREAT * count(threatened);
+        }
+        // Loose pawns: pawns in opponent's half of the board with no defenders
+        if (uint64_t lpawns = pieces[color][PAWNS] & HALF[color^1] & ~(ei.fullAttackMaps[color] | ei.attackMaps[color][PAWNS])) {
+            threatScore[color] += LOOSE_PAWN * count(lpawns);
+        }
+        // Loose minors
+        if (uint64_t lminors = (pieces[color][KNIGHTS] | pieces[color][BISHOPS]) & HALF[color^1] & ~(ei.fullAttackMaps[color] | ei.attackMaps[color][PAWNS])) {
+            threatScore[color] += LOOSE_MINOR * count(lminors);
+        }
+	}
 
     valueMg += decEvalMg(threatScore[WHITE]) - decEvalMg(threatScore[BLACK]);
     valueEg += decEvalEg(threatScore[WHITE]) - decEvalEg(threatScore[BLACK]);
