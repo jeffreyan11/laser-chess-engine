@@ -181,7 +181,7 @@ int Eval::evaluate(Board &b) {
                 material[MG][color] += PIECE_VALUES[MG][pieceID] * pieceCounts[color][pieceID];
                 material[EG][color] += PIECE_VALUES[EG][pieceID] * pieceCounts[color][pieceID];
                 egFactorMaterial += EG_FACTOR_PIECE_VALS[pieceID] * pieceCounts[color][pieceID];
-			}
+            }
         }
     }
     allPieces[WHITE] = b.getAllPieces(WHITE);
@@ -290,7 +290,7 @@ int Eval::evaluate(Board &b) {
             bitboard &= bitboard - 1;
             psqtScores[color] += PSQT[color][PAWNS][sq];
         }
-		bitboard = pieces[color][QUEENS];
+        bitboard = pieces[color][QUEENS];
         while (bitboard) {
             int sq = bitScanForward(bitboard);
             bitboard &= bitboard - 1;
@@ -515,7 +515,6 @@ int Eval::evaluate(Board &b) {
 
     //-------------------------------Threats------------------------------------
     Score threatScore[2] = {EVAL_ZERO, EVAL_ZERO};
-
     const uint64_t HALF[2] = {RANK_1 | RANK_2 | RANK_3 | RANK_4, RANK_5 | RANK_6 | RANK_7 | RANK_8};
 
     for (int color = WHITE; color <= BLACK; color++) {
