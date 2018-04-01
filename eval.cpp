@@ -356,7 +356,7 @@ int Eval::evaluate(Board &b) {
 
                     ksValue[color] -= PAWN_STORM_VALUE[
                         (pieces[color][PAWNS] & FILES[i]) == 0             ? 0 :
-                        (pieces[color][PAWNS] & INDEX_TO_BIT[stopSq]) != 0 ? 1 : 2][f][r];
+                        (pieces[color][PAWNS] & indexToBit(stopSq)) != 0 ? 1 : 2][f][r];
                 }
                 // Semi-open file: no pawn for attacker
                 else
@@ -437,7 +437,7 @@ int Eval::evaluate(Board &b) {
         //-----------------------------------Knights--------------------------------
         for (unsigned int i = 0; i < pml.starts[BISHOPS]; i++) {
             int knightSq = pml.get(i).startSq;
-            uint64_t bit = INDEX_TO_BIT[knightSq];
+            uint64_t bit = indexToBit(knightSq);
 
             psqtScores[color] += PSQT[color][KNIGHTS][knightSq];
 
@@ -458,7 +458,7 @@ int Eval::evaluate(Board &b) {
         //-----------------------------------Bishops--------------------------------
         for (unsigned int i = pml.starts[BISHOPS]; i < pml.starts[ROOKS]; i++) {
             int bishopSq = pml.get(i).startSq;
-            uint64_t bit = INDEX_TO_BIT[bishopSq];
+            uint64_t bit = indexToBit(bishopSq);
 
             psqtScores[color] += PSQT[color][BISHOPS][bishopSq];
 
@@ -598,14 +598,14 @@ int Eval::evaluate(Board &b) {
         int rFactor = (rank-1) * (rank-2) / 2;
         if (rFactor) {
             // Only give bonuses based on push path if the pawn isn't blockaded
-            if (!(INDEX_TO_BIT[passerSq+8] & allPieces[BLACK])) {
-                uint64_t pathToQueen = INDEX_TO_BIT[passerSq];
+            if (!(indexToBit(passerSq+8) & allPieces[BLACK])) {
+                uint64_t pathToQueen = indexToBit(passerSq);
                 pathToQueen |= pathToQueen << 8;
                 pathToQueen |= pathToQueen << 16;
                 pathToQueen |= pathToQueen << 32;
 
                 // Consider x-ray attacks of rooks and queens behind passers
-                uint64_t rookBehind = INDEX_TO_BIT[passerSq];
+                uint64_t rookBehind = indexToBit(passerSq);
                 for (int i = 0; i < 5; i++)
                     rookBehind |= (rookBehind >> 8) & ~(allPieces[WHITE] | allPieces[BLACK]);
                 rookBehind >>= 8;
@@ -620,13 +620,13 @@ int Eval::evaluate(Board &b) {
                 if (!(pathToQueen & wBlock))
                     whitePawnScore += rFactor * FREE_PROMOTION_BONUS;
                 // Stop square is undefended by opponent
-                else if (!(INDEX_TO_BIT[passerSq+8] & wBlock))
+                else if (!(indexToBit(passerSq+8) & wBlock))
                     whitePawnScore += rFactor * FREE_STOP_BONUS;
                 // Path to queen is completely defended by own pieces
                 if ((pathToQueen & wDefend) == pathToQueen)
                     whitePawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
                 // Stop square is defended by own pieces
-                else if (INDEX_TO_BIT[passerSq+8] & wDefend)
+                else if (indexToBit(passerSq+8) & wDefend)
                     whitePawnScore += rFactor * DEFENDED_PASSER_BONUS;
             }
 
@@ -646,13 +646,13 @@ int Eval::evaluate(Board &b) {
 
         int rFactor = (rank-1) * (rank-2) / 2;
         if (rFactor) {
-            if (!(INDEX_TO_BIT[passerSq-8] & allPieces[WHITE])) {
-                uint64_t pathToQueen = INDEX_TO_BIT[passerSq];
+            if (!(indexToBit(passerSq-8) & allPieces[WHITE])) {
+                uint64_t pathToQueen = indexToBit(passerSq);
                 pathToQueen |= pathToQueen >> 8;
                 pathToQueen |= pathToQueen >> 16;
                 pathToQueen |= pathToQueen >> 32;
 
-                uint64_t rookBehind = INDEX_TO_BIT[passerSq];
+                uint64_t rookBehind = indexToBit(passerSq);
                 for (int i = 0; i < 5; i++)
                     rookBehind |= (rookBehind << 8) & ~(allPieces[WHITE] | allPieces[BLACK]);
                 rookBehind <<= 8;
@@ -665,11 +665,11 @@ int Eval::evaluate(Board &b) {
 
                 if (!(pathToQueen & bBlock))
                     blackPawnScore += rFactor * FREE_PROMOTION_BONUS;
-                else if (!(INDEX_TO_BIT[passerSq-8] & bBlock))
+                else if (!(indexToBit(passerSq-8) & bBlock))
                     blackPawnScore += rFactor * FREE_STOP_BONUS;
                 if ((pathToQueen & bDefend) == pathToQueen)
                     blackPawnScore += rFactor * FULLY_DEFENDED_PASSER_BONUS;
-                else if (INDEX_TO_BIT[passerSq-8] & bDefend)
+                else if (indexToBit(passerSq-8) & bDefend)
                     blackPawnScore += rFactor * DEFENDED_PASSER_BONUS;
             }
 
@@ -715,12 +715,12 @@ int Eval::evaluate(Board &b) {
 
     // Score isolated pawns
     for (int f = 0; f < 8; f++) {
-        if (wIsolated & INDEX_TO_BIT[f]) {
+        if (wIsolated & indexToBit(f)) {
             whitePawnScore += ISOLATED_PENALTY * wPawnCtByFile[f];
             if (!(FILES[f] & pieces[BLACK][PAWNS]))
                 whitePawnScore += ISOLATED_SEMIOPEN_PENALTY * wPawnCtByFile[f];
         }
-        if (bIsolated & INDEX_TO_BIT[f]) {
+        if (bIsolated & indexToBit(f)) {
             blackPawnScore += ISOLATED_PENALTY * bPawnCtByFile[f];
             if (!(FILES[f] & pieces[WHITE][PAWNS]))
                 blackPawnScore += ISOLATED_SEMIOPEN_PENALTY * bPawnCtByFile[f];
@@ -871,34 +871,21 @@ int Eval::evaluate(Board &b) {
         }
     }
     // Reduce eval for lack of pawns
-    if (material[MG][WHITE] - material[MG][BLACK] > 0
-     && material[MG][WHITE] - material[MG][BLACK] <= PIECE_VALUES[MG][KNIGHTS]
-     && pieceCounts[WHITE][PAWNS] <= 1) {
-        if (pieceCounts[WHITE][PAWNS] == 0) {
-            if (material[MG][WHITE] < PIECE_VALUES[MG][BISHOPS] + 50)
-                scaleFactor = PAWNLESS_SCALING[0];
-            else if (material[MG][BLACK] <= PIECE_VALUES[MG][BISHOPS])
-                scaleFactor = PAWNLESS_SCALING[1];
-            else
-                scaleFactor = PAWNLESS_SCALING[2];
-        }
-        else {
-            scaleFactor = PAWNLESS_SCALING[3];
-        }
-    }
-    if (material[MG][BLACK] - material[MG][WHITE] > 0
-     && material[MG][BLACK] - material[MG][WHITE] <= PIECE_VALUES[MG][KNIGHTS]
-     && pieceCounts[BLACK][PAWNS] <= 1) {
-        if (pieceCounts[BLACK][PAWNS] == 0) {
-            if (material[MG][BLACK] < PIECE_VALUES[MG][BISHOPS] + 50)
-                scaleFactor = PAWNLESS_SCALING[0];
-            else if (material[MG][WHITE] <= PIECE_VALUES[MG][BISHOPS])
-                scaleFactor = PAWNLESS_SCALING[1];
-            else
-                scaleFactor = PAWNLESS_SCALING[2];
-        }
-        else {
-            scaleFactor = PAWNLESS_SCALING[3];
+    for (int color = WHITE; color <= BLACK; color++) {
+        if (material[MG][color] - material[MG][color^1] > 0
+         && material[MG][color] - material[MG][color^1] <= PIECE_VALUES[MG][KNIGHTS]
+         && pieceCounts[color][PAWNS] <= 1) {
+            if (pieceCounts[color][PAWNS] == 0) {
+                if (material[MG][color] < PIECE_VALUES[MG][BISHOPS] + 50)
+                    scaleFactor = PAWNLESS_SCALING[0];
+                else if (material[MG][BLACK] <= PIECE_VALUES[MG][BISHOPS])
+                    scaleFactor = PAWNLESS_SCALING[1];
+                else
+                    scaleFactor = PAWNLESS_SCALING[2];
+            }
+            else {
+                scaleFactor = PAWNLESS_SCALING[3];
+            }
         }
     }
 

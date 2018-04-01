@@ -77,18 +77,18 @@ void initInBetweenTable() {
     for (int sq1 = 0; sq1 < 64; sq1++) {
         for (int sq2 = 0; sq2 < 64; sq2++) {
             // Check horizontal/vertical lines
-            uint64_t imaginaryRook = ratt(sq1, INDEX_TO_BIT[sq2]);
+            uint64_t imaginaryRook = ratt(sq1, indexToBit(sq2));
             // If the two squares are on a line
-            if (imaginaryRook & INDEX_TO_BIT[sq2]) {
-                uint64_t imaginaryRook2 = ratt(sq2, INDEX_TO_BIT[sq1]);
+            if (imaginaryRook & indexToBit(sq2)) {
+                uint64_t imaginaryRook2 = ratt(sq2, indexToBit(sq1));
                 // Set the bitboard of squares in between
                 inBetweenSqs[sq1][sq2] = imaginaryRook & imaginaryRook2;
             }
             else {
                 // Check diagonal lines
-                uint64_t imaginaryBishop = batt(sq1, INDEX_TO_BIT[sq2]);
-                if (imaginaryBishop & INDEX_TO_BIT[sq2]) {
-                    uint64_t imaginaryBishop2 = batt(sq2, INDEX_TO_BIT[sq1]);
+                uint64_t imaginaryBishop = batt(sq1, indexToBit(sq2));
+                if (imaginaryBishop & indexToBit(sq2)) {
+                    uint64_t imaginaryBishop2 = batt(sq2, indexToBit(sq1));
                     inBetweenSqs[sq1][sq2] = imaginaryBishop & imaginaryBishop2;
                 }
                 // If the squares are not on a line, the bitboard is empty
@@ -230,27 +230,27 @@ uint64_t indexToMask64(int index, int nBits, uint64_t mask) {
         int j = bitScanForward(mask);
         mask &= mask - 1;
         // If this bit should be set...
-        if (index & INDEX_TO_BIT[i])
+        if (index & indexToBit(i))
             // Set it at the same position in the result
-            result |= INDEX_TO_BIT[j];
+            result |= indexToBit(j);
     }
     return result;
 }
 
 // Gets rook attacks using Dumb7Fill methods
 uint64_t ratt(int sq, uint64_t block) {
-    return fillRayRight(INDEX_TO_BIT[sq], ~block, NORTH_SOUTH_FILL) // south
-         | fillRayLeft(INDEX_TO_BIT[sq], ~block, NORTH_SOUTH_FILL)  // north
-         | fillRayLeft(INDEX_TO_BIT[sq], ~block, EAST_WEST_FILL)    // east
-         | fillRayRight(INDEX_TO_BIT[sq], ~block, EAST_WEST_FILL);  // west
+    return fillRayRight(indexToBit(sq), ~block, NORTH_SOUTH_FILL) // south
+         | fillRayLeft(indexToBit(sq), ~block, NORTH_SOUTH_FILL)  // north
+         | fillRayLeft(indexToBit(sq), ~block, EAST_WEST_FILL)    // east
+         | fillRayRight(indexToBit(sq), ~block, EAST_WEST_FILL);  // west
 }
 
 // Gets bishop attacks using Dumb7Fill methods
 uint64_t batt(int sq, uint64_t block) {
-    return fillRayLeft(INDEX_TO_BIT[sq], ~block, NE_SW_FILL)   // northeast
-         | fillRayLeft(INDEX_TO_BIT[sq], ~block, NW_SE_FILL)   // northwest
-         | fillRayRight(INDEX_TO_BIT[sq], ~block, NE_SW_FILL)  // southwest
-         | fillRayRight(INDEX_TO_BIT[sq], ~block, NW_SE_FILL); // southeast
+    return fillRayLeft(indexToBit(sq), ~block, NE_SW_FILL)   // northeast
+         | fillRayLeft(indexToBit(sq), ~block, NW_SE_FILL)   // northwest
+         | fillRayRight(indexToBit(sq), ~block, NE_SW_FILL)  // southwest
+         | fillRayRight(indexToBit(sq), ~block, NW_SE_FILL); // southeast
 }
 
 // Maps a mask using a candidate magic into an index nBits long

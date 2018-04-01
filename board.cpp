@@ -26,10 +26,10 @@
 #include "uci.h"
 
 
-const uint64_t WHITE_KSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[5] | INDEX_TO_BIT[6];
-const uint64_t WHITE_QSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[1] | INDEX_TO_BIT[2] | INDEX_TO_BIT[3];
-const uint64_t BLACK_KSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[61] | INDEX_TO_BIT[62];
-const uint64_t BLACK_QSIDE_PASSTHROUGH_SQS = INDEX_TO_BIT[57] | INDEX_TO_BIT[58] | INDEX_TO_BIT[59];
+const uint64_t WHITE_KSIDE_PASSTHROUGH_SQS = indexToBit(5) | indexToBit(6);
+const uint64_t WHITE_QSIDE_PASSTHROUGH_SQS = indexToBit(1) | indexToBit(2) | indexToBit(3);
+const uint64_t BLACK_KSIDE_PASSTHROUGH_SQS = indexToBit(61) | indexToBit(62);
+const uint64_t BLACK_QSIDE_PASSTHROUGH_SQS = indexToBit(57) | indexToBit(58) | indexToBit(59);
 
 // Zobrist hashing table and the start position key, both initialized at startup
 uint64_t zobristTable[794];
@@ -94,7 +94,7 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
     }
     for (int i = 0; i < 64; i++) {
         if (0 <= mailboxBoard[i] && mailboxBoard[i] <= 11) {
-            pieces[mailboxBoard[i]/6][mailboxBoard[i]%6] |= INDEX_TO_BIT[i];
+            pieces[mailboxBoard[i]/6][mailboxBoard[i]%6] |= indexToBit(i);
         }
     }
     allPieces[WHITE] = 0;
@@ -149,24 +149,24 @@ void Board::doMove(Move m, int color) {
         int promotionType = getPromotion(m);
         if (isCapture(m)) {
             int captureType = getPieceOnSquare(color^1, endSq);
-            pieces[color][PAWNS] &= ~INDEX_TO_BIT[startSq];
-            pieces[color][promotionType] |= INDEX_TO_BIT[endSq];
-            pieces[color^1][captureType] &= ~INDEX_TO_BIT[endSq];
+            pieces[color][PAWNS] &= ~indexToBit(startSq);
+            pieces[color][promotionType] |= indexToBit(endSq);
+            pieces[color^1][captureType] &= ~indexToBit(endSq);
 
-            allPieces[color] &= ~INDEX_TO_BIT[startSq];
-            allPieces[color] |= INDEX_TO_BIT[endSq];
-            allPieces[color^1] &= ~INDEX_TO_BIT[endSq];
+            allPieces[color] &= ~indexToBit(startSq);
+            allPieces[color] |= indexToBit(endSq);
+            allPieces[color^1] &= ~indexToBit(endSq);
 
             zobristKey ^= zobristTable[384*color + startSq];
             zobristKey ^= zobristTable[384*color + 64*promotionType + endSq];
             zobristKey ^= zobristTable[384*(color^1) + 64*captureType + endSq];
         }
         else {
-            pieces[color][PAWNS] &= ~INDEX_TO_BIT[startSq];
-            pieces[color][promotionType] |= INDEX_TO_BIT[endSq];
+            pieces[color][PAWNS] &= ~indexToBit(startSq);
+            pieces[color][promotionType] |= indexToBit(endSq);
 
-            allPieces[color] &= ~INDEX_TO_BIT[startSq];
-            allPieces[color] |= INDEX_TO_BIT[endSq];
+            allPieces[color] &= ~indexToBit(startSq);
+            allPieces[color] |= indexToBit(endSq);
 
             zobristKey ^= zobristTable[384*color + startSq];
             zobristKey ^= zobristTable[384*color + 64*promotionType + endSq];
@@ -176,13 +176,13 @@ void Board::doMove(Move m, int color) {
     } // end promotion
     else if (isCapture(m)) {
         if (isEP(m)) {
-            pieces[color][PAWNS] &= ~INDEX_TO_BIT[startSq];
-            pieces[color][PAWNS] |= INDEX_TO_BIT[endSq];
-            uint64_t epCaptureSq = INDEX_TO_BIT[epVictimSquare(color^1, epCaptureFile)];
+            pieces[color][PAWNS] &= ~indexToBit(startSq);
+            pieces[color][PAWNS] |= indexToBit(endSq);
+            uint64_t epCaptureSq = indexToBit(epVictimSquare(color^1, epCaptureFile));
             pieces[color^1][PAWNS] &= ~epCaptureSq;
 
-            allPieces[color] &= ~INDEX_TO_BIT[startSq];
-            allPieces[color] |= INDEX_TO_BIT[endSq];
+            allPieces[color] &= ~indexToBit(startSq);
+            allPieces[color] |= indexToBit(endSq);
             allPieces[color^1] &= ~epCaptureSq;
 
             int capSq = epVictimSquare(color^1, epCaptureFile);
@@ -192,13 +192,13 @@ void Board::doMove(Move m, int color) {
         }
         else {
             int captureType = getPieceOnSquare(color^1, endSq);
-            pieces[color][pieceID] &= ~INDEX_TO_BIT[startSq];
-            pieces[color][pieceID] |= INDEX_TO_BIT[endSq];
-            pieces[color^1][captureType] &= ~INDEX_TO_BIT[endSq];
+            pieces[color][pieceID] &= ~indexToBit(startSq);
+            pieces[color][pieceID] |= indexToBit(endSq);
+            pieces[color^1][captureType] &= ~indexToBit(endSq);
 
-            allPieces[color] &= ~INDEX_TO_BIT[startSq];
-            allPieces[color] |= INDEX_TO_BIT[endSq];
-            allPieces[color^1] &= ~INDEX_TO_BIT[endSq];
+            allPieces[color] &= ~indexToBit(startSq);
+            allPieces[color] |= indexToBit(endSq);
+            allPieces[color^1] &= ~indexToBit(endSq);
 
             zobristKey ^= zobristTable[384*color + 64*pieceID + startSq];
             zobristKey ^= zobristTable[384*color + 64*pieceID + endSq];
@@ -210,15 +210,15 @@ void Board::doMove(Move m, int color) {
     else { // Quiet moves
         if (isCastle(m)) {
             if (endSq == 6) { // white kside
-                pieces[WHITE][KINGS] &= ~INDEX_TO_BIT[4];
-                pieces[WHITE][KINGS] |= INDEX_TO_BIT[6];
-                pieces[WHITE][ROOKS] &= ~INDEX_TO_BIT[7];
-                pieces[WHITE][ROOKS] |= INDEX_TO_BIT[5];
+                pieces[WHITE][KINGS] &= ~indexToBit(4);
+                pieces[WHITE][KINGS] |= indexToBit(6);
+                pieces[WHITE][ROOKS] &= ~indexToBit(7);
+                pieces[WHITE][ROOKS] |= indexToBit(5);
 
-                allPieces[WHITE] &= ~INDEX_TO_BIT[4];
-                allPieces[WHITE] |= INDEX_TO_BIT[6];
-                allPieces[WHITE] &= ~INDEX_TO_BIT[7];
-                allPieces[WHITE] |= INDEX_TO_BIT[5];
+                allPieces[WHITE] &= ~indexToBit(4);
+                allPieces[WHITE] |= indexToBit(6);
+                allPieces[WHITE] &= ~indexToBit(7);
+                allPieces[WHITE] |= indexToBit(5);
 
                 zobristKey ^= zobristTable[64*KINGS+4];
                 zobristKey ^= zobristTable[64*KINGS+6];
@@ -226,15 +226,15 @@ void Board::doMove(Move m, int color) {
                 zobristKey ^= zobristTable[64*ROOKS+5];
             }
             else if (endSq == 2) { // white qside
-                pieces[WHITE][KINGS] &= ~INDEX_TO_BIT[4];
-                pieces[WHITE][KINGS] |= INDEX_TO_BIT[2];
-                pieces[WHITE][ROOKS] &= ~INDEX_TO_BIT[0];
-                pieces[WHITE][ROOKS] |= INDEX_TO_BIT[3];
+                pieces[WHITE][KINGS] &= ~indexToBit(4);
+                pieces[WHITE][KINGS] |= indexToBit(2);
+                pieces[WHITE][ROOKS] &= ~indexToBit(0);
+                pieces[WHITE][ROOKS] |= indexToBit(3);
 
-                allPieces[WHITE] &= ~INDEX_TO_BIT[4];
-                allPieces[WHITE] |= INDEX_TO_BIT[2];
-                allPieces[WHITE] &= ~INDEX_TO_BIT[0];
-                allPieces[WHITE] |= INDEX_TO_BIT[3];
+                allPieces[WHITE] &= ~indexToBit(4);
+                allPieces[WHITE] |= indexToBit(2);
+                allPieces[WHITE] &= ~indexToBit(0);
+                allPieces[WHITE] |= indexToBit(3);
 
                 zobristKey ^= zobristTable[64*KINGS+4];
                 zobristKey ^= zobristTable[64*KINGS+2];
@@ -242,15 +242,15 @@ void Board::doMove(Move m, int color) {
                 zobristKey ^= zobristTable[64*ROOKS+3];
             }
             else if (endSq == 62) { // black kside
-                pieces[BLACK][KINGS] &= ~INDEX_TO_BIT[60];
-                pieces[BLACK][KINGS] |= INDEX_TO_BIT[62];
-                pieces[BLACK][ROOKS] &= ~INDEX_TO_BIT[63];
-                pieces[BLACK][ROOKS] |= INDEX_TO_BIT[61];
+                pieces[BLACK][KINGS] &= ~indexToBit(60);
+                pieces[BLACK][KINGS] |= indexToBit(62);
+                pieces[BLACK][ROOKS] &= ~indexToBit(63);
+                pieces[BLACK][ROOKS] |= indexToBit(61);
 
-                allPieces[BLACK] &= ~INDEX_TO_BIT[60];
-                allPieces[BLACK] |= INDEX_TO_BIT[62];
-                allPieces[BLACK] &= ~INDEX_TO_BIT[63];
-                allPieces[BLACK] |= INDEX_TO_BIT[61];
+                allPieces[BLACK] &= ~indexToBit(60);
+                allPieces[BLACK] |= indexToBit(62);
+                allPieces[BLACK] &= ~indexToBit(63);
+                allPieces[BLACK] |= indexToBit(61);
 
                 zobristKey ^= zobristTable[384+64*KINGS+60];
                 zobristKey ^= zobristTable[384+64*KINGS+62];
@@ -258,15 +258,15 @@ void Board::doMove(Move m, int color) {
                 zobristKey ^= zobristTable[384+64*ROOKS+61];
             }
             else { // black qside
-                pieces[BLACK][KINGS] &= ~INDEX_TO_BIT[60];
-                pieces[BLACK][KINGS] |= INDEX_TO_BIT[58];
-                pieces[BLACK][ROOKS] &= ~INDEX_TO_BIT[56];
-                pieces[BLACK][ROOKS] |= INDEX_TO_BIT[59];
+                pieces[BLACK][KINGS] &= ~indexToBit(60);
+                pieces[BLACK][KINGS] |= indexToBit(58);
+                pieces[BLACK][ROOKS] &= ~indexToBit(56);
+                pieces[BLACK][ROOKS] |= indexToBit(59);
 
-                allPieces[BLACK] &= ~INDEX_TO_BIT[60];
-                allPieces[BLACK] |= INDEX_TO_BIT[58];
-                allPieces[BLACK] &= ~INDEX_TO_BIT[56];
-                allPieces[BLACK] |= INDEX_TO_BIT[59];
+                allPieces[BLACK] &= ~indexToBit(60);
+                allPieces[BLACK] |= indexToBit(58);
+                allPieces[BLACK] &= ~indexToBit(56);
+                allPieces[BLACK] |= indexToBit(59);
 
                 zobristKey ^= zobristTable[384+64*KINGS+60];
                 zobristKey ^= zobristTable[384+64*KINGS+58];
@@ -277,11 +277,11 @@ void Board::doMove(Move m, int color) {
             fiftyMoveCounter++;
         } // end castling
         else { // other quiet moves
-            pieces[color][pieceID] &= ~INDEX_TO_BIT[startSq];
-            pieces[color][pieceID] |= INDEX_TO_BIT[endSq];
+            pieces[color][pieceID] &= ~indexToBit(startSq);
+            pieces[color][pieceID] |= indexToBit(endSq);
 
-            allPieces[color] &= ~INDEX_TO_BIT[startSq];
-            allPieces[color] |= INDEX_TO_BIT[endSq];
+            allPieces[color] &= ~indexToBit(startSq);
+            allPieces[color] |= indexToBit(endSq);
 
             zobristKey ^= zobristTable[384*color + 64*pieceID + startSq];
             zobristKey ^= zobristTable[384*color + 64*pieceID + endSq];
@@ -352,7 +352,7 @@ bool Board::doHashMove(Move m, int color) {
 
     // Check that the end square has correct occupancy
     uint64_t otherPieces = allPieces[color^1];
-    uint64_t endSingle = INDEX_TO_BIT[getEndSq(m)];
+    uint64_t endSingle = indexToBit(getEndSq(m));
     bool captureRoutes = (isCapture(m) && (otherPieces & endSingle))
                       || (isCapture(m) && pieceID == PAWNS && (~otherPieces & endSingle));
     uint64_t empty = ~getOccupancy();
@@ -594,12 +594,12 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
     while (tempPawns) {
         int stsq = bitScanForward(tempPawns);
         tempPawns &= tempPawns - 1;
-        uint64_t xrays = getXRayPieceMap(color, kingSq, color, INDEX_TO_BIT[stsq]);
+        uint64_t xrays = getXRayPieceMap(color, kingSq, color, indexToBit(stsq));
         // If moving the pawn caused a new xray piece to attack the king
         if (!(xrays & invAttackMap)) {
             // Every legal move of this pawn is a legal check
-            uint64_t legal = (color == WHITE) ? getWPawnSingleMoves(INDEX_TO_BIT[stsq]) | getWPawnDoubleMoves(INDEX_TO_BIT[stsq])
-                                              : getBPawnSingleMoves(INDEX_TO_BIT[stsq]) | getBPawnDoubleMoves(INDEX_TO_BIT[stsq]);
+            uint64_t legal = (color == WHITE) ? getWPawnSingleMoves(indexToBit(stsq)) | getWPawnDoubleMoves(indexToBit(stsq))
+                                              : getBPawnSingleMoves(indexToBit(stsq)) | getBPawnDoubleMoves(indexToBit(stsq));
             while (legal) {
                 int endsq = bitScanForward(legal);
                 legal &= legal - 1;
@@ -607,14 +607,14 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
             }
 
             // Remove this pawn from future consideration
-            pawns ^= INDEX_TO_BIT[stsq];
+            pawns ^= indexToBit(stsq);
         }
     }
     */
 
     uint64_t pAttackMap = (color == WHITE)
-            ? getBPawnCaptures(INDEX_TO_BIT[kingSq])
-            : getWPawnCaptures(INDEX_TO_BIT[kingSq]);
+            ? getBPawnCaptures(indexToBit(kingSq))
+            : getWPawnCaptures(indexToBit(kingSq));
     uint64_t finalRank = (color == WHITE) ? RANK_8 : RANK_1;
     int sqDiff = (color == WHITE) ? -8 : 8;
 
@@ -649,7 +649,7 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
         knights &= knights-1;
         uint64_t nSq = getKnightSquares(stsq);
         // Get any bishops, rooks, queens attacking king after knight has moved
-        uint64_t xrays = getXRayPieceMap(color, kingSq, color, INDEX_TO_BIT[stsq], 0);
+        uint64_t xrays = getXRayPieceMap(color, kingSq, color, indexToBit(stsq), 0);
         // If still no xrayers are giving check, then we have no discovered
         // check. Otherwise, every move by this piece is a (discovered) checking
         // move
@@ -666,7 +666,7 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
         int stsq = bitScanForward(bishops);
         bishops &= bishops-1;
         uint64_t bSq = getBishopSquares(stsq, occ);
-        uint64_t xrays = getXRayPieceMap(color, kingSq, color, INDEX_TO_BIT[stsq], 0);
+        uint64_t xrays = getXRayPieceMap(color, kingSq, color, indexToBit(stsq), 0);
         if (!(xrays & potentialXRay))
             bSq &= bAttackMap;
 
@@ -679,7 +679,7 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
         int stsq = bitScanForward(rooks);
         rooks &= rooks-1;
         uint64_t rSq = getRookSquares(stsq, occ);
-        uint64_t xrays = getXRayPieceMap(color, kingSq, color, INDEX_TO_BIT[stsq], 0);
+        uint64_t xrays = getXRayPieceMap(color, kingSq, color, indexToBit(stsq), 0);
         if (!(xrays & potentialXRay))
             rSq &= rAttackMap;
 
@@ -878,12 +878,12 @@ void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherP
         // below (black) the victim square
         int rankDiff = (color == WHITE) ? 8 : -8;
         // The capturer's start square is either 1 to the left or right of victim
-        if ((INDEX_TO_BIT[victimSq] << 1) & NOTA & pieces[color][PAWNS]) {
+        if ((indexToBit(victimSq) << 1) & NOTA & pieces[color][PAWNS]) {
             Move m = encodeMove(victimSq+1, victimSq+rankDiff);
             m = setFlags(m, MOVE_EP);
             captures.add(m);
         }
-        if ((INDEX_TO_BIT[victimSq] >> 1) & NOTH & pieces[color][PAWNS]) {
+        if ((indexToBit(victimSq) >> 1) & NOTH & pieces[color][PAWNS]) {
             Move m = encodeMove(victimSq-1, victimSq+rankDiff);
             m = setFlags(m, MOVE_EP);
             captures.add(m);
@@ -1060,8 +1060,8 @@ uint64_t Board::getXRayPieceMap(int color, int sq, int blockerColor,
 uint64_t Board::getAttackMap(int color, int sq) {
     uint64_t occ = getOccupancy();
     uint64_t pawnCap = (color == WHITE)
-                     ? getBPawnCaptures(INDEX_TO_BIT[sq])
-                     : getWPawnCaptures(INDEX_TO_BIT[sq]);
+                     ? getBPawnCaptures(indexToBit(sq))
+                     : getWPawnCaptures(indexToBit(sq));
     return (pawnCap & pieces[color][PAWNS])
          | (getKnightSquares(sq) & pieces[color][KNIGHTS])
          | (getBishopSquares(sq, occ) & (pieces[color][BISHOPS] | pieces[color][QUEENS]))
@@ -1072,8 +1072,8 @@ uint64_t Board::getAttackMap(int color, int sq) {
 // Get all pieces of both colors attacking a square
 uint64_t Board::getAttackMap(int sq) {
     uint64_t occ = getOccupancy();
-    return (getBPawnCaptures(INDEX_TO_BIT[sq]) & pieces[WHITE][PAWNS])
-         | (getWPawnCaptures(INDEX_TO_BIT[sq]) & pieces[BLACK][PAWNS])
+    return (getBPawnCaptures(indexToBit(sq)) & pieces[WHITE][PAWNS])
+         | (getWPawnCaptures(indexToBit(sq)) & pieces[BLACK][PAWNS])
          | (getKnightSquares(sq) & (pieces[WHITE][KNIGHTS] | pieces[BLACK][KNIGHTS]))
          | (getBishopSquares(sq, occ) & (pieces[WHITE][BISHOPS] | pieces[WHITE][QUEENS] | pieces[BLACK][BISHOPS] | pieces[BLACK][QUEENS]))
          | (getRookSquares(sq, occ) & (pieces[WHITE][ROOKS] | pieces[WHITE][QUEENS] | pieces[BLACK][ROOKS] | pieces[BLACK][QUEENS]))
@@ -1083,7 +1083,7 @@ uint64_t Board::getAttackMap(int sq) {
 // Given the on a given square, used to get either the piece moving or the
 // captured piece.
 int Board::getPieceOnSquare(int color, int sq) {
-    uint64_t endSingle = INDEX_TO_BIT[sq];
+    uint64_t endSingle = indexToBit(sq);
     for (int pieceID = 0; pieceID <= 5; pieceID++) {
         if (pieces[color][pieceID] & endSingle)
             return pieceID;
@@ -1105,8 +1105,8 @@ bool Board::isCheckMove(int color, Move m) {
     switch (getPieceOnSquare(color, getStartSq(m))) {
         case PAWNS:
             attackMap = (color == WHITE)
-                ? getBPawnCaptures(INDEX_TO_BIT[kingSq])
-                : getWPawnCaptures(INDEX_TO_BIT[kingSq]);
+                ? getBPawnCaptures(indexToBit(kingSq))
+                : getWPawnCaptures(indexToBit(kingSq));
             break;
         case KNIGHTS:
             attackMap = getKnightSquares(kingSq);
@@ -1124,7 +1124,7 @@ bool Board::isCheckMove(int color, Move m) {
             // keep attackMap 0
             break;
     }
-    if (INDEX_TO_BIT[getEndSq(m)] & attackMap)
+    if (indexToBit(getEndSq(m)) & attackMap)
         return true;
 
     // See if move is a discovered check
@@ -1132,7 +1132,7 @@ bool Board::isCheckMove(int color, Move m) {
     uint64_t xrayPieces = pieces[color][BISHOPS] | pieces[color][ROOKS] | pieces[color][QUEENS];
 
     // Get any bishops, rooks, queens attacking king after piece has moved
-    uint64_t xrays = getXRayPieceMap(color, kingSq, color, INDEX_TO_BIT[getStartSq(m)], INDEX_TO_BIT[getEndSq(m)]);
+    uint64_t xrays = getXRayPieceMap(color, kingSq, color, indexToBit(getStartSq(m)), indexToBit(getEndSq(m)));
     // If there is an xray piece attacking the king square after the piece has
     // moved, we have discovered check
     if (xrays & xrayPieces)
@@ -1307,31 +1307,31 @@ int Board::getSEEForMove(int color, Move m) {
         return 0;
 
     // Do the move temporarily
-    pieces[color][pieceID] &= ~INDEX_TO_BIT[startSq];
-    pieces[color][pieceID] |= INDEX_TO_BIT[endSq];
-    allPieces[color] &= ~INDEX_TO_BIT[startSq];
-    allPieces[color] |= INDEX_TO_BIT[endSq];
+    pieces[color][pieceID] &= ~indexToBit(startSq);
+    pieces[color][pieceID] |= indexToBit(endSq);
+    allPieces[color] &= ~indexToBit(startSq);
+    allPieces[color] |= indexToBit(endSq);
 
     // For a capture, we also need to update the captured piece on the board
     if (isCapture(m)) {
         int capturedPiece = getPieceOnSquare(color^1, endSq);
-        pieces[color^1][capturedPiece] &= ~INDEX_TO_BIT[endSq];
-        allPieces[color^1] &= ~INDEX_TO_BIT[endSq];
+        pieces[color^1][capturedPiece] &= ~indexToBit(endSq);
+        allPieces[color^1] &= ~indexToBit(endSq);
 
         value = SEE_PIECE_VALS[capturedPiece] - getSEE(color^1, endSq);
 
-        pieces[color^1][capturedPiece] |= INDEX_TO_BIT[endSq];
-        allPieces[color^1] |= INDEX_TO_BIT[endSq];
+        pieces[color^1][capturedPiece] |= indexToBit(endSq);
+        allPieces[color^1] |= indexToBit(endSq);
     }
     else {
         value = -getSEE(color^1, endSq);
     }
 
     // Undo the move
-    pieces[color][pieceID] |= INDEX_TO_BIT[startSq];
-    pieces[color][pieceID] &= ~INDEX_TO_BIT[endSq];
-    allPieces[color] |= INDEX_TO_BIT[startSq];
-    allPieces[color] &= ~INDEX_TO_BIT[endSq];
+    pieces[color][pieceID] |= indexToBit(startSq);
+    pieces[color][pieceID] &= ~indexToBit(endSq);
+    allPieces[color] |= indexToBit(startSq);
+    allPieces[color] &= ~indexToBit(endSq);
 
     return value;
 }

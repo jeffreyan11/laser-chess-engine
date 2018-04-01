@@ -432,9 +432,9 @@ Move stringToMove(const string &moveStr, Board &b, bool &reversible) {
     int endSq = 8 * (moveStr.at(3) - '1') + (moveStr.at(2) - 'a');
 
     int color = b.getPlayerToMove();
-    bool isCapture = (bool)(INDEX_TO_BIT[endSq] & b.getAllPieces(color ^ 1));
-    bool isPawnMove = (bool)(INDEX_TO_BIT[startSq] & b.getPieces(color, PAWNS));
-    bool isKingMove = (bool)(INDEX_TO_BIT[startSq] & b.getPieces(color, KINGS));
+    bool isCapture = (bool)(indexToBit(endSq) & b.getAllPieces(color ^ 1));
+    bool isPawnMove = (bool)(indexToBit(startSq) & b.getPieces(color, PAWNS));
+    bool isKingMove = (bool)(indexToBit(startSq) & b.getPieces(color, KINGS));
 
     bool isEP = (isPawnMove && !isCapture && ((endSq - startSq) & 1));
     bool isDoublePawn = (isPawnMove && abs(endSq - startSq) == 16);
