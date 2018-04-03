@@ -87,6 +87,11 @@ uint64_t flipAcrossRanks(uint64_t bb) {
     #endif
 }
 
+// Converts square number to 64-bit integer
+uint64_t indexToBit(int sq) {
+    return 1ull << sq;
+}
+
 // Given a start time_point, returns the seconds elapsed using C++11's
 // std::chrono::high_resolution_clock
 uint64_t getTimeElapsed(ChessTime startTime) {
