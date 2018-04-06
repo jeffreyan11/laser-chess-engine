@@ -33,6 +33,7 @@ struct EvalInfo {
     uint64_t attackMaps[2][5];
     uint64_t fullAttackMaps[2];
     uint64_t rammedPawns[2];
+    uint64_t openFiles;
 
     void clear() {
         std::memset(this, 0, sizeof(EvalInfo));
@@ -107,12 +108,12 @@ const int pieceSquareTable[2][6][32] = {
 {
 { // Pawns
   0,  0,  0,  0,
- 10, 16, 25, 32,
- 14, 16, 23, 30,
-  7,  8, 14, 23,
- -4, -4, 12, 18,
- -5,  0,  7,  9,
- -5,  3,  1,  1,
+  6, 12, 21, 28,
+ 10, 12, 19, 26,
+  3,  4, 10, 19,
+ -7, -7,  9, 15,
+ -7, -2,  4,  7,
+ -5,  2,  0,  0,
   0,  0,  0,  0
 },
 { // Knights
@@ -170,9 +171,9 @@ const int pieceSquareTable[2][6][32] = {
 {
 { // Pawns
   0,  0,  0,  0,
- 20, 24, 27, 32,
- 13, 15, 17, 17,
- -1,  1,  3,  3,
+ 18, 22, 25, 30,
+ 11, 13, 15, 15,
+ -2,  0,  2,  2,
  -7, -3,  0,  0,
  -7, -3,  0,  0,
  -7, -3,  0,  0,
@@ -259,6 +260,12 @@ const int OWN_OPP_IMBALANCE[2][5][5] = {
 const int KNIGHT_CLOSED_BONUS[2] = {3, 5};
 
 //------------------------Positional eval constants-----------------------------
+// SPACE_BONUS[0][0] = behind own pawn, not center files
+// SPACE_BONUS[0][1] = behind own pawn, center files
+// SPACE_BONUS[1][0] = in front of opp pawn, not center files
+// SPACE_BONUS[1][1] = in front of opp pawn, center files
+const int SPACE_BONUS[2][2] = {{8, 16}, {3, 6}};
+
 // Mobility tables
 const int mobilityScore[2][4][28] = {
 // Midgame

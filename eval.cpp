@@ -219,6 +219,15 @@ int Eval::evaluate(Board &b) {
     ei.rammedPawns[WHITE] = pieces[WHITE][PAWNS] & (pieces[BLACK][PAWNS] >> 8);
     ei.rammedPawns[BLACK] = pieces[BLACK][PAWNS] & (pieces[WHITE][PAWNS] << 8);
 
+    uint64_t openFiles = pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS];
+    openFiles |= openFiles >> 8;
+    openFiles |= openFiles >> 16;
+    openFiles |= openFiles >> 32;
+    openFiles |= openFiles << 8;
+    openFiles |= openFiles << 16;
+    openFiles |= openFiles << 32;
+    ei.openFiles = ~openFiles;
+
 
     //---------------------------Material terms---------------------------------
     // Midgame and endgame material
@@ -297,6 +306,50 @@ int Eval::evaluate(Board &b) {
             psqtScores[color] += PSQT[color][QUEENS][sq];
         }
     }
+
+
+    //--------------------------------Space-------------------------------------
+    const uint64_t CENTER_FILES = FILE_C | FILE_D | FILE_E | FILE_F;
+    uint64_t allPawns = pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS];
+    int openFileCount = count(ei.openFiles & 0xFF);
+    // Space is more important with more pieces on the board
+    int whiteSpaceWeight = std::max(0, count(allPieces[WHITE]) - openFileCount);
+    int blackSpaceWeight = std::max(0, count(allPieces[BLACK]) - openFileCount);
+
+    // Consider two definitions of space, valuing the center 4 files higher:
+    //  1. Up to 3 squares behind a friendly pawn, not occupied by a pawn or attacked by an opposing pawn
+    //  2. Up to 3 squares in front of an enemy pawn, not occupied by a pawn,
+    //     excluding squares attacked by an opposing pawn or attacked by an opposing piece and not defended
+    uint64_t whiteSafeSpace = ~ei.attackMaps[BLACK][PAWNS] & (ei.fullAttackMaps[WHITE] | ~ei.fullAttackMaps[BLACK]);
+    uint64_t whiteSpace = pieces[WHITE][PAWNS] >> 8;
+    whiteSpace |= whiteSpace >> 8;
+    whiteSpace |= whiteSpace >> 16;
+    whiteSpace &= ~ei.attackMaps[BLACK][PAWNS] & ~allPawns;
+    uint64_t whiteSpace2 = pieces[BLACK][PAWNS] >> 8;
+    whiteSpace2 |= whiteSpace2 >> 8;
+    whiteSpace2 |= whiteSpace2 >> 16;
+    whiteSpace2 &= whiteSafeSpace & ~whiteSpace & ~allPawns;
+    int whiteSpaceScore = (SPACE_BONUS[0][1] * count(whiteSpace & CENTER_FILES) + SPACE_BONUS[0][0] * count(whiteSpace & ~CENTER_FILES)
+                         + SPACE_BONUS[1][1] * count(whiteSpace2 & CENTER_FILES) + SPACE_BONUS[1][0] * count(whiteSpace2 & ~CENTER_FILES))
+                            * whiteSpaceWeight * whiteSpaceWeight / 512;
+    valueMg += whiteSpaceScore;
+    valueEg += whiteSpaceScore / 2;
+
+    uint64_t blackSafeSpace = ~ei.attackMaps[WHITE][PAWNS] & (ei.fullAttackMaps[BLACK] | ~ei.fullAttackMaps[WHITE]);
+    uint64_t blackSpace = pieces[BLACK][PAWNS] << 8;
+    blackSpace |= blackSpace << 8;
+    blackSpace |= blackSpace << 16;
+    blackSpace &= ~ei.attackMaps[WHITE][PAWNS] & ~allPawns;
+    uint64_t blackSpace2 = pieces[WHITE][PAWNS] << 8;
+    blackSpace2 |= blackSpace2 << 8;
+    blackSpace2 |= blackSpace2 << 16;
+    blackSpace2 &= blackSafeSpace & ~blackSpace & ~allPawns;
+    int blackSpaceScore = (SPACE_BONUS[0][1] * count(blackSpace & CENTER_FILES) + SPACE_BONUS[0][0] * count(blackSpace & ~CENTER_FILES)
+                         + SPACE_BONUS[1][1] * count(blackSpace2 & CENTER_FILES) + SPACE_BONUS[1][0] * count(blackSpace2 & ~CENTER_FILES))
+                            * blackSpaceWeight * blackSpaceWeight / 512;
+    valueMg -= blackSpaceScore;
+    valueEg -= blackSpaceScore / 2;
+
 
     //--------------------------------Mobility----------------------------------
     int whiteMobilityMg, whiteMobilityEg;
@@ -485,7 +538,7 @@ int Eval::evaluate(Board &b) {
             psqtScores[color] += PSQT[color][ROOKS][rookSq];
 
             // Bonus for having rooks on open or semiopen files
-            if (!(FILES[file] & (pieces[color][PAWNS] | pieces[color^1][PAWNS])))
+            if (FILES[file] & ei.openFiles)
                 pieceEvalScore[color] += ROOK_OPEN_FILE_BONUS;
             else if (!(FILES[file] & pieces[color][PAWNS]))
                 pieceEvalScore[color] += ROOK_SEMIOPEN_FILE_BONUS;
