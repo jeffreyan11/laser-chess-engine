@@ -27,16 +27,12 @@ const int SCORE_QUIET_MOVE = -(1 << 30);
 const int SCORE_LOSING_CAPTURE = -(1 << 30) - (1 << 28);
 
 
-MoveOrder::MoveOrder(Board *_b, int _color, int _depth, int _threadID, bool _isPVNode,
-	bool _isCutNode, int _staticEval, int _beta, SearchParameters *_searchParams, SearchStackInfo *_ssi, Move _hashed, MoveList _legalMoves) {
+MoveOrder::MoveOrder(Board *_b, int _color, int _depth, bool _isPVNode,
+	SearchParameters *_searchParams, SearchStackInfo *_ssi, Move _hashed, MoveList _legalMoves) {
 	b = _b;
 	color = _color;
 	depth = _depth;
-    threadID = _threadID;
 	isPVNode = _isPVNode;
-    isCutNode = _isCutNode;
-    staticEval = _staticEval;
-    beta = _beta;
 	searchParams = _searchParams;
     ssi = _ssi;
     mgStage = STAGE_NONE;
@@ -68,23 +64,11 @@ void MoveOrder::generateMoves() {
             // else fallthrough
 
         // If we just searched the hash move (or there is none), we need to find
-        // where the quiet moves start in the list, and then do IID or score captures.
+        // where the quiet moves start in the list, and then score captures.
         case STAGE_HASH_MOVE:
             findQuietStart();
-            if (hashed == NULL_MOVE && doIID()) {
-                mgStage = STAGE_IID_MOVE;
-                scoreIIDMove();
-            }
-            else {
-                mgStage = STAGE_CAPTURES;
-                scoreCaptures(false);
-            }
-            break;
-
-        // After searching the IID move, we score captures
-        case STAGE_IID_MOVE:
             mgStage = STAGE_CAPTURES;
-            scoreCaptures(true);
+            scoreCaptures();
             break;
 
         // After winnning captures, we score quiets
@@ -100,8 +84,8 @@ void MoveOrder::generateMoves() {
 }
 
 // Sort captures using SEE and MVV/LVA
-void MoveOrder::scoreCaptures(bool isIIDMove) {
-    for (unsigned int i = isIIDMove; i < quietStart; i++) {
+void MoveOrder::scoreCaptures() {
+    for (unsigned int i = 0; i < quietStart; i++) {
         Move m = legalMoves.get(i);
 
         // We want the best move first for PV nodes
@@ -172,43 +156,6 @@ void MoveOrder::scoreQuiets() {
     }
 }
 
-bool MoveOrder::doIID() {
-    if (isPVNode) {
-        return (depth >= 5);
-    }
-    if (depth >= 6
-     && (isCutNode || staticEval >= beta - 50 - 10*depth)) {
-        return true;
-    }
-    return false;
-}
-
-// IID: get a best move (hoping for a first move cutoff) if we don't
-// have a hash move available
-void MoveOrder::scoreIIDMove() {
-    int iidDepth = isPVNode ? depth - depth/4 - 1 : (depth - 5) / 2;
-    int bestIndex = getBestMoveForSort(b, legalMoves, iidDepth, threadID, ssi);
-
-    // Mate check to prevent crashes
-    if (bestIndex == -1) {
-        legalMoves.clear();
-        mgStage = STAGE_QUIETS;
-    }
-
-    else {
-        scores.add(SCORE_IID_MOVE);
-
-        if (isCapture(legalMoves.get(bestIndex))) {
-            legalMoves.swap(0, bestIndex);
-        }
-        else {
-            legalMoves.swap(quietStart, bestIndex);
-            legalMoves.swap(0, quietStart);
-            quietStart++;
-        }
-    }
-}
-
 // Retrieves the next move with the highest score, starting from index using a
 // partial selection sort. This way, the entire list does not have to be sorted
 // if an early cutoff occurs.
@@ -216,11 +163,6 @@ Move MoveOrder::nextMove() {
     // Special case when we have a hash move available
     if (mgStage == STAGE_HASH_MOVE)
         return hashed;
-    if (mgStage == STAGE_IID_MOVE) {
-        generateMoves();
-        index++;
-        return legalMoves.get(0);
-    }
 
     // If we are the end of our generated list, generate more.
     // If there are no moves left, return NULL_MOVE to indicate so.

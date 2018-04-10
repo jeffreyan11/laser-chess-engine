@@ -25,40 +25,33 @@
 #include "searchparams.h"
 
 enum MoveGenStage {
-    STAGE_NONE, STAGE_HASH_MOVE, STAGE_IID_MOVE, STAGE_CAPTURES, STAGE_QUIETS
+    STAGE_NONE, STAGE_HASH_MOVE, STAGE_CAPTURES, STAGE_QUIETS
 };
 
 struct MoveOrder {
-	Board *b;
-	int color;
-	int depth;
-    int threadID;
-	bool isPVNode;
-    bool isCutNode;
-    int staticEval;
-    int beta;
-	SearchParameters *searchParams;
+    Board *b;
+    int color;
+    int depth;
+    bool isPVNode;
+    SearchParameters *searchParams;
     SearchStackInfo *ssi;
     MoveGenStage mgStage;
     Move hashed;
-	MoveList legalMoves;
-	ScoreList scores;
+    MoveList legalMoves;
+    ScoreList scores;
     unsigned int quietStart;
-	unsigned int index;
+    unsigned int index;
 
-	MoveOrder(Board *_b, int _color, int _depth, int _threadID, bool _isPVNode,
-		bool _isCutNode, int _staticEval, int _beta, SearchParameters *_searchParams, SearchStackInfo *_ssi, Move _hashed, MoveList _legalMoves);
+    MoveOrder(Board *_b, int _color, int _depth, bool _isPVNode,
+        SearchParameters *_searchParams, SearchStackInfo *_ssi, Move _hashed, MoveList _legalMoves);
 
-    bool doIID();
-
-	void generateMoves();
-	Move nextMove();
+    void generateMoves();
+    Move nextMove();
     void updateHistories(Move bestMove);
 
 private:
-    void scoreCaptures(bool isIIDMove);
+    void scoreCaptures();
     void scoreQuiets();
-    void scoreIIDMove();
     void findQuietStart();
 };
 

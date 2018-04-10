@@ -602,57 +602,6 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
     *bestMoveIndex = tempMove;
 }
 
-// Gets a best move to try first when a hash move is not available.
-int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID, SearchStackInfo *ssi) {
-    SearchParameters *searchParams = &(threadMemoryArray[threadID]->searchParams);
-    SearchStatistics *searchStats = &(threadMemoryArray[threadID]->searchStats);
-    SearchPV line;
-    int color = b->getPlayerToMove();
-    int tempMove = -1;
-    int score = -MATE_SCORE;
-    int alpha = -MATE_SCORE;
-    int beta = MATE_SCORE;
-
-    // Push current position to two fold stack
-    threadMemoryArray[threadID]->twoFoldPositions.push(b->getZobristKey());
-
-    for (unsigned int i = 0; i < legalMoves.size(); i++) {
-        Board copy = b->staticCopy();
-        if (!copy.doPseudoLegalMove(legalMoves.get(i), color))
-            continue;
-        searchStats->nodes++;
-
-        int startSq = getStartSq(legalMoves.get(i));
-        int endSq = getEndSq(legalMoves.get(i));
-        int pieceID = b->getPieceOnSquare(color, startSq);
-        (ssi+1)->counterMoveHistory = searchParams->counterMoveHistory[pieceID][endSq];
-        (ssi+2)->followupMoveHistory = searchParams->followupMoveHistory[pieceID][endSq];
-
-        if (i != 0) {
-            score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, true, ssi+1, &line);
-            if (alpha < score && score < beta) {
-                score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, ssi+1, &line);
-            }
-        }
-        else {
-            score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, ssi+1, &line);
-        }
-
-        // Stop condition to break out as quickly as possible
-        if (stopSignal.load(std::memory_order_relaxed))
-            return i;
-
-        if (score > alpha) {
-            alpha = score;
-            tempMove = i;
-        }
-    }
-
-    threadMemoryArray[threadID]->twoFoldPositions.pop();
-
-    return tempMove;
-}
-
 //------------------------------------------------------------------------------
 //------------------------------Search functions--------------------------------
 //------------------------------------------------------------------------------
@@ -878,6 +827,26 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     }
 
 
+    // Internal iterative deepening
+    // When there is no hash move available, it is sometimes worth doing a
+    // shallow search to try and look for one
+    // This is especially true at PV nodes and potential cut nodes
+    if (hashed == NULL_MOVE
+     && ((isPVNode && depth >= 5)
+      || (!isPVNode && depth >= 6 && (isCutNode || staticEval >= beta - 50 - 10*depth)))) {
+        int iidDepth = isPVNode ? depth - depth/4 - 1 : (depth - 5) / 2;
+        PVS(b, iidDepth, alpha, beta, threadID, isCutNode, ssi, &line);
+
+        uint64_t iidEntry = transpositionTable.get(b);
+        if (iidEntry != 0) {
+            hashScore = getHashScore(iidEntry);
+            nodeType = getHashNodeType(iidEntry);
+            hashDepth = getHashDepth(iidEntry);
+            hashed = getHashMove(iidEntry);
+        }
+    }
+
+
     // Create list of legal moves
     MoveList legalMoves;
     if (isInCheck)
@@ -885,8 +854,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     else
         b.getAllPseudoLegalMoves(legalMoves, color);
     // Initialize the module for move ordering
-    MoveOrder moveSorter(&b, color, depth, threadID, isPVNode,
-        isCutNode, staticEval, beta, searchParams, ssi, hashed, legalMoves);
+    MoveOrder moveSorter(&b, color, depth, isPVNode, searchParams, ssi, hashed, legalMoves);
     moveSorter.generateMoves();
 
     // Keeps track of the best move for storing into the TT
@@ -1175,11 +1143,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
     // Record all-nodes
     else if (alpha <= prevAlpha) {
-        // If we would have done IID, save the hash/IID move in case the node
-        // becomes a PV or cut node next time
-        if (!isPVNode && moveSorter.doIID()) {
-            uint64_t hashData = packHashData(depth,
-                (hashed == NULL_MOVE) ? moveSorter.legalMoves.get(0) : hashed,
+        // If we had a hash move, save it in case the node becomes a PV or cut node next time
+        if (!isPVNode && hashed != NULL_MOVE) {
+            uint64_t hashData = packHashData(depth, hashed,
                 adjustHashScore(bestScore, ssi->ply), ALL_NODE,
                 searchParams->rootMoveNumber);
             transpositionTable.add(b, hashData, depth, searchParams->rootMoveNumber);

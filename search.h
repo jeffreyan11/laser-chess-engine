@@ -90,8 +90,6 @@ TwoFoldStack *getTwoFoldStackPointer();
 void startPonder();
 void stopPonder();
 
-int getBestMoveForSort(Board *b, MoveList &legalMoves, int depth, int threadID, SearchStackInfo *ssi);
-
 // Time constants
 const uint64_t ONE_SECOND = 1000;
 const uint64_t MAX_TIME = (1ULL << 63) - 1;
