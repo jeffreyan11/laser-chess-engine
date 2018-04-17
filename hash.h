@@ -98,7 +98,6 @@ private:
     void init(uint64_t MB);
 
 public:
-
     Hash(uint64_t MB);
     Hash(const Hash &other) = delete;
     Hash& operator=(const Hash &other) = delete;
