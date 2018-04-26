@@ -218,7 +218,7 @@ int main() {
 
             isStop = false;
             stopSignal = false;
-            searchThread = std::thread(getBestMove, &board, &timeParams, &movesToSearch);
+            searchThread = std::thread(getBestMoveThreader, &board, &timeParams, &movesToSearch);
             searchThread.detach();
         }
         else if (input == "ponderhit") {
@@ -342,7 +342,7 @@ int main() {
 
                 isStop = false;
                 stopSignal = false;
-                getBestMove(&board, &timeParams, &movesToSearch);
+                getBestMoveThreader(&board, &timeParams, &movesToSearch);
                 isStop = true;
                 stopSignal = true;
 

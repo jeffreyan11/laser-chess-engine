@@ -92,9 +92,8 @@ struct ThreadMemory {
 };
 
 //-------------------------------Search Constants-------------------------------
-// Lazy SMP depths
-const int SMP_DEPTHS[16] = {
-    0, 1, 0, 1, 0, 1, 0, 2, 0, 1, 0, 2, 0, 1, 0, 3
+const int SMP_SKIP_DEPTHS[16] = {
+    1, 2, 3, 2, 3, 4, 2, 3, 4, 5, 2, 3, 4, 5, 6, 2
 };
 
 // Futility pruning margins indexed by depth. If static eval is at least this
@@ -166,12 +165,10 @@ static int probeLimit = 0;
 
 
 // Search functions
-void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
-    int beta, int *bestMoveIndex, int *bestScore, unsigned int startMove,
-    int threadID, SearchPV *pvLine);
-void getBestMoveAtDepthHelper(Board *b, MoveList *legalMoves, int depth, int alpha,
-    int beta, int *bestMoveIndex, int *bestScore, unsigned int startMove,
-    int threadID, SearchPV *pvLine);
+void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
+    int tbScore, bool tbProbeSuccess, unsigned int prevLMSize, int threadID);
+void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha, int beta,
+    int *bestMoveIndex, int *bestScore, unsigned int startMove, int threadID, SearchPV *pvLine);
 int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, SearchStackInfo *ssi, SearchPV *pvLine);
 int quiescence(Board &b, int plies, int alpha, int beta, int threadID);
 int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID);
@@ -190,18 +187,11 @@ double getPercentage(uint64_t numerator, uint64_t denominator);
 void printStatistics();
 
 
-// Finds a best move for a position according to the given search parameters.
-void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) {
-    for (int i = 0; i < numThreads; i++) {
-        threadMemoryArray[i]->searchParams.reset();
-        threadMemoryArray[i]->searchStats.reset();
-        threadMemoryArray[i]->searchParams.rootMoveNumber = (uint8_t) (b->getMoveNumber());
-        threadMemoryArray[i]->searchParams.selectiveDepth = 0;
-    }
-
+// Spawns the appropriate number of getBestMove threads and cleans up the helpers
+// when the main thread is done.
+void getBestMoveThreader(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) {
     int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
-    Move ponder = NULL_MOVE;
 
     // Special case if we are given a mate/stalemate position
     if (legalMoves.size() <= 0) {
@@ -211,20 +201,17 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
         return;
     }
 
-    Move bestMove = legalMoves.get(0);
-
-    // Set up timing
-    timeLimit = (timeParams->searchMode == TIME) ? timeParams->maxAllotment
-                                                 : (timeParams->searchMode == MOVETIME) ? timeParams->allotment
-                                                                                        : MAX_TIME;
-    startTime = ChessClock::now();
-    uint64_t timeSoFar = getTimeElapsed(startTime);
-
-    // Special case if there is only one legal move: use less search time,
-    // only to get a rough PV/score
-    if (legalMoves.size() == 1 && timeParams->searchMode == TIME) {
-        timeLimit = std::min(timeLimit / 32, ONE_SECOND);
+    // Reset all search parameters (killers, plies, etc)
+    for (int i = 0; i < numThreads; i++) {
+        threadMemoryArray[i]->searchParams.reset();
+        threadMemoryArray[i]->searchStats.reset();
+        threadMemoryArray[i]->searchParams.rootMoveNumber = (uint8_t) (b->getMoveNumber());
+        threadMemoryArray[i]->searchParams.selectiveDepth = 0;
     }
+
+    // Copy over the two-fold stack to use
+    for (int i = 1; i < numThreads; i++)
+        threadMemoryArray[i]->twoFoldPositions = threadMemoryArray[0]->twoFoldPositions;
 
 
     // Root probe Syzygy
@@ -259,7 +246,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
     }
 
 
-    // If we were told to search specific moves, filter them here.
+    // If we were told to search specific moves, filter them here
     if (movesToSearch->size() > 0) {
         MoveList temp;
         for (unsigned int i = 0; i < legalMoves.size(); i++) {
@@ -271,6 +258,54 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
         legalMoves = temp;
     }
 
+
+    // Set up timing
+    timeLimit = (timeParams->searchMode == TIME) ? timeParams->maxAllotment
+                                                 : (timeParams->searchMode == MOVETIME) ? timeParams->allotment
+                                                                                        : MAX_TIME;
+    startTime = ChessClock::now();
+
+    // Special case if there is only one legal move: use less search time,
+    // only to get a rough PV/score
+    if (legalMoves.size() == 1 && timeParams->searchMode == TIME) {
+        timeLimit = std::min(timeLimit / 32, ONE_SECOND);
+    }
+
+
+    // Create threads for SMP if necessary
+    threadsRunning = numThreads;
+    if (numThreads > 1) {
+        std::thread *threadPool = new std::thread[numThreads-1];
+
+        // Start and detach secondary threads
+        for (int i = 1; i < numThreads; i++) {
+            threadPool[i-1] = std::thread(getBestMove, b, timeParams, legalMoves, tbScore, tbProbeSuccess, prevLMSize, i);
+            threadPool[i-1].detach();
+        }
+
+        // Start the primary result thread
+        getBestMove(b, timeParams, legalMoves, tbScore, tbProbeSuccess, prevLMSize, 0);
+
+        stopSignal = true;
+        // Wait for all other threads to finish
+        while (threadsRunning > 0)
+            std::this_thread::yield();
+        stopSignal = false;
+
+        delete[] threadPool;
+    }
+    // Otherwise, just search with one thread
+    else {
+        getBestMove(b, timeParams, legalMoves, tbScore, tbProbeSuccess, prevLMSize, 0);
+    }
+}
+
+// Finds a best move for a position according to the given search parameters.
+void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
+        int tbScore, bool tbProbeSuccess, unsigned int prevLMSize, int threadID) {
+    Move ponder = NULL_MOVE;
+    Move bestMove = legalMoves.get(0);
+    uint64_t timeSoFar;
 
     int bestScore, bestMoveIndex;
     int rootDepth = 1;
@@ -287,68 +322,33 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
                           multiPVNum <= multiPV
                             && multiPVNum <= legalMoves.size();
                           multiPVNum++) {
-            int aspAlpha = -MATE_SCORE;
-            int aspBeta = MATE_SCORE;
             // Initial aspiration window based on depth and score
             int deltaAlpha = 20 - std::min(rootDepth/3, 10) + abs(bestScore) / 20;
             int deltaBeta = deltaAlpha;
 
             // Set up aspiration windows
+            int aspAlpha = -MATE_SCORE;
+            int aspBeta = MATE_SCORE;
             if (rootDepth >= 6 && multiPV == 1 && abs(bestScore) < NEAR_MATE_SCORE) {
                 aspAlpha = bestScore - deltaAlpha;
                 aspBeta = bestScore + deltaBeta;
             }
-
             deltaAlpha *= 2;
             deltaBeta *= 2;
 
             // Aspiration loop
             while (!isStop) {
-                // Reset all search parameters (killers, plies, etc)
-                for (int i = 0; i < numThreads; i++)
-                    threadMemoryArray[i]->searchParams.reset();
+                // Reset search parameters such as killers
+                threadMemoryArray[threadID]->searchParams.reset();
                 pvLine.pvLength = 0;
-                threadsRunning = numThreads-1;
 
                 // Get the index of the best move
-                // If depth >= 7 create threads for SMP
-                if (rootDepth >= 7 && numThreads > 1) {
-                    std::thread *threadPool = new std::thread[numThreads-1];
-
-                    // Start secondary threads at various depths according to array SMP_DEPTHS
-                    for (int i = 1; i < numThreads; i++) {
-                        // Copy over the two-fold stack to use
-                        threadMemoryArray[i]->twoFoldPositions = threadMemoryArray[0]->twoFoldPositions;
-                        threadPool[i-1] = std::thread(getBestMoveAtDepthHelper, b,
-                            &legalMoves, rootDepth + SMP_DEPTHS[i % 16], aspAlpha, aspBeta,
-                            dummyBestIndex+i-1, dummyBestScore+i-1,
-                            multiPVNum-1, i, nullptr);
-                        // Detach secondary threads
-                        threadPool[i-1].detach();
-                    }
-
-                    // Start the primary result thread
-                    getBestMoveAtDepth(b, &legalMoves, rootDepth, aspAlpha, aspBeta,
-                        &bestMoveIndex, &bestScore, multiPVNum-1, 0, &pvLine);
-
-                    stopSignal = true;
-                    // Wait for all other threads to finish
-                    while (threadsRunning > 0)
-                        std::this_thread::yield();
-                    stopSignal = false;
-
-                    delete[] threadPool;
-                }
-                // Otherwise, just search with one thread
-                else {
-                    getBestMoveAtDepth(b, &legalMoves, rootDepth, aspAlpha, aspBeta,
-                        &bestMoveIndex, &bestScore, multiPVNum-1, 0, &pvLine);
-                }
+                getBestMoveAtDepth(b, &legalMoves, rootDepth, aspAlpha, aspBeta,
+                    &bestMoveIndex, &bestScore, multiPVNum-1, threadID, &pvLine);
 
                 timeSoFar = getTimeElapsed(startTime);
                 // Calculate values for printing
                 uint64_t nps = 1000 * getNodes() / timeSoFar;
-                std::string pvStr = retrievePV(&pvLine);
                 if (pvLine.pvLength > 1)
                     ponder = pvLine.pv[1];
                 else if (bestMoveIndex != 0)
@@ -357,16 +357,18 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
                 // Handle fail highs and fail lows
                 // Fail low: no best move found
                 if (bestMoveIndex == -1 && !isStop) {
-                    cout << "info depth " << rootDepth;
-                    cout << " seldepth " << getSelectiveDepth();
-                    cout << " score";
-                    cout << " cp " << (tbProbeSuccess ? (tbScore == 0 ? 0 : (bestScore/10 + tbScore)) : bestScore) * 100 / PIECE_VALUES[EG][PAWNS] << " upperbound";
-
-                    cout << " time " << timeSoFar
-                         << " nodes " << getNodes() << " nps " << nps
-                         << " tbhits " << getTBHits()
-                         << " hashfull " << transpositionTable.estimateHashfull(threadMemoryArray[0]->searchParams.rootMoveNumber)
-                         << " pv " << pvStr << endl;
+                    if (threadID == 0) {
+                        cout << "info depth " << rootDepth;
+                        cout << " seldepth " << getSelectiveDepth();
+                        cout << " score";
+                        cout << " cp " << (tbProbeSuccess ? (tbScore == 0 ? 0 : (bestScore/10 + tbScore)) : bestScore) * 100 / PIECE_VALUES[EG][PAWNS]
+                             << " upperbound";
+                        cout << " time " << timeSoFar
+                             << " nodes " << getNodes() << " nps " << nps
+                             << " tbhits " << getTBHits()
+                             << " hashfull " << transpositionTable.estimateHashfull(threadMemoryArray[0]->searchParams.rootMoveNumber)
+                             << " pv " << retrievePV(&pvLine) << endl;
+                    }
 
                     aspAlpha = bestScore - deltaAlpha;
                     deltaAlpha *= 2;
@@ -375,16 +377,18 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
                 }
                 // Fail high: best score is at least beta
                 else if (bestScore >= aspBeta) {
-                    cout << "info depth " << rootDepth;
-                    cout << " seldepth " << getSelectiveDepth();
-                    cout << " score";
-                    cout << " cp " << (tbProbeSuccess ? (tbScore == 0 ? 0 : (bestScore/10 + tbScore)) : bestScore) * 100 / PIECE_VALUES[EG][PAWNS] << " lowerbound";
-
-                    cout << " time " << timeSoFar
-                         << " nodes " << getNodes() << " nps " << nps
-                         << " tbhits " << getTBHits()
-                         << " hashfull " << transpositionTable.estimateHashfull(threadMemoryArray[0]->searchParams.rootMoveNumber)
-                         << " pv " << pvStr << endl;
+                    if (threadID == 0) {
+                        cout << "info depth " << rootDepth;
+                        cout << " seldepth " << getSelectiveDepth();
+                        cout << " score";
+                        cout << " cp " << (tbProbeSuccess ? (tbScore == 0 ? 0 : (bestScore/10 + tbScore)) : bestScore) * 100 / PIECE_VALUES[EG][PAWNS]
+                             << " lowerbound";
+                        cout << " time " << timeSoFar
+                             << " nodes " << getNodes() << " nps " << nps
+                             << " tbhits " << getTBHits()
+                             << " hashfull " << transpositionTable.estimateHashfull(threadMemoryArray[0]->searchParams.rootMoveNumber)
+                             << " pv " << retrievePV(&pvLine) << endl;
+                    }
 
                     aspBeta = bestScore + deltaBeta;
                     deltaBeta *= 2;
@@ -393,7 +397,8 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
 
                     // If the best move is still the same, do not necessarily
                     // resolve the fail high
-                    if ((int) multiPVNum - 1 == bestMoveIndex
+                    if (threadID == 0
+                     && (int) multiPVNum - 1 == bestMoveIndex
                      && bestMove == prevBest
                      && timeParams->searchMode == TIME
                      && (timeSoFar >= timeParams->allotment * TIME_FACTOR))
@@ -410,17 +415,18 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
             // Calculate values for printing
             timeSoFar = getTimeElapsed(startTime);
             uint64_t nps = 1000 * getNodes() / timeSoFar;
-            std::string pvStr = retrievePV(&pvLine);
 
             // If we broke out before getting any new results, end the search
             if (bestMoveIndex == -1) {
-                cout << "info depth " << rootDepth-1;
-                cout << " seldepth " << getSelectiveDepth();
-                cout << " time " << timeSoFar
-                     << " nodes " << getNodes() << " nps " << nps
-                     << " tbhits " << getTBHits()
-                     << " hashfull " << transpositionTable.estimateHashfull(threadMemoryArray[0]->searchParams.rootMoveNumber)
-                     << endl;
+                if (threadID == 0) {
+                    cout << "info depth " << rootDepth-1;
+                    cout << " seldepth " << getSelectiveDepth();
+                    cout << " time " << timeSoFar
+                         << " nodes " << getNodes() << " nps " << nps
+                         << " tbhits " << getTBHits()
+                         << " hashfull " << transpositionTable.estimateHashfull(threadMemoryArray[0]->searchParams.rootMoveNumber)
+                         << endl;
+                }
                 break;
             }
 
@@ -429,30 +435,32 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
             bestMove = legalMoves.get(0);
 
             // Output info using UCI protocol
-            cout << "info depth " << rootDepth;
-            cout << " seldepth " << getSelectiveDepth();
-            if (multiPV > 1)
-                cout << " multipv " << multiPVNum;
-            cout << " score";
+            if (threadID == 0) {
+                cout << "info depth " << rootDepth;
+                cout << " seldepth " << getSelectiveDepth();
+                if (multiPV > 1)
+                    cout << " multipv " << multiPVNum;
+                cout << " score";
 
-            // Print score in mate or centipawns
-            if (bestScore >= MAX_PLY_MATE_SCORE)
-                // If it is our mate, it takes plies / 2 + 1 moves to mate since
-                // our move ends the game
-                cout << " mate " << (MATE_SCORE - bestScore) / 2 + 1;
-            else if (bestScore <= -MAX_PLY_MATE_SCORE)
-                // If we are being mated, it takes plies / 2 moves since our
-                // opponent's move ends the game
-                cout << " mate " << (-MATE_SCORE - bestScore) / 2;
-            else
-                // Scale score into centipawns using our internal pawn value
-                cout << " cp " << (tbProbeSuccess ? (tbScore == 0 ? 0 : (bestScore/10 + tbScore)) : bestScore) * 100 / PIECE_VALUES[EG][PAWNS];
+                // Print score in mate or centipawns
+                if (bestScore >= MAX_PLY_MATE_SCORE)
+                    // If it is our mate, it takes plies / 2 + 1 moves to mate since
+                    // our move ends the game
+                    cout << " mate " << (MATE_SCORE - bestScore) / 2 + 1;
+                else if (bestScore <= -MAX_PLY_MATE_SCORE)
+                    // If we are being mated, it takes plies / 2 moves since our
+                    // opponent's move ends the game
+                    cout << " mate " << (-MATE_SCORE - bestScore) / 2;
+                else
+                    // Scale score into centipawns using our internal pawn value
+                    cout << " cp " << (tbProbeSuccess ? (tbScore == 0 ? 0 : (bestScore/10 + tbScore)) : bestScore) * 100 / PIECE_VALUES[EG][PAWNS];
 
-            cout << " time " << timeSoFar
-                 << " nodes " << getNodes() << " nps " << nps
-                 << " tbhits " << getTBHits()
-                 << " hashfull " << transpositionTable.estimateHashfull(threadMemoryArray[0]->searchParams.rootMoveNumber)
-                 << " pv " << pvStr << endl;
+                cout << " time " << timeSoFar
+                     << " nodes " << getNodes() << " nps " << nps
+                     << " tbhits " << getTBHits()
+                     << " hashfull " << transpositionTable.estimateHashfull(threadMemoryArray[0]->searchParams.rootMoveNumber)
+                     << " pv " << retrievePV(&pvLine) << endl;
+            }
         }
         // End multiPV loop
 
@@ -465,7 +473,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
         }
 
         // Easymove confirmation
-        if (!isPonderSearch && timeParams->searchMode == TIME && multiPV == 1
+        if (threadID == 0 && !isPonderSearch && timeParams->searchMode == TIME && multiPV == 1
          && pvStreak >= 8 + rootDepth / 5
          && timeSoFar > (uint64_t) timeParams->allotment / 16
          && timeSoFar < (uint64_t) timeParams->allotment / 2
@@ -485,48 +493,43 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) 
         }
 
         rootDepth++;
+        if (threadID != 0) {
+            int threadCycle = threadID % 16;
+            if ((rootDepth + threadCycle) % SMP_SKIP_DEPTHS[threadCycle] == 0)
+                rootDepth++;
+        }
     }
     // Conditions for iterative deepening loop
     while (!isStop
-        && ((((timeParams->searchMode == TIME && timeSoFar < (uint64_t) timeParams->allotment * TIME_FACTOR)
-            || isPonderSearch) && rootDepth <= MAX_DEPTH)
-         || (timeParams->searchMode == MOVETIME && timeSoFar < (uint64_t) timeParams->allotment && rootDepth <= MAX_DEPTH)
-         || (timeParams->searchMode == DEPTH && rootDepth <= timeParams->allotment)));
+         && (threadID != 0
+          || ((((timeParams->searchMode == TIME && timeSoFar < (uint64_t) timeParams->allotment * TIME_FACTOR)
+              || isPonderSearch) && rootDepth <= MAX_DEPTH)
+           || (timeParams->searchMode == MOVETIME && timeSoFar < (uint64_t) timeParams->allotment && rootDepth <= MAX_DEPTH)
+           || (timeParams->searchMode == DEPTH && rootDepth <= timeParams->allotment))));
 
     // When pondering, we must continue "searching" until given a stop or ponderhit command.
     while (isPonderSearch && !isStop)
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-    printStatistics();
+    // Send the stop signal, output best move and statistics to UCI interface
+    if (threadID == 0) {
+        stopSignal = true;
+        isStop = true;
 
-    // Output best move to UCI interface
-    stopSignal = true;
-    isStop = true;
-    if (ponder != NULL_MOVE)
-        cout << "bestmove " << moveToString(bestMove) << " ponder " << moveToString(ponder) << endl;
-    else
-        cout << "bestmove " << moveToString(bestMove) << endl;
-    return;
-}
-
-void getBestMoveAtDepthHelper(Board *b, MoveList *legalMoves, int depth, int alpha,
-        int beta, int *bestMoveIndex, int *bestScore, unsigned int startMove,
-        int threadID, SearchPV *pvLine) {
-    while (depth <= MAX_DEPTH && !stopSignal) {
-        getBestMoveAtDepth(b, legalMoves, depth, alpha, beta,
-                           bestMoveIndex, bestScore, startMove, threadID, pvLine);
-        depth++;
+        printStatistics();
+        if (ponder != NULL_MOVE)
+            cout << "bestmove " << moveToString(bestMove) << " ponder " << moveToString(ponder) << endl;
+        else
+            cout << "bestmove " << moveToString(bestMove) << endl;
     }
 
-    // This thread is finished running.
+    // This thread is finished running
     threadsRunningMutex.lock();
     threadsRunning--;
     threadsRunningMutex.unlock();
 }
 
-/**
- * @brief Returns the index of the best move in legalMoves.
- */
+// Returns the index of the best move in legalMoves
 void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
         int beta, int *bestMoveIndex, int *bestScore, unsigned int startMove,
         int threadID, SearchPV *pvLine) {
