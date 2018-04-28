@@ -872,7 +872,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     for (Move m = moveSorter.nextMove(); m != NULL_MOVE;
               m = moveSorter.nextMove()) {
         // Check for a timeout
-        if (!isPonderSearch) {
+        if (threadID == 0 && !isPonderSearch) {
             uint64_t timeSoFar = getTimeElapsed(startTime);
             if (timeSoFar > timeLimit) {
                 isStop = true;
