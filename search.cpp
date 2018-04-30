@@ -751,7 +751,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     }
 
     // Use the TT score as a better "static" eval, if available.
-    if (hashScore != -INFTY) {
+    if (hashScore != -INFTY && staticEval != INFTY) {
         if ((nodeType == ALL_NODE && hashScore < staticEval)
          || (nodeType == CUT_NODE && hashScore > staticEval)
          || (nodeType == PV_NODE))
@@ -760,8 +760,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
 
     // Is static eval improving across plies? Used to make pruning decisions. Idea from Stockfish
-    bool evalImproving = (ssi->ply >= 3 && (ssi->staticEval >= (ssi-2)->staticEval || (ssi-2)->staticEval == INFTY))
-                      || (ssi->ply < 3);
+    bool evalImproving = ssi->ply >= 3 && (ssi->staticEval >= (ssi-2)->staticEval || (ssi-2)->staticEval == INFTY);
 
 
     // Reverse futility pruning
@@ -834,7 +833,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     // When there is no hash move available, it is sometimes worth doing a
     // shallow search to try and look for one
     // This is especially true at PV nodes and potential cut nodes
-    if (hashed == NULL_MOVE
+    if (hashed == NULL_MOVE && !isInCheck
      && ((isPVNode && depth >= 5)
       || (!isPVNode && depth >= 6 && (isCutNode || staticEval >= beta - 50 - 10*depth)))) {
         int iidDepth = isPVNode ? depth - depth/4 - 1 : (depth - 5) / 2;
