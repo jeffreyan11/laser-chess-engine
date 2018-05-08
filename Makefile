@@ -24,6 +24,10 @@ ifeq ($(USE_STATIC), true)
 	LDFLAGS += -static -static-libgcc -static-libstdc++
 endif
 
+ifeq ($(BMI2), true)
+	CFLAGS  += -march=haswell
+endif
+
 all: uci
 
 uci: $(OBJS) uci.o
