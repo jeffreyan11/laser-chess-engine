@@ -120,11 +120,7 @@ const int REVERSE_FUTILITY_MARGIN[7] = {0,
 
 // Razor margins indexed by depth. If static eval is far below alpha, use a
 // qsearch to confirm fail low and then return.
-const int RAZOR_MARGIN[4] = {0,
-    280,
-    300,
-    320
-};
+const int RAZOR_MARGIN = 300;
 
 // Move count pruning
 const unsigned int LMP_MOVE_COUNTS[2][13] = {
@@ -780,15 +776,13 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     // the material and trust its result since a quiet move probably can't gain
     // as much.
     if (!isPVNode && !isInCheck
-     && nodeType != CUT_NODE && nodeType != PV_NODE
-     && depth <= 3 && staticEval <= alpha - RAZOR_MARGIN[depth]) {
+     && depth <= 2 && staticEval <= alpha - RAZOR_MARGIN) {
         searchParams->ply = ssi->ply;
         if (depth == 1)
             return quiescence(b, 0, alpha, beta, threadID);
 
-        int rWindow = alpha - RAZOR_MARGIN[depth];
+        int rWindow = alpha - RAZOR_MARGIN;
         int value = quiescence(b, 0, rWindow, rWindow+1, threadID);
-        // Fail hard here to be safe
         if (value <= rWindow)
             return value;
     }
