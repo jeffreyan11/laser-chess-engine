@@ -57,6 +57,11 @@ const uint64_t DARK = 0xAA55AA55AA55AA55;
 const uint64_t NOTA = 0xFEFEFEFEFEFEFEFE;
 const uint64_t NOTH = 0x7F7F7F7F7F7F7F7F;
 
+// Bitboard of center 4 squares: d4, e4, d5, e5
+const uint64_t CENTER_SQS = 0x0000001818000000;
+// Extended center: center, plus c4, f4, c5, f5, and d6/d3, e6/e3
+const uint64_t EXTENDED_CENTER_SQS = 0x0000183C3C180000;
+
 // Lookup table for knight moves
 const uint64_t KNIGHTMOVES[64] = {
 0x0000000000020400, 0x0000000000050800, 0x00000000000a1100, 0x0000000000142200,

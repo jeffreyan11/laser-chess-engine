@@ -953,26 +953,20 @@ template int Eval::evaluate<false>(Board &b);
 // also calculates control of center.
 template <int color>
 void Eval::getMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg) {
-    // Bitboard of center 4 squares: d4, e4, d5, e5
-    const uint64_t CENTER_SQS = 0x0000001818000000;
-    // Extended center: center, plus c4, f4, c5, f5, and d6/d3, e6/e3
-    const uint64_t EXTENDED_CENTER_SQS = 0x0000183C3C180000;
     // Holds the mobility values and the final result
     int mgMobility = 0, egMobility = 0;
     // Holds the center control score
     int centerControl = 0;
 
-    uint64_t oppPawnAttackMap = ei.attackMaps[color^1][PAWNS];
     // We count mobility for all squares other than ones occupied by own rammed
     // pawns, king, or attacked by opponent's pawns
     // Idea of using rammed pawns from Stockfish
-    uint64_t openSqs = ~(ei.rammedPawns[color] | pieces[color][KINGS] | oppPawnAttackMap);
+    uint64_t openSqs = ~(ei.rammedPawns[color] | pieces[color][KINGS] | ei.attackMaps[color^1][PAWNS]);
 
     // For a queen, we also exclude squares not controlled by an opponent's minor or rook
     uint64_t oppAttackMap = 0;
     for (int pieceID = KNIGHTS; pieceID <= ROOKS; pieceID++)
         oppAttackMap |= ei.attackMaps[color^1][pieceID];
-
 
     // Iterate over piece move information to extract all mobility-related scores
     for (unsigned int i = 0; i < pml.starts[QUEENS]; i++) {
@@ -982,8 +976,8 @@ void Eval::getMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, 
 
         mgMobility += mobilityScore[MG][pieceIndex][count(legal & openSqs)];
         egMobility += mobilityScore[EG][pieceIndex][count(legal & openSqs)];
-        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS & ~oppPawnAttackMap);
-        centerControl += CENTER_BONUS * count(legal & CENTER_SQS & ~oppPawnAttackMap);
+        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS & openSqs);
+        centerControl += CENTER_BONUS * count(legal & CENTER_SQS & openSqs);
     }
     for (unsigned int i = pml.starts[QUEENS]; i < pml.size(); i++) {
         PieceMoveInfo pmi = pml.get(i);
