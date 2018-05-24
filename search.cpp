@@ -563,6 +563,7 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
         int endSq = getEndSq(legalMoves->get(i));
         int pieceID = b->getPieceOnSquare(color, startSq);
         (ssi+1)->counterMoveHistory = searchParams->counterMoveHistory[pieceID][endSq];
+        (ssi+1)->followupMoveHistory = nullptr;
         (ssi+2)->followupMoveHistory = searchParams->followupMoveHistory[pieceID][endSq];
 
         if (i != 0) {
