@@ -39,16 +39,10 @@ using std::cerr;
 using std::endl;
 
 
-// Records useful statistics which are printed to std::err at the end of each search
+// Records search statistics required by the UCI protocol
 struct SearchStatistics {
     uint64_t nodes;
     uint64_t tbhits;
-    uint64_t hashProbes, hashHits, hashScoreCuts;
-    uint64_t hashMoveAttempts, hashMoveCuts;
-    uint64_t failHighs, firstFailHighs;
-    uint64_t qsNodes;
-    uint64_t qsFailHighs, qsFirstFailHighs;
-    uint64_t evalCacheProbes, evalCacheHits;
 
     SearchStatistics() {
         reset();
@@ -57,12 +51,6 @@ struct SearchStatistics {
     void reset() {
         nodes = 0;
         tbhits = 0;
-        hashProbes = hashHits = hashScoreCuts = 0;
-        hashMoveAttempts = hashMoveCuts = 0;
-        failHighs = firstFailHighs = 0;
-        qsNodes = 0;
-        qsFailHighs = qsFirstFailHighs = 0;
-        evalCacheProbes = evalCacheHits = 0;
     }
 };
 
@@ -180,7 +168,6 @@ void changePV(Move best, SearchPV *parent, SearchPV *child);
 std::string retrievePV(SearchPV *pvLine);
 int getSelectiveDepth();
 double getPercentage(uint64_t numerator, uint64_t denominator);
-void printStatistics();
 
 
 // Spawns the appropriate number of getBestMove threads and cleans up the helpers
@@ -512,7 +499,6 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
         stopSignal = true;
         isStop = true;
 
-        printStatistics();
         if (ponder != NULL_MOVE)
             cout << "bestmove " << moveToString(bestMove) << " ponder " << moveToString(ponder) << endl;
         else
@@ -658,11 +644,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     int hashScore = -INFTY;
     int hashDepth = 0;
     uint8_t nodeType = NO_NODE_INFO;
-    searchStats->hashProbes++;
 
     uint64_t hashEntry = transpositionTable.get(b);
     if (hashEntry != 0) {
-        searchStats->hashHits++;
         hashScore = getHashScore(hashEntry);
         nodeType = getHashNodeType(hashEntry);
         hashDepth = getHashDepth(hashEntry);
@@ -688,7 +672,6 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             if ((nodeType == ALL_NODE && hashScore <= alpha)
              || (nodeType == CUT_NODE && hashScore >= beta)
              || (nodeType == PV_NODE)) {
-                searchStats->hashScoreCuts++;
                 return hashScore;
             }
         }
@@ -732,11 +715,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     int staticEval = INFTY;
     ssi->staticEval = INFTY;
     if (!isInCheck) {
-        searchStats->evalCacheProbes++;
         // Probe the eval cache for a saved evaluation
         int ehe = evalCache.get(b);
         if (ehe != 0) {
-            searchStats->evalCacheHits++;
             ssi->staticEval = staticEval = ehe - EVAL_HASH_OFFSET;
         }
         else {
@@ -1070,15 +1051,6 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
         // Beta cutoff
         if (score >= beta) {
-            searchStats->failHighs++;
-            if (movesSearched == 0)
-                searchStats->firstFailHighs++;
-            if (hashed != NULL_MOVE && nodeType != ALL_NODE) {
-                searchStats->hashMoveAttempts++;
-                if (m == hashed)
-                    searchStats->hashMoveCuts++;
-            }
-
             // Hash the cut move and score
             uint64_t hashData = packHashData(depth, m,
                 adjustHashScore(score, ssi->ply), CUT_NODE,
@@ -1122,12 +1094,6 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
     // Exact scores indicate a principal variation
     if (prevAlpha < alpha && alpha < beta) {
-        if (hashed != NULL_MOVE && nodeType != ALL_NODE) {
-            searchStats->hashMoveAttempts++;
-            if (toHash == hashed)
-                searchStats->hashMoveCuts++;
-        }
-
         uint64_t hashData = packHashData(depth, toHash,
             adjustHashScore(alpha, ssi->ply), PV_NODE,
             searchParams->rootMoveNumber);
@@ -1212,10 +1178,8 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     // we can simply stop the search here.
     int standPat;
     // Probe the eval cache for a saved calculation
-    searchStats->evalCacheProbes++;
     int ehe = evalCache.get(b);
     if (ehe != 0) {
-        searchStats->evalCacheHits++;
         standPat = ehe - EVAL_HASH_OFFSET;
     }
     else {
@@ -1252,7 +1216,6 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
 
     int score = -INFTY;
     unsigned int i = 0;
-    unsigned int j = 0; // separate counter only incremented when valid move is searched
     for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
               m = nextMove(legalMoves, scores, ++i)) {
         // Delta prune
@@ -1276,7 +1239,6 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             continue;
 
         searchStats->nodes++;
-        searchStats->qsNodes++;
         score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
 
         // Stop condition to help break out as quickly as possible
@@ -1284,10 +1246,6 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             return INFTY;
 
         if (score >= beta) {
-            searchStats->qsFailHighs++;
-            if (j == 0)
-                searchStats->qsFirstFailHighs++;
-
             uint64_t hashData = packHashData(-plies, m,
                 adjustHashScore(score, searchParams->ply + plies), CUT_NODE,
                 searchParams->rootMoveNumber);
@@ -1301,8 +1259,6 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             if (score > alpha)
                 alpha = score;
         }
-
-        j++;
     }
 
     // Generate and search promotions
@@ -1320,14 +1276,9 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             continue;
 
         searchStats->nodes++;
-        searchStats->qsNodes++;
         score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
 
         if (score >= beta) {
-            searchStats->qsFailHighs++;
-            if (j == 0)
-                searchStats->qsFirstFailHighs++;
-
             uint64_t hashData = packHashData(-plies, m,
                 adjustHashScore(score, searchParams->ply + plies), CUT_NODE,
                 searchParams->rootMoveNumber);
@@ -1341,8 +1292,6 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             if (score > alpha)
                 alpha = score;
         }
-
-        j++;
     }
 
     // Checks: only on the first two plies of q-search
@@ -1369,7 +1318,6 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
                     continue;
 
                 searchStats->nodes++;
-                searchStats->qsNodes++;
                 threadMemoryArray[threadID]->twoFoldPositions.push(b.getZobristKey());
 
                 int score = -checkQuiescence(copy, plies+1, -beta, -alpha, threadID);
@@ -1377,10 +1325,6 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
                 threadMemoryArray[threadID]->twoFoldPositions.pop();
 
                 if (score >= beta) {
-                    searchStats->qsFailHighs++;
-                    if (j == 0)
-                        searchStats->qsFirstFailHighs++;
-
                     uint64_t hashData = packHashData(-plies, m,
                         adjustHashScore(score, searchParams->ply + plies), CUT_NODE,
                         searchParams->rootMoveNumber);
@@ -1394,8 +1338,6 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
                     if (score > alpha)
                         alpha = score;
                 }
-
-                j++;
             }
         }
         else
@@ -1421,7 +1363,6 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID) {
 
     int bestScore = -INFTY;
     int score = -INFTY;
-    unsigned int j = 0; // separate counter only incremented when valid move is searched
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
 
@@ -1433,27 +1374,20 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             continue;
 
         searchStats->nodes++;
-        searchStats->qsNodes++;
         threadMemoryArray[threadID]->twoFoldPositions.push(b.getZobristKey());
 
         score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
 
         threadMemoryArray[threadID]->twoFoldPositions.pop();
 
-        if (score >= beta) {
-            searchStats->qsFailHighs++;
-            if (j == 0)
-                searchStats->qsFirstFailHighs++;
+        if (score >= beta)
             return score;
-        }
 
         if (score > bestScore) {
             bestScore = score;
             if (score > alpha)
                 alpha = score;
         }
-
-        j++;
     }
 
     // If there were no legal moves
@@ -1620,40 +1554,4 @@ double getPercentage(uint64_t numerator, uint64_t denominator) {
     uint64_t tenThousandths = (numerator * 10000) / denominator;
     double percent = ((double) tenThousandths) / 100.0;
     return percent;
-}
-
-// Prints the statistics gathered during search
-void printStatistics() {
-    // Aggregate statistics over all threads
-    SearchStatistics searchStats;
-    for (int i = 0; i < numThreads; i++) {
-        searchStats.nodes +=            threadMemoryArray[i]->searchStats.nodes;
-        searchStats.hashProbes +=       threadMemoryArray[i]->searchStats.hashProbes;
-        searchStats.hashHits +=         threadMemoryArray[i]->searchStats.hashHits;
-        searchStats.hashScoreCuts +=    threadMemoryArray[i]->searchStats.hashScoreCuts;
-        searchStats.hashMoveAttempts += threadMemoryArray[i]->searchStats.hashMoveAttempts;
-        searchStats.hashMoveCuts +=     threadMemoryArray[i]->searchStats.hashMoveCuts;
-        searchStats.failHighs +=        threadMemoryArray[i]->searchStats.failHighs;
-        searchStats.firstFailHighs +=   threadMemoryArray[i]->searchStats.firstFailHighs;
-        searchStats.qsNodes +=          threadMemoryArray[i]->searchStats.qsNodes;
-        searchStats.qsFailHighs +=      threadMemoryArray[i]->searchStats.qsFailHighs;
-        searchStats.qsFirstFailHighs += threadMemoryArray[i]->searchStats.qsFirstFailHighs;
-        searchStats.evalCacheProbes +=  threadMemoryArray[i]->searchStats.evalCacheProbes;
-        searchStats.evalCacheHits +=    threadMemoryArray[i]->searchStats.evalCacheHits;
-    }
-
-    cerr << std::setw(22) << "Hash hit rate: " << getPercentage(searchStats.hashHits, searchStats.hashProbes)
-         << '%' << " of " << searchStats.hashProbes << " probes" << endl;
-    cerr << std::setw(22) << "Hash score cut rate: " << getPercentage(searchStats.hashScoreCuts, searchStats.hashHits)
-         << '%' << " of " << searchStats.hashHits << " hash hits" << endl;
-    cerr << std::setw(22) << "Hash move cut rate: " << getPercentage(searchStats.hashMoveCuts, searchStats.hashMoveAttempts)
-         << '%' << " of " << searchStats.hashMoveAttempts << " hash moves" << endl;
-    cerr << std::setw(22) << "First fail high rate: " << getPercentage(searchStats.firstFailHighs, searchStats.failHighs)
-         << '%' << " of " << searchStats.failHighs << " fail highs" << endl;
-    cerr << std::setw(22) << "QS Nodes: " << searchStats.qsNodes << " ("
-         << getPercentage(searchStats.qsNodes, searchStats.nodes) << '%' << ")" << endl;
-    cerr << std::setw(22) << "QS FFH rate: " << getPercentage(searchStats.qsFirstFailHighs, searchStats.qsFailHighs)
-         << '%' << " of " << searchStats.qsFailHighs << " qs fail highs" << endl;
-    cerr << std::setw(22) << "Eval cache hit rate: " << getPercentage(searchStats.evalCacheHits, searchStats.evalCacheProbes)
-         << '%' << " of " << searchStats.evalCacheProbes << " probes" << endl;
 }
