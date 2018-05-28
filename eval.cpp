@@ -384,8 +384,9 @@ int Eval::evaluate(Board &b) {
         for (int color = WHITE; color <= BLACK; color++) {
             // Pawn shield and storm values: king file and the two adjacent files
             int kingFile = kingSq[color] & 7;
-            kingFile = std::min(6, std::max(1, kingFile));
-            for (int i = kingFile-1; i <= kingFile+1; i++) {
+            int kingRank = kingSq[color] >> 3;
+            int fileRange = std::min(6, std::max(1, kingFile));
+            for (int i = fileRange-1; i <= fileRange+1; i++) {
                 int f = std::min(i, 7-i);
 
                 uint64_t pawnShield = pieces[color][PAWNS] & FILES[i];
@@ -410,6 +411,10 @@ int Eval::evaluate(Board &b) {
                     ksValue[color] -= PAWN_STORM_VALUE[
                         (pieces[color][PAWNS] & FILES[i]) == 0             ? 0 :
                         (pieces[color][PAWNS] & indexToBit(stopSq)) != 0 ? 1 : 2][f][r];
+
+                    if (f == 0 && (kingFile == 0 || kingFile == 7)
+                     && (r == 1 || r == 2) && relativeRank(color, kingRank) + 1 == r)
+                        ksValue[color] -= PAWN_STORM_SHIELDING_KING;
                 }
                 // Semi-open file: no pawn for attacker
                 else

@@ -317,7 +317,7 @@ const int PAWN_SHIELD_VALUE[4][8] = {
 const int PAWN_STORM_VALUE[3][4][8] = {
 // Open file
 {
-    {12,-51, 15, 15, 10,  0,  0,  0},
+    {12,  9, 55, 15, 10,  0,  0,  0},
     {13,-12, 42, 16,  7,  0,  0,  0},
     { 7, 17, 50, 20, 12,  0,  0,  0},
     { 7,  6, 40, 18, 10,  0,  0,  0}
@@ -337,6 +337,8 @@ const int PAWN_STORM_VALUE[3][4][8] = {
     { 0,  3, 18, 20,  8,  0,  0,  0}
 },
 };
+// Penalty when the enemy king can use a storming pawn as protection
+const int PAWN_STORM_SHIELDING_KING = -80;
 
 // Scale factor for pieces attacking opposing king
 const int KS_ARRAY_FACTOR = 128;
