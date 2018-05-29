@@ -19,6 +19,7 @@
 #ifndef __HASH_H__
 #define __HASH_H__
 
+#include <cstring>
 #include "board.h"
 #include "common.h"
 
@@ -28,53 +29,50 @@ const uint8_t ALL_NODE = 2;
 const uint8_t NO_NODE_INFO = 3;
 
 
-// Pack the information stored in a hash entry into a single 64-bit integer
-uint64_t packHashData(int depth, Move m, int score, uint8_t nodeType, uint8_t age);
+// Size: 8 bytes
+struct HashData {
+    Move m;
+    int16_t score;
+    // TODO use eval instead of a separate eval cache
+    int16_t eval;
+    uint8_t ageNT;
+    int8_t depth;
 
-// Functions for unpacking hash data
-inline int getHashDepth(uint64_t data) {
-    return (int8_t) ((data >> 48) & 0xFF);
-}
+    HashData() = default;
+    HashData(Move _m, int _score, uint8_t _nodeType, uint8_t _age, int _depth) {
+        m = _m;
+        score = _score;
+        ageNT = _age | _nodeType;
+        depth = _depth;
+    }
 
-inline Move getHashMove(uint64_t data) {
-    return (data >> 16) & 0xFFFF;
-}
+    // Accessors
+    Move getMove() const { return m; }
+    int getScore() const { return score; }
+    int getEval() const { return eval; }
+    uint8_t getAge() const { return ageNT & 0xFC; }
+    uint8_t getNodeType() const { return ageNT & 0x3; }
+    int getDepth() const { return depth; }
+};
 
-inline int getHashScore(uint64_t data) {
-    return (int16_t) (data & 0xFFFF);
-}
-
-inline uint8_t getHashAge(uint64_t data) {
-    return (data >> 40) & 0xFF;
-}
-
-inline uint8_t getHashNodeType(uint64_t data) {
-    return (data >> 32) & 0x3;
-}
-
-/*
- * @brief Struct storing hashed search information.
- *
- * Uses Crafty's lockless hashing trick, XORing the key and data to detect
- * when key and data are not matching as the result of a race.
- * Size: 16 bytes
- */
+// Struct storing hashed search information.
+// Size: 16 bytes
 struct HashEntry {
     uint64_t zobristKey;
-    uint64_t data;
+    HashData data;
 
     HashEntry() {
         clearEntry();
     }
 
-    void setEntry(Board &b, uint64_t _data) {
-        zobristKey = b.getZobristKey() ^ _data;
+    void setEntry(Board &b, HashData _data) {
+        zobristKey = b.getZobristKey();
         data = _data;
     }
 
     void clearEntry() {
         zobristKey = 0;
-        data = 0;
+        std::memset(&data, 0, sizeof(HashData));
     }
 
     ~HashEntry() {}
@@ -94,6 +92,7 @@ class Hash {
 private:
     HashNode *table;
     uint64_t size;
+    uint8_t age;
 
     void init(uint64_t MB);
 
@@ -103,12 +102,14 @@ public:
     Hash& operator=(const Hash &other) = delete;
     ~Hash();
 
-    void add(Board &b, uint64_t data, int depth, uint8_t age);
-    uint64_t get(Board &b);
+    void add(Board &b, HashData data, int depth);
+    HashData get(Board &b, bool &isHit);
     uint64_t getSize();
     void setSize(uint64_t MB);
     void clear();
-    int estimateHashfull(uint8_t age);
+    int estimateHashfull();
+    uint8_t getAge() { return age; }
+    void nextSearch() { age += 4; }
 };
 
 #endif

@@ -16,33 +16,10 @@
     along with Laser.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <cstring>
 #include "hash.h"
 
-/*
- * Packs the data into a single 64-bit integer using the following format:
- * Bits 0-15: score
- * Bits 16-31: move
- * Bits 32-39: node type
- * Bits 40-47: age
- * Bits 48-55: depth
- */
-uint64_t packHashData(int depth, Move m, int score, uint8_t nodeType, uint8_t age) {
-    uint64_t data = 0;
-    data |= (uint8_t) depth;
-    data <<= 8;
-    data |= age;
-    data <<= 8;
-    data |= nodeType;
-    data <<= 16;
-    data |= m;
-    data <<= 16;
-    data |= (uint16_t) score;
-
-    return data;
-}
-
 Hash::Hash(uint64_t MB) {
+    age = 0;
     init(MB);
 }
 
@@ -52,27 +29,27 @@ Hash::~Hash() {
 
 // Adds key and move into the hashtable. This function assumes that the key has
 // been checked with get and is not in the table.
-void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
+void Hash::add(Board &b, HashData data, int depth) {
     uint64_t h = b.getZobristKey();
     uint64_t index = h & (size-1);
     HashNode *node = table + index;
 
     // Decide whether to replace the entry
     // A more recent update to the same position should always be chosen
-    if ((node->slot1.zobristKey ^ node->slot1.data) == b.getZobristKey())
+    if (node->slot1.zobristKey == b.getZobristKey())
         node->slot1.setEntry(b, data);
     
-    else if ((node->slot2.zobristKey ^ node->slot2.data) == b.getZobristKey())
+    else if (node->slot2.zobristKey == b.getZobristKey())
         node->slot2.setEntry(b, data);
     
     // Replace an entry from a previous search space, or the lowest depth
     // entry with the new entry if the new entry's depth is high enough
     else {
         HashEntry *toReplace = &(node->slot1);
-        int score1 = 128*((int) (age - getHashAge(node->slot1.data)))
-            + depth - getHashDepth(node->slot1.data);
-        int score2 = 128*((int) (age - getHashAge(node->slot2.data)))
-            + depth - getHashDepth(node->slot2.data);
+        int score1 = 128 * ((int) (age - node->slot1.data.getAge()))
+            + depth - node->slot1.data.getDepth();
+        int score2 = 128 * ((int) (age - node->slot2.data.getAge()))
+            + depth - node->slot2.data.getDepth();
         if (score1 < score2)
             toReplace = &(node->slot2);
         // The node must be from a newer search space or a sufficiently high depth
@@ -82,17 +59,17 @@ void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
 }
 
 // Get the hash entry, if any, associated with a board b.
-uint64_t Hash::get(Board &b) {
+HashData Hash::get(Board &b, bool &isHit) {
     uint64_t h = b.getZobristKey();
     uint64_t index = h & (size-1);
     HashNode *node = table + index;
 
-    if ((node->slot1.zobristKey ^ node->slot1.data) == b.getZobristKey())
-        return node->slot1.data;
-    else if ((node->slot2.zobristKey ^ node->slot2.data) == b.getZobristKey())
-        return node->slot2.data;
+    if (node->slot1.zobristKey == b.getZobristKey())
+        return isHit = true, node->slot1.data;
+    else if (node->slot2.zobristKey == b.getZobristKey())
+        return isHit = true, node->slot2.data;
 
-    return 0;
+    return isHit = false, node->slot1.data;
 }
 
 uint64_t Hash::getSize() {
@@ -119,15 +96,16 @@ void Hash::init(uint64_t MB) {
 }
 
 void Hash::clear() {
+    age = 0;
     std::memset(table, 0, size * sizeof(HashNode));
 }
 
-int Hash::estimateHashfull(uint8_t age) {
+int Hash::estimateHashfull() {
     int used = 0;
     // This will never go out of bounds since a 1 MB table has 32768 slots
     for (int i = 0; i < 500; i++) {
-        used += getHashAge((table + i)->slot1.data) == age;
-        used += getHashAge((table + i)->slot2.data) == age;
+        used += (table + i)->slot1.data.getAge() == age;
+        used += (table + i)->slot2.data.getAge() == age;
     }
     return used;
 }

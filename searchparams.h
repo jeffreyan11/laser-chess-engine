@@ -25,7 +25,6 @@ struct SearchParameters {
     int ply;
     int nullMoveCount;
     int selectiveDepth;
-    uint8_t rootMoveNumber;
     Move killers[MAX_DEPTH][2];
     int historyTable[2][6][64];
     int **counterMoveHistory[6][64];
