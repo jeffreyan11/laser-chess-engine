@@ -119,7 +119,7 @@ void Hash::init(uint64_t MB) {
 }
 
 void Hash::clear() {
-    std::memset(table, 0, size * sizeof(HashNode));
+    std::memset(static_cast<void*>(table), 0, size * sizeof(HashNode));
 }
 
 int Hash::estimateHashfull(uint8_t age) {
