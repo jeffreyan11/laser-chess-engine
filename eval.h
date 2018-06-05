@@ -32,6 +32,7 @@ void setKingSafetyScale(int s);
 struct EvalInfo {
     uint64_t attackMaps[2][5];
     uint64_t fullAttackMaps[2];
+    uint64_t doubleAttackMaps[2];
     uint64_t rammedPawns[2];
     uint64_t openFiles;
 
@@ -317,7 +318,7 @@ const int PAWN_SHIELD_VALUE[4][8] = {
 const int PAWN_STORM_VALUE[3][4][8] = {
 // Open file
 {
-    {12,  9, 55, 15, 10,  0,  0,  0},
+    {12,  0, 45, 15, 10,  0,  0,  0},
     {13,-12, 42, 16,  7,  0,  0,  0},
     { 7, 17, 50, 20, 12,  0,  0,  0},
     { 7,  6, 40, 18, 10,  0,  0,  0}
@@ -338,17 +339,19 @@ const int PAWN_STORM_VALUE[3][4][8] = {
 },
 };
 // Penalty when the enemy king can use a storming pawn as protection
-const int PAWN_STORM_SHIELDING_KING = -80;
+const int PAWN_STORM_SHIELDING_KING = -102;
 
 // Scale factor for pieces attacking opposing king
 const int KS_ARRAY_FACTOR = 128;
-const int KING_THREAT_MULTIPLIER[4] = {8, 4, 6, 6};
-const int KING_THREAT_SQUARE[4] = {7, 12, 10, 13};
-const int KING_DEFENSELESS_SQUARE = 22;
+const int KING_THREAT_MULTIPLIER[4] = {8, 4, 7, 6};
+const int KING_THREAT_SQUARE[4] = {7, 12, 9, 11};
+const int KING_DEFENSELESS_SQUARE = 23;
 const int KS_PAWN_FACTOR = 11;
 const int KING_PRESSURE = 3;
 const int KS_KING_PRESSURE_FACTOR = 9;
-const int SAFE_CHECK_BONUS[4] = {77, 24, 49, 51};
+const int KS_NO_QUEEN = -60;
+const int KS_BASE = 0;
+const int SAFE_CHECK_BONUS[4] = {74, 22, 54, 50};
 
 // Minor pieces
 // A penalty for each own pawn that is on a square of the same color as your bishop

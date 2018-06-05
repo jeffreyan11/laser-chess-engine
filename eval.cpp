@@ -208,13 +208,18 @@ int Eval::evaluate(Board &b) {
     // Get the overall attack maps
     ei.attackMaps[WHITE][PAWNS] = b.getWPawnCaptures(pieces[WHITE][PAWNS]);
     ei.attackMaps[BLACK][PAWNS] = b.getBPawnCaptures(pieces[BLACK][PAWNS]);
-    for (unsigned int i = 0; i < pmlWhite.size(); i++)
-        ei.attackMaps[WHITE][pmlWhite.get(i).pieceID] |= pmlWhite.get(i).legal;
-    for (unsigned int i = 0; i < pmlBlack.size(); i++)
-        ei.attackMaps[BLACK][pmlBlack.get(i).pieceID] |= pmlBlack.get(i).legal;
-    for (int color = WHITE; color <= BLACK; color++)
-        for (int pieceID = KNIGHTS; pieceID <= QUEENS; pieceID++)
-            ei.fullAttackMaps[color] |= ei.attackMaps[color][pieceID];
+    for (unsigned int i = 0; i < pmlWhite.size(); i++) {
+        uint64_t legal = pmlWhite.get(i).legal;
+        ei.doubleAttackMaps[WHITE] |= legal & (ei.fullAttackMaps[WHITE] | ei.attackMaps[WHITE][PAWNS]);
+        ei.attackMaps[WHITE][pmlWhite.get(i).pieceID] |= legal;
+        ei.fullAttackMaps[WHITE] |= legal;
+    }
+    for (unsigned int i = 0; i < pmlBlack.size(); i++) {
+        uint64_t legal = pmlBlack.get(i).legal;
+        ei.doubleAttackMaps[BLACK] |= legal & (ei.fullAttackMaps[BLACK] | ei.attackMaps[BLACK][PAWNS]);
+        ei.attackMaps[BLACK][pmlBlack.get(i).pieceID] |= legal;
+        ei.fullAttackMaps[BLACK] |= legal;
+    }
 
     ei.rammedPawns[WHITE] = pieces[WHITE][PAWNS] & (pieces[BLACK][PAWNS] >> 8);
     ei.rammedPawns[BLACK] = pieces[BLACK][PAWNS] & (pieces[WHITE][PAWNS] << 8);
@@ -1004,14 +1009,13 @@ int Eval::getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, in
     // Precalculate a few things
     uint64_t kingNeighborhood = (attackingColor == WHITE) ? ((pieces[BLACK][KINGS] & RANK_8) ? (kingSqs | (kingSqs >> 8)) : kingSqs)
                                                           : ((pieces[WHITE][KINGS] & RANK_1) ? (kingSqs | (kingSqs << 8)) : kingSqs);
-    uint64_t defendMap = ei.attackMaps[attackingColor^1][PAWNS] | ei.fullAttackMaps[attackingColor^1];
+    uint64_t weakMap = ~ei.doubleAttackMaps[attackingColor^1]
+                     & ((~ei.attackMaps[attackingColor^1][PAWNS] & ~ei.fullAttackMaps[attackingColor^1]) | ei.attackMaps[attackingColor^1][QUEENS]);
     // Analyze undefended squares directly adjacent to king
-    uint64_t kingDefenseless = defendMap & kingSqs;
-    kingDefenseless ^= kingSqs;
-
+    uint64_t kingDefenseless = kingSqs & weakMap;
 
     // Holds the king safety score
-    int kingSafetyPts = 0;
+    int kingSafetyPts = KS_BASE;
     // Count the number and value of pieces participating in the king attack
     int kingAttackPts = 0;
     int kingAttackPieces = count(ei.attackMaps[attackingColor][PAWNS] & kingNeighborhood);
@@ -1035,11 +1039,14 @@ int Eval::getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, in
             // Bonus for overloading on defenseless squares
             kingSafetyPts += KING_DEFENSELESS_SQUARE * count(legal & kingDefenseless);
         }
-
-        // Add bonuses for safe checks
-        if (legal & checkMaps[pieceIndex] & ~kingSqs & ~defendMap)
-            kingSafetyPts += SAFE_CHECK_BONUS[pieceIndex];
     }
+
+    // Add bonuses for safe checks
+    kingSafetyPts += SAFE_CHECK_BONUS[KNIGHTS-1] * !!(ei.attackMaps[attackingColor][KNIGHTS] & checkMaps[KNIGHTS-1] & ~kingSqs & weakMap);
+    kingSafetyPts += SAFE_CHECK_BONUS[BISHOPS-1] * !!(ei.attackMaps[attackingColor][BISHOPS] & checkMaps[BISHOPS-1] & ~kingSqs & weakMap);
+    kingSafetyPts += SAFE_CHECK_BONUS[ROOKS-1] * !!(ei.attackMaps[attackingColor][ROOKS] & checkMaps[ROOKS-1] & ~kingSqs & weakMap);
+    kingSafetyPts += SAFE_CHECK_BONUS[QUEENS-1] * !!(ei.attackMaps[attackingColor][QUEENS] & checkMaps[QUEENS-1] & ~kingSqs & weakMap
+                                                  & ~ei.attackMaps[attackingColor^1][QUEENS]);
 
     // Give a decent bonus for each additional piece participating
     kingSafetyPts += kingAttackPieces * kingAttackPts;
@@ -1059,6 +1066,9 @@ int Eval::getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, in
 
     // Adjust based on pawn shield, storms, and king pressure
     kingSafetyPts += (-KS_PAWN_FACTOR * pawnScore + KS_KING_PRESSURE_FACTOR * kingPressure) / 32;
+
+    // Reduce attack when attacker has no queen
+    kingSafetyPts += KS_NO_QUEEN * (pieces[attackingColor][QUEENS] == 0);
 
 
     // Convert king safety points into centipawns using a quadratic relationship
