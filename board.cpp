@@ -124,7 +124,7 @@ Board::~Board() {}
 
 Board Board::staticCopy() {
     Board b;
-    std::memcpy(&b, this, sizeof(Board));
+    std::memcpy(static_cast<void*>(&b), this, sizeof(Board));
     return b;
 }
 

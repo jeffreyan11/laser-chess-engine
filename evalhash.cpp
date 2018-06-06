@@ -72,6 +72,6 @@ void EvalHash::init(uint64_t MB) {
 }
 
 void EvalHash::clear() {
-    std::memset(table, 0, size * sizeof(EvalHashEntry));
+    std::memset(static_cast<void*>(table), 0, size * sizeof(EvalHashEntry));
     keys = 0;
 }
