@@ -938,7 +938,7 @@ int Eval::evaluate(Board &b) {
                 else
                     scaleFactor = PAWNLESS_SCALING[2];
             }
-            else
+            else if (scaleFactor != OPPOSITE_BISHOP_SCALING[0])
                 scaleFactor = PAWNLESS_SCALING[3];
         }
     }
