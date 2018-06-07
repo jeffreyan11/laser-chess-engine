@@ -87,12 +87,12 @@ const int SMP_SKIP_DEPTHS[16] = {
 // Futility pruning margins indexed by depth. If static eval is at least this
 // amount below alpha, we skip quiet moves for this position.
 const int FUTILITY_MARGIN[7] = {0,
-    90,
     190,
-    300,
-    420,
-    550,
-    690
+    290,
+    400,
+    520,
+    650,
+    790
 };
 
 // Reverse futility pruning margins indexed by depth. If static eval is at least
@@ -115,6 +115,16 @@ const unsigned int LMP_MOVE_COUNTS[2][13] = {
     {0, 2, 4,  7, 11, 16, 22, 29, 37, 46,  56,  67,  79},
     {0, 5, 8, 13, 21, 31, 43, 57, 74, 93, 114, 137, 162}
 };
+
+// LMR reduction values, initialized at program start
+int lmrReductions[64][64];
+
+void initReductionTable() {
+    for (int depth = 1; depth < 64; depth++) {
+        for (int movesSearched = 1; movesSearched < 64; movesSearched++)
+            lmrReductions[depth][movesSearched] = (int) (0.5 + log(depth) * log(movesSearched) / 2.1);
+    }
+}
 
 
 //-----------------------------Global variables---------------------------------
@@ -871,8 +881,12 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         int endSq = getEndSq(m);
         int pieceID = b.getPieceOnSquare(color, startSq);
 
+        // Calculate LMR: increase reduction with higher depth and later moves
+        int lmrReduction = lmrReductions[std::min(63, depth)][std::max(1U, std::min(63U, movesSearched))];
+        int lmrDepth = std::max(1, depth - lmrReduction);
+
         // Used to adjust pruning amount so that PV nodes are pruned slightly less
-        int pruneDepth = isPVNode ? depth+1 : depth;
+        int pruneDepth = isPVNode ? lmrDepth+1 : lmrDepth;
 
 
         // Futility pruning
@@ -936,9 +950,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         if (depth >= 3 && movesSearched > 2
          && !isCapture(m) && !isPromotion(m)
          && !copy.isInCheck(color^1)) {
-            // Increase reduction with higher depth and later moves
-            // Idea for log-based formula from Stockfish
-            reduction = (int) (0.5 + log(depth) * log(movesSearched) / 2.1);
+            reduction = lmrReduction;
             // Reduce less for killers
             if (m == searchParams->killers[ssi->ply][0]
              || m == searchParams->killers[ssi->ply][1])

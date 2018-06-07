@@ -84,6 +84,7 @@ int main() {
     initZobristTable();
     initInBetweenTable();
     initPerThreadMemory();
+    initReductionTable();
 
     setMultiPV(DEFAULT_MULTI_PV);
     setNumThreads(DEFAULT_THREADS);

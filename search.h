@@ -84,6 +84,7 @@ uint64_t getNodes();
 void setMultiPV(unsigned int n);
 void setNumThreads(int n);
 void initPerThreadMemory();
+void initReductionTable();
 TwoFoldStack *getTwoFoldStackPointer();
 
 // Pondering
