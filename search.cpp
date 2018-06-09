@@ -86,13 +86,14 @@ const int SMP_SKIP_DEPTHS[16] = {
 
 // Futility pruning margins indexed by depth. If static eval is at least this
 // amount below alpha, we skip quiet moves for this position.
-const int FUTILITY_MARGIN[7] = {0,
-    190,
-    290,
-    400,
-    520,
-    650,
-    790
+const int FUTILITY_MARGIN[7] = {
+     80,
+    160,
+    250,
+    350,
+    460,
+    580,
+    710
 };
 
 // Reverse futility pruning margins indexed by depth. If static eval is at least
@@ -124,6 +125,10 @@ void initReductionTable() {
         for (int movesSearched = 1; movesSearched < 64; movesSearched++)
             lmrReductions[depth][movesSearched] = (int) (0.5 + log(depth) * log(movesSearched) / 2.1);
     }
+    // Set reductions for depth 1 and movesSearched >= 7 to 1. This only affects
+    // lmrDepth-based pruning.
+    for (int movesSearched = 7; movesSearched < 64; movesSearched++)
+        lmrReductions[1][movesSearched] = 1;
 }
 
 
@@ -883,7 +888,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
         // Calculate LMR: increase reduction with higher depth and later moves
         int lmrReduction = lmrReductions[std::min(63, depth)][std::max(1U, std::min(63U, movesSearched))];
-        int lmrDepth = std::max(1, depth - lmrReduction);
+        int lmrDepth = std::max(0, depth - lmrReduction);
 
         // Used to adjust pruning amount so that PV nodes are pruned slightly less
         int pruneDepth = isPVNode ? lmrDepth+1 : lmrDepth;
