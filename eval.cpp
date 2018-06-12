@@ -49,8 +49,8 @@ static char manhattanDistance[64][64], kingDistance[64][64];
 void initDistances() {
     for (int sq1 = 0; sq1 < 64; sq1++) {
         for (int sq2 = 0; sq2 < 64; sq2++) {
-			int r = std::abs((sq1 >> 3) - (sq2 >> 3));
-			int f = std::abs((sq1 & 7) - (sq2 & 7));
+            int r = std::abs((sq1 >> 3) - (sq2 >> 3));
+            int f = std::abs((sq1 & 7) - (sq2 & 7));
             manhattanDistance[sq1][sq2] = r + f;
             kingDistance[sq1][sq2] = std::min(5, std::max(r, f));
         }
