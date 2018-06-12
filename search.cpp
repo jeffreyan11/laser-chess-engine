@@ -119,7 +119,7 @@ const unsigned int LMP_MOVE_COUNTS[2][13] = {
 };
 
 // LMR reduction values, initialized at program start
-static int lmrReductions[64][64];
+int lmrReductions[64][64];
 
 void initReductionTable() {
     for (int depth = 1; depth < 64; depth++) {
