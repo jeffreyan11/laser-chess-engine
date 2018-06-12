@@ -26,6 +26,7 @@
 class Board;
 
 void initPSQT();
+void initDistances();
 void setMaterialScale(int s);
 void setKingSafetyScale(int s);
 
@@ -59,8 +60,6 @@ private:
   int checkEndgameCases();
   int scoreSimpleKnownWin(int winningColor);
   int scoreCornerDistance(int winningColor, int wKingSq, int bKingSq);
-  int getManhattanDistance(int sq1, int sq2);
-  int getKingDistance(int sq1, int sq2);
 };
 
 
