@@ -98,8 +98,9 @@ const int FUTILITY_MARGIN[7] = {
 
 // Reverse futility pruning margins indexed by depth. If static eval is at least
 // this amount above beta, we skip searching the position entirely.
-const int REVERSE_FUTILITY_MARGIN[7] = {0,
-    60,
+const int REVERSE_FUTILITY_MARGIN[7] = {
+      0,
+     60,
     130,
     210,
     300,

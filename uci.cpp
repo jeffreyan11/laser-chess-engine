@@ -81,6 +81,7 @@ extern std::atomic<bool> stopSignal;
 int main() {
     initMagicTables(2563762638929852183ULL);
     initPSQT();
+    initDistances();
     initZobristTable();
     initInBetweenTable();
     initPerThreadMemory();

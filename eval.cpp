@@ -44,6 +44,18 @@ void initPSQT() {
     #undef E
 }
 
+static char manhattanDistance[64][64], kingDistance[64][64];
+
+void initDistances() {
+    for (int sq1 = 0; sq1 < 64; sq1++) {
+        for (int sq2 = 0; sq2 < 64; sq2++) {
+            int r = std::abs((sq1 >> 3) - (sq2 >> 3));
+            int f = std::abs((sq1 & 7) - (sq2 & 7));
+            manhattanDistance[sq1][sq2] = r + f;
+            kingDistance[sq1][sq2] = std::min(5, std::max(r, f));
+        }
+    }
+}
 
 struct EvalDebug {
     int totalEval;
@@ -314,7 +326,6 @@ int Eval::evaluate(Board &b) {
 
 
     //--------------------------------Space-------------------------------------
-    const uint64_t CENTER_FILES = FILE_C | FILE_D | FILE_E | FILE_F;
     uint64_t allPawns = pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS];
     int openFileCount = count(ei.openFiles & 0xFF);
     // Space is more important with more pieces on the board
@@ -490,10 +501,10 @@ int Eval::evaluate(Board &b) {
                                                         & (RANK_7 | RANK_6 | RANK_5));
 
     // Outposts
-    const uint64_t OUTPOST_SQS[2] = {((FILE_C | FILE_D | FILE_E | FILE_F) & (RANK_4 | RANK_5 | RANK_6))
-                                   | ((FILE_B | FILE_G) &  (RANK_5 | RANK_6)),
-                                     ((FILE_C | FILE_D | FILE_E | FILE_F) & (RANK_5 | RANK_4 | RANK_3))
-                                   | ((FILE_B | FILE_G) &  (RANK_4 | RANK_3))};
+    const uint64_t OUTPOST_SQS[2] = {(CENTER_FILES & (RANK_4 | RANK_5 | RANK_6))
+                                  | ((FILE_B | FILE_G) &  (RANK_5 | RANK_6)),
+                                     (CENTER_FILES & (RANK_5 | RANK_4 | RANK_3))
+                                  | ((FILE_B | FILE_G) &  (RANK_4 | RANK_3))};
 
     for (int color = WHITE; color <= BLACK; color++) {
         PieceMoveList &pml = (color == WHITE) ? pmlWhite : pmlBlack;
@@ -578,7 +589,7 @@ int Eval::evaluate(Board &b) {
 
     //-------------------------------Threats------------------------------------
     Score threatScore[2] = {EVAL_ZERO, EVAL_ZERO};
-    const uint64_t HALF[2] = {RANK_1 | RANK_2 | RANK_3 | RANK_4, RANK_5 | RANK_6 | RANK_7 | RANK_8};
+    const uint64_t HALF[2] = {WHALF, BHALF};
 
     for (int color = WHITE; color <= BLACK; color++) {
         // Pawns attacked by opposing pieces and not defended by own pawns
@@ -686,8 +697,8 @@ int Eval::evaluate(Board &b) {
             }
 
             // Bonuses and penalties for king distance
-            whitePawnScore -= OWN_KING_DIST * getKingDistance(passerSq+8, kingSq[WHITE]) * rFactor;
-            whitePawnScore += OPP_KING_DIST * getKingDistance(passerSq+8, kingSq[BLACK]) * rFactor;
+            whitePawnScore -= OWN_KING_DIST * (int)kingDistance[passerSq+8][kingSq[WHITE]] * rFactor;
+            whitePawnScore += OPP_KING_DIST * (int)kingDistance[passerSq+8][kingSq[BLACK]] * rFactor;
         }
     }
     uint64_t bPasserTemp = bPassedPawns;
@@ -728,8 +739,8 @@ int Eval::evaluate(Board &b) {
                     blackPawnScore += rFactor * DEFENDED_PASSER_BONUS;
             }
 
-            blackPawnScore += OPP_KING_DIST * getKingDistance(passerSq-8, kingSq[WHITE]) * rFactor;
-            blackPawnScore -= OWN_KING_DIST * getKingDistance(passerSq-8, kingSq[BLACK]) * rFactor;
+            blackPawnScore += OPP_KING_DIST * (int)kingDistance[passerSq-8][kingSq[WHITE]] * rFactor;
+            blackPawnScore -= OWN_KING_DIST * (int)kingDistance[passerSq-8][kingSq[BLACK]] * rFactor;
         }
     }
 
@@ -891,8 +902,8 @@ int Eval::evaluate(Board &b) {
             int pawnSq = bitScanForward(pawnBits);
             pawnBits &= pawnBits - 1;
 
-            wTropismTotal += getManhattanDistance(pawnSq, kingSq[WHITE]);
-            bTropismTotal += getManhattanDistance(pawnSq, kingSq[BLACK]);
+            wTropismTotal += (int)manhattanDistance[pawnSq][kingSq[WHITE]];
+            bTropismTotal += (int)manhattanDistance[pawnSq][kingSq[BLACK]];
             pawnWeight++;
         }
 
@@ -1054,13 +1065,13 @@ int Eval::getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, in
     // King pressure: a smaller bonus for attacker's pieces generally pointed at
     // the region of the opposing king
     uint64_t KING_ZONE;
-    if (kingFile < 3) KING_ZONE = FILE_A | FILE_B | FILE_C | FILE_D;
-    else if (kingFile < 5) KING_ZONE = FILE_C | FILE_D | FILE_E | FILE_F;
-    else KING_ZONE = FILE_E | FILE_F | FILE_G | FILE_H;
+    if (kingFile < 3) KING_ZONE = QSIDE;
+    else if (kingFile < 5) KING_ZONE = CENTER_FILES;
+    else KING_ZONE = KSIDE;
     if ((attackingColor^1) == WHITE)
-        KING_ZONE &= RANK_1 | RANK_2 | RANK_3 | RANK_4 | RANK_5;
+        KING_ZONE &= WHALF | RANK_5;
     else
-        KING_ZONE &= RANK_4 | RANK_5 | RANK_6 | RANK_7 | RANK_8;
+        KING_ZONE &= RANK_4 | BHALF;
 
     int kingPressure = KING_PRESSURE * count(ei.fullAttackMaps[attackingColor] & KING_ZONE);
 
@@ -1188,10 +1199,10 @@ int Eval::checkEndgameCases() {
 
                 // Light squared corners are H1 (7) and A8 (56)
                 if (pieces[WHITE][BISHOPS] & LIGHT)
-                    value -= 20 * std::min(getManhattanDistance(bKingSq, 7), getManhattanDistance(bKingSq, 56));
+                    value -= 20 * (int)std::min(manhattanDistance[bKingSq][7], manhattanDistance[bKingSq][56]);
                 // Dark squared corners are A1 (0) and H8 (63)
                 else
-                    value -= 20 * std::min(getManhattanDistance(bKingSq, 0), getManhattanDistance(bKingSq, 63));
+                    value -= 20 * (int)std::min(manhattanDistance[bKingSq][0], manhattanDistance[bKingSq][63]);
                 return value;
             }
             if (pieces[BLACK][KNIGHTS] && pieces[BLACK][BISHOPS]) {
@@ -1202,10 +1213,10 @@ int Eval::checkEndgameCases() {
 
                 // Light squared corners are H1 (7) and A8 (56)
                 if (pieces[BLACK][BISHOPS] & LIGHT)
-                    value += 20 * std::min(getManhattanDistance(wKingSq, 7), getManhattanDistance(wKingSq, 56));
+                    value += 20 * (int)std::min(manhattanDistance[wKingSq][7], manhattanDistance[wKingSq][56]);
                 // Dark squared corners are A1 (0) and H8 (63)
                 else
-                    value += 20 * std::min(getManhattanDistance(wKingSq, 0), getManhattanDistance(wKingSq, 63));
+                    value += 20 * (int)std::min(manhattanDistance[wKingSq][0], manhattanDistance[wKingSq][63]);
                 return value;
             }
         }
@@ -1233,12 +1244,4 @@ inline int Eval::scoreCornerDistance(int winningColor, int wKingSq, int bKingSq)
     int wDist = std::min(wf, 7-wf) + std::min(wr, 7-wr);
     int bDist = std::min(bf, 7-bf) + std::min(br, 7-br);
     return (winningColor == WHITE) ? wDist - 2*bDist : 2*wDist - bDist;
-}
-
-inline int Eval::getManhattanDistance(int sq1, int sq2) {
-    return std::abs((sq1 >> 3) - (sq2 >> 3)) + std::abs((sq1 & 7) - (sq2 & 7));
-}
-
-inline int Eval::getKingDistance(int sq1, int sq2) {
-    return std::min(5, std::max(std::abs((sq1 >> 3) - (sq2 >> 3)), std::abs((sq1 & 7) - (sq2 & 7))));
 }
