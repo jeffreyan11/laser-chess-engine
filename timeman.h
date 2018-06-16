@@ -20,19 +20,19 @@
 #define __TIME_H__
 
 // Search modes
-const int TIME = 1;
-const int DEPTH = 2;
-// const int NODES = 3;
-const int MOVETIME = 4;
+constexpr int TIME = 1;
+constexpr int DEPTH = 2;
+// constexpr int NODES = 3;
+constexpr int MOVETIME = 4;
 
 // Time management constants
-const int MOVE_HORIZON = 38; // expect this many moves left in the game
-const int ENDGAME_HORIZON_LIMIT = 60;
-const int MOVE_HORIZON_DEC = 10; // at the endgame horizon limit, move horizon decreases by this much
-const double TIME_FACTOR = 0.85; // timeFactor = log b / (b - 1) where b is branch factor
-const double MAX_TIME_FACTOR = 4.0; // do not spend more than this multiple of time over the limit
-const double ALLOTMENT_FACTORS[8] = {1.0, 0.99, 0.40, 0.30, 0.25, 0.22, 0.20, 0.18};
-const double MAX_USAGE_FACTORS[8] = {1.0, 0.99, 0.72, 0.63, 0.59, 0.56, 0.54, 0.52};
+constexpr int MOVE_HORIZON = 38; // expect this many moves left in the game
+constexpr int ENDGAME_HORIZON_LIMIT = 60;
+constexpr int MOVE_HORIZON_DEC = 10; // at the endgame horizon limit, move horizon decreases by this much
+constexpr double TIME_FACTOR = 0.85; // timeFactor = log b / (b - 1) where b is branch factor
+constexpr double MAX_TIME_FACTOR = 4.0; // do not spend more than this multiple of time over the limit
+constexpr double ALLOTMENT_FACTORS[8] = {1.0, 0.99, 0.40, 0.30, 0.25, 0.22, 0.20, 0.18};
+constexpr double MAX_USAGE_FACTORS[8] = {1.0, 0.99, 0.72, 0.63, 0.59, 0.56, 0.54, 0.52};
 
 struct TimeManagement {
     int searchMode;

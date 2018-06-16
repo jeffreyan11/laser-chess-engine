@@ -63,11 +63,11 @@ private:
 };
 
 
-const int SEE_PIECE_VALS[6] = {100, 400, 400, 600, 1150, MATE_SCORE/2};
-const int EG_FACTOR_PIECE_VALS[5] = {51, 380, 384, 674, 1559};
-const int EG_FACTOR_ALPHA = 2300;
-const int EG_FACTOR_BETA = 6370;
-const int EG_FACTOR_RES = 1000;
+constexpr int SEE_PIECE_VALS[6] = {100, 400, 400, 600, 1150, MATE_SCORE/2};
+constexpr int EG_FACTOR_PIECE_VALS[5] = {51, 380, 384, 674, 1559};
+constexpr int EG_FACTOR_ALPHA = 2300;
+constexpr int EG_FACTOR_BETA = 6370;
+constexpr int EG_FACTOR_RES = 1000;
 
 // Eval scores are packed into an unsigned 32-bit integer during calculations
 // (the SWAR technique)
@@ -88,22 +88,22 @@ inline int decEvalEg(Score encodedValue) {
 // Since we can only work with unsigned numbers due to carryover / twos-complement
 // negative number issues, we make 2^15 the 0 point for each of the two 16-bit
 // halves of Score
-const Score EVAL_ZERO = 0x80008000;
+constexpr Score EVAL_ZERO = 0x80008000;
 
-// Array indexing constants
-const int MG = 0;
-const int EG = 1;
+// Array indexing constexprants
+constexpr int MG = 0;
+constexpr int EG = 1;
 
-// Material constants
-const int PIECE_VALUES[2][5] = {
+// Material constexprants
+constexpr int PIECE_VALUES[2][5] = {
   {100, 404, 442, 680, 1365},
   {138, 399, 455, 738, 1418}
 };
-const int KNOWN_WIN = PIECE_VALUES[EG][PAWNS] * 75;
-const int TB_WIN = PIECE_VALUES[EG][PAWNS] * 125;
+constexpr int KNOWN_WIN = PIECE_VALUES[EG][PAWNS] * 75;
+constexpr int TB_WIN = PIECE_VALUES[EG][PAWNS] * 125;
 
 //------------------------------Piece tables--------------------------------
-const int pieceSquareTable[2][6][32] = {
+constexpr int pieceSquareTable[2][6][32] = {
 // Midgame
 {
 { // Pawns
@@ -232,12 +232,12 @@ const int pieceSquareTable[2][6][32] = {
 }
 };
 
-//-------------------------Material eval constants------------------------------
-const int BISHOP_PAIR_VALUE = 58;
-const int TEMPO_VALUE = 16;
+//-------------------------Material eval constexprants------------------------------
+constexpr int BISHOP_PAIR_VALUE = 58;
+constexpr int TEMPO_VALUE = 16;
 
 // Material imbalance terms
-const int OWN_OPP_IMBALANCE[2][5][5] = {
+constexpr int OWN_OPP_IMBALANCE[2][5][5] = {
 {
 //       Opponent's
 //    P   N   B   R   Q
@@ -257,17 +257,17 @@ const int OWN_OPP_IMBALANCE[2][5][5] = {
 };
 
 // Bonus for knight in closed positions
-const int KNIGHT_CLOSED_BONUS[2] = {3, 6};
+constexpr int KNIGHT_CLOSED_BONUS[2] = {3, 6};
 
-//------------------------Positional eval constants-----------------------------
+//------------------------Positional eval constexprants-----------------------------
 // SPACE_BONUS[0][0] = behind own pawn, not center files
 // SPACE_BONUS[0][1] = behind own pawn, center files
 // SPACE_BONUS[1][0] = in front of opp pawn, not center files
 // SPACE_BONUS[1][1] = in front of opp pawn, center files
-const int SPACE_BONUS[2][2] = {{10, 24}, {2, 9}};
+constexpr int SPACE_BONUS[2][2] = {{10, 24}, {2, 9}};
 
 // Mobility tables
-const int mobilityScore[2][4][28] = {
+constexpr int mobilityScore[2][4][28] = {
 // Midgame
 {
 { // Knights
@@ -296,17 +296,17 @@ const int mobilityScore[2][4][28] = {
 };
 
 // Value of each square in the extended center in cp
-const int EXTENDED_CENTER_VAL = 3;
+constexpr int EXTENDED_CENTER_VAL = 3;
 // Additional bonus for squares in the center four squares in cp, in addition
 // to EXTENDED_CENTER_VAL
-const int CENTER_BONUS = 5;
+constexpr int CENTER_BONUS = 5;
 
 // King safety
 // The value of having 0, 1, and both castling rights
-const int CASTLING_RIGHTS_VALUE[3] = {0, 25, 63};
+constexpr int CASTLING_RIGHTS_VALUE[3] = {0, 25, 63};
 // The value of a pawn shield per pawn. First rank value is used for the
 // penalty when the pawn is missing.
-const int PAWN_SHIELD_VALUE[4][8] = {
+constexpr int PAWN_SHIELD_VALUE[4][8] = {
     {-11, 23, 27, 10,  5,  5,-11,  0}, // open h file, h2, h3, ...
     {-18, 38, 24, -4, -5, -5, -8,  0}, // g/b file
     {-13, 38,  3, -5, -5, -5, -5,  0}, // f/c file
@@ -314,7 +314,7 @@ const int PAWN_SHIELD_VALUE[4][8] = {
 };
 // Array for pawn storm values. Rank 1 of open is used for penalty
 // when there is no opposing pawn
-const int PAWN_STORM_VALUE[3][4][8] = {
+constexpr int PAWN_STORM_VALUE[3][4][8] = {
 // Open file
 {
     {12, -3, 42, 18, 12,  0,  0,  0},
@@ -338,89 +338,89 @@ const int PAWN_STORM_VALUE[3][4][8] = {
 },
 };
 // Penalty when the enemy king can use a storming pawn as protection
-const int PAWN_STORM_SHIELDING_KING = -105;
+constexpr int PAWN_STORM_SHIELDING_KING = -105;
 
 // Scale factor for pieces attacking opposing king
-const int KS_ARRAY_FACTOR = 128;
-const int KING_THREAT_MULTIPLIER[4] = {8, 4, 7, 6};
-const int KING_THREAT_SQUARE[4] = {7, 12, 9, 11};
-const int KING_DEFENSELESS_SQUARE = 23;
-const int KS_PAWN_FACTOR = 11;
-const int KING_PRESSURE = 3;
-const int KS_KING_PRESSURE_FACTOR = 9;
-const int KS_NO_QUEEN = -60;
-const int KS_BASE = 0;
-const int SAFE_CHECK_BONUS[4] = {74, 22, 54, 50};
+constexpr int KS_ARRAY_FACTOR = 128;
+constexpr int KING_THREAT_MULTIPLIER[4] = {8, 4, 7, 6};
+constexpr int KING_THREAT_SQUARE[4] = {7, 12, 9, 11};
+constexpr int KING_DEFENSELESS_SQUARE = 23;
+constexpr int KS_PAWN_FACTOR = 11;
+constexpr int KING_PRESSURE = 3;
+constexpr int KS_KING_PRESSURE_FACTOR = 9;
+constexpr int KS_NO_QUEEN = -60;
+constexpr int KS_BASE = 0;
+constexpr int SAFE_CHECK_BONUS[4] = {74, 22, 54, 50};
 
 // Minor pieces
 // A penalty for each own pawn that is on a square of the same color as your bishop
-const Score BISHOP_PAWN_COLOR_PENALTY = E(-4, -3);
-const Score BISHOP_RAMMED_PAWN_COLOR_PENALTY = E(-5, -8);
+constexpr Score BISHOP_PAWN_COLOR_PENALTY = E(-4, -3);
+constexpr Score BISHOP_RAMMED_PAWN_COLOR_PENALTY = E(-5, -8);
 // Minors shielded by own pawn in front
-const Score SHIELDED_MINOR_BONUS = E(15, 0);
+constexpr Score SHIELDED_MINOR_BONUS = E(15, 0);
 // A bonus for strong outpost knights
-const Score KNIGHT_OUTPOST_BONUS = E(30, 20);
-const Score KNIGHT_OUTPOST_PAWN_DEF_BONUS = E(21, 9);
-const Score KNIGHT_POTENTIAL_OUTPOST_BONUS = E(10, 11);
-const Score KNIGHT_POTENTIAL_OUTPOST_PAWN_DEF_BONUS = E(11, 13);
+constexpr Score KNIGHT_OUTPOST_BONUS = E(30, 20);
+constexpr Score KNIGHT_OUTPOST_PAWN_DEF_BONUS = E(21, 9);
+constexpr Score KNIGHT_POTENTIAL_OUTPOST_BONUS = E(10, 11);
+constexpr Score KNIGHT_POTENTIAL_OUTPOST_PAWN_DEF_BONUS = E(11, 13);
 // A smaller bonus for bishops
-const Score BISHOP_OUTPOST_BONUS = E(21, 14);
-const Score BISHOP_OUTPOST_PAWN_DEF_BONUS = E(26, 12);
-const Score BISHOP_POTENTIAL_OUTPOST_BONUS = E(8, 8);
-const Score BISHOP_POTENTIAL_OUTPOST_PAWN_DEF_BONUS = E(14, 8);
+constexpr Score BISHOP_OUTPOST_BONUS = E(21, 14);
+constexpr Score BISHOP_OUTPOST_PAWN_DEF_BONUS = E(26, 12);
+constexpr Score BISHOP_POTENTIAL_OUTPOST_BONUS = E(8, 8);
+constexpr Score BISHOP_POTENTIAL_OUTPOST_PAWN_DEF_BONUS = E(14, 8);
 
 // Rooks
-const Score ROOK_OPEN_FILE_BONUS = E(36, 15);
-const Score ROOK_SEMIOPEN_FILE_BONUS = E(22, 2);
-const Score ROOK_PAWN_RANK_THREAT = E(2, 10);
+constexpr Score ROOK_OPEN_FILE_BONUS = E(36, 15);
+constexpr Score ROOK_SEMIOPEN_FILE_BONUS = E(22, 2);
+constexpr Score ROOK_PAWN_RANK_THREAT = E(2, 10);
 
 // Threats
-const Score UNDEFENDED_PAWN = E(-1, -17);
-const Score UNDEFENDED_MINOR = E(-18, -50);
-const Score PAWN_PIECE_THREAT = E(-77, -42);
-const Score MINOR_ROOK_THREAT = E(-68, -39);
-const Score MINOR_QUEEN_THREAT = E(-71, -36);
-const Score ROOK_QUEEN_THREAT = E(-78, -35);
+constexpr Score UNDEFENDED_PAWN = E(-1, -17);
+constexpr Score UNDEFENDED_MINOR = E(-18, -50);
+constexpr Score PAWN_PIECE_THREAT = E(-77, -42);
+constexpr Score MINOR_ROOK_THREAT = E(-68, -39);
+constexpr Score MINOR_QUEEN_THREAT = E(-71, -36);
+constexpr Score ROOK_QUEEN_THREAT = E(-78, -35);
 
-const Score LOOSE_PAWN = E(-10, 0);
-const Score LOOSE_MINOR = E(-17, -12);
+constexpr Score LOOSE_PAWN = E(-10, 0);
+constexpr Score LOOSE_MINOR = E(-17, -12);
 
 // Pawn structure
 // Passed pawns
-const Score PASSER_BONUS[8] = {E(  0,   0), E(  3,  11), E(  3, 13), E(  7,  16),
+constexpr Score PASSER_BONUS[8] = {E(  0,   0), E(  3,  11), E(  3, 13), E(  7,  16),
                                E( 25,  23), E( 53,  53), E(106,108), E(  0,   0)};
-const Score PASSER_FILE_BONUS[8] = {E( 11, 13), E(  5,  6), E( -8, -2), E(-11, -7),
+constexpr Score PASSER_FILE_BONUS[8] = {E( 11, 13), E(  5,  6), E( -8, -2), E(-11, -7),
                                     E(-11, -7), E( -8, -2), E(  5,  6), E( 11, 13)};
-const Score FREE_PROMOTION_BONUS = E(12, 20);
-const Score FREE_STOP_BONUS = E(6, 8);
-const Score FULLY_DEFENDED_PASSER_BONUS = E(8, 12);
-const Score DEFENDED_PASSER_BONUS = E(8, 8);
-const Score OWN_KING_DIST = E(0, 3);
-const Score OPP_KING_DIST = E(0, 7);
+constexpr Score FREE_PROMOTION_BONUS = E(12, 20);
+constexpr Score FREE_STOP_BONUS = E(6, 8);
+constexpr Score FULLY_DEFENDED_PASSER_BONUS = E(8, 12);
+constexpr Score DEFENDED_PASSER_BONUS = E(8, 8);
+constexpr Score OWN_KING_DIST = E(0, 3);
+constexpr Score OPP_KING_DIST = E(0, 7);
 
 // Doubled pawns
-const Score DOUBLED_PENALTY = E(-6, -20);
+constexpr Score DOUBLED_PENALTY = E(-6, -20);
 // Isolated pawns
-const Score ISOLATED_PENALTY = E(-20, -14);
-const Score ISOLATED_SEMIOPEN_PENALTY = E(-5, -6);
+constexpr Score ISOLATED_PENALTY = E(-20, -14);
+constexpr Score ISOLATED_SEMIOPEN_PENALTY = E(-5, -6);
 // Backward pawns
-const Score BACKWARD_PENALTY = E(-13, -10);
-const Score BACKWARD_SEMIOPEN_PENALTY = E(-15, -11);
+constexpr Score BACKWARD_PENALTY = E(-13, -10);
+constexpr Score BACKWARD_SEMIOPEN_PENALTY = E(-15, -11);
 // Undefended pawns that are not backwards or isolated
-const Score UNDEFENDED_PAWN_PENALTY = E(-8, -5);
+constexpr Score UNDEFENDED_PAWN_PENALTY = E(-8, -5);
 // Pawn phalanxes
-const Score PAWN_PHALANX_BONUS[8] = {E(0, 0), E(6, -1), E(4, 1), E(10, 7),
+constexpr Score PAWN_PHALANX_BONUS[8] = {E(0, 0), E(6, -1), E(4, 1), E(10, 7),
                                      E(28, 22), E(57, 41), E(82, 75), E(0, 0)};
 // Connected pawns
-const Score PAWN_CONNECTED_BONUS[8] = {E(0, 0), E(0, 0), E(9, 3), E(6, 2),
+constexpr Score PAWN_CONNECTED_BONUS[8] = {E(0, 0), E(0, 0), E(9, 3), E(6, 2),
                                        E(14, 10), E(31, 33), E(60, 55), E(0, 0)};
 // King-pawn tropism
-const int KING_TROPISM_VALUE = 18;
+constexpr int KING_TROPISM_VALUE = 18;
 
 // Scale factors for drawish endgames
-const int MAX_SCALE_FACTOR = 32;
-const int OPPOSITE_BISHOP_SCALING[2] = {14, 28};
-const int PAWNLESS_SCALING[4] = {3, 4, 7, 24};
+constexpr int MAX_SCALE_FACTOR = 32;
+constexpr int OPPOSITE_BISHOP_SCALING[2] = {14, 28};
+constexpr int PAWNLESS_SCALING[4] = {3, 4, 7, 24};
 
 
 #undef E

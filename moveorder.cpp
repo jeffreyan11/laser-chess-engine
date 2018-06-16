@@ -19,12 +19,12 @@
 #include "search.h"
 #include "moveorder.h"
 
-const int SCORE_IID_MOVE = (1 << 20);
-const int SCORE_WINNING_CAPTURE = (1 << 18);
-const int SCORE_QUEEN_PROMO = (1 << 17);
-const int SCORE_EVEN_CAPTURE = (1 << 16);
-const int SCORE_QUIET_MOVE = -(1 << 30);
-const int SCORE_LOSING_CAPTURE = -(1 << 30) - (1 << 28);
+constexpr int SCORE_IID_MOVE = (1 << 20);
+constexpr int SCORE_WINNING_CAPTURE = (1 << 18);
+constexpr int SCORE_QUEEN_PROMO = (1 << 17);
+constexpr int SCORE_EVEN_CAPTURE = (1 << 16);
+constexpr int SCORE_QUIET_MOVE = -(1 << 30);
+constexpr int SCORE_LOSING_CAPTURE = -(1 << 30) - (1 << 28);
 
 
 MoveOrder::MoveOrder(Board *_b, int _color, int _depth, bool _isPVNode,

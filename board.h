@@ -22,17 +22,17 @@
 #include "common.h"
 
 
-const uint8_t WHITEKSIDE = 0x1;
-const uint8_t WHITEQSIDE = 0x2;
-const uint8_t BLACKKSIDE = 0x4;
-const uint8_t BLACKQSIDE = 0x8;
-const uint8_t WHITECASTLE = 0x3;
-const uint8_t BLACKCASTLE = 0xC;
+constexpr uint8_t WHITEKSIDE = 0x1;
+constexpr uint8_t WHITEQSIDE = 0x2;
+constexpr uint8_t BLACKKSIDE = 0x4;
+constexpr uint8_t BLACKQSIDE = 0x8;
+constexpr uint8_t WHITECASTLE = 0x3;
+constexpr uint8_t BLACKCASTLE = 0xC;
 
-const uint16_t NO_EP_POSSIBLE = 0x8;
+constexpr uint16_t NO_EP_POSSIBLE = 0x8;
 
-const bool MOVEGEN_CAPTURES = true;
-const bool MOVEGEN_QUIETS = false;
+constexpr bool MOVEGEN_CAPTURES = true;
+constexpr bool MOVEGEN_QUIETS = false;
 
 
 struct PieceMoveInfo {

@@ -80,13 +80,13 @@ struct ThreadMemory {
 };
 
 //-------------------------------Search Constants-------------------------------
-const int SMP_SKIP_DEPTHS[16] = {
+constexpr int SMP_SKIP_DEPTHS[16] = {
     1, 2, 3, 2, 3, 4, 2, 3, 4, 5, 2, 3, 4, 5, 6, 2
 };
 
 // Futility pruning margins indexed by depth. If static eval is at least this
 // amount below alpha, we skip quiet moves for this position.
-const int FUTILITY_MARGIN[7] = {
+constexpr int FUTILITY_MARGIN[7] = {
      80,
     160,
     250,
@@ -98,7 +98,7 @@ const int FUTILITY_MARGIN[7] = {
 
 // Reverse futility pruning margins indexed by depth. If static eval is at least
 // this amount above beta, we skip searching the position entirely.
-const int REVERSE_FUTILITY_MARGIN[7] = {
+constexpr int REVERSE_FUTILITY_MARGIN[7] = {
       0,
      60,
     130,
@@ -110,10 +110,10 @@ const int REVERSE_FUTILITY_MARGIN[7] = {
 
 // Razor margins indexed by depth. If static eval is far below alpha, use a
 // qsearch to confirm fail low and then return.
-const int RAZOR_MARGIN = 300;
+constexpr int RAZOR_MARGIN = 300;
 
 // Move count pruning
-const unsigned int LMP_MOVE_COUNTS[2][13] = {
+constexpr unsigned int LMP_MOVE_COUNTS[2][13] = {
     {0, 2, 4,  7, 11, 16, 22, 29, 37, 46,  56,  67,  79},
     {0, 5, 8, 13, 21, 31, 43, 57, 74, 93, 114, 137, 162}
 };

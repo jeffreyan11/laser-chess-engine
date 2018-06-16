@@ -26,10 +26,10 @@
 #include "uci.h"
 
 
-const uint64_t WHITE_KSIDE_PASSTHROUGH_SQS = indexToBit(5) | indexToBit(6);
-const uint64_t WHITE_QSIDE_PASSTHROUGH_SQS = indexToBit(1) | indexToBit(2) | indexToBit(3);
-const uint64_t BLACK_KSIDE_PASSTHROUGH_SQS = indexToBit(61) | indexToBit(62);
-const uint64_t BLACK_QSIDE_PASSTHROUGH_SQS = indexToBit(57) | indexToBit(58) | indexToBit(59);
+constexpr uint64_t WHITE_KSIDE_PASSTHROUGH_SQS = indexToBit(5) | indexToBit(6);
+constexpr uint64_t WHITE_QSIDE_PASSTHROUGH_SQS = indexToBit(1) | indexToBit(2) | indexToBit(3);
+constexpr uint64_t BLACK_KSIDE_PASSTHROUGH_SQS = indexToBit(61) | indexToBit(62);
+constexpr uint64_t BLACK_QSIDE_PASSTHROUGH_SQS = indexToBit(57) | indexToBit(58) | indexToBit(59);
 
 // Zobrist hashing table and the start position key, both initialized at startup
 uint64_t zobristTable[794];

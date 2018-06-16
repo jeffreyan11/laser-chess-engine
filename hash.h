@@ -22,10 +22,10 @@
 #include "board.h"
 #include "common.h"
 
-const uint8_t PV_NODE = 0;
-const uint8_t CUT_NODE = 1;
-const uint8_t ALL_NODE = 2;
-const uint8_t NO_NODE_INFO = 3;
+constexpr uint8_t PV_NODE = 0;
+constexpr uint8_t CUT_NODE = 1;
+constexpr uint8_t ALL_NODE = 2;
+constexpr uint8_t NO_NODE_INFO = 3;
 
 
 // Pack the information stored in a hash entry into a single 64-bit integer

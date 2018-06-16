@@ -92,13 +92,13 @@ void startPonder();
 void stopPonder();
 
 // Time constants
-const uint64_t ONE_SECOND = 1000;
-const uint64_t MAX_TIME = (1ULL << 63) - 1;
+constexpr uint64_t ONE_SECOND = 1000;
+constexpr uint64_t MAX_TIME = (1ULL << 63) - 1;
 
 // Search parameters
-const int EASYMOVE_MARGIN = 150;
-const int NEAR_MATE_SCORE = 2500;
+constexpr int EASYMOVE_MARGIN = 150;
+constexpr int NEAR_MATE_SCORE = 2500;
 // An arbitrary value, but this leaves 266 plies to account for hash table grafting.
-const int MAX_PLY_MATE_SCORE = 32500;
+constexpr int MAX_PLY_MATE_SCORE = 32500;
 
 #endif

@@ -19,7 +19,7 @@
 #include "common.h"
 
 // Used for bit-scan reverse
-const int index64[64] = {
+constexpr int index64[64] = {
 0,  47,  1, 56, 48, 27,  2, 60,
 57, 49, 41, 37, 28, 16,  3, 61,
 54, 58, 35, 52, 50, 42, 21, 44,
@@ -85,11 +85,6 @@ uint64_t flipAcrossRanks(uint64_t bb) {
         bb =  (bb >> 32) | (bb << 32);
         return bb;
     #endif
-}
-
-// Converts square number to 64-bit integer
-uint64_t indexToBit(int sq) {
-    return 1ull << sq;
 }
 
 // Given a start time_point, returns the seconds elapsed using C++11's

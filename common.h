@@ -25,22 +25,22 @@
 
 #define USE_INLINE_ASM true
 
-const int WHITE = 0;
-const int BLACK = 1;
-const int PAWNS = 0;
-const int KNIGHTS = 1;
-const int BISHOPS = 2;
-const int ROOKS = 3;
-const int QUEENS = 4;
-const int KINGS = 5;
+constexpr int WHITE = 0;
+constexpr int BLACK = 1;
+constexpr int PAWNS = 0;
+constexpr int KNIGHTS = 1;
+constexpr int BISHOPS = 2;
+constexpr int ROOKS = 3;
+constexpr int QUEENS = 4;
+constexpr int KINGS = 5;
 
 // Search scores
-const int MATE_SCORE = 32766;
-const int INFTY = 32767;
+constexpr int MATE_SCORE = 32766;
+constexpr int INFTY = 32767;
 
 // Other values
-const int MAX_DEPTH = 127;
-const int MAX_MOVES = 256;
+constexpr int MAX_DEPTH = 127;
+constexpr int MAX_MOVES = 256;
 
 // Stuff for timing
 typedef std::chrono::high_resolution_clock ChessClock;
@@ -53,7 +53,11 @@ int bitScanForward(uint64_t bb);
 int bitScanReverse(uint64_t bb);
 int count(uint64_t bb);
 uint64_t flipAcrossRanks(uint64_t bb);
-uint64_t indexToBit(int sq);
+
+// Converts square number to bitboard
+inline constexpr uint64_t indexToBit(int sq) {
+    return 1ULL << sq;
+}
 
 inline int relativeRank(int c, int r) {
     return (r ^ (7 * c));
@@ -71,14 +75,14 @@ inline int relativeRank(int c, int r) {
  */
 typedef uint16_t Move;
 
-const Move NULL_MOVE = 0;
-const uint16_t MOVE_DOUBLE_PAWN = 0x1;
-const uint16_t MOVE_EP = 0x5;
-const uint16_t MOVE_PROMO_N = 0x8;
-const uint16_t MOVE_PROMO_B = 0x9;
-const uint16_t MOVE_PROMO_R = 0xA;
-const uint16_t MOVE_PROMO_Q = 0xB;
-const int PROMO[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 1, 2, 3, 4};
+constexpr Move NULL_MOVE = 0;
+constexpr uint16_t MOVE_DOUBLE_PAWN = 0x1;
+constexpr uint16_t MOVE_EP = 0x5;
+constexpr uint16_t MOVE_PROMO_N = 0x8;
+constexpr uint16_t MOVE_PROMO_B = 0x9;
+constexpr uint16_t MOVE_PROMO_R = 0xA;
+constexpr uint16_t MOVE_PROMO_Q = 0xB;
+constexpr int PROMO[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 1, 2, 3, 4};
 
 inline Move encodeMove(int startSq, int endSq) {
     return (endSq << 6) | startSq;

@@ -24,7 +24,7 @@
 
 
 // Offset so that we can always store a positive value in EvalHashEntry
-const int EVAL_HASH_OFFSET = (1 << 20);
+constexpr int EVAL_HASH_OFFSET = (1 << 20);
 
 /*
  * @brief Struct storing hashed eval information

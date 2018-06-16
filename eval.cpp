@@ -501,10 +501,10 @@ int Eval::evaluate(Board &b) {
                                                         & (RANK_7 | RANK_6 | RANK_5));
 
     // Outposts
-    const uint64_t OUTPOST_SQS[2] = {(CENTER_FILES & (RANK_4 | RANK_5 | RANK_6))
-                                  | ((FILE_B | FILE_G) &  (RANK_5 | RANK_6)),
-                                     (CENTER_FILES & (RANK_5 | RANK_4 | RANK_3))
-                                  | ((FILE_B | FILE_G) &  (RANK_4 | RANK_3))};
+    constexpr uint64_t OUTPOST_SQS[2] = {(CENTER_FILES & (RANK_4 | RANK_5 | RANK_6))
+                                       | ((FILE_B | FILE_G) &  (RANK_5 | RANK_6)),
+                                         (CENTER_FILES & (RANK_5 | RANK_4 | RANK_3))
+                                       | ((FILE_B | FILE_G) &  (RANK_4 | RANK_3))};
 
     for (int color = WHITE; color <= BLACK; color++) {
         PieceMoveList &pml = (color == WHITE) ? pmlWhite : pmlBlack;
@@ -589,7 +589,6 @@ int Eval::evaluate(Board &b) {
 
     //-------------------------------Threats------------------------------------
     Score threatScore[2] = {EVAL_ZERO, EVAL_ZERO};
-    const uint64_t HALF[2] = {WHALF, BHALF};
 
     for (int color = WHITE; color <= BLACK; color++) {
         // Pawns attacked by opposing pieces and not defended by own pawns
@@ -1069,9 +1068,9 @@ int Eval::getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, in
     else if (kingFile < 5) KING_ZONE = CENTER_FILES;
     else KING_ZONE = KSIDE;
     if ((attackingColor^1) == WHITE)
-        KING_ZONE &= WHALF | RANK_5;
+        KING_ZONE &= HALF[WHITE] | RANK_5;
     else
-        KING_ZONE &= RANK_4 | BHALF;
+        KING_ZONE &= RANK_4 | HALF[BLACK];
 
     int kingPressure = KING_PRESSURE * count(ei.fullAttackMaps[attackingColor] & KING_ZONE);
 

@@ -42,10 +42,10 @@ uint64_t magicRNG() {
 }
 
 // Shift amounts for Dumb7fill
-const int NORTH_SOUTH_FILL = 8;
-const int EAST_WEST_FILL = 1;
-const int NE_SW_FILL = 9;
-const int NW_SE_FILL = 7;
+constexpr int NORTH_SOUTH_FILL = 8;
+constexpr int EAST_WEST_FILL = 1;
+constexpr int NE_SW_FILL = 9;
+constexpr int NW_SE_FILL = 7;
 
 // Dumb7fill methods, only used to initialize magic bitboard tables
 uint64_t fillRayRight(uint64_t rayPieces, uint64_t empty, int shift);
