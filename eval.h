@@ -74,7 +74,7 @@ constexpr int EG_FACTOR_RES = 1000;
 typedef uint32_t Score;
 
 // Encodes 16-bit midgame and endgame evaluation scores into a single int
-#define E(mg, eg) ((Score) ((((int32_t) eg) << 16) + ((int32_t) mg)))
+#define E(mg, eg) ((Score) ((int32_t) (((uint32_t) eg) << 16) + ((int32_t) mg)))
 
 // Retrieves the final evaluation score to return from the packed eval value
 inline int decEvalMg(Score encodedValue) {
