@@ -754,7 +754,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
 
     // Is static eval improving across plies? Used to make pruning decisions. Idea from Stockfish
-    bool evalImproving = ssi->ply >= 3 && (ssi->staticEval >= (ssi-2)->staticEval || (ssi-2)->staticEval == INFTY);
+    bool evalImproving = ssi->ply >= 3 && !isInCheck
+                      && (ssi->staticEval >= (ssi-2)->staticEval || (ssi-2)->staticEval == INFTY);
 
 
     // Reverse futility pruning
@@ -875,8 +876,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             return INFTY;
 
         // Conditions for whether to do futility and move count pruning
-        bool moveIsPrunable = !isInCheck
-                           && !isCapture(m)
+        bool moveIsPrunable = !isCapture(m)
                            && !isPromotion(m)
                            && m != hashed
                            && bestScore > -MAX_PLY_MATE_SCORE
@@ -900,6 +900,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // move probably won't raise our prospects much, so don't bother
         // q-searching it.
         if (moveIsPrunable
+         && !isInCheck
          && pruneDepth <= 6 && staticEval <= alpha - FUTILITY_MARGIN[pruneDepth])
             continue;
 
@@ -908,9 +909,10 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // At low depths, moves late in the list with poor history are pruned
         // As used in Fruit/Stockfish:
         // https://chessprogramming.wikispaces.com/Futility+Pruning#MoveCountBasedPruning
+        bool doMoveCountPruning = depth <= 12
+                               && movesSearched > LMP_MOVE_COUNTS[evalImproving][depth] + (isPVNode ? depth : 0);
         if (moveIsPrunable
-         && depth <= 12
-         && movesSearched > LMP_MOVE_COUNTS[evalImproving][depth] + (isPVNode ? depth : 0))
+         && doMoveCountPruning)
             continue;
 
 
@@ -923,10 +925,10 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
 
         // Futility pruning using SEE
-        if (!isPVNode && !isInCheck
+        if (!isPVNode
          && bestScore > -MAX_PLY_MATE_SCORE
          && depth <= 5
-         && b.getSEEForMove(color, m) < -100*depth)
+         && b.getSEEForMove(color, m) < -100 * depth)
             continue;
 
 
@@ -961,9 +963,6 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             if (m == searchParams->killers[ssi->ply][0]
              || m == searchParams->killers[ssi->ply][1])
                 reduction--;
-            // Reduce less when in check
-            if (isInCheck)
-                reduction--;
             // Reduce more for moves with poor history
             int historyValue = searchParams->historyTable[color][pieceID][endSq]
                 + ((ssi->counterMoveHistory != nullptr) ? ssi->counterMoveHistory[pieceID][endSq] : 0)
@@ -975,6 +974,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             // Reduce less at PV nodes
             if (isPVNode)
                 reduction--;
+            else if (!evalImproving)
+                reduction++;
 
             // Do not let search descend directly into q-search
             reduction = std::max(0, std::min(reduction, depth - 2));
@@ -984,6 +985,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         int extension = 0;
         // Check extensions
         if (reduction == 0
+         && !doMoveCountPruning
          && copy.isInCheck(color^1)
          && b.getSEEForMove(color, m) >= 0) {
             extension++;
