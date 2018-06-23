@@ -50,6 +50,7 @@ bool equalsIgnoreCase(const std::string &s1, const std::string &s2);
 void stringToLowerCase(std::string &s);
 void clearAll(Board &board);
 uint64_t perft(Board &b, int color, int depth, uint64_t &captures);
+void runBenchmark(Board &b, int depth);
 
 
 static int BUFFER_TIME = DEFAULT_BUFFER_TIME;
@@ -60,7 +61,7 @@ extern std::atomic<bool> isStop;
 extern std::atomic<bool> stopSignal;
 
 
-int main() {
+int main(int argc, char **argv) {
     initMagicTables(2563762638929852183ULL);
     initPSQT();
     initDistances();
@@ -72,23 +73,6 @@ int main() {
     setMultiPV(DEFAULT_MULTI_PV);
     setNumThreads(DEFAULT_THREADS);
 
-    const std::vector<string> benchPositions = {
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
-        "r2q4/pp1k1pp1/2p1r1np/5p2/2N5/1P5Q/5PPP/3RR1K1 b - -",
-        "5k2/1qr2pp1/2Np1n1r/QB2p3/2R4p/3PPRPb/PP2P2P/6K1 w - -",
-        "r2r2k1/2p2pp1/p1n4p/1qbnp3/2Q5/1PPP1RPP/3NN2K/R1B5 b - -",
-        "8/3k4/p6Q/pq6/3p4/1P6/P3p1P1/6K1 w - -",
-        "8/8/k7/2B5/P1K5/8/8/1r6 w - -",
-        "8/8/8/p1k4p/P2R3P/2P5/1K6/5q2 w - -",
-        "rnbq1k1r/ppp1ppb1/5np1/1B1pN2p/P2P1P2/2N1P3/1PP3PP/R1BQK2R w KQ -",
-        "4r3/6pp/2p1p1k1/4Q2n/1r2Pp2/8/6PP/2R3K1 w - -",
-        "8/3k2p1/p2P4/P5p1/8/1P1R1P2/5r2/3K4 w - -",
-        "r5k1/1bqnbp1p/r3p1p1/pp1pP3/2pP1P2/P1P2N1P/1P2NBP1/R2Q1RK1 b - -",
-        "r1bqk2r/1ppnbppp/p1np4/4p1P1/4PP2/3P1N1P/PPP5/RNBQKBR1 b Qkq -",
-        "5nk1/6pp/8/pNpp4/P7/1P1Pp3/6PP/6K1 w - -",
-        "2r2rk1/1p2npp1/1q1b1nbp/p2p4/P2N3P/BPN1P3/4BPP1/2RQ1RK1 w - -",
-        "8/2b3p1/4knNp/2p4P/1pPp1P2/1P1P1BPK/8/8 w - -"
-    };
     string input;
     std::vector<string> inputVector;
     string name = "Laser";
@@ -99,6 +83,12 @@ int main() {
     Board board = fenToBoard(STARTPOS);
 
     cout << name << " " << version << " by " << author << endl;
+
+    // Run benchmark from command line with given depth
+    if (argc > 1 && strcmp(argv[1], "bench") == 0) {
+        runBenchmark(board, argc > 2 ? atoi(argv[2]) : 0);
+        return 0;
+    }
 
     while (input != "quit") {
         getline(std::cin, input);
@@ -328,36 +318,12 @@ int main() {
             cerr << "Nodes/second: " << 1000 * nodes / time << endl;
         }
         else if (input.substr(0, 5) == "bench") {
-            auto startTime = ChessClock::now();
-            uint64_t totalNodes = 0;
-            movesToSearch.clear();
-            timeParams.searchMode = DEPTH;
-            timeParams.allotment = 11;
-            // Allow an alternate bench depth argument
+            int depth = 0;
             if (inputVector.size() == 2)
-                timeParams.allotment = std::stoi(inputVector.at(1));
-
-            for (unsigned int i = 0; i < benchPositions.size(); i++) {
-                clearAll(board);
-                board = fenToBoard(benchPositions.at(i));
-
-                isStop = false;
-                stopSignal = false;
-                getBestMoveThreader(&board, &timeParams, &movesToSearch);
-                isStop = true;
-                stopSignal = true;
-
-                totalNodes += getNodes();
-            }
-
-            uint64_t time = getTimeElapsed(startTime);
-
-            clearAll(board);
-
-            cerr << "Nodes: " << totalNodes << endl;
-            cerr << "Time: " << time << endl;
-            cerr << "Nodes/second: " << 1000 * totalNodes / time << endl;
+                depth = std::stoi(inputVector.at(1));
+            runBenchmark(board, depth);
         }
+
         else if (input == "eval") {
             Eval e;
             e.evaluate<true>(board);
@@ -636,4 +602,52 @@ uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
     }
 
     return nodes;
+}
+
+void runBenchmark(Board &b, int depth) {
+
+    const std::vector<string> benchPositions = {
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+        "r2q4/pp1k1pp1/2p1r1np/5p2/2N5/1P5Q/5PPP/3RR1K1 b - -",
+        "5k2/1qr2pp1/2Np1n1r/QB2p3/2R4p/3PPRPb/PP2P2P/6K1 w - -",
+        "r2r2k1/2p2pp1/p1n4p/1qbnp3/2Q5/1PPP1RPP/3NN2K/R1B5 b - -",
+        "8/3k4/p6Q/pq6/3p4/1P6/P3p1P1/6K1 w - -",
+        "8/8/k7/2B5/P1K5/8/8/1r6 w - -",
+        "8/8/8/p1k4p/P2R3P/2P5/1K6/5q2 w - -",
+        "rnbq1k1r/ppp1ppb1/5np1/1B1pN2p/P2P1P2/2N1P3/1PP3PP/R1BQK2R w KQ -",
+        "4r3/6pp/2p1p1k1/4Q2n/1r2Pp2/8/6PP/2R3K1 w - -",
+        "8/3k2p1/p2P4/P5p1/8/1P1R1P2/5r2/3K4 w - -",
+        "r5k1/1bqnbp1p/r3p1p1/pp1pP3/2pP1P2/P1P2N1P/1P2NBP1/R2Q1RK1 b - -",
+        "r1bqk2r/1ppnbppp/p1np4/4p1P1/4PP2/3P1N1P/PPP5/RNBQKBR1 b Qkq -",
+        "5nk1/6pp/8/pNpp4/P7/1P1Pp3/6PP/6K1 w - -",
+        "2r2rk1/1p2npp1/1q1b1nbp/p2p4/P2N3P/BPN1P3/4BPP1/2RQ1RK1 w - -",
+        "8/2b3p1/4knNp/2p4P/1pPp1P2/1P1P1BPK/8/8 w - -"
+    };
+
+    auto startTime = ChessClock::now();
+    uint64_t totalNodes = 0;
+    movesToSearch.clear();
+    timeParams.searchMode = DEPTH;
+    timeParams.allotment = depth ? depth : 13;
+
+    for (unsigned int i = 0; i < benchPositions.size(); i++) {
+        clearAll(b);
+        b = fenToBoard(benchPositions.at(i));
+
+        isStop = false;
+        stopSignal = false;
+        getBestMoveThreader(&b, &timeParams, &movesToSearch);
+        isStop = true;
+        stopSignal = true;
+
+        totalNodes += getNodes();
+    }
+
+    uint64_t time = getTimeElapsed(startTime);
+
+    clearAll(b);
+
+    cerr << "Time  : " << time << "ms" << endl;
+    cerr << "Nodes : " << totalNodes << endl;
+    cerr << "NPS   : " << 1000 * totalNodes / time << endl;
 }
