@@ -605,7 +605,6 @@ uint64_t perft(Board &b, int color, int depth, uint64_t &captures) {
 }
 
 void runBenchmark(Board &b, int depth) {
-
     const std::vector<string> benchPositions = {
         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
         "r2q4/pp1k1pp1/2p1r1np/5p2/2N5/1P5Q/5PPP/3RR1K1 b - -",
@@ -628,6 +627,7 @@ void runBenchmark(Board &b, int depth) {
     uint64_t totalNodes = 0;
     movesToSearch.clear();
     timeParams.searchMode = DEPTH;
+    // Set a default when the given depth is 0.
     timeParams.allotment = depth ? depth : 13;
 
     for (unsigned int i = 0; i < benchPositions.size(); i++) {
@@ -647,7 +647,7 @@ void runBenchmark(Board &b, int depth) {
 
     clearAll(b);
 
-    cerr << "Time  : " << time << "ms" << endl;
+    cerr << "Time  : " << time << " ms" << endl;
     cerr << "Nodes : " << totalNodes << endl;
     cerr << "NPS   : " << 1000 * totalNodes / time << endl;
 }
