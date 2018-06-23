@@ -415,6 +415,8 @@ void setPosition(string &input, std::vector<string> &inputVector, Board &board) 
             }
         }
     }
+
+    twoFoldPositions->setRootEnd();
 }
 
 // Splits a string s with delimiter d.

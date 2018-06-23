@@ -576,24 +576,11 @@ static int has_repeated() {
         return false;
 
     uint64_t pos = tfp->keys[tfp->length-1];
-    for (unsigned int i = tfp->length-1; i > 0; i--) {
+    for (int i = tfp->length-1; i > 0; i--) {
         if (tfp->keys[i-1] == pos)
             return true;
     }
     return false;
-    // while (1) {
-    //     int i = 4, e = std::min(st->rule50, st->pliesFromNull);
-    //     if (e < i)
-    //         return 0;
-    //     StateInfo *stp = st->previous->previous;
-    //     do {
-    //         stp = stp->previous->previous;
-    //         if (stp->key == st->key)
-    //             return 1;
-    //         i += 2;
-    //     } while (i <= e);
-    //     st = st->previous;
-    // }
 }
 
 static int wdl_to_value[5] = {

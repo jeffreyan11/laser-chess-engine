@@ -37,14 +37,14 @@
 struct TwoFoldStack {
 public:
     uint64_t keys[256];
-    unsigned int length;
+    int rootEnd;
+    int length;
 
     TwoFoldStack() {
+        rootEnd = 0;
         length = 0;
     }
     ~TwoFoldStack() {}
-
-    unsigned int size() { return length; }
 
     void push(uint64_t pos) {
         keys[length] = pos;
@@ -54,13 +54,25 @@ public:
     void pop() { length--; }
 
     void clear() {
+        rootEnd = 0;
         length = 0;
     }
 
+    void setRootEnd() { rootEnd = length - 1; }
+
     bool find(uint64_t pos) {
-        for (unsigned int i = length; i > 0; i--) {
-            if (keys[i-1] == pos)
-                return true;
+        for (int i = length-1; i >= 0; i--) {
+            if (keys[i] == pos) {
+                // If the repetition occurred in the actual game, search for a third repetition.
+                // This allows two-folds to terminate search only when the two-fold occurred entirely within the search tree.
+                if (i <= rootEnd) {
+                    for (int j = i-1; j >= 0; j--) {
+                        if (keys[j] == pos) return true;
+                    }
+                }
+                // The two-fold repetition occurred within the search tree, return true.
+                else return true;
+            }
         }
         return false;
     }
