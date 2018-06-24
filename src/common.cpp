@@ -18,6 +18,9 @@
 
 #include "common.h"
 
+// Move promotion flags
+const int PROMO[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 1, 2, 3, 4};
+
 // Used for bit-scan reverse
 constexpr int index64[64] = {
 0,  47,  1, 56, 48, 27,  2, 60,

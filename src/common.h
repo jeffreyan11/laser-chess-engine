@@ -82,7 +82,7 @@ constexpr uint16_t MOVE_PROMO_N = 0x8;
 constexpr uint16_t MOVE_PROMO_B = 0x9;
 constexpr uint16_t MOVE_PROMO_R = 0xA;
 constexpr uint16_t MOVE_PROMO_Q = 0xB;
-constexpr int PROMO[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 1, 2, 3, 4};
+extern const int PROMO[16];
 
 inline Move encodeMove(int startSq, int endSq) {
     return (endSq << 6) | startSq;
