@@ -971,7 +971,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             // Reduce more for moves with poor history
             int historyValue = searchParams->historyTable[color][pieceID][endSq]
                 + ((ssi->counterMoveHistory != nullptr) ? ssi->counterMoveHistory[pieceID][endSq] : 0)
-                + ((ssi->followupMoveHistory != nullptr) ? ssi->followupMoveHistory[pieceID][endSq] : 0);
+                + ((ssi->followupMoveHistory != nullptr) ? ssi->followupMoveHistory[pieceID][endSq] : 0)
+                - 120;
             reduction -= historyValue / 512;
             // Reduce more for expected cut nodes
             if (isCutNode)

@@ -199,24 +199,26 @@ Move MoveOrder::nextMove() {
 // When a PV or cut move is found, the history of the best move in increased,
 // and the histories of all quiet moves searched prior to the best move are reduced.
 void MoveOrder::updateHistories(Move bestMove) {
-    int histDepth = std::min(depth, 12);
+    const int resetFactor = 256;
+    int historyDepth = std::min(depth, 14);
+    int historyChange = historyDepth * historyDepth;
 
     // Increase history for the best move
     int startSq = getStartSq(bestMove);
     int endSq = getEndSq(bestMove);
     int pieceID = b->getPieceOnSquare(color, startSq);
     searchParams->historyTable[color][pieceID][endSq] -=
-        histDepth * searchParams->historyTable[color][pieceID][endSq] / 64;
-    searchParams->historyTable[color][pieceID][endSq] += histDepth * histDepth;
+        historyChange * searchParams->historyTable[color][pieceID][endSq] / resetFactor;
+    searchParams->historyTable[color][pieceID][endSq] += historyChange;
     if (ssi->counterMoveHistory != nullptr) {
         ssi->counterMoveHistory[pieceID][endSq] -=
-            histDepth * ssi->counterMoveHistory[pieceID][endSq] / 64;
-        ssi->counterMoveHistory[pieceID][endSq] += histDepth * histDepth;
+            historyChange * ssi->counterMoveHistory[pieceID][endSq] / resetFactor;
+        ssi->counterMoveHistory[pieceID][endSq] += historyChange;
     }
     if (ssi->followupMoveHistory != nullptr) {
         ssi->followupMoveHistory[pieceID][endSq] -=
-            histDepth * ssi->followupMoveHistory[pieceID][endSq] / 64;
-        ssi->followupMoveHistory[pieceID][endSq] += histDepth * histDepth;
+            historyChange * ssi->followupMoveHistory[pieceID][endSq] / resetFactor;
+        ssi->followupMoveHistory[pieceID][endSq] += historyChange;
     }
 
     // If we searched only the hash move, return to prevent crashes
@@ -233,17 +235,17 @@ void MoveOrder::updateHistories(Move bestMove) {
         pieceID = b->getPieceOnSquare(color, startSq);
 
         searchParams->historyTable[color][pieceID][endSq] -=
-            histDepth * searchParams->historyTable[color][pieceID][endSq] / 64;
-        searchParams->historyTable[color][pieceID][endSq] -= histDepth * histDepth;
+            historyChange * searchParams->historyTable[color][pieceID][endSq] / resetFactor;
+        searchParams->historyTable[color][pieceID][endSq] -= historyChange;
         if (ssi->counterMoveHistory != nullptr) {
             ssi->counterMoveHistory[pieceID][endSq] -=
-                histDepth * ssi->counterMoveHistory[pieceID][endSq] / 64;
-            ssi->counterMoveHistory[pieceID][endSq] -= histDepth * histDepth;
+                historyChange * ssi->counterMoveHistory[pieceID][endSq] / resetFactor;
+            ssi->counterMoveHistory[pieceID][endSq] -= historyChange;
         }
         if (ssi->followupMoveHistory != nullptr) {
             ssi->followupMoveHistory[pieceID][endSq] -=
-                histDepth * ssi->followupMoveHistory[pieceID][endSq] / 64;
-            ssi->followupMoveHistory[pieceID][endSq] -= histDepth * histDepth;
+                historyChange * ssi->followupMoveHistory[pieceID][endSq] / resetFactor;
+            ssi->followupMoveHistory[pieceID][endSq] -= historyChange;
         }
     }
 }
