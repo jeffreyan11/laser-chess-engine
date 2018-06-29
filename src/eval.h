@@ -375,8 +375,8 @@ constexpr Score ROOK_SEMIOPEN_FILE_BONUS = E(24, 3);
 constexpr Score ROOK_PAWN_RANK_THREAT = E(2, 10);
 
 // Threats
-constexpr Score UNDEFENDED_PAWN = E(-1, -16);
-constexpr Score UNDEFENDED_MINOR = E(-20, -50);
+constexpr Score UNDEFENDED_PAWN = E(-3, -18);
+constexpr Score UNDEFENDED_MINOR = E(-22, -53);
 constexpr Score PAWN_PIECE_THREAT = E(-81, -42);
 constexpr Score MINOR_ROOK_THREAT = E(-73, -35);
 constexpr Score MINOR_QUEEN_THREAT = E(-71, -39);

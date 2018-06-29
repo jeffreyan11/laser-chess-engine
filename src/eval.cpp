@@ -591,11 +591,12 @@ int Eval::evaluate(Board &b) {
     Score threatScore[2] = {EVAL_ZERO, EVAL_ZERO};
 
     for (int color = WHITE; color <= BLACK; color++) {
+        uint64_t weakSqs = ~ei.attackMaps[color][PAWNS] & (ei.doubleAttackMaps[color^1] | ~ei.doubleAttackMaps[color]);
         // Pawns attacked by opposing pieces and not defended by own pawns
-        if (uint64_t upawns = pieces[color][PAWNS] & ei.fullAttackMaps[color^1] & ~ei.attackMaps[color][PAWNS])
+        if (uint64_t upawns = pieces[color][PAWNS] & ei.fullAttackMaps[color^1] & weakSqs)
             threatScore[color] += UNDEFENDED_PAWN * count(upawns);
         // Minors attacked by opposing pieces and not defended by own pawns
-        if (uint64_t minors = (pieces[color][KNIGHTS] | pieces[color][BISHOPS]) & ei.fullAttackMaps[color^1] & ~ei.attackMaps[color][PAWNS])
+        if (uint64_t minors = (pieces[color][KNIGHTS] | pieces[color][BISHOPS]) & ei.fullAttackMaps[color^1] & weakSqs)
             threatScore[color] += UNDEFENDED_MINOR * count(minors);
         // Rooks attacked by opposing minors
         if (uint64_t rooks = pieces[color][ROOKS] & (ei.attackMaps[color^1][KNIGHTS] | ei.attackMaps[color^1][BISHOPS]))
