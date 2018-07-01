@@ -646,6 +646,18 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     }
 
 
+    // Check for a timeout
+    if (threadID == 0 && (searchStats->nodes & 1023) == 1023 && !isPonderSearch) {
+        uint64_t timeSoFar = getTimeElapsed(startTime);
+        if (timeSoFar > timeLimit) {
+            isStop = true;
+            stopSignal = true;
+        }
+    }
+    if (stopSignal.load(std::memory_order_relaxed))
+        return 0;
+
+
     int prevAlpha = alpha;
     int color = b.getPlayerToMove();
     // For PVS, the node is a PV node if beta - alpha != 1 (not a null window)
@@ -863,18 +875,6 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     //----------------------------Main search loop------------------------------
     for (Move m = moveSorter.nextMove(); m != NULL_MOVE;
               m = moveSorter.nextMove()) {
-        // Check for a timeout
-        if (threadID == 0 && !isPonderSearch) {
-            uint64_t timeSoFar = getTimeElapsed(startTime);
-            if (timeSoFar > timeLimit) {
-                isStop = true;
-                stopSignal = true;
-            }
-        }
-        // Stop condition to help break out as quickly as possible
-        if (stopSignal.load(std::memory_order_relaxed))
-            return INFTY;
-
         // Conditions for whether to do futility and move count pruning
         bool moveIsPrunable = !isCapture(m)
                            && !isPromotion(m)
@@ -1073,7 +1073,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
         // Stop condition to help break out as quickly as possible
         if (stopSignal.load(std::memory_order_relaxed))
-            return INFTY;
+            return 0;
 
         // Beta cutoff
         if (score >= beta) {
@@ -1174,6 +1174,10 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     if (b.getFiftyMoveCounter() >= 2 && threadMemoryArray[threadID]->twoFoldPositions.find(b.getZobristKey()))
         return 0;
 
+    // Stop condition to help break out as quickly as possible
+    if (stopSignal.load(std::memory_order_relaxed))
+        return 0;
+
     // Qsearch hash table probe
     int hashScore = -INFTY;
     uint64_t hashEntry = transpositionTable.get(b);
@@ -1266,10 +1270,6 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
 
         searchStats->nodes++;
         score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
-
-        // Stop condition to help break out as quickly as possible
-        if (stopSignal.load(std::memory_order_relaxed))
-            return INFTY;
 
         if (score >= beta) {
             uint64_t hashData = packHashData(-plies, m,
