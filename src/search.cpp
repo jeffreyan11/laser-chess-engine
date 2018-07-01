@@ -84,30 +84,6 @@ constexpr int SMP_SKIP_DEPTHS[16] = {
     1, 2, 3, 2, 3, 4, 2, 3, 4, 5, 2, 3, 4, 5, 6, 2
 };
 
-// Futility pruning margins indexed by depth. If static eval is at least this
-// amount below alpha, we skip quiet moves for this position.
-constexpr int FUTILITY_MARGIN[7] = {
-     80,
-    160,
-    250,
-    350,
-    460,
-    580,
-    710
-};
-
-// Reverse futility pruning margins indexed by depth. If static eval is at least
-// this amount above beta, we skip searching the position entirely.
-constexpr int REVERSE_FUTILITY_MARGIN[7] = {
-      0,
-     60,
-    130,
-    210,
-    300,
-    400,
-    510
-};
-
 // Razor margins indexed by depth. If static eval is far below alpha, use a
 // qsearch to confirm fail low and then return.
 constexpr int RAZOR_MARGIN = 300;
@@ -776,7 +752,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     // adapted to low depths, also called static null move pruning)
     if (!isPVNode && !isInCheck
      && depth <= 6
-     && staticEval - REVERSE_FUTILITY_MARGIN[depth] >= beta
+     && staticEval - 70 * depth >= beta
      && b.getNonPawnMaterial(color))
         return staticEval;
 
@@ -901,7 +877,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // q-searching it.
         if (moveIsPrunable
          && !isInCheck
-         && pruneDepth <= 6 && staticEval <= alpha - FUTILITY_MARGIN[pruneDepth])
+         && pruneDepth <= 6 && staticEval <= alpha - 80 * (pruneDepth + 1))
             continue;
 
 
