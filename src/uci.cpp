@@ -90,14 +90,14 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    while (input != "quit") {
+    while (true) {
         getline(std::cin, input);
         stringToLowerCase(input);
         inputVector = split(input, ' ');
         std::cin.clear();
 
-        // Ignore all input other than "stop" and "ponderhit" while running a search.
-        if (!isStop && input != "stop" && input != "ponderhit")
+        // Ignore all input other than "stop", "quit", and "ponderhit" while running a search.
+        if (!isStop && input != "stop" && input != "quit" && input != "ponderhit")
             continue;
 
         if (input == "uci") {
@@ -222,6 +222,16 @@ int main(int argc, char **argv) {
             stopSignal = true;
             std::this_thread::yield();
         }
+        else if (input == "quit") {
+            stopPonder();
+            isStop = true;
+            stopSignal = true;
+            std::this_thread::yield();
+
+            // Sleep for a bit, then exit
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            break;
+        }
         else if (input.substr(0, 9) == "setoption" && inputVector.size() >= 5) {
             if (inputVector.at(1) != "name" || inputVector.at(3) != "value") {
                 cout << "info string Invalid option format." << endl;
@@ -331,6 +341,8 @@ int main(int argc, char **argv) {
 
         // According to UCI protocol, inputs that do not make sense are ignored
     }
+
+    return 0;
 }
 
 void setPosition(string &input, std::vector<string> &inputVector, Board &board) {
