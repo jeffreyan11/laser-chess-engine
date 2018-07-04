@@ -209,8 +209,8 @@ int main(int argc, char **argv) {
 
             isStop = false;
             stopSignal = false;
+            if (searchThread.joinable()) searchThread.join();
             searchThread = std::thread(getBestMoveThreader, &board, &timeParams, &movesToSearch);
-            searchThread.detach();
         }
         else if (input == "ponderhit") {
             stopPonder();
@@ -220,16 +220,13 @@ int main(int argc, char **argv) {
             stopPonder();
             isStop = true;
             stopSignal = true;
-            std::this_thread::yield();
+            if (searchThread.joinable()) searchThread.join();
         }
         else if (input == "quit") {
             stopPonder();
             isStop = true;
             stopSignal = true;
-            std::this_thread::yield();
-
-            // Sleep for a bit, then exit
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            if (searchThread.joinable()) searchThread.join();
             break;
         }
         else if (input.substr(0, 9) == "setoption" && inputVector.size() >= 5) {
