@@ -282,15 +282,19 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
     Move bestMove = legalMoves.get(0);
     uint64_t timeSoFar;
 
-    int bestScore, bestMoveIndex;
+    int bestScore = -INFTY, bestMoveIndex;
     int rootDepth = 1;
     Move prevBest = NULL_MOVE;
+    int prevScore = -INFTY;
     int pvStreak = 0;
+    double timeChangeFactor = 1.0;
 
     // Iterative deepening loop
     do {
         // For recording the PV
         SearchPV pvLine;
+        // Decay time change factor
+        timeChangeFactor = (3 * timeChangeFactor + 1) / 4;
 
         // Handle multi PV (if multiPV = 1 then the loop is only run once)
         for (unsigned int multiPVNum = 1;
@@ -310,6 +314,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
             }
             deltaAlpha *= 2;
             deltaBeta *= 2;
+            prevScore = bestScore;
 
             // Aspiration loop
             while (!isStop) {
@@ -349,6 +354,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
                     deltaAlpha *= 2;
                     if (aspAlpha < -NEAR_MATE_SCORE)
                         aspAlpha = -MATE_SCORE;
+                    timeChangeFactor *= 1.05;
                 }
                 // Fail high: best score is at least beta
                 else if (bestScore >= aspBeta) {
@@ -441,11 +447,23 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
 
         if (bestMove == prevBest) {
             pvStreak++;
+            timeChangeFactor *= 0.95;
         }
         else {
             prevBest = bestMove;
             pvStreak = 1;
+            timeChangeFactor *= 1.15;
         }
+
+        // Adjust search time based on PV and score behavior
+        if (threadID == 0 && timeParams->searchMode == TIME) {
+            if (prevScore == bestScore)
+                timeChangeFactor *= 0.92;
+            else
+                timeChangeFactor *= 0.95 + std::min(6.0, sqrt(abs(prevScore - bestScore))) / 30.0;
+        }
+        else
+            timeChangeFactor = 1.0;
 
         // Easymove confirmation
         if (threadID == 0 && !isPonderSearch && timeParams->searchMode == TIME && multiPV == 1
@@ -477,7 +495,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
     // Conditions for iterative deepening loop
     while (!isStop
          && (threadID != 0
-          || ((((timeParams->searchMode == TIME && timeSoFar < (uint64_t) timeParams->allotment * TIME_FACTOR)
+          || ((((timeParams->searchMode == TIME && timeSoFar < (uint64_t) timeParams->allotment * TIME_FACTOR * timeChangeFactor)
               || isPonderSearch) && rootDepth <= MAX_DEPTH)
            || (timeParams->searchMode == MOVETIME && timeSoFar < (uint64_t) timeParams->allotment && rootDepth <= MAX_DEPTH)
            || (timeParams->searchMode == DEPTH && rootDepth <= timeParams->allotment))));
