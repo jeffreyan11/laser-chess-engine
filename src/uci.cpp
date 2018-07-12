@@ -196,8 +196,8 @@ int main(int argc, char **argv) {
                 // Minimum thinking time
                 value = std::max(value, minValue);
 
-                // Use special factors for recurring time controls with movestogo < 8
-                if (increment == 0 && movesToGo < 8) {
+                // Use special factors for recurring time controls with movestogo < 10
+                if (increment == 0 && movesToGo < 10) {
                     timeParams.maxAllotment = (int) std::min(value * MAX_TIME_FACTOR, timeRemaining * MAX_USAGE_FACTORS[movesToGo]);
                     timeParams.allotment = std::max(value, (int) (timeRemaining * ALLOTMENT_FACTORS[movesToGo]));
                 }

@@ -294,7 +294,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
         // For recording the PV
         SearchPV pvLine;
         // Decay time change factor
-        timeChangeFactor = (3 * timeChangeFactor + 1) / 4;
+        timeChangeFactor = (2 * timeChangeFactor + 1) / 3;
 
         // Handle multi PV (if multiPV = 1 then the loop is only run once)
         for (unsigned int multiPVNum = 1;
@@ -354,7 +354,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
                     deltaAlpha *= 2;
                     if (aspAlpha < -NEAR_MATE_SCORE)
                         aspAlpha = -MATE_SCORE;
-                    timeChangeFactor *= 1.05;
+                    timeChangeFactor *= 1.1;
                 }
                 // Fail high: best score is at least beta
                 else if (bestScore >= aspBeta) {
@@ -447,21 +447,18 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
 
         if (bestMove == prevBest) {
             pvStreak++;
-            timeChangeFactor *= 0.95;
+            timeChangeFactor *= 0.94;
         }
         else {
             prevBest = bestMove;
             pvStreak = 1;
-            timeChangeFactor *= 1.15;
+            if (timeChangeFactor < 1.0) timeChangeFactor = 1.0;
+            timeChangeFactor *= 1.25;
         }
 
         // Adjust search time based on PV and score behavior
-        if (threadID == 0 && timeParams->searchMode == TIME) {
-            if (prevScore == bestScore)
-                timeChangeFactor *= 0.92;
-            else
-                timeChangeFactor *= 0.95 + std::min(6.0, sqrt(abs(prevScore - bestScore))) / 30.0;
-        }
+        if (threadID == 0 && timeParams->searchMode == TIME)
+            timeChangeFactor *= 0.92 + std::min(7.0, sqrt(abs(prevScore - bestScore))) / 28.0;
         else
             timeChangeFactor = 1.0;
 
