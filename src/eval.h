@@ -25,7 +25,7 @@
 
 class Board;
 
-void initPSQT();
+void initEvalTables();
 void initDistances();
 void setMaterialScale(int s);
 void setKingSafetyScale(int s);
@@ -53,8 +53,6 @@ private:
   int playerToMove;
 
   // Eval helpers
-  template <int color>
-  void getMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg);
   template <int attackingColor>
   int getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, int pawnScore, int kingFile);
   int checkEndgameCases();
@@ -267,7 +265,7 @@ constexpr int KNIGHT_CLOSED_BONUS[2] = {4, 8};
 constexpr int SPACE_BONUS[2][2] = {{10, 28}, {1, 11}};
 
 // Mobility tables
-constexpr int mobilityScore[2][4][28] = {
+constexpr int mobilityTable[2][4][28] = {
 // Midgame
 {
 { // Knights
@@ -296,10 +294,10 @@ constexpr int mobilityScore[2][4][28] = {
 };
 
 // Value of each square in the extended center in cp
-constexpr int EXTENDED_CENTER_VAL = 3;
+constexpr Score EXTENDED_CENTER_VAL = E(3, 0);
 // Additional bonus for squares in the center four squares in cp, in addition
 // to EXTENDED_CENTER_VAL
-constexpr int CENTER_BONUS = 5;
+constexpr Score CENTER_BONUS = E(5, 0);
 
 // King safety
 // The value of having 0, 1, and both castling rights

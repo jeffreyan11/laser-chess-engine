@@ -26,8 +26,9 @@
 #include "uci.h"
 
 static Score PSQT[2][6][64];
+static Score MOBILITY[4][28];
 
-void initPSQT() {
+void initEvalTables() {
     #define E(mg, eg) ((Score) ((((int32_t) eg) << 16) + ((int32_t) mg)))
     for (int pieceType = PAWNS; pieceType <= KINGS; pieceType++) {
         for (int sq = 0; sq < 32; sq++) {
@@ -40,6 +41,10 @@ void initPSQT() {
             PSQT[BLACK][pieceType][8*r + f] = sc;
             PSQT[BLACK][pieceType][8*r + (7-f)] = sc;
         }
+    }
+    for (int pieceID = 0; pieceID < 4; pieceID++) {
+        for (int sqs = 0; sqs < 28; sqs++)
+            MOBILITY[pieceID][sqs] = E(mobilityTable[MG][pieceID][sqs], mobilityTable[EG][pieceID][sqs]);
     }
     #undef E
 }
@@ -63,7 +68,7 @@ struct EvalDebug {
     int totalMaterialMg, totalMaterialEg;
     int totalImbalanceMg, totalImbalanceEg;
     Score whitePsqtScore, blackPsqtScore;
-    int whiteMobilityMg, whiteMobilityEg, blackMobilityMg, blackMobilityEg;
+    Score whiteMobilityScore, blackMobilityScore;
     int whiteKingSafety, blackKingSafety;
     Score whitePieceScore, blackPieceScore;
     Score whiteThreatScore, blackThreatScore;
@@ -79,7 +84,7 @@ struct EvalDebug {
         totalMaterialMg = totalMaterialEg = 0;
         totalImbalanceMg = totalImbalanceEg = 0;
         whitePsqtScore = blackPsqtScore = EVAL_ZERO;
-        whiteMobilityMg = whiteMobilityEg = blackMobilityMg = blackMobilityEg = 0;
+        whiteMobilityScore = blackMobilityScore = EVAL_ZERO;
         whiteKingSafety = blackKingSafety = 0;
         whitePieceScore = blackPieceScore = EVAL_ZERO;
         whiteThreatScore = blackThreatScore = EVAL_ZERO;
@@ -113,12 +118,12 @@ struct EvalDebug {
                   << std::setw(4) << S(decEvalMg(whitePsqtScore)) - S(decEvalMg(blackPsqtScore)) << "   "
                   << std::setw(4) << S(decEvalEg(whitePsqtScore)) - S(decEvalEg(blackPsqtScore)) << std::endl;
         std::cerr << "    Mobility      |   "
-                  << std::setw(4) << S(whiteMobilityMg) << "   "
-                  << std::setw(4) << S(whiteMobilityEg) << "   |   "
-                  << std::setw(4) << S(blackMobilityMg) << "   "
-                  << std::setw(4) << S(blackMobilityEg) << "   |   "
-                  << std::setw(4) << S(whiteMobilityMg) - S(blackMobilityMg) << "   "
-                  << std::setw(4) << S(whiteMobilityEg) - S(blackMobilityEg) << std::endl;
+                  << std::setw(4) << S(decEvalMg(whiteMobilityScore)) << "   "
+                  << std::setw(4) << S(decEvalEg(whiteMobilityScore)) << "   |   "
+                  << std::setw(4) << S(decEvalMg(blackMobilityScore)) << "   "
+                  << std::setw(4) << S(decEvalEg(blackMobilityScore)) << "   |   "
+                  << std::setw(4) << S(decEvalMg(whiteMobilityScore)) - S(decEvalMg(blackMobilityScore)) << "   "
+                  << std::setw(4) << S(decEvalEg(whiteMobilityScore)) - S(decEvalEg(blackMobilityScore)) << std::endl;
         std::cerr << "    King Safety   |   "
                   << std::setw(4) << S(whiteKingSafety) << "   "
                   << " -- " << "   |   "
@@ -307,7 +312,7 @@ int Eval::evaluate(Board &b) {
 
 
     //----------------------------Positional terms------------------------------
-    // Pawn/queen piece square tables
+    // Pawn piece square tables
     Score psqtScores[2] = {EVAL_ZERO, EVAL_ZERO};
     for (int color = WHITE; color <= BLACK; color++) {
         uint64_t bitboard = pieces[color][PAWNS];
@@ -315,12 +320,6 @@ int Eval::evaluate(Board &b) {
             int sq = bitScanForward(bitboard);
             bitboard &= bitboard - 1;
             psqtScores[color] += PSQT[color][PAWNS][sq];
-        }
-        bitboard = pieces[color][QUEENS];
-        while (bitboard) {
-            int sq = bitScanForward(bitboard);
-            bitboard &= bitboard - 1;
-            psqtScores[color] += PSQT[color][QUEENS][sq];
         }
     }
 
@@ -365,22 +364,6 @@ int Eval::evaluate(Board &b) {
                             * blackSpaceWeight * blackSpaceWeight / 512;
     valueMg -= blackSpaceScore;
     valueEg -= blackSpaceScore / 2;
-
-
-    //--------------------------------Mobility----------------------------------
-    int whiteMobilityMg, whiteMobilityEg;
-    int blackMobilityMg, blackMobilityEg;
-    getMobility<WHITE>(pmlWhite, pmlBlack, whiteMobilityMg, whiteMobilityEg);
-    getMobility<BLACK>(pmlBlack, pmlWhite, blackMobilityMg, blackMobilityEg);
-    valueMg += whiteMobilityMg - blackMobilityMg;
-    valueEg += whiteMobilityEg - blackMobilityEg;
-
-    if (debug) {
-        evalDebugStats.whiteMobilityMg = whiteMobilityMg;
-        evalDebugStats.whiteMobilityEg = whiteMobilityEg;
-        evalDebugStats.blackMobilityMg = blackMobilityMg;
-        evalDebugStats.blackMobilityEg = blackMobilityEg;
-    }
 
 
     //------------------------------King Safety---------------------------------
@@ -471,8 +454,10 @@ int Eval::evaluate(Board &b) {
     pawnStopAtt[BLACK] = ((bPawnFrontSpan >> 1) & NOTH) | ((bPawnFrontSpan << 1) & NOTA);
 
 
-    //------------------------------Minor Pieces--------------------------------
+    //-------------------------Minor Pieces and Mobility------------------------
     Score pieceEvalScore[2] = {EVAL_ZERO, EVAL_ZERO};
+    // Mobility indexed by mg/eg, color
+    Score mobilityScore[2] = {EVAL_ZERO, EVAL_ZERO};
 
     // Bishops tend to be worse if too many pawns are on squares of their color
     if (pieces[WHITE][BISHOPS] & LIGHT) {
@@ -506,14 +491,28 @@ int Eval::evaluate(Board &b) {
                                          (CENTER_FILES & (RANK_5 | RANK_4 | RANK_3))
                                        | ((FILE_B | FILE_G) &  (RANK_4 | RANK_3))};
 
+    // We count mobility for all squares other than ones occupied by own rammed
+    // pawns, king, or attacked by opponent's pawns
+    // Idea of using rammed pawns from Stockfish
+    uint64_t mobilitySafeSqs[2] = {~(ei.rammedPawns[WHITE] | pieces[WHITE][KINGS] | ei.attackMaps[BLACK][PAWNS]),
+                                   ~(ei.rammedPawns[BLACK] | pieces[BLACK][KINGS] | ei.attackMaps[WHITE][PAWNS])};
+
+    // For a queen, we also exclude squares not controlled by an opponent's minor or rook
+    uint64_t queenMobilitySafeSqs[2] = {~(ei.attackMaps[BLACK][KNIGHTS] | ei.attackMaps[BLACK][BISHOPS] | ei.attackMaps[BLACK][ROOKS]),
+                                        ~(ei.attackMaps[WHITE][KNIGHTS] | ei.attackMaps[WHITE][BISHOPS] | ei.attackMaps[WHITE][ROOKS])};
+
     for (int color = WHITE; color <= BLACK; color++) {
         PieceMoveList &pml = (color == WHITE) ? pmlWhite : pmlBlack;
-        //-----------------------------------Knights--------------------------------
+        //--------------------------------Knights-----------------------------------
         for (unsigned int i = 0; i < pml.starts[BISHOPS]; i++) {
             int knightSq = pml.get(i).startSq;
             uint64_t bit = indexToBit(knightSq);
+            uint64_t mobilityMap = pml.get(i).legal & mobilitySafeSqs[color];
 
             psqtScores[color] += PSQT[color][KNIGHTS][knightSq];
+            mobilityScore[color] += MOBILITY[KNIGHTS-1][count(mobilityMap)]
+                                 + EXTENDED_CENTER_VAL * count(mobilityMap & EXTENDED_CENTER_SQS)
+                                 + CENTER_BONUS * count(mobilityMap & CENTER_SQS);
 
             // Outposts
             if (bit & ~pawnStopAtt[color^1] & OUTPOST_SQS[color]) {
@@ -529,12 +528,16 @@ int Eval::evaluate(Board &b) {
             }
         }
 
-        //-----------------------------------Bishops--------------------------------
+        //---------------------------------Bishops----------------------------------
         for (unsigned int i = pml.starts[BISHOPS]; i < pml.starts[ROOKS]; i++) {
             int bishopSq = pml.get(i).startSq;
             uint64_t bit = indexToBit(bishopSq);
+            uint64_t mobilityMap = pml.get(i).legal & mobilitySafeSqs[color];
 
             psqtScores[color] += PSQT[color][BISHOPS][bishopSq];
+            mobilityScore[color] += MOBILITY[BISHOPS-1][count(mobilityMap)]
+                                 + EXTENDED_CENTER_VAL * count(mobilityMap & EXTENDED_CENTER_SQS)
+                                 + CENTER_BONUS * count(mobilityMap & CENTER_SQS);
 
             if (bit & ~pawnStopAtt[color^1] & OUTPOST_SQS[color]) {
                 pieceEvalScore[color] += BISHOP_OUTPOST_BONUS;
@@ -548,15 +551,17 @@ int Eval::evaluate(Board &b) {
             }
         }
 
-        //-------------------------------Rooks--------------------------------------
-        uint64_t rooksTemp = pieces[color][ROOKS];
-        while (rooksTemp) {
-            int rookSq = bitScanForward(rooksTemp);
-            rooksTemp &= rooksTemp - 1;
+        //---------------------------------Rooks------------------------------------
+        for (unsigned int i = pml.starts[ROOKS]; i < pml.starts[QUEENS]; i++) {
+            int rookSq = pml.get(i).startSq;
             int file = rookSq & 7;
             int rank = rookSq >> 3;
+            uint64_t mobilityMap = pml.get(i).legal & mobilitySafeSqs[color];
 
             psqtScores[color] += PSQT[color][ROOKS][rookSq];
+            mobilityScore[color] += MOBILITY[ROOKS-1][count(mobilityMap)]
+                                 + EXTENDED_CENTER_VAL * count(mobilityMap & EXTENDED_CENTER_SQS)
+                                 + CENTER_BONUS * count(mobilityMap & CENTER_SQS);
 
             // Bonus for having rooks on open or semiopen files
             if (FILES[file] & ei.openFiles)
@@ -566,6 +571,15 @@ int Eval::evaluate(Board &b) {
             // Bonus for having rooks on same ranks as enemy pawns
             if (relativeRank(color, rank) >= 4)
                 pieceEvalScore[color] += ROOK_PAWN_RANK_THREAT * count(RANKS[rank] & pieces[color^1][PAWNS]);
+        }
+
+        //---------------------------------Queens-----------------------------------
+        for (unsigned int i = pml.starts[QUEENS]; i < pml.size(); i++) {
+            int queenSq = pml.get(i).startSq;
+            uint64_t mobilityMap = pml.get(i).legal & mobilitySafeSqs[color] & queenMobilitySafeSqs[color];
+
+            psqtScores[color] += PSQT[color][QUEENS][queenSq];
+            mobilityScore[color] += MOBILITY[QUEENS-1][count(mobilityMap)];
         }
     }
 
@@ -584,6 +598,14 @@ int Eval::evaluate(Board &b) {
     if (debug) {
         evalDebugStats.whitePsqtScore = psqtScores[WHITE];
         evalDebugStats.blackPsqtScore = psqtScores[BLACK];
+    }
+
+    valueMg += decEvalMg(mobilityScore[WHITE]) - decEvalMg(mobilityScore[BLACK]);
+    valueEg += decEvalEg(mobilityScore[WHITE]) - decEvalEg(mobilityScore[BLACK]);
+
+    if (debug) {
+        evalDebugStats.whiteMobilityScore = mobilityScore[WHITE];
+        evalDebugStats.blackMobilityScore = mobilityScore[BLACK];
     }
 
 
@@ -969,48 +991,6 @@ int Eval::evaluate(Board &b) {
 // Explicitly instantiate templates
 template int Eval::evaluate<true>(Board &b);
 template int Eval::evaluate<false>(Board &b);
-
-// Scores the board for a player based on estimates of mobility. This function
-// also calculates control of center.
-template <int color>
-void Eval::getMobility(PieceMoveList &pml, PieceMoveList &oppPml, int &valueMg, int &valueEg) {
-    // Holds the mobility values and the final result
-    int mgMobility = 0, egMobility = 0;
-    // Holds the center control score
-    int centerControl = 0;
-
-    // We count mobility for all squares other than ones occupied by own rammed
-    // pawns, king, or attacked by opponent's pawns
-    // Idea of using rammed pawns from Stockfish
-    uint64_t openSqs = ~(ei.rammedPawns[color] | pieces[color][KINGS] | ei.attackMaps[color^1][PAWNS]);
-
-    // For a queen, we also exclude squares not controlled by an opponent's minor or rook
-    uint64_t oppAttackMap = 0;
-    for (int pieceID = KNIGHTS; pieceID <= ROOKS; pieceID++)
-        oppAttackMap |= ei.attackMaps[color^1][pieceID];
-
-    // Iterate over piece move information to extract all mobility-related scores
-    for (unsigned int i = 0; i < pml.starts[QUEENS]; i++) {
-        PieceMoveInfo pmi = pml.get(i);
-        int pieceIndex = pmi.pieceID - 1;
-        uint64_t legal = pmi.legal;
-
-        mgMobility += mobilityScore[MG][pieceIndex][count(legal & openSqs)];
-        egMobility += mobilityScore[EG][pieceIndex][count(legal & openSqs)];
-        centerControl += EXTENDED_CENTER_VAL * count(legal & EXTENDED_CENTER_SQS & openSqs);
-        centerControl += CENTER_BONUS * count(legal & CENTER_SQS & openSqs);
-    }
-    for (unsigned int i = pml.starts[QUEENS]; i < pml.size(); i++) {
-        PieceMoveInfo pmi = pml.get(i);
-        uint64_t legal = pmi.legal;
-
-        mgMobility += mobilityScore[MG][QUEENS-1][count(legal & openSqs & ~oppAttackMap)];
-        egMobility += mobilityScore[EG][QUEENS-1][count(legal & openSqs & ~oppAttackMap)];
-    }
-
-    valueMg = mgMobility + centerControl;
-    valueEg = egMobility;
-}
 
 // King safety, based on the number of opponent pieces near the king
 // The lookup table approach is inspired by Ed Schroder's Rebel chess engine,
