@@ -830,8 +830,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     // shallow search to try and look for one
     // This is especially true at PV nodes and potential cut nodes
     if (hashed == NULL_MOVE && !isInCheck
-     && ((isPVNode && depth >= 5)
-      || (!isPVNode && depth >= 6 && (isCutNode || staticEval >= beta - 50 - 10*depth)))) {
+     && ((isPVNode && depth >= 6)
+      || (!isPVNode && depth >= 8))) {
         int iidDepth = isPVNode ? depth - depth/4 - 1 : (depth - 5) / 2;
         PVS(b, iidDepth, alpha, beta, threadID, isCutNode, ssi, &line);
 
