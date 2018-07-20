@@ -1030,8 +1030,8 @@ void Board::addCastlesToList(MoveList &moves, int color) {
 uint64_t Board::getXRayPieceMap(int color, int sq, int blockerColor,
     uint64_t blockerStart, uint64_t blockerEnd) {
     uint64_t occ = getOccupancy();
-    occ ^= blockerStart;
-    occ ^= blockerEnd;
+    occ &= ~blockerStart;
+    occ |= blockerEnd;
 
     uint64_t bishops = pieces[color][BISHOPS];
     uint64_t rooks = pieces[color][ROOKS];
@@ -1094,15 +1094,39 @@ int Board::getPieceOnSquare(int color, int sq) {
 }
 
 // Returns true if a move puts the opponent in check
-// Precondition: opposing king is not already in check (obviously)
-// Does not consider en passant or castling
 bool Board::isCheckMove(int color, Move m) {
     int kingSq = bitScanForward(pieces[color^1][KINGS]);
 
+    // Special case for castling
+    if (isCastle(m)) {
+        uint64_t attackMap = getRookSquares(kingSq, getOccupancy() ^ indexToBit(getStartSq(m)));
+        int rookEnd = 0;
+        switch (getEndSq(m)) {
+            case 6: // white kside
+                rookEnd = 5;
+                break;
+            case 2: // white qside
+                rookEnd = 3;
+                break;
+            case 62: // black kside
+                rookEnd = 61;
+                break;
+            case 58: // black qside
+                rookEnd = 59;
+                break;
+            default:
+                return false;
+                break;
+        }
+        return (bool) (indexToBit(rookEnd) & attackMap);
+    }
+
     // See if move is a direct check
     uint64_t attackMap = 0;
-    uint64_t occ = getOccupancy();
-    switch (getPieceOnSquare(color, getStartSq(m))) {
+    uint64_t occ = getOccupancy() ^ indexToBit(getStartSq(m));
+    uint64_t pieceID = isPromotion(m) ? getPromotion(m)
+                                      : getPieceOnSquare(color, getStartSq(m));
+    switch (pieceID) {
         case PAWNS:
             attackMap = (color == WHITE)
                 ? getBPawnCaptures(indexToBit(kingSq))
@@ -1131,15 +1155,16 @@ bool Board::isCheckMove(int color, Move m) {
     // Get a bitboard of all pieces that could possibly xray
     uint64_t xrayPieces = pieces[color][BISHOPS] | pieces[color][ROOKS] | pieces[color][QUEENS];
 
+    // The piece that has moved is no longer blocking xray pieces
+    uint64_t removedBlockers = indexToBit(getStartSq(m));
+    if (isEP(m))
+        removedBlockers |= indexToBit(epVictimSquare(color^1, epCaptureFile));
+
     // Get any bishops, rooks, queens attacking king after piece has moved
-    uint64_t xrays = getXRayPieceMap(color, kingSq, color, indexToBit(getStartSq(m)), indexToBit(getEndSq(m)));
+    uint64_t xrays = getXRayPieceMap(color, kingSq, color, removedBlockers, indexToBit(getEndSq(m)));
     // If there is an xray piece attacking the king square after the piece has
     // moved, we have discovered check
-    if (xrays & xrayPieces)
-        return true;
-
-    // If not direct or discovered check, then not a check
-    return false;
+    return (bool) (xrays & xrayPieces);
 }
 
 /*
@@ -1498,7 +1523,7 @@ uint8_t Board::getFiftyMoveCounter() {
 }
 
 uint8_t Board::getCastlingRights() {
-	return castlingRights;
+    return castlingRights;
 }
 
 uint16_t Board::getMoveNumber() {

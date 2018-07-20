@@ -866,12 +866,13 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     //----------------------------Main search loop------------------------------
     for (Move m = moveSorter.nextMove(); m != NULL_MOVE;
               m = moveSorter.nextMove()) {
+        bool isCheckMove = b.isCheckMove(color, m);
         // Conditions for whether to do futility and move count pruning
         bool moveIsPrunable = !isCapture(m)
                            && !isPromotion(m)
                            && m != hashed
                            && bestScore > -MAX_PLY_MATE_SCORE
-                           && !b.isCheckMove(color, m);
+                           && !isCheckMove;
 
         // For accessing history tables
         int startSq = getStartSq(m);
@@ -953,7 +954,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // fail-low.
         if (depth >= 3 && movesSearched > 2
          && !isCapture(m) && !isPromotion(m)
-         && !copy.isInCheck(color^1)) {
+         && !isCheckMove) {
             reduction = lmrReduction;
             // Reduce less for killers
             if (m == searchParams->killers[ssi->ply][0]
@@ -983,7 +984,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // Check extensions
         if (reduction == 0
          && !doMoveCountPruning
-         && copy.isInCheck(color^1)
+         && isCheckMove
          && b.getSEEForMove(color, m) >= 0) {
             extension++;
         }
