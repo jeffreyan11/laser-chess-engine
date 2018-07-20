@@ -1311,54 +1311,44 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         }
     }
 
-    // Checks: only on the first two plies of q-search
-    if (plies <= 1) {
-        // Only do checks if a futility pruning condition is met
-        if (standPat >= alpha - 110) {
-            legalMoves.clear();
-            b.getPseudoLegalChecks(legalMoves, color);
+    // Checks: only on the first ply of q-search
+    if (plies == 0) {
+        legalMoves.clear();
+        b.getPseudoLegalChecks(legalMoves, color);
 
-            for (unsigned int i = 0; i < legalMoves.size(); i++) {
-                Move m = legalMoves.get(i);
+        for (unsigned int i = 0; i < legalMoves.size(); i++) {
+            Move m = legalMoves.get(i);
 
-                // Futility pruning
-                if (standPat < alpha - 110) {
-                    bestScore = std::max(bestScore, standPat + 110);
-                    continue;
-                }
-                // Static exchange evaluation pruning
-                if (b.getSEEForMove(color, m) < 0)
-                    continue;
+            // Static exchange evaluation pruning
+            if (b.getSEEForMove(color, m) < 0)
+                continue;
 
-                Board copy = b.staticCopy();
-                if (!copy.doPseudoLegalMove(m, color))
-                    continue;
+            Board copy = b.staticCopy();
+            if (!copy.doPseudoLegalMove(m, color))
+                continue;
 
-                searchStats->nodes++;
-                threadMemoryArray[threadID]->twoFoldPositions.push(b.getZobristKey());
+            searchStats->nodes++;
+            threadMemoryArray[threadID]->twoFoldPositions.push(b.getZobristKey());
 
-                int score = -checkQuiescence(copy, plies+1, -beta, -alpha, threadID);
+            int score = -checkQuiescence(copy, plies+1, -beta, -alpha, threadID);
 
-                threadMemoryArray[threadID]->twoFoldPositions.pop();
+            threadMemoryArray[threadID]->twoFoldPositions.pop();
 
-                if (score >= beta) {
-                    uint64_t hashData = packHashData(-plies, m,
-                        adjustHashScore(score, searchParams->ply + plies), CUT_NODE,
-                        searchParams->rootMoveNumber);
-                    transpositionTable.add(b, hashData, -plies, searchParams->rootMoveNumber);
+            if (score >= beta) {
+                uint64_t hashData = packHashData(-plies, m,
+                    adjustHashScore(score, searchParams->ply + plies), CUT_NODE,
+                    searchParams->rootMoveNumber);
+                transpositionTable.add(b, hashData, -plies, searchParams->rootMoveNumber);
 
-                    return score;
-                }
+                return score;
+            }
 
-                if (score > bestScore) {
-                    bestScore = score;
-                    if (score > alpha)
-                        alpha = score;
-                }
+            if (score > bestScore) {
+                bestScore = score;
+                if (score > alpha)
+                    alpha = score;
             }
         }
-        else
-            bestScore = std::max(bestScore, standPat + 110);
     }
 
     return bestScore;
@@ -1383,7 +1373,9 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     for (unsigned int i = 0; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
 
-        if (bestScore > -INFTY && b.getSEEForMove(color, m) < 0)
+        if (bestScore > -MAX_PLY_MATE_SCORE
+         && !isCapture(m)
+         && b.getSEEForMove(color, m) < 0)
             continue;
 
         Board copy = b.staticCopy();
