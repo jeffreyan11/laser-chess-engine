@@ -953,8 +953,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // alpha, so we search them to a shallower depth hoping for a quick
         // fail-low.
         if (depth >= 3 && movesSearched > 2
-         && !isCapture(m) && !isPromotion(m)
-         && !isCheckMove) {
+         && !isCapture(m) && !isPromotion(m)) {
             reduction = lmrReduction;
             // Reduce less for killers
             if (m == searchParams->killers[ssi->ply][0]
@@ -982,8 +981,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
         int extension = 0;
         // Check extensions
-        if (reduction == 0
-         && !doMoveCountPruning
+        if (!doMoveCountPruning
          && isCheckMove
          && b.getSEEForMove(color, m) >= 0) {
             extension++;
