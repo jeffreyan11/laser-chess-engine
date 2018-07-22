@@ -491,23 +491,21 @@ int Eval::evaluate(Board &b) {
                                          (CENTER_FILES & (RANK_5 | RANK_4 | RANK_3))
                                        | ((FILE_B | FILE_G) &  (RANK_4 | RANK_3))};
 
-    // We count mobility for all squares other than ones occupied by own rammed
-    // pawns, king, or attacked by opponent's pawns
-    // Idea of using rammed pawns from Stockfish
-    uint64_t mobilitySafeSqs[2] = {~(ei.rammedPawns[WHITE] | pieces[WHITE][KINGS] | ei.attackMaps[BLACK][PAWNS]),
-                                   ~(ei.rammedPawns[BLACK] | pieces[BLACK][KINGS] | ei.attackMaps[WHITE][PAWNS])};
-
-    // For a queen, we also exclude squares not controlled by an opponent's minor or rook
-    uint64_t queenMobilitySafeSqs[2] = {~(ei.attackMaps[BLACK][KNIGHTS] | ei.attackMaps[BLACK][BISHOPS] | ei.attackMaps[BLACK][ROOKS]),
-                                        ~(ei.attackMaps[WHITE][KNIGHTS] | ei.attackMaps[WHITE][BISHOPS] | ei.attackMaps[WHITE][ROOKS])};
-
     for (int color = WHITE; color <= BLACK; color++) {
         PieceMoveList &pml = (color == WHITE) ? pmlWhite : pmlBlack;
+        // We count mobility for all squares other than ones:
+        //  - Occupied by own rammed pawns or king
+        //  - Attacked by opponent's pawns
+        //  - Doubly attacked by opponent's pieces and not defended by own piece
+        // Idea of using rammed pawns from Stockfish
+        uint64_t mobilitySafeSqs = ~(ei.rammedPawns[color] | pieces[color][KINGS] | ei.attackMaps[color^1][PAWNS]
+                                   | (ei.doubleAttackMaps[color^1] & ~ei.doubleAttackMaps[color]));
+
         //--------------------------------Knights-----------------------------------
         for (unsigned int i = 0; i < pml.starts[BISHOPS]; i++) {
             int knightSq = pml.get(i).startSq;
             uint64_t bit = indexToBit(knightSq);
-            uint64_t mobilityMap = pml.get(i).legal & mobilitySafeSqs[color];
+            uint64_t mobilityMap = pml.get(i).legal & mobilitySafeSqs;
 
             psqtScores[color] += PSQT[color][KNIGHTS][knightSq];
             mobilityScore[color] += MOBILITY[KNIGHTS-1][count(mobilityMap)]
@@ -532,7 +530,7 @@ int Eval::evaluate(Board &b) {
         for (unsigned int i = pml.starts[BISHOPS]; i < pml.starts[ROOKS]; i++) {
             int bishopSq = pml.get(i).startSq;
             uint64_t bit = indexToBit(bishopSq);
-            uint64_t mobilityMap = pml.get(i).legal & mobilitySafeSqs[color];
+            uint64_t mobilityMap = pml.get(i).legal & mobilitySafeSqs;
 
             psqtScores[color] += PSQT[color][BISHOPS][bishopSq];
             mobilityScore[color] += MOBILITY[BISHOPS-1][count(mobilityMap)]
@@ -556,7 +554,7 @@ int Eval::evaluate(Board &b) {
             int rookSq = pml.get(i).startSq;
             int file = rookSq & 7;
             int rank = rookSq >> 3;
-            uint64_t mobilityMap = pml.get(i).legal & mobilitySafeSqs[color];
+            uint64_t mobilityMap = pml.get(i).legal & mobilitySafeSqs;
 
             psqtScores[color] += PSQT[color][ROOKS][rookSq];
             mobilityScore[color] += MOBILITY[ROOKS-1][count(mobilityMap)]
@@ -574,9 +572,11 @@ int Eval::evaluate(Board &b) {
         }
 
         //---------------------------------Queens-----------------------------------
+        // For queen mobility, we also exclude squares not controlled by an opponent's minor or rook
+        uint64_t queenMobilitySafeSqs = ~(ei.attackMaps[color^1][KNIGHTS] | ei.attackMaps[color^1][BISHOPS] | ei.attackMaps[color^1][ROOKS]);
         for (unsigned int i = pml.starts[QUEENS]; i < pml.size(); i++) {
             int queenSq = pml.get(i).startSq;
-            uint64_t mobilityMap = pml.get(i).legal & mobilitySafeSqs[color] & queenMobilitySafeSqs[color];
+            uint64_t mobilityMap = pml.get(i).legal & mobilitySafeSqs & queenMobilitySafeSqs;
 
             psqtScores[color] += PSQT[color][QUEENS][queenSq];
             mobilityScore[color] += MOBILITY[QUEENS-1][count(mobilityMap)];
