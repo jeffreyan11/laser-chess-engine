@@ -26,7 +26,7 @@
 #include "uci.h"
 
 static Score PSQT[2][6][64];
-static Score MOBILITY[4][28];
+static Score MOBILITY[5][28];
 
 void initEvalTables() {
     #define E(mg, eg) ((Score) ((((int32_t) eg) << 16) + ((int32_t) mg)))
@@ -42,7 +42,7 @@ void initEvalTables() {
             PSQT[BLACK][pieceType][8*r + (7-f)] = sc;
         }
     }
-    for (int pieceID = 0; pieceID < 4; pieceID++) {
+    for (int pieceID = 0; pieceID < 5; pieceID++) {
         for (int sqs = 0; sqs < 28; sqs++)
             MOBILITY[pieceID][sqs] = E(mobilityTable[MG][pieceID][sqs], mobilityTable[EG][pieceID][sqs]);
     }
@@ -581,6 +581,10 @@ int Eval::evaluate(Board &b) {
             psqtScores[color] += PSQT[color][QUEENS][queenSq];
             mobilityScore[color] += MOBILITY[QUEENS-1][count(mobilityMap)];
         }
+
+        // King mobility
+        uint64_t kingMobilityMap = kingNeighborhood[color] & mobilitySafeSqs & ~ei.fullAttackMaps[color^1];
+        mobilityScore[color] += MOBILITY[KINGS-1][count(kingMobilityMap)];
     }
 
 
