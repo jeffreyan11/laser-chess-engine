@@ -81,7 +81,10 @@ struct ThreadMemory {
 
 //-------------------------------Search Constants-------------------------------
 constexpr int SMP_SKIP_DEPTHS[16] = {
-    1, 2, 3, 2, 3, 4, 2, 3, 4, 5, 2, 3, 4, 5, 6, 2
+    1, 2, 2, 4, 4, 3, 2, 5, 4, 3, 2, 6, 5, 4, 3, 2
+};
+constexpr int SMP_SKIP_AMOUNT[16] = {
+    1, 1, 1, 2, 2, 2, 1, 3, 2, 2, 1, 3, 3, 2, 2, 1
 };
 
 // Razor margins indexed by depth. If static eval is far below alpha, use a
@@ -486,7 +489,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
         if (threadID != 0) {
             int threadCycle = threadID % 16;
             if ((rootDepth + threadCycle) % SMP_SKIP_DEPTHS[threadCycle] == 0)
-                rootDepth++;
+                rootDepth += SMP_SKIP_AMOUNT[threadCycle];
         }
     }
     // Conditions for iterative deepening loop
