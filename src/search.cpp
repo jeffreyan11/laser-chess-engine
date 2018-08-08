@@ -315,8 +315,6 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
                 aspAlpha = bestScore - deltaAlpha;
                 aspBeta = bestScore + deltaBeta;
             }
-            deltaAlpha *= 2;
-            deltaBeta *= 2;
             prevScore = bestScore;
 
             // Aspiration loop
@@ -354,7 +352,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
                     }
 
                     aspAlpha = bestScore - deltaAlpha;
-                    deltaAlpha *= 2;
+                    deltaAlpha = 3 * deltaAlpha / 2;
                     if (aspAlpha < -NEAR_MATE_SCORE)
                         aspAlpha = -MATE_SCORE;
                     timeChangeFactor *= 1.1;
@@ -375,7 +373,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
                     }
 
                     aspBeta = bestScore + deltaBeta;
-                    deltaBeta *= 2;
+                    deltaBeta = 3 * deltaBeta / 2;
                     if (aspBeta > NEAR_MATE_SCORE)
                         aspBeta = MATE_SCORE;
 
