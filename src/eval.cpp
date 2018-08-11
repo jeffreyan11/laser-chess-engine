@@ -491,14 +491,18 @@ int Eval::evaluate(Board &b) {
                                          (CENTER_FILES & (RANK_5 | RANK_4 | RANK_3))
                                        | ((FILE_B | FILE_G) &  (RANK_4 | RANK_3))};
 
+    uint64_t occ = allPieces[WHITE] | allPieces[BLACK];
+    uint64_t pieceRammedPawns[2] = {pieces[WHITE][PAWNS] & (occ >> 8),
+                                    pieces[BLACK][PAWNS] & (occ << 8)};
+
     for (int color = WHITE; color <= BLACK; color++) {
         PieceMoveList &pml = (color == WHITE) ? pmlWhite : pmlBlack;
         // We count mobility for all squares other than ones:
-        //  - Occupied by own rammed pawns or king
+        //  - Occupied by own blocked pawns or king
         //  - Attacked by opponent's pawns
         //  - Doubly attacked by opponent's pieces and not defended by own piece
-        // Idea of using rammed pawns from Stockfish
-        uint64_t mobilitySafeSqs = ~(ei.rammedPawns[color] | pieces[color][KINGS] | ei.attackMaps[color^1][PAWNS]
+        // Idea of using blocked pawns from Stockfish
+        uint64_t mobilitySafeSqs = ~(pieceRammedPawns[color] | pieces[color][KINGS] | ei.attackMaps[color^1][PAWNS]
                                    | (ei.doubleAttackMaps[color^1] & ~ei.doubleAttackMaps[color]));
 
         //--------------------------------Knights-----------------------------------
