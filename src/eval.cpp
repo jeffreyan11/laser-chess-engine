@@ -813,12 +813,12 @@ int Eval::evaluate(Board &b) {
     for (int f = 0; f < 8; f++) {
         if (wIsolated & indexToBit(f)) {
             whitePawnScore += ISOLATED_PENALTY * wPawnCtByFile[f];
-            if (!(FILES[f] & pieces[BLACK][PAWNS]))
+            if (!(FILES[f] & pieces[BLACK][PAWNS]) && (pieces[BLACK][QUEENS] | pieces[BLACK][ROOKS]))
                 whitePawnScore += ISOLATED_SEMIOPEN_PENALTY * wPawnCtByFile[f];
         }
         if (bIsolated & indexToBit(f)) {
             blackPawnScore += ISOLATED_PENALTY * bPawnCtByFile[f];
-            if (!(FILES[f] & pieces[WHITE][PAWNS]))
+            if (!(FILES[f] & pieces[WHITE][PAWNS]) && (pieces[WHITE][QUEENS] | pieces[WHITE][ROOKS]))
                 blackPawnScore += ISOLATED_SEMIOPEN_PENALTY * bPawnCtByFile[f];
         }
     }
@@ -842,7 +842,7 @@ int Eval::evaluate(Board &b) {
         int pawnSq = bitScanForward(wBackwardsTemp);
         wBackwardsTemp &= wBackwardsTemp - 1;
         int f = pawnSq & 7;
-        if (!(FILES[f] & pieces[BLACK][PAWNS])) {
+        if (!(FILES[f] & pieces[BLACK][PAWNS]) && (pieces[BLACK][QUEENS] | pieces[BLACK][ROOKS])) {
             whitePawnScore += BACKWARD_SEMIOPEN_PENALTY;
         }
     }
@@ -851,7 +851,7 @@ int Eval::evaluate(Board &b) {
         int pawnSq = bitScanForward(bBackwardsTemp);
         bBackwardsTemp &= bBackwardsTemp - 1;
         int f = pawnSq & 7;
-        if (!(FILES[f] & pieces[WHITE][PAWNS])) {
+        if (!(FILES[f] & pieces[WHITE][PAWNS]) && (pieces[WHITE][QUEENS] | pieces[WHITE][ROOKS])) {
             blackPawnScore += BACKWARD_SEMIOPEN_PENALTY;
         }
     }

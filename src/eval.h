@@ -404,10 +404,10 @@ constexpr Score OPP_KING_DIST = E(0, 7);
 constexpr Score DOUBLED_PENALTY = E(-5, -18);
 // Isolated pawns
 constexpr Score ISOLATED_PENALTY = E(-19, -13);
-constexpr Score ISOLATED_SEMIOPEN_PENALTY = E(-4, -6);
+constexpr Score ISOLATED_SEMIOPEN_PENALTY = E(-4, -9);
 // Backward pawns
 constexpr Score BACKWARD_PENALTY = E(-12, -9);
-constexpr Score BACKWARD_SEMIOPEN_PENALTY = E(-15, -10);
+constexpr Score BACKWARD_SEMIOPEN_PENALTY = E(-15, -13);
 // Undefended pawns that are not backwards or isolated
 constexpr Score UNDEFENDED_PAWN_PENALTY = E(-8, -4);
 // Pawn phalanxes
