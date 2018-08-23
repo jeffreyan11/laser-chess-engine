@@ -23,8 +23,6 @@
 #include <chrono>
 #include <string>
 
-#define USE_INLINE_ASM true
-
 constexpr int WHITE = 0;
 constexpr int BLACK = 1;
 constexpr int PAWNS = 0;
@@ -52,7 +50,6 @@ uint64_t getTimeElapsed(ChessTime startTime);
 int bitScanForward(uint64_t bb);
 int bitScanReverse(uint64_t bb);
 int count(uint64_t bb);
-uint64_t flipAcrossRanks(uint64_t bb);
 
 // Converts square number to bitboard
 inline constexpr uint64_t indexToBit(int sq) {

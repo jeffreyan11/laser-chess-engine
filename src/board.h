@@ -101,8 +101,7 @@ public:
     void getPseudoLegalCheckEscapes(MoveList &escapes, int color);
 
     // Get a bitboard of all xray-ers attacking a square if a blocker has been moved or removed
-    uint64_t getXRayPieceMap(int color, int sq, int blockerColor,
-        uint64_t blockerStart, uint64_t blockerEnd);
+    uint64_t getXRayPieceMap(int color, int sq, uint64_t blockerStart, uint64_t blockerEnd);
     // Get a bitboard of all xray-ers attacking a square with no blocker removed
     //uint64_t getInitXRays(int color, int sq);
     // Get all pieces of that color attacking the square

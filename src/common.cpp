@@ -16,78 +16,25 @@
     along with Laser.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <assert.h>
+
 #include "common.h"
 
 // Move promotion flags
 const int PROMO[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 1, 2, 3, 4};
 
-// Used for bit-scan reverse
-constexpr int index64[64] = {
-0,  47,  1, 56, 48, 27,  2, 60,
-57, 49, 41, 37, 28, 16,  3, 61,
-54, 58, 35, 52, 50, 42, 21, 44,
-38, 32, 29, 23, 17, 11,  4, 62,
-46, 55, 26, 59, 40, 36, 15, 53,
-34, 51, 20, 43, 31, 22, 10, 45,
-25, 39, 14, 33, 19, 30,  9, 24,
-13, 18,  8, 12,  7,  6,  5, 63 };
-
-// BSF and BSR algorithms from https://chessprogramming.wikispaces.com/BitScan
-// GCC compiler intrinsics seem to be slower in some cases, even the compiled
-// with optimization / intrinsic flags...
 int bitScanForward(uint64_t bb) {
-    #if USE_INLINE_ASM
-        asm ("bsfq %1, %0" : "=r" (bb) : "r" (bb));
-        return (int) bb;
-    #else
-        uint64_t debruijn64 = 0x03f79d71b4cb0a89;
-        int i = (int)(((bb ^ (bb-1)) * debruijn64) >> 58);
-        return index64[i];
-    #endif
+    assert(bb);  // lsb(0) is undefined
+    return __builtin_ctzll(bb);
 }
 
 int bitScanReverse(uint64_t bb) {
-    #if USE_INLINE_ASM
-        asm ("bsrq %1, %0" : "=r" (bb) : "r" (bb));
-        return (int) bb;
-    #else
-        uint64_t debruijn64 = 0x03f79d71b4cb0a89;
-        bb |= bb >> 1;
-        bb |= bb >> 2;
-        bb |= bb >> 4;
-        bb |= bb >> 8;
-        bb |= bb >> 16;
-        bb |= bb >> 32;
-        return index64[(int) ((bb * debruijn64) >> 58)];
-    #endif
+    assert(bb);  // msb(0) is undefined
+    return __builtin_clzll(bb) ^ 63;
 }
 
 int count(uint64_t bb) {
-    #if USE_INLINE_ASM
-        asm ("popcntq %1, %0" : "=r" (bb) : "r" (bb));
-        return (int) bb;
-    #else
-        bb = bb - ((bb >> 1) & 0x5555555555555555);
-        bb = (bb & 0x3333333333333333) + ((bb >> 2) & 0x3333333333333333);
-        bb = (((bb + (bb >> 4)) & 0x0F0F0F0F0F0F0F0F) * 0x0101010101010101) >> 56;
-        return (int) bb;
-    #endif
-}
-
-// Flips a board across the middle ranks, the way perspective is
-// flipped from white to black and vice versa
-// Parallel-prefix algorithm from
-// http://chessprogramming.wikispaces.com/Flipping+Mirroring+and+Rotating
-uint64_t flipAcrossRanks(uint64_t bb) {
-    #if USE_INLINE_ASM
-        asm ("bswapq %0" : "=r" (bb) : "0" (bb));
-        return bb;
-    #else
-        bb = ((bb >>  8) & 0x00FF00FF00FF00FF) | ((bb & 0x00FF00FF00FF00FF) <<  8);
-        bb = ((bb >> 16) & 0x0000FFFF0000FFFF) | ((bb & 0x0000FFFF0000FFFF) << 16);
-        bb =  (bb >> 32) | (bb << 32);
-        return bb;
-    #endif
+    return __builtin_popcountll(bb);
 }
 
 // Given a start time_point, returns the seconds elapsed using C++11's
