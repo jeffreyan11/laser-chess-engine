@@ -20,11 +20,12 @@
 #include <cstring>
 #include <random>
 #include <string>
+
+#include "attacks.h"
 #include "board.h"
 #include "bbinit.h"
 #include "eval.h"
 #include "uci.h"
-
 
 constexpr uint64_t WHITE_KSIDE_PASSTHROUGH_SQS = indexToBit(5) | indexToBit(6);
 constexpr uint64_t WHITE_QSIDE_PASSTHROUGH_SQS = indexToBit(1) | indexToBit(2) | indexToBit(3);
@@ -46,11 +47,6 @@ void initZobristTable() {
     startPosZobristKey = b.getZobristKey();
     delete[] mailbox;
 }
-
-// Magic tables, initialized in bbinit.cpp
-extern uint64_t *attackTable;
-extern MagicInfo magicBishops[64];
-extern MagicInfo magicRooks[64];
 
 // Precalculated bitboard tables
 extern uint64_t inBetweenSqs[64][64];
@@ -1454,37 +1450,23 @@ uint64_t Board::getBPawnCaptures(uint64_t pawns) {
 }
 
 inline uint64_t Board::getKnightSquares(int single) {
-    return KNIGHTMOVES[single];
+    return knightAttacks(single);
 }
 
 uint64_t Board::getBishopSquares(int single, uint64_t occ) {
-#ifdef USE_PEXT
-    return _pext_u64(occ, magicBishops[single].mask);
-#else
-    occ &= magicBishops[single].mask;
-    occ *= magicBishops[single].magic;
-    occ >>= magicBishops[single].shift;
-    return magicBishops[single].table[occ];
-#endif
+    return bishopAttacks(single, occ);
 }
 
 uint64_t Board::getRookSquares(int single, uint64_t occ) {
-#ifdef USE_PEXT
-    return _pext_u64(occ, magicRooks[single].mask);
-#else
-    occ &= magicRooks[single].mask;
-    occ *= magicRooks[single].magic;
-    occ >>= magicRooks[single].shift;
-    return magicRooks[single].table[occ];
-#endif
+    return rookAttacks(single, occ);
 }
 
 uint64_t Board::getQueenSquares(int single, uint64_t occ) {
-    return getBishopSquares(single, occ) | getRookSquares(single, occ);
+    return queenAttacks(single, occ);
 }
 
 uint64_t Board::getKingSquares(int single) {
-    return KINGMOVES[single];
+    return kingAttacks(single);
 }
 
 inline uint64_t Board::getOccupancy() {

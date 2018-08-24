@@ -26,6 +26,7 @@
 #include <thread>
 #include <random>
 
+#include "attacks.h"
 #include "common.h"
 #include "bbinit.h"
 #include "board.h"
@@ -62,7 +63,7 @@ extern std::atomic<bool> stopSignal;
 
 
 int main(int argc, char **argv) {
-    initMagicTables(2563762638929852183ULL);
+    initAttacks();
     initEvalTables();
     initDistances();
     initZobristTable();
