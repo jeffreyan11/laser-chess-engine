@@ -26,14 +26,14 @@
 #include <immintrin.h> // for _pext_u64()
 #endif
 
-static uint64_t KnightAttacks[64];
-static uint64_t BishopAttacks[0x1480];
-static uint64_t RookAttacks[0x19000];
-static uint64_t KingAttacks[64];
+uint64_t KnightAttacks[64];
+uint64_t BishopAttacks[0x1480];
+uint64_t RookAttacks[0x19000];
+uint64_t KingAttacks[64];
 
-static uint64_t BishopMask[64], RookMask[64];
-static unsigned BishopShift[64], RookShift[64];
-static uint64_t *BishopAttacksPtr[64], *RookAttacksPtr[64];
+uint64_t BishopMask[64], RookMask[64];
+unsigned BishopShift[64], RookShift[64];
+uint64_t *BishopAttacksPtr[64], *RookAttacksPtr[64];
 
 constexpr uint64_t RookMagic[64] = {
     0xA180022080400230ull, 0x0040100040022000ull, 0x0080088020001002ull, 0x0080080280841000ull,

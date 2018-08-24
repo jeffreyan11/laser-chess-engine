@@ -20,7 +20,7 @@ LIBS    = -lpthread
 EXE     = Laser
 
 WFLAGS = -Wall -Wextra -Wshadow -ansi -pedantic -std=c++11
-CFLAGS = -DNDEBUG -O3 $(WFLAGS) -flto
+CFLAGS = -DNDEBUG -O3 $(WFLAGS) -flto -march=native
 RFLAGS = -DNDEBUG -O3 $(WFLAGS) -flto -static -static-libgcc -static-libstdc++
 PFLAGS = -DNDEBUG -O0 $(WFLAGS) -p -pg
 DFLAGS = -O0 $(WFLAGS)
