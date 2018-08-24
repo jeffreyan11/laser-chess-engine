@@ -170,10 +170,6 @@ void initAttacks() {
             setSquare(  &KingAttacks[sq], rankOf(sq) +   KingDelta[dir][0], fileOf(sq) +   KingDelta[dir][1]);
         }
     }
-
-    for (int sq = 0; sq < 64; sq++)
-        printf("%llu\n",KnightAttacks[sq]);
-
     // Init attack tables for Bishops & Rooks (+ Queens)
     for (int sq = 0; sq < 64; sq++) {
         initSliderAttacks(sq, BishopMask, BishopMagic, BishopShift, BishopAttacksPtr, BishopDelta);
