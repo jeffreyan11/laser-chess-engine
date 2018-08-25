@@ -394,9 +394,7 @@ PieceMoveList Board::getPieceMoveList(int color) {
     while (knights) {
         int stSq = bitScanForward(knights);
         knights &= knights-1;
-        uint64_t nSq = getKnightSquares(stSq);
-
-        pml.add(PieceMoveInfo(KNIGHTS, stSq, nSq));
+        pml.add(PieceMoveInfo(KNIGHTS, stSq, knightAttacks(stSq)));
     }
 
     pml.starts[BISHOPS] = pml.size();
@@ -405,9 +403,7 @@ PieceMoveList Board::getPieceMoveList(int color) {
     while (bishops) {
         int stSq = bitScanForward(bishops);
         bishops &= bishops-1;
-        uint64_t bSq = getBishopSquares(stSq, occ | pieces[color][ROOKS]);
-
-        pml.add(PieceMoveInfo(BISHOPS, stSq, bSq));
+        pml.add(PieceMoveInfo(BISHOPS, stSq, bishopAttacks(stSq, occ | pieces[color][ROOKS])));
     }
 
     pml.starts[ROOKS] = pml.size();
@@ -415,9 +411,7 @@ PieceMoveList Board::getPieceMoveList(int color) {
     while (rooks) {
         int stSq = bitScanForward(rooks);
         rooks &= rooks-1;
-        uint64_t rSq = getRookSquares(stSq, occ | pieces[color][BISHOPS]);
-
-        pml.add(PieceMoveInfo(ROOKS, stSq, rSq));
+        pml.add(PieceMoveInfo(ROOKS, stSq, rookAttacks(stSq, occ | pieces[color][BISHOPS])));
     }
 
     pml.starts[QUEENS] = pml.size();
@@ -425,9 +419,7 @@ PieceMoveList Board::getPieceMoveList(int color) {
     while (queens) {
         int stSq = bitScanForward(queens);
         queens &= queens-1;
-        uint64_t qSq = getQueenSquares(stSq, occ);
-
-        pml.add(PieceMoveInfo(QUEENS, stSq, qSq));
+        pml.add(PieceMoveInfo(QUEENS, stSq, queenAttacks(stSq, occ)));
     }
 
     return pml;
@@ -481,7 +473,7 @@ void Board::getPseudoLegalQuiets(MoveList &quiets, int color) {
     addPawnMovesToList(quiets, color);
 
     int stsqK = bitScanForward(pieces[color][KINGS]);
-    uint64_t kingSqs = getKingSquares(stsqK);
+    uint64_t kingSqs = kingAttacks(stsqK);
     addMovesToList<MOVEGEN_QUIETS>(quiets, stsqK, kingSqs);
 }
 
@@ -499,7 +491,7 @@ void Board::getPseudoLegalCaptures(MoveList &captures, int color, bool includePr
     uint64_t otherPieces = allPieces[color^1];
 
     int kingStSq = bitScanForward(pieces[color][KINGS]);
-    uint64_t kingSqs = getKingSquares(kingStSq);
+    uint64_t kingSqs = kingAttacks(kingStSq);
     addMovesToList<MOVEGEN_CAPTURES>(captures, kingStSq, kingSqs, otherPieces);
 
     addPawnCapturesToList(captures, color, otherPieces, includePromotions);
@@ -639,11 +631,11 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
     }
 
     uint64_t knights = pieces[color][KNIGHTS] & kingParity;
-    uint64_t nAttackMap = getKnightSquares(kingSq);
+    uint64_t nAttackMap = knightAttacks(kingSq);
     while (knights) {
         int stsq = bitScanForward(knights);
         knights &= knights-1;
-        uint64_t nSq = getKnightSquares(stsq);
+        uint64_t nSq = knightAttacks(stsq);
         // Get any bishops, rooks, queens attacking king after knight has moved
         uint64_t xrays = getXRayPieceMap(color, kingSq, indexToBit(stsq), 0);
         // If still no xrayers are giving check, then we have no discovered
@@ -657,11 +649,11 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
 
     uint64_t occ = getOccupancy();
     uint64_t bishops = pieces[color][BISHOPS] & kingParity;
-    uint64_t bAttackMap = getBishopSquares(kingSq, occ);
+    uint64_t bAttackMap = bishopAttacks(kingSq, occ);
     while (bishops) {
         int stsq = bitScanForward(bishops);
         bishops &= bishops-1;
-        uint64_t bSq = getBishopSquares(stsq, occ);
+        uint64_t bSq = bishopAttacks(stsq, occ);
         uint64_t xrays = getXRayPieceMap(color, kingSq, indexToBit(stsq), 0);
         if (!(xrays & potentialXRay))
             bSq &= bAttackMap;
@@ -670,11 +662,11 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
     }
 
     uint64_t rooks = pieces[color][ROOKS];
-    uint64_t rAttackMap = getRookSquares(kingSq, occ);
+    uint64_t rAttackMap = rookAttacks(kingSq, occ);
     while (rooks) {
         int stsq = bitScanForward(rooks);
         rooks &= rooks-1;
-        uint64_t rSq = getRookSquares(stsq, occ);
+        uint64_t rSq = rookAttacks(stsq, occ);
         uint64_t xrays = getXRayPieceMap(color, kingSq, indexToBit(stsq), 0);
         if (!(xrays & potentialXRay))
             rSq &= rAttackMap;
@@ -683,11 +675,11 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
     }
 
     uint64_t queens = pieces[color][QUEENS];
-    uint64_t qAttackMap = getQueenSquares(kingSq, occ);
+    uint64_t qAttackMap = queenAttacks(kingSq, occ);
     while (queens) {
         int stsq = bitScanForward(queens);
         queens &= queens-1;
-        uint64_t qSq = getQueenSquares(stsq, occ) & qAttackMap;
+        uint64_t qSq = queenAttacks(stsq, occ) & qAttackMap;
 
         addMovesToList<MOVEGEN_QUIETS>(checks, stsq, qSq);
     }
@@ -706,7 +698,7 @@ void Board::getPseudoLegalCheckEscapes(MoveList &escapes, int color) {
 
     // If double check, we can only move the king
     if (count(otherPieces) >= 2) {
-        uint64_t kingSqs = getKingSquares(kingSq);
+        uint64_t kingSqs = kingAttacks(kingSq);
 
         addMovesToList<MOVEGEN_CAPTURES>(escapes, kingSq, kingSqs, allPieces[color^1]);
         addMovesToList<MOVEGEN_QUIETS>(escapes, kingSq, kingSqs);
@@ -722,53 +714,46 @@ void Board::getPseudoLegalCheckEscapes(MoveList &escapes, int color) {
     int attackerSq = bitScanForward(otherPieces);
     int attackerType = getPieceOnSquare(color^1, attackerSq);
     if (attackerType == BISHOPS)
-        xraySqs = getBishopSquares(attackerSq, occ);
+        xraySqs = bishopAttacks(attackerSq, occ);
     else if (attackerType == ROOKS)
-        xraySqs = getRookSquares(attackerSq, occ);
+        xraySqs = rookAttacks(attackerSq, occ);
     else if (attackerType == QUEENS)
-        xraySqs = getQueenSquares(attackerSq, occ);
+        xraySqs = queenAttacks(attackerSq, occ);
 
     addPieceMovesToList<MOVEGEN_CAPTURES>(escapes, color, otherPieces);
 
     int stsqK = bitScanForward(pieces[color][KINGS]);
-    uint64_t kingSqs = getKingSquares(stsqK);
+    uint64_t kingSqs = kingAttacks(stsqK);
     addMovesToList<MOVEGEN_CAPTURES>(escapes, stsqK, kingSqs, allPieces[color^1]);
 
     addPawnMovesToList(escapes, color);
+
     uint64_t knights = pieces[color][KNIGHTS];
     while (knights) {
         int stSq = bitScanForward(knights);
         knights &= knights-1;
-        uint64_t nSq = getKnightSquares(stSq);
-
-        addMovesToList<MOVEGEN_QUIETS>(escapes, stSq, nSq & xraySqs);
+        addMovesToList<MOVEGEN_QUIETS>(escapes, stSq, knightAttacks(stSq) & xraySqs);
     }
 
     uint64_t bishops = pieces[color][BISHOPS];
     while (bishops) {
         int stSq = bitScanForward(bishops);
         bishops &= bishops-1;
-        uint64_t bSq = getBishopSquares(stSq, occ);
-
-        addMovesToList<MOVEGEN_QUIETS>(escapes, stSq, bSq & xraySqs);
+        addMovesToList<MOVEGEN_QUIETS>(escapes, stSq, bishopAttacks(stSq, occ) & xraySqs);
     }
 
     uint64_t rooks = pieces[color][ROOKS];
     while (rooks) {
         int stSq = bitScanForward(rooks);
         rooks &= rooks-1;
-        uint64_t rSq = getRookSquares(stSq, occ);
-
-        addMovesToList<MOVEGEN_QUIETS>(escapes, stSq, rSq & xraySqs);
+        addMovesToList<MOVEGEN_QUIETS>(escapes, stSq, rookAttacks(stSq, occ) & xraySqs);
     }
 
     uint64_t queens = pieces[color][QUEENS];
     while (queens) {
         int stSq = bitScanForward(queens);
         queens &= queens-1;
-        uint64_t qSq = getQueenSquares(stSq, occ);
-
-        addMovesToList<MOVEGEN_QUIETS>(escapes, stSq, qSq & xraySqs);
+        addMovesToList<MOVEGEN_QUIETS>(escapes, stSq, queenAttacks(stSq, occ) & xraySqs);
     }
 
     addMovesToList<MOVEGEN_QUIETS>(escapes, stsqK, kingSqs);
@@ -889,13 +874,12 @@ void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherP
 
 template <bool isCapture>
 void Board::addPieceMovesToList(MoveList &moves, int color, uint64_t otherPieces) {
+
     uint64_t knights = pieces[color][KNIGHTS];
     while (knights) {
         int stSq = bitScanForward(knights);
         knights &= knights-1;
-        uint64_t nSq = getKnightSquares(stSq);
-
-        addMovesToList<isCapture>(moves, stSq, nSq, otherPieces);
+        addMovesToList<isCapture>(moves, stSq, knightAttacks(stSq), otherPieces);
     }
 
     uint64_t occ = getOccupancy();
@@ -903,27 +887,21 @@ void Board::addPieceMovesToList(MoveList &moves, int color, uint64_t otherPieces
     while (bishops) {
         int stSq = bitScanForward(bishops);
         bishops &= bishops-1;
-        uint64_t bSq = getBishopSquares(stSq, occ);
-
-        addMovesToList<isCapture>(moves, stSq, bSq, otherPieces);
+        addMovesToList<isCapture>(moves, stSq, bishopAttacks(stSq, occ), otherPieces);
     }
 
     uint64_t rooks = pieces[color][ROOKS];
     while (rooks) {
         int stSq = bitScanForward(rooks);
         rooks &= rooks-1;
-        uint64_t rSq = getRookSquares(stSq, occ);
-
-        addMovesToList<isCapture>(moves, stSq, rSq, otherPieces);
+        addMovesToList<isCapture>(moves, stSq, rookAttacks(stSq, occ), otherPieces);
     }
 
     uint64_t queens = pieces[color][QUEENS];
     while (queens) {
         int stSq = bitScanForward(queens);
         queens &= queens-1;
-        uint64_t qSq = getQueenSquares(stSq, occ);
-
-        addMovesToList<isCapture>(moves, stSq, qSq, otherPieces);
+        addMovesToList<isCapture>(moves, stSq, queenAttacks(stSq, occ), otherPieces);
     }
 }
 
@@ -1032,8 +1010,8 @@ uint64_t Board::getXRayPieceMap(int color, int sq, uint64_t blockerStart, uint64
     uint64_t rooks = pieces[color][ROOKS];
     uint64_t queens = pieces[color][QUEENS];
 
-    uint64_t xRayMap = (getBishopSquares(sq, occ) & (bishops | queens))
-                     | (getRookSquares(sq, occ) & (rooks | queens));
+    uint64_t xRayMap = (bishopAttacks(sq, occ) & (bishops | queens))
+                     | (  rookAttacks(sq, occ) & (  rooks | queens));
 
     return (xRayMap & ~blockerStart);
 }
@@ -1058,10 +1036,10 @@ uint64_t Board::getAttackMap(int color, int sq) {
                      ? getBPawnCaptures(indexToBit(sq))
                      : getWPawnCaptures(indexToBit(sq));
     return (pawnCap & pieces[color][PAWNS])
-         | (getKnightSquares(sq) & pieces[color][KNIGHTS])
-         | (getBishopSquares(sq, occ) & (pieces[color][BISHOPS] | pieces[color][QUEENS]))
-         | (getRookSquares(sq, occ) & (pieces[color][ROOKS] | pieces[color][QUEENS]))
-         | (getKingSquares(sq) & pieces[color][KINGS]);
+         | (knightAttacks(sq) & pieces[color][KNIGHTS])
+         | (bishopAttacks(sq, occ) & (pieces[color][BISHOPS] | pieces[color][QUEENS]))
+         | (rookAttacks(sq, occ) & (pieces[color][ROOKS] | pieces[color][QUEENS]))
+         | (kingAttacks(sq) & pieces[color][KINGS]);
 }
 
 // Get all pieces of both colors attacking a square
@@ -1069,10 +1047,10 @@ uint64_t Board::getAttackMap(int sq) {
     uint64_t occ = getOccupancy();
     return (getBPawnCaptures(indexToBit(sq)) & pieces[WHITE][PAWNS])
          | (getWPawnCaptures(indexToBit(sq)) & pieces[BLACK][PAWNS])
-         | (getKnightSquares(sq) & (pieces[WHITE][KNIGHTS] | pieces[BLACK][KNIGHTS]))
-         | (getBishopSquares(sq, occ) & (pieces[WHITE][BISHOPS] | pieces[WHITE][QUEENS] | pieces[BLACK][BISHOPS] | pieces[BLACK][QUEENS]))
-         | (getRookSquares(sq, occ) & (pieces[WHITE][ROOKS] | pieces[WHITE][QUEENS] | pieces[BLACK][ROOKS] | pieces[BLACK][QUEENS]))
-         | (getKingSquares(sq) & (pieces[WHITE][KINGS] | pieces[BLACK][KINGS]));
+         | (knightAttacks(sq) & (pieces[WHITE][KNIGHTS] | pieces[BLACK][KNIGHTS]))
+         | (bishopAttacks(sq, occ) & (pieces[WHITE][BISHOPS] | pieces[WHITE][QUEENS] | pieces[BLACK][BISHOPS] | pieces[BLACK][QUEENS]))
+         | (rookAttacks(sq, occ) & (pieces[WHITE][ROOKS] | pieces[WHITE][QUEENS] | pieces[BLACK][ROOKS] | pieces[BLACK][QUEENS]))
+         | (kingAttacks(sq) & (pieces[WHITE][KINGS] | pieces[BLACK][KINGS]));
 }
 
 // Given the on a given square, used to get either the piece moving or the
@@ -1094,7 +1072,7 @@ bool Board::isCheckMove(int color, Move m) {
 
     // Special case for castling
     if (isCastle(m)) {
-        uint64_t attackMap = getRookSquares(kingSq, getOccupancy() ^ indexToBit(getStartSq(m)));
+        uint64_t attackMap = rookAttacks(kingSq, getOccupancy() ^ indexToBit(getStartSq(m)));
         int rookEnd = 0;
         switch (getEndSq(m)) {
             case 6: // white kside
@@ -1128,16 +1106,16 @@ bool Board::isCheckMove(int color, Move m) {
                 : getWPawnCaptures(indexToBit(kingSq));
             break;
         case KNIGHTS:
-            attackMap = getKnightSquares(kingSq);
+            attackMap = knightAttacks(kingSq);
             break;
         case BISHOPS:
-            attackMap = getBishopSquares(kingSq, occ);
+            attackMap = bishopAttacks(kingSq, occ);
             break;
         case ROOKS:
-            attackMap = getRookSquares(kingSq, occ);
+            attackMap = rookAttacks(kingSq, occ);
             break;
         case QUEENS:
-            attackMap = getQueenSquares(kingSq, occ);
+            attackMap = queenAttacks(kingSq, occ);
             break;
         case KINGS:
             // keep attackMap 0
@@ -1168,15 +1146,15 @@ bool Board::isCheckMove(int color, Move m) {
  * Algorithm from http://chessprogramming.wikispaces.com/X-ray+Attacks+%28Bitboards%29#ModifyingOccupancy
  */
 uint64_t Board::getRookXRays(int sq, uint64_t occ, uint64_t blockers) {
-    uint64_t attacks = getRookSquares(sq, occ);
+    uint64_t attacks = rookAttacks(sq, occ);
     blockers &= attacks;
-    return attacks ^ getRookSquares(sq, occ ^ blockers);
+    return attacks ^ rookAttacks(sq, occ ^ blockers);
 }
 
 uint64_t Board::getBishopXRays(int sq, uint64_t occ, uint64_t blockers) {
-    uint64_t attacks = getBishopSquares(sq, occ);
+    uint64_t attacks = bishopAttacks(sq, occ);
     blockers &= attacks;
-    return attacks ^ getBishopSquares(sq, occ ^ blockers);
+    return attacks ^ bishopAttacks(sq, occ ^ blockers);
 }
 
 /*
@@ -1242,10 +1220,10 @@ bool Board::isInsufficientMaterial() {
 void Board::getCheckMaps(int color, uint64_t *checkMaps) {
     int kingSq = bitScanForward(pieces[color][KINGS]);
     uint64_t occ = getOccupancy();
-    checkMaps[KNIGHTS-1] = getKnightSquares(kingSq);
-    checkMaps[BISHOPS-1] = getBishopSquares(kingSq, occ);
-    checkMaps[ROOKS-1] = getRookSquares(kingSq, occ);
-    checkMaps[QUEENS-1] = getQueenSquares(kingSq, occ);
+    checkMaps[KNIGHTS-1] = knightAttacks(kingSq);
+    checkMaps[BISHOPS-1] = bishopAttacks(kingSq, occ);
+    checkMaps[  ROOKS-1] = rookAttacks(kingSq, occ);
+    checkMaps[ QUEENS-1] = queenAttacks(kingSq, occ);
 }
 
 
@@ -1447,26 +1425,6 @@ uint64_t Board::getWPawnCaptures(uint64_t pawns) {
 
 uint64_t Board::getBPawnCaptures(uint64_t pawns) {
     return getBPawnLeftCaptures(pawns) | getBPawnRightCaptures(pawns);
-}
-
-inline uint64_t Board::getKnightSquares(int single) {
-    return knightAttacks(single);
-}
-
-uint64_t Board::getBishopSquares(int single, uint64_t occ) {
-    return bishopAttacks(single, occ);
-}
-
-uint64_t Board::getRookSquares(int single, uint64_t occ) {
-    return rookAttacks(single, occ);
-}
-
-uint64_t Board::getQueenSquares(int single, uint64_t occ) {
-    return queenAttacks(single, occ);
-}
-
-uint64_t Board::getKingSquares(int single) {
-    return kingAttacks(single);
 }
 
 inline uint64_t Board::getOccupancy() {

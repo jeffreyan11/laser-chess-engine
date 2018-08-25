@@ -199,10 +199,6 @@ private:
     uint64_t getBPawnLeftCaptures(uint64_t pawns);
     uint64_t getWPawnRightCaptures(uint64_t pawns);
     uint64_t getBPawnRightCaptures(uint64_t pawns);
-    uint64_t getKnightSquares(int single);
-    uint64_t getBishopSquares(int single, uint64_t occ);
-    uint64_t getRookSquares(int single, uint64_t occ);
-    uint64_t getQueenSquares(int single, uint64_t occ);
     uint64_t getOccupancy();
     int epVictimSquare(int victimColor, uint16_t file);
 
