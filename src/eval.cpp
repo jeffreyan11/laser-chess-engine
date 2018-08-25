@@ -19,6 +19,7 @@
 #include <cstring>
 #include <iomanip>
 #include <iostream>
+
 #include "bbinit.h"
 #include "board.h"
 #include "common.h"
@@ -369,8 +370,8 @@ int Eval::evaluate(Board &b) {
     //------------------------------King Safety---------------------------------
     int kingSq[2] = {bitScanForward(pieces[WHITE][KINGS]),
                      bitScanForward(pieces[BLACK][KINGS])};
-    uint64_t kingNeighborhood[2] = {b.getKingSquares(kingSq[WHITE]),
-                                    b.getKingSquares(kingSq[BLACK])};
+    uint64_t kingNeighborhood[2] = {kingAttacks(kingSq[WHITE]),
+                                    kingAttacks(kingSq[BLACK])};
 
     // Calculate king piece square table scores
     psqtScores[WHITE] += PSQT[WHITE][KINGS][kingSq[WHITE]];
@@ -911,7 +912,7 @@ int Eval::evaluate(Board &b) {
         if (!(FILES[f] & pieces[WHITE][PAWNS]))
             blackPawnScore += bonus;
     }
-    
+
     valueMg += decEvalMg(whitePawnScore) - decEvalMg(blackPawnScore);
     valueEg += decEvalEg(whitePawnScore) - decEvalEg(blackPawnScore);
 
