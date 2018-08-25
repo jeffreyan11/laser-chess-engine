@@ -20,9 +20,6 @@
 
 #include "common.h"
 
-// Move promotion flags
-const int PROMO[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 1, 2, 3, 4};
-
 int bitScanForward(uint64_t bb) {
     assert(bb);  // lsb(0) is undefined
     return __builtin_ctzll(bb);
