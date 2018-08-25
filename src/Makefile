@@ -15,26 +15,36 @@
 # along with Laser.  If not, see <http://www.gnu.org/licenses/>.
 
 CC      = g++
-CFLAGS  = -Wall -ansi -pedantic -std=c++11 -O3 -flto
-LDFLAGS = -lpthread
-OBJS    = bbinit.o board.o common.o eval.o evalhash.o hash.o search.o moveorder.o syzygy/tbprobe.o
-EXE     = laser
+SRC     = *.cpp syzygy/tbprobe.cpp
+LIBS    = -lpthread
+EXE     = Laser
 
-ifeq ($(USE_STATIC), true)
-	LDFLAGS += -static -static-libgcc -static-libstdc++
-endif
+WFLAGS = -Wall -Wextra -Wshadow -ansi -pedantic -std=c++11
+CFLAGS = -DNDEBUG -O3 $(WFLAGS) -flto -march=native
+RFLAGS = -DNDEBUG -O3 $(WFLAGS) -flto -static -static-libgcc -static-libstdc++
+PFLAGS = -DNDEBUG -O0 $(WFLAGS) -p -pg
+DFLAGS = -O0 $(WFLAGS)
 
-ifeq ($(BMI2), true)
-	CFLAGS  += -march=haswell
-endif
+POPCNTFLAGS = -DUSE_POPCNT -msse3 -mpopcnt
+PEXTFLAGS   = $(POPCNTFLAGS) -DUSE_PEXT -mbmi2
 
-all: uci
+popcnt:
+	$(CC) $(CFLAGS) $(SRC) $(LIBS) $(POPCNTFLAGS) -o $(EXE)
 
-uci: $(OBJS) uci.o
-	$(CC) -O3 -flto -o $(EXE)$(EXT) $^ $(LDFLAGS)
+nopopcnt:
+	$(CC) $(CFLAGS) $(SRC) $(LIBS) -o $(EXE)
 
-%.o: %.cpp
-	$(CC) -c $(CFLAGS) -x c++ $< -o $@
+pext:
+	$(CC) $(CFLAGS) $(SRC) $(LIBS) $(PEXTFLAGS) -o $(EXE)
 
-clean:
-	rm -f *.o syzygy/*.o $(EXE)$(EXT).exe $(EXE)$(EXT)
+release:
+	mkdir ../dist
+	$(CC) $(RFLAGS) $(SRC) $(LIBS) -o ../dist/$(EXE)$(VER)-x64-nopopcnt.exe
+	$(CC) $(RFLAGS) $(SRC) $(LIBS) $(POPCNTFLAGS) -o ../dist/$(EXE)$(VER)-x64-popcnt.exe
+	$(CC) $(RFLAGS) $(SRC) $(LIBS) $(PEXTFLAGS) -o ../dist/$(EXE)$(VER)-x64-pext.exe
+
+profile:
+	$(CC) $(PFLAGS) $(SRC) $(LIBS) $(POPCNT) -o $(EXE)
+
+debug:
+	$(CC) $(DFLAGS) $(SRC) $(LIBS) $(POPCNT) -o $(EXE)
