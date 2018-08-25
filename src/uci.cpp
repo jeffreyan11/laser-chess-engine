@@ -26,6 +26,7 @@
 #include <thread>
 #include <random>
 
+#include "attacks.h"
 #include "common.h"
 #include "bbinit.h"
 #include "board.h"
@@ -62,7 +63,7 @@ extern std::atomic<bool> stopSignal;
 
 
 int main(int argc, char **argv) {
-    initMagicTables(2563762638929852183ULL);
+    initAttacks();
     initEvalTables();
     initDistances();
     initZobristTable();
@@ -75,14 +76,12 @@ int main(int argc, char **argv) {
 
     string input;
     std::vector<string> inputVector;
-    string name = "Laser";
-    string version = "1.7 beta";
     string author = "Jeffrey An and Michael An";
     std::thread searchThread;
 
     Board board = fenToBoard(STARTPOS);
 
-    cout << name << " " << version << " by " << author << endl;
+    cout << VERSION_ID << " by " << author << endl;
 
     // Run benchmark from command line with given depth
     if (argc > 1 && strcmp(argv[1], "bench") == 0) {
@@ -101,7 +100,7 @@ int main(int argc, char **argv) {
             continue;
 
         if (input == "uci") {
-            cout << "id name " << name << " " << version << endl;
+            cout << "id name " << LASER_VERSION << endl;
             cout << "id author " << author << endl;
             cout << "option name Threads type spin default " << DEFAULT_THREADS
                  << " min " << MIN_THREADS << " max " << MAX_THREADS << endl;

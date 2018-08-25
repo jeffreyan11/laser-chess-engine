@@ -22,6 +22,16 @@
 #include <cstdint>
 #include <string>
 
+#define VERSION_ID "Laser 1.7 beta"
+
+#if defined(USE_PEXT)
+    #define LASER_VERSION VERSION_ID" (PEXT)"
+#elif defined(USE_POPCNT)
+    #define LASER_VERSION VERSION_ID" (POPCNT)"
+#else
+    #define LASER_VERSION VERSION_ID
+#endif
+
 constexpr uint64_t DEFAULT_HASH_SIZE = 16;
 constexpr uint64_t MIN_HASH_SIZE = 1;
 constexpr uint64_t MAX_HASH_SIZE = 1024 * 1024;
