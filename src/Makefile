@@ -24,6 +24,10 @@ ifeq ($(USE_STATIC), true)
 	LDFLAGS += -static -static-libgcc -static-libstdc++
 endif
 
+ifneq ($(NOPOPCNT), true)
+	CFLAGS  += -msse3 -mpopcnt
+endif
+
 ifeq ($(BMI2), true)
 	CFLAGS  += -march=haswell
 endif

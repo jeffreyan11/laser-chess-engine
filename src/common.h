@@ -52,7 +52,6 @@ uint64_t getTimeElapsed(ChessTime startTime);
 int bitScanForward(uint64_t bb);
 int bitScanReverse(uint64_t bb);
 int count(uint64_t bb);
-uint64_t flipAcrossRanks(uint64_t bb);
 
 // Converts square number to bitboard
 inline constexpr uint64_t indexToBit(int sq) {
@@ -82,7 +81,6 @@ constexpr uint16_t MOVE_PROMO_N = 0x8;
 constexpr uint16_t MOVE_PROMO_B = 0x9;
 constexpr uint16_t MOVE_PROMO_R = 0xA;
 constexpr uint16_t MOVE_PROMO_Q = 0xB;
-extern const int PROMO[16];
 
 inline Move encodeMove(int startSq, int endSq) {
     return (endSq << 6) | startSq;
@@ -109,7 +107,8 @@ inline int getEndSq(Move m) {
 }
 
 inline int getPromotion(Move m) {
-    return PROMO[m >> 12];
+    const int Promo[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 1, 2, 3, 4};
+    return Promo[m >> 12];
 }
 
 inline bool isPromotion(Move m) {
