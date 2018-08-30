@@ -16,7 +16,7 @@ Laser is a command-line engine only. To have a graphical interface, the executab
 
 
 ### Makefile Notes
-The code and Makefile support g++ on Linux and MinGW on Windows for POPCNT processors only. For older or 32-bit systems, set the preprocessor flag `USE_INLINE_ASM` in common.h to `false`.
+The code and Makefile support g++ on Linux and MinGW on Windows for popcnt processors only. For older or 32-bit systems with no popcnt instruction support, use the `NOPOPCNT=true` option.
 To compile, simply run `make` in the main directory. The `USE_STATIC=true` option creates a statically-linked build with all necessary libraries.
 
 

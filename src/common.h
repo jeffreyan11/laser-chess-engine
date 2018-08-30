@@ -23,8 +23,6 @@
 #include <chrono>
 #include <string>
 
-#define USE_INLINE_ASM true
-
 constexpr int WHITE = 0;
 constexpr int BLACK = 1;
 constexpr int PAWNS = 0;
@@ -107,8 +105,8 @@ inline int getEndSq(Move m) {
 }
 
 inline int getPromotion(Move m) {
-    const int Promo[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 1, 2, 3, 4};
-    return Promo[m >> 12];
+    constexpr int PROMO[16] = {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 1, 2, 3, 4};
+    return PROMO[m >> 12];
 }
 
 inline bool isPromotion(Move m) {

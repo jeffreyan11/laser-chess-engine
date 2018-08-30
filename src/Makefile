@@ -25,11 +25,11 @@ ifeq ($(USE_STATIC), true)
 endif
 
 ifneq ($(NOPOPCNT), true)
-	CFLAGS  += -msse3 -mpopcnt
+	CFLAGS += -msse3 -mpopcnt
 endif
 
 ifeq ($(BMI2), true)
-	CFLAGS  += -march=haswell
+	CFLAGS += -march=haswell
 endif
 
 all: uci
