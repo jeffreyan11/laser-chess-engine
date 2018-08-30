@@ -15,13 +15,17 @@
 # along with Laser.  If not, see <http://www.gnu.org/licenses/>.
 
 CC      = g++
-CFLAGS  = -Wall -ansi -pedantic -std=c++11 -O3 -flto
+CFLAGS  = -Wall -DNDEBUG -ansi -pedantic -std=c++11 -O3 -flto
 LDFLAGS = -lpthread
 OBJS    = bbinit.o board.o common.o eval.o evalhash.o hash.o search.o moveorder.o syzygy/tbprobe.o
 EXE     = laser
 
 ifeq ($(USE_STATIC), true)
 	LDFLAGS += -static -static-libgcc -static-libstdc++
+endif
+
+ifneq ($(NOPOPCNT), true)
+	CFLAGS  += -msse3 -mpopcnt
 endif
 
 ifeq ($(BMI2), true)
