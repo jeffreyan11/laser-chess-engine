@@ -15,7 +15,7 @@
 # along with Laser.  If not, see <http://www.gnu.org/licenses/>.
 
 CC      = g++
-CFLAGS  = -Wall -DNDEBUG -ansi -pedantic -std=c++11 -O3 -flto
+CFLAGS  = -Wall -Wextra -Wcast-qual -Wshadow -DNDEBUG -ansi -pedantic -std=c++11 -O3 -flto
 LDFLAGS = -lpthread
 OBJS    = bbinit.o board.o common.o eval.o evalhash.o hash.o search.o moveorder.o syzygy/tbprobe.o
 EXE     = laser

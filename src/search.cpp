@@ -145,7 +145,7 @@ static int probeLimit = 0;
 
 // Search functions
 void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
-    int tbScore, bool tbProbeSuccess, unsigned int prevLMSize, int threadID);
+    int tbScore, bool tbProbeSuccess, int threadID);
 void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha, int beta,
     int *bestMoveIndex, int *bestScore, unsigned int startMove, int threadID, SearchPV *pvLine);
 int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, SearchStackInfo *ssi, SearchPV *pvLine);
@@ -257,12 +257,12 @@ void getBestMoveThreader(Board *b, TimeManagement *timeParams, MoveList *movesTo
 
         // Start and detach secondary threads
         for (int i = 1; i < numThreads; i++) {
-            threadPool[i-1] = std::thread(getBestMove, b, timeParams, legalMoves, tbScore, tbProbeSuccess, prevLMSize, i);
+            threadPool[i-1] = std::thread(getBestMove, b, timeParams, legalMoves, tbScore, tbProbeSuccess, i);
             threadPool[i-1].detach();
         }
 
         // Start the primary result thread
-        getBestMove(b, timeParams, legalMoves, tbScore, tbProbeSuccess, prevLMSize, 0);
+        getBestMove(b, timeParams, legalMoves, tbScore, tbProbeSuccess, 0);
 
         stopSignal = true;
         // Wait for all other threads to finish
@@ -274,13 +274,13 @@ void getBestMoveThreader(Board *b, TimeManagement *timeParams, MoveList *movesTo
     }
     // Otherwise, just search with one thread
     else {
-        getBestMove(b, timeParams, legalMoves, tbScore, tbProbeSuccess, prevLMSize, 0);
+        getBestMove(b, timeParams, legalMoves, tbScore, tbProbeSuccess, 0);
     }
 }
 
 // Finds a best move for a position according to the given search parameters.
 void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
-        int tbScore, bool tbProbeSuccess, unsigned int prevLMSize, int threadID) {
+        int tbScore, bool tbProbeSuccess, int threadID) {
     Move ponder = NULL_MOVE;
     Move bestMove = legalMoves.get(0);
     uint64_t timeSoFar;
@@ -1235,7 +1235,6 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         scores.add(b.getMVVLVAScore(color, legalMoves.get(i)));
     }
 
-    int score = -INFTY;
     unsigned int i = 0;
     for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
               m = nextMove(legalMoves, scores, ++i)) {
@@ -1260,7 +1259,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             continue;
 
         searchStats->nodes++;
-        score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
+        int score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
 
         if (score >= beta) {
             uint64_t hashData = packHashData(-plies, m,
@@ -1281,7 +1280,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     // Generate and search promotions
     legalMoves.clear();
     b.getPseudoLegalPromotions(legalMoves, color);
-    for (unsigned int i = 0; i < legalMoves.size(); i++) {
+    for (i = 0; i < legalMoves.size(); i++) {
         Move m = legalMoves.get(i);
 
         // Static exchange evaluation pruning
@@ -1293,7 +1292,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             continue;
 
         searchStats->nodes++;
-        score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
+        int score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
 
         if (score >= beta) {
             uint64_t hashData = packHashData(-plies, m,
@@ -1316,7 +1315,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         legalMoves.clear();
         b.getPseudoLegalChecks(legalMoves, color);
 
-        for (unsigned int i = 0; i < legalMoves.size(); i++) {
+        for (i = 0; i < legalMoves.size(); i++) {
             Move m = legalMoves.get(i);
 
             // Static exchange evaluation pruning

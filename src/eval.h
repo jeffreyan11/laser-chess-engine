@@ -44,20 +44,20 @@ struct EvalInfo {
 
 class Eval {
 public:
-  template <bool debug = false> int evaluate(Board &b);
+    template <bool debug = false> int evaluate(Board &b);
 
 private:
-  EvalInfo ei;
-  uint64_t pieces[2][6];
-  uint64_t allPieces[2];
-  int playerToMove;
+    EvalInfo ei;
+    uint64_t pieces[2][6];
+    uint64_t allPieces[2];
+    int playerToMove;
 
-  // Eval helpers
-  template <int attackingColor>
-  int getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, int pawnScore, int kingFile);
-  int checkEndgameCases();
-  int scoreSimpleKnownWin(int winningColor);
-  int scoreCornerDistance(int winningColor, int wKingSq, int bKingSq);
+    // Eval helpers
+    template <int attackingColor>
+    int getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, int pawnScore, int kingFile);
+    int checkEndgameCases();
+    int scoreSimpleKnownWin(int winningColor);
+    int scoreCornerDistance(int winningColor, int wKingSq, int bKingSq);
 };
 
 
@@ -94,8 +94,8 @@ constexpr int EG = 1;
 
 // Material constants
 constexpr int PIECE_VALUES[2][5] = {
-  {100, 395, 438, 677, 1339},
-  {136, 392, 450, 736, 1408}
+    {100, 395, 438, 677, 1339},
+    {136, 392, 450, 736, 1408}
 };
 constexpr int KNOWN_WIN = PIECE_VALUES[EG][PAWNS] * 75;
 constexpr int TB_WIN = PIECE_VALUES[EG][PAWNS] * 125;
@@ -390,9 +390,9 @@ constexpr Score LOOSE_MINOR = E(-18, -11);
 // Pawn structure
 // Passed pawns
 constexpr Score PASSER_BONUS[8] = {E(  0,   0), E(  3,  12), E(  3, 14), E(  7,  16),
-                               E( 23,  21), E( 51,  51), E(106,108), E(  0,   0)};
+                                   E( 23,  21), E( 51,  51), E(106,108), E(  0,   0)};
 constexpr Score PASSER_FILE_BONUS[8] = {E( 13, 11), E(  5,  5), E( -8, -3), E(-10, -8),
-                                    E(-10, -8), E( -8, -3), E(  5,  5), E( 13, 11)};
+                                        E(-10, -8), E( -8, -3), E(  5,  5), E( 13, 11)};
 constexpr Score FREE_PROMOTION_BONUS = E(11, 21);
 constexpr Score FREE_STOP_BONUS = E(6, 8);
 constexpr Score FULLY_DEFENDED_PASSER_BONUS = E(8, 13);
@@ -411,11 +411,11 @@ constexpr Score BACKWARD_SEMIOPEN_PENALTY = E(-15, -13);
 // Undefended pawns that are not backwards or isolated
 constexpr Score UNDEFENDED_PAWN_PENALTY = E(-8, -4);
 // Pawn phalanxes
-constexpr Score PAWN_PHALANX_BONUS[8] = {E(0, 0), E(6, -1), E(3, 1), E(10, 7),
-                                     E(26, 21), E(54, 38), E(85, 74), E(0, 0)};
+constexpr Score PAWN_PHALANX_BONUS[8] = {E( 0,  0), E( 6, -1), E( 3,  1), E(10,  7),
+                                         E(26, 21), E(54, 38), E(85, 74), E( 0,  0)};
 // Connected pawns
-constexpr Score PAWN_CONNECTED_BONUS[8] = {E(0, 0), E(0, 0), E(10, 4), E(7, 3),
-                                       E(12, 12), E(33, 36), E(66, 58), E(0, 0)};
+constexpr Score PAWN_CONNECTED_BONUS[8] = {E( 0,  0), E( 0,  0), E(10,  4), E( 7,  3),
+                                           E(12, 12), E(33, 36), E(66, 58), E( 0,  0)};
 // King-pawn tropism
 constexpr int KING_TROPISM_VALUE = 18;
 
