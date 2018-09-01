@@ -88,45 +88,12 @@ void MoveOrder::scoreCaptures() {
     for (unsigned int i = 0; i < quietStart; i++) {
         Move m = legalMoves.get(i);
 
-        // We want the best move first for PV nodes
-        if (isPVNode) {
-            int see = b->getSEEForMove(color, m);
-
-            if (see > 0)
-                scores.add(SCORE_WINNING_CAPTURE + see + b->getMVVLVAScore(color, m));
-            else if (see == 0)
-                scores.add(SCORE_EVEN_CAPTURE + b->getMVVLVAScore(color, m));
-            else
-                // If we are doing SEE on quiets, score losing captures lower
-                scores.add(SCORE_LOSING_CAPTURE + see + b->getMVVLVAScore(color, m));
-        }
-
-        // Otherwise, MVV/LVA for cheaper cutoffs might help
-        else {
-            // Use exchange score to save an SEE if possible: if the SEE is
-            // winning for us on the first turn, then we can stand pat after
-            // our opponent's recapture
-            int exchange = b->getExchangeScore(color, m);
-
-            if (exchange > 0)
-                scores.add(SCORE_WINNING_CAPTURE + b->getMVVLVAScore(color, m));
-
-            else if (exchange == 0)
-                scores.add(SCORE_EVEN_CAPTURE + b->getMVVLVAScore(color, m));
-
-            // If the initial capture is losing, we need to check whether the
-            // piece was hanging using SEE
-            else {
-                int see = b->getSEEForMove(color, m);
-
-                if (see > 0)
-                    scores.add(SCORE_WINNING_CAPTURE + b->getMVVLVAScore(color, m));
-                else if (see == 0)
-                    scores.add(SCORE_EVEN_CAPTURE + b->getMVVLVAScore(color, m));
-                else
-                    scores.add(SCORE_LOSING_CAPTURE + b->getMVVLVAScore(color, m));
-            }
-        }
+        if (b->isSEEAbove(color, m, 1))
+            scores.add(SCORE_WINNING_CAPTURE + b->getMVVLVAScore(color, m));
+        else if (b->isSEEAbove(color, m, 0))
+            scores.add(SCORE_EVEN_CAPTURE + b->getMVVLVAScore(color, m));
+        else
+            scores.add(SCORE_LOSING_CAPTURE + b->getMVVLVAScore(color, m));
     }
 }
 

@@ -1269,81 +1269,6 @@ uint64_t Board::getLeastValuableAttacker(uint64_t attackers, int color, int &pie
     return attackers & pieces[color][KINGS];
 }
 
-// Static exchange evaluation algorithm from
-// https://chessprogramming.wikispaces.com/SEE+-+The+Swap+Algorithm
-int Board::getSEEForMove(int color, Move m) {
-    static constexpr int SEE_PIECE_VALS[6] = {100, 400, 400, 600, 1150, MATE_SCORE/2};
-
-    // Assume the SEE score for EP captures is 0
-    if (isEP(m))
-        return 0;
-
-    int value = 0;
-    int startSq = getStartSq(m);
-    int endSq = getEndSq(m);
-    int pieceID = getPieceOnSquare(color, startSq);
-    int capturedPiece = getPieceOnSquare(color^1, endSq);
-
-    // Do the move temporarily
-    pieces[color][pieceID] &= ~indexToBit(startSq);
-    pieces[color][pieceID] |= indexToBit(endSq);
-    allPieces[color] &= ~indexToBit(startSq);
-    allPieces[color] |= indexToBit(endSq);
-
-    // For a capture, we also need to update the captured piece on the board
-    if (isCapture(m)) {
-        pieces[color^1][capturedPiece] &= ~indexToBit(endSq);
-        allPieces[color^1] &= ~indexToBit(endSq);
-
-        value = SEE_PIECE_VALS[capturedPiece];
-    }
-
-    int seeColor = color^1;
-    int gain[32], d = 0, piece = 0;
-    uint64_t attackers = getAttackMap(endSq);
-    // used attackers that may act as blockers for x-ray pieces
-    uint64_t used = 0;
-
-    // Get the first attacker
-    uint64_t single = getLeastValuableAttacker(attackers, seeColor, piece);
-    // Only do SEE if there are attackers
-    if (single) {
-        // Get value of piece initially being captured. Should never be empty.
-        gain[d] = SEE_PIECE_VALS[getPieceOnSquare(seeColor^1, endSq)];
-
-        do {
-            d++; // next depth
-            seeColor ^= 1;
-            gain[d] = SEE_PIECE_VALS[piece] - gain[d-1];
-            if (-gain[d-1] < 0 && gain[d] < 0) // pruning for stand pat
-                break;
-            attackers ^= single; // remove used attacker
-            used |= single;
-            attackers |= getXRayPieceMap(WHITE, endSq, used, 0) | getXRayPieceMap(BLACK, endSq, used, 0);
-            single = getLeastValuableAttacker(attackers, seeColor, piece);
-        } while (single);
-
-        // Minimax results
-        while (--d)
-            gain[d-1]= -((-gain[d-1] > gain[d]) ? -gain[d-1] : gain[d]);
-
-        value -= gain[0];
-    }
-
-    // Undo the move
-    if (isCapture(m)) {
-        pieces[color^1][capturedPiece] |= indexToBit(endSq);
-        allPieces[color^1] |= indexToBit(endSq);
-    }
-
-    pieces[color][pieceID] |= indexToBit(startSq);
-    pieces[color][pieceID] &= ~indexToBit(endSq);
-    allPieces[color] |= indexToBit(startSq);
-    allPieces[color] &= ~indexToBit(endSq);
-
-    return value;
-}
-
 // Calculates whether the Static Exchange Evaluation for a move is greater than or equal to the cutoff.
 // Minimax algorithm based on Stockfish's SEE implementation.
 bool Board::isSEEAbove(int color, Move m, int cutoff) {
@@ -1456,19 +1381,6 @@ int Board::getMVVLVAScore(int color, Move m) {
     int victim = getPieceOnSquare(color^1, endSq);
 
     return (victim * 8) + (4 - attacker);
-}
-
-// Returns a score from the initial capture
-// This helps reduce the number of times SEE must be used in quiescence search,
-// since if we have a losing trade after capture-recapture our opponent could
-// likely stand pat, or we could've captured with a better piece
-int Board::getExchangeScore(int color, Move m) {
-    int endSq = getEndSq(m);
-    int attacker = getPieceOnSquare(color, getStartSq(m));
-    if (attacker == KINGS)
-        attacker = -1;
-    int victim = getPieceOnSquare(color^1, endSq);
-    return victim - attacker;
 }
 
 
