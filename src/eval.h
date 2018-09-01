@@ -61,7 +61,6 @@ private:
 };
 
 
-constexpr int SEE_PIECE_VALS[6] = {100, 400, 400, 600, 1150, MATE_SCORE/2};
 constexpr int EG_FACTOR_PIECE_VALS[5] = {49, 379, 384, 677, 1559};
 constexpr int EG_FACTOR_ALPHA = 2270;
 constexpr int EG_FACTOR_BETA = 6370;

@@ -121,8 +121,8 @@ public:
     uint64_t getNonPawnMaterial(int color);
     // Static exchange evaluation code: for checking material trades on a single square
     uint64_t getLeastValuableAttacker(uint64_t attackers, int color, int &piece);
-    int getSEE(int color, int sq);
     int getSEEForMove(int color, Move m);
+    bool isSEEAbove(int color, Move m, int cutoff);
     int valueOfPiece(int piece);
     // Most Valuable Victim / Least Valuable Attacker
     int getMVVLVAScore(int color, Move m);

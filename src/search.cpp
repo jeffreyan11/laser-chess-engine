@@ -920,13 +920,13 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // Futility pruning using SEE
         if (moveIsPrunable
          && pruneDepth <= 6
-         && b.getSEEForMove(color, m) < -20 * pruneDepth * pruneDepth)
+         && !b.isSEEAbove(color, m, -20 * pruneDepth * pruneDepth))
             continue;
 
         if (!isPVNode
          && bestScore > -MAX_PLY_MATE_SCORE
          && depth <= 5
-         && b.getSEEForMove(color, m) < -100 * depth)
+         && !b.isSEEAbove(color, m, -100 * depth))
             continue;
 
 
@@ -984,7 +984,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // Check extensions
         if (!doMoveCountPruning
          && isCheckMove
-         && b.getSEEForMove(color, m) >= 0) {
+         && b.isSEEAbove(color, m, 0)) {
             extension++;
         }
 
@@ -1245,12 +1245,12 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             continue;
         }
         // Futility pruning
-        if (standPat < alpha - 80 && b.getSEEForMove(color, m) <= 0) {
+        if (standPat < alpha - 80 && !b.isSEEAbove(color, m, 1)) {
             bestScore = std::max(bestScore, standPat + 80);
             continue;
         }
         // Static exchange evaluation pruning
-        if (b.getExchangeScore(color, m) < 0 && b.getSEEForMove(color, m) < 0)
+        if (!b.isSEEAbove(color, m, 0))
             continue;
 
 
@@ -1284,7 +1284,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         Move m = legalMoves.get(i);
 
         // Static exchange evaluation pruning
-        if (!isCapture(m) && b.getSEEForMove(color, m) < 0)
+        if (!isCapture(m) && !b.isSEEAbove(color, m, 0))
             continue;
 
         Board copy = b.staticCopy();
@@ -1319,7 +1319,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             Move m = legalMoves.get(i);
 
             // Static exchange evaluation pruning
-            if (b.getSEEForMove(color, m) < 0)
+            if (!b.isSEEAbove(color, m, 0))
                 continue;
 
             Board copy = b.staticCopy();
@@ -1374,7 +1374,7 @@ int checkQuiescence(Board &b, int plies, int alpha, int beta, int threadID) {
 
         if (bestScore > -MAX_PLY_MATE_SCORE
          && !isCapture(m)
-         && b.getSEEForMove(color, m) < 0)
+         && !b.isSEEAbove(color, m, 0))
             continue;
 
         Board copy = b.staticCopy();
