@@ -642,6 +642,7 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
         checks.add(m);
     }
 
+    uint64_t occ = getOccupancy();
     uint64_t knights = pieces[color][KNIGHTS] & kingParity;
     uint64_t nAttackMap = getKnightSquares(kingSq);
     while (knights) {
@@ -649,7 +650,7 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
         knights &= knights-1;
         uint64_t nSq = getKnightSquares(stsq);
         // Get any bishops, rooks, queens attacking king after knight has moved
-        uint64_t xrays = getXRayPieceMap(color, kingSq, indexToBit(stsq), 0);
+        uint64_t xrays = getXRayPieceMap(color, kingSq, occ ^ indexToBit(stsq));
         // If still no xrayers are giving check, then we have no discovered
         // check. Otherwise, every move by this piece is a (discovered) checking
         // move
@@ -659,14 +660,13 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
         addMovesToList<MOVEGEN_QUIETS>(checks, stsq, nSq);
     }
 
-    uint64_t occ = getOccupancy();
     uint64_t bishops = pieces[color][BISHOPS] & kingParity;
     uint64_t bAttackMap = getBishopSquares(kingSq, occ);
     while (bishops) {
         int stsq = bitScanForward(bishops);
         bishops &= bishops-1;
         uint64_t bSq = getBishopSquares(stsq, occ);
-        uint64_t xrays = getXRayPieceMap(color, kingSq, indexToBit(stsq), 0);
+        uint64_t xrays = getXRayPieceMap(color, kingSq, occ ^ indexToBit(stsq));
         if (!(xrays & potentialXRay))
             bSq &= bAttackMap;
 
@@ -679,7 +679,7 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
         int stsq = bitScanForward(rooks);
         rooks &= rooks-1;
         uint64_t rSq = getRookSquares(stsq, occ);
-        uint64_t xrays = getXRayPieceMap(color, kingSq, indexToBit(stsq), 0);
+        uint64_t xrays = getXRayPieceMap(color, kingSq, occ ^ indexToBit(stsq));
         if (!(xrays & potentialXRay))
             rSq &= rAttackMap;
 
@@ -1027,11 +1027,7 @@ void Board::addCastlesToList(MoveList &moves, int color) {
 
 // Get the attack map of all potential x-ray pieces (bishops, rooks, queens)
 // after a blocker has been removed.
-uint64_t Board::getXRayPieceMap(int color, int sq, uint64_t blockerStart, uint64_t blockerEnd) {
-    uint64_t occ = getOccupancy();
-    occ &= ~blockerStart;
-    occ |= blockerEnd;
-
+uint64_t Board::getXRayPieceMap(int color, int sq, uint64_t occ) {
     uint64_t bishops = pieces[color][BISHOPS];
     uint64_t rooks = pieces[color][ROOKS];
     uint64_t queens = pieces[color][QUEENS];
@@ -1039,7 +1035,7 @@ uint64_t Board::getXRayPieceMap(int color, int sq, uint64_t blockerStart, uint64
     uint64_t xRayMap = (getBishopSquares(sq, occ) & (bishops | queens))
                      | (getRookSquares(sq, occ) & (rooks | queens));
 
-    return (xRayMap & ~blockerStart);
+    return (xRayMap & occ);
 }
 
 // Given a color and a square, returns all pieces of the color that attack the
@@ -1057,8 +1053,7 @@ uint64_t Board::getAttackMap(int color, int sq) {
 }
 
 // Get all pieces of both colors attacking a square
-uint64_t Board::getAttackMap(int sq) {
-    uint64_t occ = getOccupancy();
+uint64_t Board::getAttackMap(int sq, uint64_t occ) {
     return (getBPawnCaptures(indexToBit(sq)) & pieces[WHITE][PAWNS])
          | (getWPawnCaptures(indexToBit(sq)) & pieces[BLACK][PAWNS])
          | (getKnightSquares(sq) & (pieces[WHITE][KNIGHTS] | pieces[BLACK][KNIGHTS]))
@@ -1142,13 +1137,13 @@ bool Board::isCheckMove(int color, Move m) {
     // Get a bitboard of all pieces that could possibly xray
     uint64_t xrayPieces = pieces[color][BISHOPS] | pieces[color][ROOKS] | pieces[color][QUEENS];
 
-    // The piece that has moved is no longer blocking xray pieces
-    uint64_t removedBlockers = indexToBit(getStartSq(m));
+    uint64_t removedBlockers = 0;
+    // If the capture was en passant, the captured pawn must be removed separately
     if (isEP(m))
         removedBlockers |= indexToBit(epVictimSquare(color^1, epCaptureFile));
 
     // Get any bishops, rooks, queens attacking king after piece has moved
-    uint64_t xrays = getXRayPieceMap(color, kingSq, removedBlockers, indexToBit(getEndSq(m)));
+    uint64_t xrays = getXRayPieceMap(color, kingSq, (occ ^ removedBlockers) | indexToBit(getEndSq(m)));
     // If there is an xray piece attacking the king square after the piece has
     // moved, we have discovered check
     return (bool) (xrays & xrayPieces);
@@ -1295,34 +1290,21 @@ bool Board::isSEEAbove(int color, Move m, int cutoff) {
     if (value >= 0)
         return true;
 
-    // Do the move temporarily
-    pieces[color][pieceID] &= ~indexToBit(startSq);
-    pieces[color][pieceID] |= indexToBit(endSq);
-    allPieces[color] &= ~indexToBit(startSq);
-    allPieces[color] |= indexToBit(endSq);
-
-    // For a capture, we also need to update the captured piece on the board
-    if (isCapture(m)) {
-        pieces[color^1][capturedPiece] &= ~indexToBit(endSq);
-        allPieces[color^1] &= ~indexToBit(endSq);
-    }
-
     int seeColor = color^1;
     int lastPiece = 0;
-    uint64_t attackers = getAttackMap(endSq);
-    // used attackers that may act as blockers for x-ray pieces
-    uint64_t used = 0;
-    uint64_t single;
+    uint64_t occ = (getOccupancy() ^ indexToBit(startSq)) | indexToBit(endSq);
+    uint64_t attackers = getAttackMap(endSq, occ) & ~indexToBit(startSq);
 
     while (true) {
-        single = getLeastValuableAttacker(attackers, seeColor, lastPiece);
+        uint64_t single = getLeastValuableAttacker(attackers, seeColor, lastPiece);
         if (!single)
             break;
 
         seeColor ^= 1;
-        attackers ^= single; // remove used attacker
-        used |= single;
-        attackers |= getXRayPieceMap(WHITE, endSq, used, 0) | getXRayPieceMap(BLACK, endSq, used, 0);
+        // remove used attacker
+        attackers ^= single;
+        occ ^= single;
+        attackers |= getXRayPieceMap(WHITE, endSq, occ) | getXRayPieceMap(BLACK, endSq, occ);
 
         // Minimax the running total assuming the next attacker is captured, but not recaptured
         value = -value - 1 - SEE_PIECE_VALS[lastPiece];
@@ -1337,17 +1319,6 @@ bool Board::isSEEAbove(int color, Move m, int cutoff) {
             break;
         }
     }
-
-    // Undo the move
-    if (isCapture(m)) {
-        pieces[color^1][capturedPiece] |= indexToBit(endSq);
-        allPieces[color^1] |= indexToBit(endSq);
-    }
-
-    pieces[color][pieceID] |= indexToBit(startSq);
-    pieces[color][pieceID] &= ~indexToBit(endSq);
-    allPieces[color] |= indexToBit(startSq);
-    allPieces[color] &= ~indexToBit(endSq);
 
     // We ended with seeColor losing the trade relative to the cutoff
     return color != seeColor;
