@@ -204,6 +204,7 @@ int Eval::evaluate(Board &b) {
     allPieces[WHITE] = b.getAllPieces(WHITE);
     allPieces[BLACK] = b.getAllPieces(BLACK);
     playerToMove = b.getPlayerToMove();
+    int kingSq[2] = {b.getKingSq(WHITE), b.getKingSq(BLACK)};
 
     // Compute endgame factor which is between 0 and EG_FACTOR_RES, inclusive
     int egFactor = EG_FACTOR_RES - (egFactorMaterial - EG_FACTOR_ALPHA) * EG_FACTOR_RES / EG_FACTOR_BETA;
@@ -367,8 +368,6 @@ int Eval::evaluate(Board &b) {
 
 
     //------------------------------King Safety---------------------------------
-    int kingSq[2] = {bitScanForward(pieces[WHITE][KINGS]),
-                     bitScanForward(pieces[BLACK][KINGS])};
     uint64_t kingNeighborhood[2] = {b.getKingSquares(kingSq[WHITE]),
                                     b.getKingSquares(kingSq[BLACK])};
 

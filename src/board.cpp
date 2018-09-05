@@ -82,6 +82,9 @@ Board::Board() {
     moveNumber = 1;
     castlingRights = WHITECASTLE | BLACKCASTLE;
     fiftyMoveCounter = 0;
+
+    kingSqs[WHITE] = 4;
+    kingSqs[BLACK] = 60;
 }
 
 // Create a board object from a mailbox of the current board state.
@@ -118,6 +121,9 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
         castlingRights |= BLACKQSIDE;
     fiftyMoveCounter = _fiftyMoveCounter;
     initZobristKey(mailboxBoard);
+
+    kingSqs[WHITE] = bitScanForward(pieces[WHITE][KINGS]);
+    kingSqs[BLACK] = bitScanForward(pieces[BLACK][KINGS]);
 }
 
 Board::~Board() {}
@@ -308,6 +314,7 @@ void Board::doMove(Move m, int color) {
             castlingRights &= ~WHITECASTLE;
         else
             castlingRights &= ~BLACKCASTLE;
+        kingSqs[color] = endSq;
     }
     // Castling rights change because of the rook only when the rook moves or
     // is captured
@@ -484,9 +491,8 @@ void Board::getPseudoLegalQuiets(MoveList &quiets, int color) {
 
     addPawnMovesToList(quiets, color);
 
-    int stsqK = bitScanForward(pieces[color][KINGS]);
-    uint64_t kingSqs = getKingSquares(stsqK);
-    addMovesToList<MOVEGEN_QUIETS>(quiets, stsqK, kingSqs);
+    uint64_t kingMoves = getKingSquares(kingSqs[color]);
+    addMovesToList<MOVEGEN_QUIETS>(quiets, kingSqs[color], kingMoves);
 }
 
 /*
@@ -502,9 +508,8 @@ void Board::getPseudoLegalQuiets(MoveList &quiets, int color) {
 void Board::getPseudoLegalCaptures(MoveList &captures, int color, bool includePromotions) {
     uint64_t otherPieces = allPieces[color^1];
 
-    int kingStSq = bitScanForward(pieces[color][KINGS]);
-    uint64_t kingSqs = getKingSquares(kingStSq);
-    addMovesToList<MOVEGEN_CAPTURES>(captures, kingStSq, kingSqs, otherPieces);
+    uint64_t kingMoves = getKingSquares(kingSqs[color]);
+    addMovesToList<MOVEGEN_CAPTURES>(captures, kingSqs[color], kingMoves, otherPieces);
 
     addPawnCapturesToList(captures, color, otherPieces, includePromotions);
 
@@ -578,7 +583,7 @@ void Board::getPseudoLegalPromotions(MoveList &moves, int color) {
  * For simplicity, promotions and en passant are left out of this function.
  */
 void Board::getPseudoLegalChecks(MoveList &checks, int color) {
-    int kingSq = bitScanForward(pieces[color^1][KINGS]);
+    int kingSq = kingSqs[color^1];
     // Square parity for knight and bishop moves
     uint64_t kingParity = (pieces[color^1][KINGS] & LIGHT) ? LIGHT : DARK;
     uint64_t potentialXRay = pieces[color][BISHOPS] | pieces[color][ROOKS] | pieces[color][QUEENS];
@@ -702,7 +707,7 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
 // Optimizations include looking for double check (king moves only),
 // otherwise we can only capture the checker or block if it is an xray piece
 void Board::getPseudoLegalCheckEscapes(MoveList &escapes, int color) {
-    int kingSq = bitScanForward(pieces[color][KINGS]);
+    int kingSq = kingSqs[color];
     uint64_t otherPieces = allPieces[color^1];
     uint64_t attackMap = getAttackMap(color^1, kingSq);
     // Consider only captures of pieces giving check
@@ -710,10 +715,10 @@ void Board::getPseudoLegalCheckEscapes(MoveList &escapes, int color) {
 
     // If double check, we can only move the king
     if (count(otherPieces) >= 2) {
-        uint64_t kingSqs = getKingSquares(kingSq);
+        uint64_t kingMoves = getKingSquares(kingSq);
 
-        addMovesToList<MOVEGEN_CAPTURES>(escapes, kingSq, kingSqs, allPieces[color^1]);
-        addMovesToList<MOVEGEN_QUIETS>(escapes, kingSq, kingSqs);
+        addMovesToList<MOVEGEN_CAPTURES>(escapes, kingSq, kingMoves, allPieces[color^1]);
+        addMovesToList<MOVEGEN_QUIETS>(escapes, kingSq, kingMoves);
         return;
     }
 
@@ -734,9 +739,8 @@ void Board::getPseudoLegalCheckEscapes(MoveList &escapes, int color) {
 
     addPieceMovesToList<MOVEGEN_CAPTURES>(escapes, color, otherPieces);
 
-    int stsqK = bitScanForward(pieces[color][KINGS]);
-    uint64_t kingSqs = getKingSquares(stsqK);
-    addMovesToList<MOVEGEN_CAPTURES>(escapes, stsqK, kingSqs, allPieces[color^1]);
+    uint64_t kingMoves = getKingSquares(kingSqs[color]);
+    addMovesToList<MOVEGEN_CAPTURES>(escapes, kingSqs[color], kingMoves, allPieces[color^1]);
 
     addPawnMovesToList(escapes, color);
     uint64_t knights = pieces[color][KNIGHTS];
@@ -775,7 +779,7 @@ void Board::getPseudoLegalCheckEscapes(MoveList &escapes, int color) {
         addMovesToList<MOVEGEN_QUIETS>(escapes, stSq, qSq & xraySqs);
     }
 
-    addMovesToList<MOVEGEN_QUIETS>(escapes, stsqK, kingSqs);
+    addMovesToList<MOVEGEN_QUIETS>(escapes, kingSqs[color], kingMoves);
 }
 
 //------------------------------------------------------------------------------
@@ -1077,7 +1081,7 @@ int Board::getPieceOnSquare(int color, int sq) {
 
 // Returns true if a move puts the opponent in check
 bool Board::isCheckMove(int color, Move m) {
-    int kingSq = bitScanForward(pieces[color^1][KINGS]);
+    int kingSq = kingSqs[color^1];
 
     // Special case for castling
     if (isCastle(m)) {
@@ -1173,7 +1177,7 @@ uint64_t Board::getBishopXRays(int sq, uint64_t occ, uint64_t blockers) {
 uint64_t Board::getPinnedMap(int color) {
     uint64_t pinned = 0;
     uint64_t blockers = allPieces[color];
-    int kingSq = bitScanForward(pieces[color][KINGS]);
+    int kingSq = kingSqs[color];
 
     uint64_t pinners = getRookXRays(kingSq, getOccupancy(), blockers)
         & (pieces[color^1][ROOKS] | pieces[color^1][QUEENS]);
@@ -1199,9 +1203,7 @@ uint64_t Board::getPinnedMap(int color) {
 //-------------------King: check, draw, insufficient material-------------------
 //------------------------------------------------------------------------------
 bool Board::isInCheck(int color) {
-    int sq = bitScanForward(pieces[color][KINGS]);
-
-    return getAttackMap(color^1, sq);
+    return getAttackMap(color^1, kingSqs[color]);
 }
 
 bool Board::isDraw() {
@@ -1227,7 +1229,7 @@ bool Board::isInsufficientMaterial() {
 }
 
 void Board::getCheckMaps(int color, uint64_t *checkMaps) {
-    int kingSq = bitScanForward(pieces[color][KINGS]);
+    int kingSq = kingSqs[color];
     uint64_t occ = getOccupancy();
     checkMaps[KNIGHTS-1] = getKnightSquares(kingSq);
     checkMaps[BISHOPS-1] = getBishopSquares(kingSq, occ);
@@ -1490,6 +1492,10 @@ uint64_t Board::getPieces(int color, int piece) {
 
 uint64_t Board::getAllPieces(int color) {
     return allPieces[color];
+}
+
+int Board::getKingSq(int color) {
+    return kingSqs[color];
 }
 
 int *Board::getMailbox() {

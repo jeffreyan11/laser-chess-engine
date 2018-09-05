@@ -144,6 +144,7 @@ public:
     int getPlayerToMove();
     uint64_t getPieces(int color, int piece);
     uint64_t getAllPieces(int color);
+    int getKingSq(int color);
     int *getMailbox();
     uint64_t getZobristKey();
 
@@ -172,6 +173,9 @@ private:
     uint8_t castlingRights;
     // Counts half moves for the 50-move rule
     uint8_t fiftyMoveCounter;
+
+    // Precomputed tables
+    int kingSqs[2];
 
     void addPawnMovesToList(MoveList &quiets, int color);
     void addPawnCapturesToList(MoveList &captures, int color, uint64_t otherPieces, bool includePromotions);
