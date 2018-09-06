@@ -938,8 +938,7 @@ void Board::addPieceMovesToList(MoveList &moves, int color, uint64_t otherPieces
 // Helper function that processes a bitboard of legal moves and adds all
 // moves into a list.
 template <bool isCapture>
-void Board::addMovesToList(MoveList &moves, int stSq, uint64_t allEndSqs,
-    uint64_t otherPieces) {
+void Board::addMovesToList(MoveList &moves, int stSq, uint64_t allEndSqs, uint64_t otherPieces) {
 
     uint64_t intersect = (isCapture) ? otherPieces : ~getOccupancy();
     uint64_t legal = allEndSqs & intersect;
@@ -1066,8 +1065,7 @@ uint64_t Board::getAttackMap(int sq, uint64_t occ) {
          | (getKingSquares(sq) & (pieces[WHITE][KINGS] | pieces[BLACK][KINGS]));
 }
 
-// Given the on a given square, used to get either the piece moving or the
-// captured piece.
+// Returns the piece with given color on the given square, if any
 int Board::getPieceOnSquare(int color, int sq) {
     uint64_t endSingle = indexToBit(sq);
     for (int pieceID = 0; pieceID <= 5; pieceID++) {
@@ -1241,13 +1239,6 @@ void Board::getCheckMaps(int color, uint64_t *checkMaps) {
 //------------------------------------------------------------------------------
 //--------------------------------Move Ordering---------------------------------
 //------------------------------------------------------------------------------
-int Board::getMaterial(int color) {
-    int material = 0;
-    for (int pieceID = PAWNS; pieceID <= QUEENS; pieceID++)
-        material += PIECE_VALUES[MG][pieceID] * count(pieces[color][pieceID]);
-    return material;
-}
-
 uint64_t Board::getNonPawnMaterial(int color) {
     return pieces[color][KNIGHTS] | pieces[color][BISHOPS]
          | pieces[color][ROOKS]   | pieces[color][QUEENS];

@@ -116,7 +116,6 @@ public:
     bool isInsufficientMaterial();
     void getCheckMaps(int color, uint64_t *checkMaps);
 
-    int getMaterial(int color);
     // Useful for turning off some pruning late endgame
     uint64_t getNonPawnMaterial(int color);
     // Static exchange evaluation code: for checking material trades on a single square
