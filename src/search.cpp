@@ -125,9 +125,6 @@ uint64_t timeLimit;
 std::atomic<bool> isStop(true);
 // Additional stop signal to stop helper threads during SMP
 std::atomic<bool> stopSignal(true);
-// Used to ensure all threads have terminated
-std::atomic<int> threadsRunning;
-std::mutex threadsRunningMutex;
 
 // Dummy variables for lazy SMP since we don't care about these results
 int dummyBestIndex[MAX_THREADS-1];
@@ -251,25 +248,18 @@ void getBestMoveThreader(Board *b, TimeManagement *timeParams, MoveList *movesTo
 
 
     // Create threads for SMP if necessary
-    threadsRunning = numThreads;
     if (numThreads > 1) {
-        std::thread *threadPool = new std::thread[numThreads-1];
+        std::thread *threadPool = new std::thread[numThreads];
 
-        // Start and detach secondary threads
-        for (int i = 1; i < numThreads; i++) {
-            threadPool[i-1] = std::thread(getBestMove, b, timeParams, legalMoves, tbScore, tbProbeSuccess, i);
-            threadPool[i-1].detach();
+        // Start and join all threads
+        for (int i = 0; i < numThreads; i++) {
+            threadPool[i] = std::thread(getBestMove, b, timeParams, legalMoves, tbScore, tbProbeSuccess, i);
+        }
+        for (int i = 0; i < numThreads; i++) {
+            threadPool[i].join();
         }
 
-        // Start the primary result thread
-        getBestMove(b, timeParams, legalMoves, tbScore, tbProbeSuccess, 0);
-
-        stopSignal = true;
-        // Wait for all other threads to finish
-        while (threadsRunning > 0)
-            std::this_thread::yield();
         stopSignal = false;
-
         delete[] threadPool;
     }
     // Otherwise, just search with one thread
@@ -492,7 +482,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
     }
     // Conditions for iterative deepening loop
     while (!isStop
-         && (threadID != 0
+         && ((threadID != 0 && rootDepth <= MAX_DEPTH)
           || ((((timeParams->searchMode == TIME && timeSoFar < (uint64_t) timeParams->allotment * TIME_FACTOR * timeChangeFactor)
               || isPonderSearch) && rootDepth <= MAX_DEPTH)
            || (timeParams->searchMode == MOVETIME && timeSoFar < (uint64_t) timeParams->allotment && rootDepth <= MAX_DEPTH)
@@ -512,11 +502,6 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
         else
             cout << "bestmove " << moveToString(bestMove) << endl;
     }
-
-    // This thread is finished running
-    threadsRunningMutex.lock();
-    threadsRunning--;
-    threadsRunningMutex.unlock();
 }
 
 // Returns the index of the best move in legalMoves
