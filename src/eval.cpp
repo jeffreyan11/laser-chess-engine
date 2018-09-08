@@ -1007,6 +1007,11 @@ int Eval::getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, in
     // Precalculate a few things
     uint64_t kingNeighborhood = (attackingColor == WHITE) ? ((pieces[BLACK][KINGS] & RANK_8) ? (kingSqs | (kingSqs >> 8)) : kingSqs)
                                                           : ((pieces[WHITE][KINGS] & RANK_1) ? (kingSqs | (kingSqs << 8)) : kingSqs);
+    if (kingFile == 7)
+        kingNeighborhood |= kingNeighborhood >> 1;
+    else if (kingFile == 0)
+        kingNeighborhood |= kingNeighborhood << 1;
+
     uint64_t weakMap = ~ei.doubleAttackMaps[attackingColor^1]
                      & ((~ei.attackMaps[attackingColor^1][PAWNS] & ~ei.fullAttackMaps[attackingColor^1]) | ei.attackMaps[attackingColor^1][QUEENS]);
     // Analyze undefended squares directly adjacent to king
