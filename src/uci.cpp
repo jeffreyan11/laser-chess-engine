@@ -90,8 +90,7 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    while (true) {
-        getline(std::cin, input);
+    while (getline(std::cin, input)) {
         stringToLowerCase(input);
         inputVector = split(input, ' ');
         std::cin.clear();
