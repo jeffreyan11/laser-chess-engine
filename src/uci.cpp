@@ -91,7 +91,6 @@ int main(int argc, char **argv) {
     }
 
     while (getline(std::cin, input)) {
-
         stringToLowerCase(input);
         inputVector = split(input, ' ');
         std::cin.clear();
