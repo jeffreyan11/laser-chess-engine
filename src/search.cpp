@@ -406,6 +406,33 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
             legalMoves.swap(multiPVNum-1, bestMoveIndex);
             bestMove = legalMoves.get(0);
 
+            // Sort the remaining moves, using a simplified version of
+            // move ordering from moveorder.cpp
+            int color = b->getPlayerToMove();
+            ScoreList scores;
+            for (unsigned int i = 0; i < legalMoves.size(); i++) {
+                if (i < multiPVNum) {
+                    scores.add(0);
+                    continue;
+                }
+
+                Move m = legalMoves.get(i);
+                if (isCapture(m))
+                    scores.add(4096 + b->getMVVLVAScore(color, m));
+                else if (getPromotion(m) == QUEENS)
+                    scores.add(2048);
+                else {
+                    int startSq = getStartSq(m);
+                    int endSq = getEndSq(m);
+                    int pieceID = b->getPieceOnSquare(color, startSq);
+
+                    scores.add(threadMemoryArray[threadID]->searchParams.historyTable[color][pieceID][endSq]);
+                }
+            }
+            for (unsigned int i = multiPVNum; i < legalMoves.size(); i++) {
+                nextMove(legalMoves, scores, i);
+            }
+
             // Output info using UCI protocol
             if (threadID == 0) {
                 cout << "info depth " << rootDepth;
