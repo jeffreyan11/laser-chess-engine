@@ -526,33 +526,53 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
     std::this_thread::yield();
 
     for (unsigned int i = startMove; i < legalMoves->size(); i++) {
+        Move m = legalMoves->get(i);
         // Output current move info to the GUI. Only do so if 5 seconds of
         // search have elapsed to avoid clutter
         uint64_t timeSoFar = getTimeElapsed(startTime);
         uint64_t nps = 1000 * getNodes() / timeSoFar;
         if (threadID == 0 && timeSoFar > 5 * ONE_SECOND)
-            cout << "info depth " << depth << " currmove " << moveToString(legalMoves->get(i))
+            cout << "info depth " << depth << " currmove " << moveToString(m)
                  << " currmovenumber " << i+1 << " nodes " << getNodes() << " nps " << nps << endl;
 
         Board copy = b->staticCopy();
-        copy.doMove(legalMoves->get(i), color);
+        copy.doMove(m, color);
         searchStats->nodes++;
 
-        int startSq = getStartSq(legalMoves->get(i));
-        int endSq = getEndSq(legalMoves->get(i));
+        int startSq = getStartSq(m);
+        int endSq = getEndSq(m);
         int pieceID = b->getPieceOnSquare(color, startSq);
         (ssi+1)->counterMoveHistory = searchParams->counterMoveHistory[pieceID][endSq];
         (ssi+1)->followupMoveHistory = nullptr;
         (ssi+2)->followupMoveHistory = searchParams->followupMoveHistory[pieceID][endSq];
 
+        // Root LMR
+        unsigned int movesSearched = i - startMove;
+        int reduction = 0;
+        if (depth >= 3 && movesSearched > 2
+         && !isCapture(m) && !isPromotion(m)) {
+            reduction = lmrReductions[std::min(63, depth)][std::max(1U, std::min(63U, movesSearched))] - 1;
+            reduction = std::max(0, reduction);
+        }
+
+        // Check extensions
+        int extension = 0;
+        if (copy.isInCheck(color^1)
+         && b->isSEEAbove(color, m, 0)) {
+            extension++;
+        }
+
         if (i != 0) {
-            score = -PVS(copy, depth-1, -alpha-1, -alpha, threadID, true, ssi+1, &line);
+            score = -PVS(copy, depth-1+extension-reduction, -alpha-1, -alpha, threadID, true, ssi+1, &line);
+            if (reduction > 0 && score > alpha) {
+                score = -PVS(copy, depth-1+extension, -alpha-1, -alpha, threadID, true, ssi+1, &line);
+            }
             if (alpha < score && score < beta) {
-                score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, ssi+1, &line);
+                score = -PVS(copy, depth-1+extension, -beta, -alpha, threadID, false, ssi+1, &line);
             }
         }
         else {
-            score = -PVS(copy, depth-1, -beta, -alpha, threadID, false, ssi+1, &line);
+            score = -PVS(copy, depth-1+extension, -beta, -alpha, threadID, false, ssi+1, &line);
         }
 
         // Stop condition. If stopping, return search results from incomplete
@@ -566,11 +586,11 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
                 alpha = score;
                 tempMove = (int) i;
                 if (pvLine != nullptr)
-                    changePV(legalMoves->get(i), pvLine, &line);
+                    changePV(m, pvLine, &line);
             }
             // To get a PV if failing low
             else if (pvLine != nullptr && i == 0)
-                changePV(legalMoves->get(i), pvLine, &line);
+                changePV(m, pvLine, &line);
         }
 
         if (score >= beta)
