@@ -418,10 +418,16 @@ constexpr Score PAWN_CONNECTED_BONUS[8] = {E( 0,  0), E( 0,  0), E(12,  5), E( 9
 // King-pawn tropism
 constexpr int KING_TROPISM_VALUE = 18;
 
+// Endgame win probability adjustment
+constexpr int PAWN_ASYMMETRY_BONUS = 2;
+constexpr int PAWN_COUNT_BONUS = 3;
+constexpr int KING_OPPOSITION_DISTANCE_BONUS = 2;
+constexpr int ENDGAME_BASE = -30;
+
 // Scale factors for drawish endgames
 constexpr int MAX_SCALE_FACTOR = 32;
 constexpr int OPPOSITE_BISHOP_SCALING[2] = {14, 28};
-constexpr int PAWNLESS_SCALING[4] = {3, 4, 7, 24};
+constexpr int PAWNLESS_SCALING[4] = {3, 5, 9, 24};
 
 
 #undef E

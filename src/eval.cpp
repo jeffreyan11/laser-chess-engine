@@ -943,6 +943,37 @@ int Eval::evaluate(Board &b) {
     }
 
 
+    // Adjust endgame eval based on the probability of converting the advantage to a win
+    if (egFactor > 0) {
+        uint64_t wPawnAsymmetry = pieces[WHITE][PAWNS];
+        wPawnAsymmetry |= wPawnAsymmetry >> 8;
+        wPawnAsymmetry |= wPawnAsymmetry >> 16;
+        wPawnAsymmetry |= wPawnAsymmetry >> 32;
+        wPawnAsymmetry &= 0xFF;
+        uint64_t bPawnAsymmetry = pieces[BLACK][PAWNS];
+        bPawnAsymmetry |= bPawnAsymmetry >> 8;
+        bPawnAsymmetry |= bPawnAsymmetry >> 16;
+        bPawnAsymmetry |= bPawnAsymmetry >> 32;
+        bPawnAsymmetry &= 0xFF;
+        // Asymmetry: greater asymmetry means less locked position, more potential passers
+        int pawnAsymmetry = count((wPawnAsymmetry & ~bPawnAsymmetry) | (~wPawnAsymmetry & bPawnAsymmetry));
+        // King opposition distance: when kings are farther apart by file, there is a
+        // lower chance of the defending king keeping the attacking king from penetrating
+        int oppositionDistance = std::abs((kingSq[WHITE] & 7)  - (kingSq[BLACK] & 7))
+                               - std::abs((kingSq[WHITE] >> 3) - (kingSq[BLACK] >> 3));
+
+        int egWinAdjustment = PAWN_ASYMMETRY_BONUS * pawnAsymmetry
+                            + PAWN_COUNT_BONUS * (pieceCounts[WHITE][PAWNS] + pieceCounts[BLACK][PAWNS])
+                            + KING_OPPOSITION_DISTANCE_BONUS * oppositionDistance
+                            + ENDGAME_BASE;
+        // Cap the penalty at reducing to a score of 0
+        if (valueEg > 0)
+            valueEg = std::max(0, valueEg + egWinAdjustment);
+        else if (valueEg < 0)
+            valueEg = std::min(0, valueEg - egWinAdjustment);
+    }
+
+
     if (debug) {
         evalDebugStats.totalMg = valueMg;
         evalDebugStats.totalEg = valueEg;
