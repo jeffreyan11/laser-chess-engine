@@ -417,8 +417,17 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
                 }
 
                 Move m = legalMoves.get(i);
-                if (isCapture(m))
-                    scores.add(4096 + b->getMVVLVAScore(color, m));
+                if (isCapture(m)) {
+                    int startSq = getStartSq(m);
+                    int endSq = getEndSq(m);
+                    int pieceID = b->getPieceOnSquare(color, startSq);
+                    int capturedID = b->getPieceOnSquare(color, endSq);
+                    if (capturedID == -1) capturedID = 0;
+
+                    int adjustedMVVLVA = 8 * b->getMVVLVAScore(color, m) / (4 + rootDepth);
+                    scores.add(16384 + adjustedMVVLVA
+                        + 2 * threadMemoryArray[threadID]->searchParams.captureHistory[color][pieceID][capturedID][endSq]);
+                }
                 else if (getPromotion(m) == QUEENS)
                     scores.add(2048);
                 else {
@@ -1116,6 +1125,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
                 }
                 moveSorter.updateHistories(m);
             }
+            else
+                moveSorter.updateCaptureHistories(m);
 
             changePV(m, pvLine, &line);
 
@@ -1151,6 +1162,8 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // Update histories for quiet moves
         if (!isCapture(toHash))
             moveSorter.updateHistories(toHash);
+        else
+            moveSorter.updateCaptureHistories(toHash);
     }
 
     // Record all-nodes

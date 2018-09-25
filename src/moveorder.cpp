@@ -87,13 +87,19 @@ void MoveOrder::generateMoves() {
 void MoveOrder::scoreCaptures() {
     for (unsigned int i = 0; i < quietStart; i++) {
         Move m = legalMoves.get(i);
+        int startSq = getStartSq(m);
+        int endSq = getEndSq(m);
+        int pieceID = b->getPieceOnSquare(color, startSq);
+        int capturedID = b->getPieceOnSquare(color, endSq);
+        if (capturedID == -1) capturedID = 0;
 
+        int adjustedMVVLVA = 8 * b->getMVVLVAScore(color, m) / (4 + depth);
         if (b->isSEEAbove(color, m, 1))
-            scores.add(SCORE_WINNING_CAPTURE + b->getMVVLVAScore(color, m));
+            scores.add(SCORE_WINNING_CAPTURE + adjustedMVVLVA + 2 * searchParams->captureHistory[color][pieceID][capturedID][endSq]);
         else if (b->isSEEAbove(color, m, 0))
-            scores.add(SCORE_EVEN_CAPTURE + b->getMVVLVAScore(color, m));
+            scores.add(SCORE_EVEN_CAPTURE + adjustedMVVLVA + 2 * searchParams->captureHistory[color][pieceID][capturedID][endSq]);
         else
-            scores.add(SCORE_LOSING_CAPTURE + b->getMVVLVAScore(color, m));
+            scores.add(SCORE_LOSING_CAPTURE + adjustedMVVLVA + 2 * searchParams->captureHistory[color][pieceID][capturedID][endSq]);
     }
 }
 
@@ -164,16 +170,17 @@ Move MoveOrder::nextMove() {
 }
 
 // When a PV or cut move is found, the history of the best move in increased,
-// and the histories of all quiet moves searched prior to the best move are reduced.
+// and the histories of all moves searched prior to the best move are reduced.
 void MoveOrder::updateHistories(Move bestMove) {
     const int resetFactor = 256;
     int historyDepth = std::min(depth, 14);
     int historyChange = historyDepth * historyDepth;
 
-    // Increase history for the best move
     int startSq = getStartSq(bestMove);
     int endSq = getEndSq(bestMove);
     int pieceID = b->getPieceOnSquare(color, startSq);
+
+    // Increase history for the best move
     searchParams->historyTable[color][pieceID][endSq] -=
         historyChange * searchParams->historyTable[color][pieceID][endSq] / resetFactor;
     searchParams->historyTable[color][pieceID][endSq] += historyChange;
@@ -194,26 +201,70 @@ void MoveOrder::updateHistories(Move bestMove) {
     for (unsigned int i = 0; i < index-1; i++) {
         if (legalMoves.get(i) == bestMove)
             break;
-        if (isCapture(legalMoves.get(i)))
-            continue;
 
         startSq = getStartSq(legalMoves.get(i));
         endSq = getEndSq(legalMoves.get(i));
         pieceID = b->getPieceOnSquare(color, startSq);
 
-        searchParams->historyTable[color][pieceID][endSq] -=
-            historyChange * searchParams->historyTable[color][pieceID][endSq] / resetFactor;
-        searchParams->historyTable[color][pieceID][endSq] -= historyChange;
-        if (ssi->counterMoveHistory != nullptr) {
-            ssi->counterMoveHistory[pieceID][endSq] -=
-                historyChange * ssi->counterMoveHistory[pieceID][endSq] / resetFactor;
-            ssi->counterMoveHistory[pieceID][endSq] -= historyChange;
+        if (isCapture(legalMoves.get(i))) {
+            int capturedID = b->getPieceOnSquare(color, endSq);
+            if (capturedID == -1) capturedID = 0;
+
+            searchParams->captureHistory[color][pieceID][capturedID][endSq] -=
+                historyChange * searchParams->captureHistory[color][pieceID][capturedID][endSq] / resetFactor;
+            searchParams->captureHistory[color][pieceID][capturedID][endSq] -= historyChange;
         }
-        if (ssi->followupMoveHistory != nullptr) {
-            ssi->followupMoveHistory[pieceID][endSq] -=
-                historyChange * ssi->followupMoveHistory[pieceID][endSq] / resetFactor;
-            ssi->followupMoveHistory[pieceID][endSq] -= historyChange;
+        else {
+            searchParams->historyTable[color][pieceID][endSq] -=
+                historyChange * searchParams->historyTable[color][pieceID][endSq] / resetFactor;
+            searchParams->historyTable[color][pieceID][endSq] -= historyChange;
+            if (ssi->counterMoveHistory != nullptr) {
+                ssi->counterMoveHistory[pieceID][endSq] -=
+                    historyChange * ssi->counterMoveHistory[pieceID][endSq] / resetFactor;
+                ssi->counterMoveHistory[pieceID][endSq] -= historyChange;
+            }
+            if (ssi->followupMoveHistory != nullptr) {
+                ssi->followupMoveHistory[pieceID][endSq] -=
+                    historyChange * ssi->followupMoveHistory[pieceID][endSq] / resetFactor;
+                ssi->followupMoveHistory[pieceID][endSq] -= historyChange;
+            }
         }
+    }
+}
+
+void MoveOrder::updateCaptureHistories(Move bestMove) {
+    const int resetFactor = 256;
+    int historyDepth = std::min(depth, 14);
+    int historyChange = historyDepth * historyDepth;
+
+    int startSq = getStartSq(bestMove);
+    int endSq = getEndSq(bestMove);
+    int pieceID = b->getPieceOnSquare(color, startSq);
+    int capturedID = b->getPieceOnSquare(color, endSq);
+    if (capturedID == -1) capturedID = 0;
+
+    searchParams->captureHistory[color][pieceID][capturedID][endSq] -=
+        historyChange * searchParams->captureHistory[color][pieceID][capturedID][endSq] / resetFactor;
+    searchParams->captureHistory[color][pieceID][capturedID][endSq] += historyChange;
+
+    // If we searched only the hash move, return to prevent crashes
+    if (index <= 0)
+        return;
+    for (unsigned int i = 0; i < index-1; i++) {
+        if (legalMoves.get(i) == bestMove)
+            break;
+        if (!isCapture(legalMoves.get(i)))
+            continue;
+
+        startSq = getStartSq(legalMoves.get(i));
+        endSq = getEndSq(legalMoves.get(i));
+        pieceID = b->getPieceOnSquare(color, startSq);
+        capturedID = b->getPieceOnSquare(color, endSq);
+        if (capturedID == -1) capturedID = 0;
+
+        searchParams->captureHistory[color][pieceID][capturedID][endSq] -=
+            historyChange * searchParams->captureHistory[color][pieceID][capturedID][endSq] / resetFactor;
+        searchParams->captureHistory[color][pieceID][capturedID][endSq] -= historyChange;
     }
 }
 

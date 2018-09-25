@@ -48,6 +48,7 @@ struct MoveOrder {
     void generateMoves();
     Move nextMove();
     void updateHistories(Move bestMove);
+    void updateCaptureHistories(Move bestMove);
 
 private:
     void scoreCaptures();

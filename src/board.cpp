@@ -1342,9 +1342,9 @@ int Board::getMVVLVAScore(int color, Move m) {
     int attacker = getPieceOnSquare(color, getStartSq(m));
     if (attacker == KINGS)
         attacker = -1;
-    int victim = getPieceOnSquare(color^1, endSq);
+    int victim = valueOfPiece(getPieceOnSquare(color^1, endSq));
 
-    return (victim * 8) + (4 - attacker);
+    return victim + (4 - attacker);
 }
 
 

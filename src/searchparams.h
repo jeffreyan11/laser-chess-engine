@@ -28,6 +28,7 @@ struct SearchParameters {
     uint8_t rootMoveNumber;
     Move killers[MAX_DEPTH][2];
     int historyTable[2][6][64];
+    int captureHistory[2][6][6][64];
     int **counterMoveHistory[6][64];
     int **followupMoveHistory[6][64];
 
@@ -86,6 +87,15 @@ struct SearchParameters {
             for (int j = 0; j < 6; j++) {
                 for (int k = 0; k < 64; k++)
                     historyTable[i][j][k] = 0;
+            }
+        }
+
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 6; j++) {
+                for (int k = 0; k < 6; k++) {
+                    for (int l = 0; l < 64; l++)
+                        captureHistory[i][j][k][l] = 0;
+                }
             }
         }
 
