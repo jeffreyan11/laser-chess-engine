@@ -295,7 +295,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
                             && multiPVNum <= legalMoves.size();
                           multiPVNum++) {
             // Initial aspiration window based on depth and score
-            int deltaAlpha = 20 - std::min(rootDepth/3, 10) + abs(bestScore) / 20;
+            int deltaAlpha = 14 - std::min(rootDepth/4, 6) + abs(bestScore) / 25;
             int deltaBeta = deltaAlpha;
 
             // Set up aspiration windows
