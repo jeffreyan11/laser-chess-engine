@@ -726,8 +726,8 @@ int Eval::evaluate(Board &b) {
             }
 
             // Bonuses and penalties for king distance
-            whitePawnScore -= OWN_KING_DIST * (int)kingDistance[passerSq+8][kingSq[WHITE]] * rFactor;
-            whitePawnScore += OPP_KING_DIST * (int)kingDistance[passerSq+8][kingSq[BLACK]] * rFactor;
+            whitePawnScore -= OWN_KING_DIST * (int) kingDistance[passerSq+8][kingSq[WHITE]] * rFactor;
+            whitePawnScore += OPP_KING_DIST * (int) kingDistance[passerSq+8][kingSq[BLACK]] * rFactor;
         }
     }
     uint64_t bPasserTemp = bPassedPawns;
@@ -768,8 +768,8 @@ int Eval::evaluate(Board &b) {
                     blackPawnScore += rFactor * DEFENDED_PASSER_BONUS;
             }
 
-            blackPawnScore += OPP_KING_DIST * (int)kingDistance[passerSq-8][kingSq[WHITE]] * rFactor;
-            blackPawnScore -= OWN_KING_DIST * (int)kingDistance[passerSq-8][kingSq[BLACK]] * rFactor;
+            blackPawnScore += OPP_KING_DIST * (int) kingDistance[passerSq-8][kingSq[WHITE]] * rFactor;
+            blackPawnScore -= OWN_KING_DIST * (int) kingDistance[passerSq-8][kingSq[BLACK]] * rFactor;
         }
     }
 
