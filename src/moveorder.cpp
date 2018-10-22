@@ -95,11 +95,11 @@ void MoveOrder::scoreCaptures() {
 
         int adjustedMVVLVA = 8 * b->getMVVLVAScore(color, m) / (4 + depth);
         if (b->isSEEAbove(color, m, 1))
-            scores.add(SCORE_WINNING_CAPTURE + adjustedMVVLVA + 2 * searchParams->captureHistory[color][pieceID][capturedID][endSq]);
+            scores.add(SCORE_WINNING_CAPTURE + adjustedMVVLVA + searchParams->captureHistory[color][pieceID][capturedID][endSq]);
         else if (b->isSEEAbove(color, m, 0))
-            scores.add(SCORE_EVEN_CAPTURE + adjustedMVVLVA + 2 * searchParams->captureHistory[color][pieceID][capturedID][endSq]);
+            scores.add(SCORE_EVEN_CAPTURE + adjustedMVVLVA + searchParams->captureHistory[color][pieceID][capturedID][endSq]);
         else
-            scores.add(SCORE_LOSING_CAPTURE + adjustedMVVLVA + 2 * searchParams->captureHistory[color][pieceID][capturedID][endSq]);
+            scores.add(SCORE_LOSING_CAPTURE + adjustedMVVLVA + searchParams->captureHistory[color][pieceID][capturedID][endSq]);
     }
 }
 
@@ -172,9 +172,9 @@ Move MoveOrder::nextMove() {
 // When a PV or cut move is found, the history of the best move in increased,
 // and the histories of all moves searched prior to the best move are reduced.
 void MoveOrder::updateHistories(Move bestMove) {
-    const int resetFactor = 256;
-    int historyDepth = std::min(depth, 14);
-    int historyChange = historyDepth * historyDepth;
+    if (depth > 18) return;
+    const int resetFactor = 448;
+    int historyChange = depth * depth + 5 * depth - 2;
 
     int startSq = getStartSq(bestMove);
     int endSq = getEndSq(bestMove);
@@ -233,9 +233,9 @@ void MoveOrder::updateHistories(Move bestMove) {
 }
 
 void MoveOrder::updateCaptureHistories(Move bestMove) {
-    const int resetFactor = 256;
-    int historyDepth = std::min(depth, 14);
-    int historyChange = historyDepth * historyDepth;
+    if (depth > 18) return;
+    const int resetFactor = 448;
+    int historyChange = depth * depth + 5 * depth - 2;
 
     int startSq = getStartSq(bestMove);
     int endSq = getEndSq(bestMove);

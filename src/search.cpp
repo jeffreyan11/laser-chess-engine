@@ -426,7 +426,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
 
                     int adjustedMVVLVA = 8 * b->getMVVLVAScore(color, m) / (4 + rootDepth);
                     scores.add(16384 + adjustedMVVLVA
-                        + 2 * threadMemoryArray[threadID]->searchParams.captureHistory[color][pieceID][capturedID][endSq]);
+                        + threadMemoryArray[threadID]->searchParams.captureHistory[color][pieceID][capturedID][endSq]);
                 }
                 else if (getPromotion(m) == QUEENS)
                     scores.add(2048);
@@ -1005,7 +1005,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             int historyValue = searchParams->historyTable[color][pieceID][endSq]
                 + ((ssi->counterMoveHistory != nullptr) ? ssi->counterMoveHistory[pieceID][endSq] : 0)
                 + ((ssi->followupMoveHistory != nullptr) ? ssi->followupMoveHistory[pieceID][endSq] : 0)
-                - 120;
+                - 80;
             reduction -= historyValue / 512;
             // Reduce more for expected cut nodes
             if (isCutNode)
