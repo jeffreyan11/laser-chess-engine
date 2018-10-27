@@ -9,10 +9,8 @@ Laser is a command-line engine only. To have a graphical interface, the executab
 
 
 ### Engine Strength
-- **CCRL 40/4:** 20th, 3175 ELO (4 CPU) as of March 3, 2018
-- **CCRL 40/40:** 19th, 3151 ELO (4 CPU) as of March 3, 2018
-- **CEGT 40/4 (Best Single Versions):** 25th, 2939 ELO as of March 2, 2018
-- **CEGT 40/20 (Best Single Versions):** 21st, 2968 ELO as of March 4, 2018
+- **CCRL 40/4:** 11th, 3281 ELO (4 CPU) as of October 21, 2018
+- **CCRL 40/40:** 11th, 3227 ELO (4 CPU) as of October 24, 2018
 
 
 ### Makefile Notes
@@ -21,7 +19,7 @@ To compile, simply run `make` in the main directory. The `USE_STATIC=true` optio
 
 
 ### Thanks To:
-- The [Chess Programming Wiki](https://chessprogramming.wikispaces.com), which is a great resource for beginner chess programmers, and was consulted frequently for this project
+- The [Chess Programming Wiki](https://www.chessprogramming.org), which is a great resource for beginner chess programmers, and was consulted frequently for this project
 - The authors of Stockfish, Crafty, EXChess, Rebel, Texel, and all other open-source engines for providing inspiration and great ideas to move Laser forward
 - The engine testers and rating lists, for uncovering bugs, providing high quality games and ratings, and giving us motivation to improve
 - [Cute Chess](http://cutechess.com), the primary tool used for testing
