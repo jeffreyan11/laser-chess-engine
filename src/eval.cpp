@@ -186,7 +186,6 @@ void setKingSafetyScale(int s) {
  */
 template <bool debug>
 int Eval::evaluate(Board &b) {
-    int pieceCounts[2][6];
     int material[2][2] = {{0, 0}, {0, 0}};
     int egFactorMaterial = 0;
     // Copy necessary values from Board and precompute the number of each piece on the board as well as material totals
@@ -1102,6 +1101,21 @@ int Eval::getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, in
 
     // Adjust based on pawn shield, storms, and king pressure
     kingSafetyPts += (-KS_PAWN_FACTOR * pawnScore + KS_KING_PRESSURE_FACTOR * kingPressure) / 32;
+
+    // Bonus for the attacker if the defender has no defending minors
+    uint64_t KING_DEFENSE_ZONE;
+    if (kingFile < 3)
+        KING_DEFENSE_ZONE = (FILE_A | FILE_B | FILE_C) & HALF[attackingColor^1];
+    else if (kingFile > 4)
+        KING_DEFENSE_ZONE = (FILE_F | FILE_G | FILE_H) & HALF[attackingColor^1];
+    kingSafetyPts += KS_NO_KNIGHT_DEFENDER
+                   * (!(KING_DEFENSE_ZONE & ei.attackMaps[attackingColor^1][KNIGHTS])
+                    + !(KING_ZONE & ei.attackMaps[attackingColor^1][KNIGHTS]))
+                   * pieceCounts[attackingColor^1][KNIGHTS];
+    kingSafetyPts += KS_NO_BISHOP_DEFENDER
+                   * (!(KING_DEFENSE_ZONE & ei.attackMaps[attackingColor^1][BISHOPS])
+                    + !(KING_ZONE & ei.attackMaps[attackingColor^1][BISHOPS]))
+                   * pieceCounts[attackingColor^1][BISHOPS];
 
     // Reduce attack when attacker has no queen
     kingSafetyPts += KS_NO_QUEEN * (pieces[attackingColor][QUEENS] == 0);

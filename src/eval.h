@@ -50,6 +50,7 @@ private:
     EvalInfo ei;
     uint64_t pieces[2][6];
     uint64_t allPieces[2];
+    uint64_t pieceCounts[2][6];
     int playerToMove;
 
     // Eval helpers
@@ -93,7 +94,7 @@ constexpr int EG = 1;
 
 // Material constants
 constexpr int PIECE_VALUES[2][5] = {
-    {100, 405, 444, 695, 1351},
+    {100, 408, 447, 695, 1351},
     {135, 398, 453, 745, 1447}
 };
 constexpr int KNOWN_WIN = PIECE_VALUES[EG][PAWNS] * 75;
@@ -159,9 +160,9 @@ constexpr int pieceSquareTable[2][6][32] = {
 -32,-24,-28,-30,
 -31,-27,-30,-31,
 -35,-20,-32,-32,
- -7, 15,-18,-21,
- 34, 50, 10,-12,
- 30, 62, 15, -5
+ -7, 15,-18,-23,
+ 34, 50, 10,-14,
+ 30, 62, 15, -9
 }
 },
 // Endgame
@@ -349,8 +350,10 @@ constexpr int KING_DEFENSELESS_SQUARE = 24;
 constexpr int KS_PAWN_FACTOR = 10;
 constexpr int KING_PRESSURE = 3;
 constexpr int KS_KING_PRESSURE_FACTOR = 20;
+constexpr int KS_NO_KNIGHT_DEFENDER = 12;
+constexpr int KS_NO_BISHOP_DEFENDER = 12;
 constexpr int KS_NO_QUEEN = -44;
-constexpr int KS_BASE = -2;
+constexpr int KS_BASE = -8;
 constexpr int SAFE_CHECK_BONUS[4] = {56, 25, 65, 53};
 
 // Minor pieces
