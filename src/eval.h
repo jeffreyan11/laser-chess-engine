@@ -50,7 +50,7 @@ private:
     EvalInfo ei;
     uint64_t pieces[2][6];
     uint64_t allPieces[2];
-    uint64_t pieceCounts[2][6];
+    int pieceCounts[2][6];
     int playerToMove;
 
     // Eval helpers
@@ -352,8 +352,9 @@ constexpr int KING_PRESSURE = 3;
 constexpr int KS_KING_PRESSURE_FACTOR = 20;
 constexpr int KS_NO_KNIGHT_DEFENDER = 12;
 constexpr int KS_NO_BISHOP_DEFENDER = 12;
+constexpr int KS_BISHOP_PRESSURE = 6;
 constexpr int KS_NO_QUEEN = -44;
-constexpr int KS_BASE = -8;
+constexpr int KS_BASE = -16;
 constexpr int SAFE_CHECK_BONUS[4] = {56, 25, 65, 53};
 
 // Minor pieces

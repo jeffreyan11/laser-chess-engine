@@ -17,6 +17,7 @@
 */
 
 #include <cstring>
+#include <functional>
 #include <iomanip>
 #include <iostream>
 #include "bbinit.h"
@@ -1116,6 +1117,48 @@ int Eval::getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, in
                    * (!(KING_DEFENSE_ZONE & ei.attackMaps[attackingColor^1][BISHOPS])
                     + !(KING_ZONE & ei.attackMaps[attackingColor^1][BISHOPS]))
                    * pieceCounts[attackingColor^1][BISHOPS];
+
+    // Look for central pawn structures that support slider king attacks
+    constexpr uint64_t QSIDE_DIAG_REGION[2] = {FILE_F | ((FILE_E | FILE_D) & (RANK_3 | RANK_4 | RANK_5 | RANK_6)),
+                                               FILE_F | FILE_E | FILE_D};
+    constexpr uint64_t KSIDE_DIAG_REGION[2] = {FILE_C | ((FILE_D | FILE_E) & (RANK_3 | RANK_4 | RANK_5 | RANK_6)),
+                                               FILE_C | FILE_D | FILE_E};
+    auto attackerBishopFactor = [this](int color, uint64_t diagonalZone, uint64_t diagonal) -> int {
+        int c = count(diagonal);
+        return KS_BISHOP_PRESSURE * (c * (c+1) / 2 + !!(diagonalZone & ei.attackMaps[color][BISHOPS]) - 1);
+    };
+    auto defenderBishopFactor = [this](uint64_t diagonal) -> int {
+        int c = count(diagonal);
+        return KS_BISHOP_PRESSURE * (c * (c+1) / 2 - 1);
+    };
+    if (kingFile < 3) {
+        if (attackingColor == WHITE) {
+            if (uint64_t diagonal = ((pieces[WHITE][PAWNS] & QSIDE_DIAG_REGION[0]) << 7) & pieces[WHITE][PAWNS])
+                kingSafetyPts += attackerBishopFactor(WHITE, KING_DEFENSE_ZONE, diagonal);
+            if (uint64_t diagonal = ((pieces[BLACK][PAWNS] & KSIDE_DIAG_REGION[1]) >> 7) & pieces[BLACK][PAWNS])
+                kingSafetyPts += defenderBishopFactor(diagonal);
+        }
+        else {
+            if (uint64_t diagonal = ((pieces[BLACK][PAWNS] & QSIDE_DIAG_REGION[0]) >> 9) & pieces[BLACK][PAWNS])
+                kingSafetyPts += attackerBishopFactor(BLACK, KING_DEFENSE_ZONE, diagonal);
+            if (uint64_t diagonal = ((pieces[WHITE][PAWNS] & KSIDE_DIAG_REGION[1]) << 9) & pieces[WHITE][PAWNS])
+                kingSafetyPts += defenderBishopFactor(diagonal);
+        }
+    }
+    else if (kingFile > 4) {
+        if (attackingColor == WHITE) {
+            if (uint64_t diagonal = ((pieces[WHITE][PAWNS] & KSIDE_DIAG_REGION[0]) << 9) & pieces[WHITE][PAWNS])
+                kingSafetyPts += attackerBishopFactor(WHITE, KING_DEFENSE_ZONE, diagonal);
+            if (uint64_t diagonal = ((pieces[BLACK][PAWNS] & QSIDE_DIAG_REGION[1]) >> 9) & pieces[BLACK][PAWNS])
+                kingSafetyPts += defenderBishopFactor(diagonal);
+        }
+        else {
+            if (uint64_t diagonal = ((pieces[BLACK][PAWNS] & KSIDE_DIAG_REGION[0]) >> 7) & pieces[BLACK][PAWNS])
+                kingSafetyPts += attackerBishopFactor(BLACK, KING_DEFENSE_ZONE, diagonal);
+            if (uint64_t diagonal = ((pieces[WHITE][PAWNS] & QSIDE_DIAG_REGION[1]) << 7) & pieces[WHITE][PAWNS])
+                kingSafetyPts += defenderBishopFactor(diagonal);
+        }
+    }
 
     // Reduce attack when attacker has no queen
     kingSafetyPts += KS_NO_QUEEN * (pieces[attackingColor][QUEENS] == 0);
