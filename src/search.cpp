@@ -926,7 +926,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         int lmrDepth = std::max(0, depth - lmrReduction);
 
         // Used to adjust pruning amount so that PV nodes are pruned slightly less
-        int pruneDepth = isPVNode ? lmrDepth+1 : lmrDepth;
+        int pruneDepth = isPVNode      ? lmrDepth+1 :
+                         evalImproving ? lmrDepth   : lmrDepth - 1;
+        pruneDepth = std::max(0, pruneDepth);
 
 
         // Futility pruning
@@ -935,7 +937,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // q-searching it.
         if (moveIsPrunable
          && !isInCheck
-         && pruneDepth <= 6 && staticEval <= alpha - 80 * (pruneDepth + 1))
+         && pruneDepth <= 6 && staticEval <= alpha - 115 - 90 * pruneDepth)
             continue;
 
 
@@ -961,7 +963,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // Futility pruning using SEE
         if (moveIsPrunable
          && pruneDepth <= 6
-         && !b.isSEEAbove(color, m, -20 * pruneDepth * pruneDepth))
+         && !b.isSEEAbove(color, m, -24 * pruneDepth * pruneDepth))
             continue;
 
         if (!isPVNode
