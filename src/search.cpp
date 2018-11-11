@@ -840,21 +840,18 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     // Do not do more than 2 null moves in a row
     if (!isPVNode && !isInCheck
      && depth >= 2 && staticEval >= beta
-     && searchParams->nullMoveCount < 2
      && b.getNonPawnMaterial(color)) {
         // Reduce more if we are further ahead
         int reduction = 2 + (32 * depth + std::min(staticEval - beta, 384)) / 128;
 
         uint16_t epCaptureFile = b.getEPCaptureFile();
         b.doNullMove();
-        searchParams->nullMoveCount++;
         (ssi+1)->counterMoveHistory = nullptr;
         (ssi+2)->followupMoveHistory = nullptr;
         int nullScore = -PVS(b, depth-1-reduction, -beta, -alpha, threadID, !isCutNode, ssi+1, &line);
 
         // Undo the null move
         b.undoNullMove(epCaptureFile);
-        searchParams->nullMoveCount = 0;
 
         if (nullScore >= beta) {
             if (depth >= 10) {

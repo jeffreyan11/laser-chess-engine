@@ -23,7 +23,6 @@
 
 struct SearchParameters {
     int ply;
-    int nullMoveCount;
     int selectiveDepth;
     uint8_t rootMoveNumber;
     Move killers[MAX_DEPTH][2];
@@ -74,12 +73,10 @@ struct SearchParameters {
 
     void reset() {
         ply = 0;
-        nullMoveCount = 0;
         for (int i = 0; i < MAX_DEPTH; i++) {
             killers[i][0] = NULL_MOVE;
             killers[i][1] = NULL_MOVE;
         }
-        //resetHistoryTable();
     }
 
     void resetHistoryTable() {
