@@ -94,7 +94,7 @@ constexpr int RAZOR_MARGIN = 300;
 // Move count pruning
 constexpr unsigned int LMP_MOVE_COUNTS[2][13] = {
     {0, 2, 4,  7, 11, 16, 22, 29, 37, 46,  56,  67,  79},
-    {0, 5, 8, 13, 21, 31, 43, 57, 74, 93, 114, 137, 162}
+    {0, 4, 7, 12, 20, 30, 42, 56, 73, 92, 113, 136, 161}
 };
 
 // LMR reduction values, initialized at program start
@@ -583,9 +583,9 @@ void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
         (ssi+2)->followupMoveHistory = searchParams->followupMoveHistory[pieceID][endSq];
 
         // Root LMR
-        unsigned int movesSearched = i - startMove;
+        unsigned int movesSearched = i - startMove + 1;
         int reduction = 0;
-        if (depth >= 3 && movesSearched > 2
+        if (depth >= 3 && movesSearched > 1
          && !isCapture(m) && !isPromotion(m)) {
             reduction = lmrReductions[std::min(63, depth)][std::max(1U, std::min(63U, movesSearched))] - 1;
             reduction = std::max(0, reduction);
@@ -987,13 +987,15 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             continue;
         searchStats->nodes++;
 
+        movesSearched++;
+
 
         int reduction = 0;
         // Late move reduction
         // With good move ordering, later moves are less likely to increase
         // alpha, so we search them to a shallower depth hoping for a quick
         // fail-low.
-        if (depth >= 3 && movesSearched > 2
+        if (depth >= 3 && movesSearched > 1
          && !isCapture(m) && !isPromotion(m)) {
             reduction = lmrReduction;
             // Reduce less for killers
@@ -1003,8 +1005,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             // Reduce more for moves with poor history
             int historyValue = searchParams->historyTable[color][pieceID][endSq]
                 + ((ssi->counterMoveHistory != nullptr) ? ssi->counterMoveHistory[pieceID][endSq] : 0)
-                + ((ssi->followupMoveHistory != nullptr) ? ssi->followupMoveHistory[pieceID][endSq] : 0)
-                - 80;
+                + ((ssi->followupMoveHistory != nullptr) ? ssi->followupMoveHistory[pieceID][endSq] : 0);
             reduction -= historyValue / 512;
             // Reduce more for expected cut nodes
             if (isCutNode)
@@ -1080,7 +1081,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         (ssi+2)->followupMoveHistory = searchParams->followupMoveHistory[pieceID][endSq];
 
         // Null-window search, with re-search if applicable
-        if (movesSearched != 0) {
+        if (movesSearched > 1) {
             score = -PVS(copy, depth-1-reduction+extension, -alpha-1, -alpha, threadID, true, ssi+1, &line);
 
             // LMR re-search if the reduced search did not fail low
@@ -1141,8 +1142,6 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
                 changePV(m, pvLine, &line);
             }
         }
-
-        movesSearched++;
     }
     // End main search loop
 
