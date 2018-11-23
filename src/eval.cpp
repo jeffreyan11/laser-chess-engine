@@ -26,42 +26,20 @@
 #include "eval.h"
 #include "uci.h"
 
-static Score PSQT[2][6][64];
-static Score MOBILITY[5][28];
+namespace {
 
-void initEvalTables() {
-    #define E(mg, eg) ((Score) ((((int32_t) eg) << 16) + ((int32_t) mg)))
-    for (int pieceType = PAWNS; pieceType <= KINGS; pieceType++) {
-        for (int sq = 0; sq < 32; sq++) {
-            int r = sq / 4;
-            int f = sq & 0x3;
-            Score sc = E(pieceSquareTable[MG][pieceType][sq], pieceSquareTable[EG][pieceType][sq]);
+constexpr uint64_t KING_ZONE_DEFENDER[2] = {HALF[WHITE] | RANK_5, RANK_4 | HALF[BLACK]};
+constexpr uint64_t KING_ZONE_FLANK[8] = {
+    QSIDE, QSIDE, QSIDE, CENTER_FILES, CENTER_FILES, KSIDE, KSIDE, KSIDE
+};
+constexpr uint64_t KING_DEFENSE_ZONE[8] = {
+    QSIDE ^ FILE_D, QSIDE ^ FILE_D, QSIDE ^ FILE_D, FILE_D | FILE_E,
+    FILE_D | FILE_E, KSIDE ^ FILE_E, KSIDE ^ FILE_E, KSIDE ^ FILE_E
+};
 
-            PSQT[WHITE][pieceType][8*(7-r) + f] = sc;
-            PSQT[WHITE][pieceType][8*(7-r) + (7-f)] = sc;
-            PSQT[BLACK][pieceType][8*r + f] = sc;
-            PSQT[BLACK][pieceType][8*r + (7-f)] = sc;
-        }
-    }
-    for (int pieceID = 0; pieceID < 5; pieceID++) {
-        for (int sqs = 0; sqs < 28; sqs++)
-            MOBILITY[pieceID][sqs] = E(mobilityTable[MG][pieceID][sqs], mobilityTable[EG][pieceID][sqs]);
-    }
-    #undef E
-}
-
-static char manhattanDistance[64][64], kingDistance[64][64];
-
-void initDistances() {
-    for (int sq1 = 0; sq1 < 64; sq1++) {
-        for (int sq2 = 0; sq2 < 64; sq2++) {
-            int r = std::abs((sq1 >> 3) - (sq2 >> 3));
-            int f = std::abs((sq1 & 7) - (sq2 & 7));
-            manhattanDistance[sq1][sq2] = r + f;
-            kingDistance[sq1][sq2] = std::min(5, std::max(r, f));
-        }
-    }
-}
+Score PSQT[2][6][64];
+Score MOBILITY[5][28];
+char manhattanDistance[64][64], kingDistance[64][64];
 
 struct EvalDebug {
     int totalEval;
@@ -167,8 +145,42 @@ struct EvalDebug {
     }
 };
 
-static EvalDebug evalDebugStats;
+EvalDebug evalDebugStats;
 
+} // namespace
+
+
+void initEvalTables() {
+    #define E(mg, eg) ((Score) ((((int32_t) eg) << 16) + ((int32_t) mg)))
+    for (int pieceType = PAWNS; pieceType <= KINGS; pieceType++) {
+        for (int sq = 0; sq < 32; sq++) {
+            int r = sq / 4;
+            int f = sq & 0x3;
+            Score sc = E(pieceSquareTable[MG][pieceType][sq], pieceSquareTable[EG][pieceType][sq]);
+
+            PSQT[WHITE][pieceType][8*(7-r) + f] = sc;
+            PSQT[WHITE][pieceType][8*(7-r) + (7-f)] = sc;
+            PSQT[BLACK][pieceType][8*r + f] = sc;
+            PSQT[BLACK][pieceType][8*r + (7-f)] = sc;
+        }
+    }
+    for (int pieceID = 0; pieceID < 5; pieceID++) {
+        for (int sqs = 0; sqs < 28; sqs++)
+            MOBILITY[pieceID][sqs] = E(mobilityTable[MG][pieceID][sqs], mobilityTable[EG][pieceID][sqs]);
+    }
+    #undef E
+}
+
+void initDistances() {
+    for (int sq1 = 0; sq1 < 64; sq1++) {
+        for (int sq2 = 0; sq2 < 64; sq2++) {
+            int r = std::abs((sq1 >> 3) - (sq2 >> 3));
+            int f = std::abs((sq1 & 7) - (sq2 & 7));
+            manhattanDistance[sq1][sq2] = r + f;
+            kingDistance[sq1][sq2] = std::min(5, std::max(r, f));
+        }
+    }
+}
 
 static int scaleMaterial = DEFAULT_EVAL_SCALE;
 static int scaleKingSafety = DEFAULT_EVAL_SCALE;
@@ -1088,34 +1100,22 @@ int Eval::getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, in
 
     // King pressure: a smaller bonus for attacker's pieces generally pointed at
     // the region of the opposing king
-    uint64_t KING_ZONE;
-    if (kingFile < 3) KING_ZONE = QSIDE;
-    else if (kingFile < 5) KING_ZONE = CENTER_FILES;
-    else KING_ZONE = KSIDE;
-    if ((attackingColor^1) == WHITE)
-        KING_ZONE &= HALF[WHITE] | RANK_5;
-    else
-        KING_ZONE &= RANK_4 | HALF[BLACK];
-
-    int kingPressure = KING_PRESSURE * (count(ei.fullAttackMaps[attackingColor] & KING_ZONE)
-                                      + count(ei.doubleAttackMaps[attackingColor] & ~ei.attackMaps[attackingColor^1][PAWNS] & KING_ZONE));
+    const uint64_t kingZone = KING_ZONE_DEFENDER[attackingColor^1] & KING_ZONE_FLANK[kingFile];
+    int kingPressure = KING_PRESSURE * (count(ei.fullAttackMaps[attackingColor] & kingZone)
+                                      + count(ei.doubleAttackMaps[attackingColor] & ~ei.attackMaps[attackingColor^1][PAWNS] & kingZone));
 
     // Adjust based on pawn shield, storms, and king pressure
     kingSafetyPts += (-KS_PAWN_FACTOR * pawnScore + KS_KING_PRESSURE_FACTOR * kingPressure) / 32;
 
     // Bonus for the attacker if the defender has no defending minors
-    uint64_t KING_DEFENSE_ZONE;
-    if (kingFile < 3)
-        KING_DEFENSE_ZONE = (FILE_A | FILE_B | FILE_C) & HALF[attackingColor^1];
-    else if (kingFile > 4)
-        KING_DEFENSE_ZONE = (FILE_F | FILE_G | FILE_H) & HALF[attackingColor^1];
+    const uint64_t kingDefenseZone = KING_DEFENSE_ZONE[kingFile] & HALF[attackingColor^1];
     kingSafetyPts += KS_NO_KNIGHT_DEFENDER
-                   * (!(KING_DEFENSE_ZONE & ei.attackMaps[attackingColor^1][KNIGHTS])
-                    + !(KING_ZONE & ei.attackMaps[attackingColor^1][KNIGHTS]))
+                   * (!(kingDefenseZone & ei.attackMaps[attackingColor^1][KNIGHTS])
+                    + !(kingZone & ei.attackMaps[attackingColor^1][KNIGHTS]))
                    * pieceCounts[attackingColor^1][KNIGHTS];
     kingSafetyPts += KS_NO_BISHOP_DEFENDER
-                   * (!(KING_DEFENSE_ZONE & ei.attackMaps[attackingColor^1][BISHOPS])
-                    + !(KING_ZONE & ei.attackMaps[attackingColor^1][BISHOPS]))
+                   * (!(kingDefenseZone & ei.attackMaps[attackingColor^1][BISHOPS])
+                    + !(kingZone & ei.attackMaps[attackingColor^1][BISHOPS]))
                    * pieceCounts[attackingColor^1][BISHOPS];
 
     // Look for central pawn structures that support slider king attacks
@@ -1134,13 +1134,13 @@ int Eval::getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, in
     if (kingFile < 3) {
         if (attackingColor == WHITE) {
             if (uint64_t diagonal = ((pieces[WHITE][PAWNS] & QSIDE_DIAG_REGION[0]) << 7) & pieces[WHITE][PAWNS])
-                kingSafetyPts += attackerBishopFactor(WHITE, KING_DEFENSE_ZONE, diagonal);
+                kingSafetyPts += attackerBishopFactor(WHITE, kingDefenseZone, diagonal);
             if (uint64_t diagonal = ((pieces[BLACK][PAWNS] & KSIDE_DIAG_REGION[1]) >> 7) & pieces[BLACK][PAWNS])
                 kingSafetyPts += defenderBishopFactor(diagonal);
         }
         else {
             if (uint64_t diagonal = ((pieces[BLACK][PAWNS] & QSIDE_DIAG_REGION[0]) >> 9) & pieces[BLACK][PAWNS])
-                kingSafetyPts += attackerBishopFactor(BLACK, KING_DEFENSE_ZONE, diagonal);
+                kingSafetyPts += attackerBishopFactor(BLACK, kingDefenseZone, diagonal);
             if (uint64_t diagonal = ((pieces[WHITE][PAWNS] & KSIDE_DIAG_REGION[1]) << 9) & pieces[WHITE][PAWNS])
                 kingSafetyPts += defenderBishopFactor(diagonal);
         }
@@ -1148,13 +1148,13 @@ int Eval::getKingSafety(Board &b, PieceMoveList &attackers, uint64_t kingSqs, in
     else if (kingFile > 4) {
         if (attackingColor == WHITE) {
             if (uint64_t diagonal = ((pieces[WHITE][PAWNS] & KSIDE_DIAG_REGION[0]) << 9) & pieces[WHITE][PAWNS])
-                kingSafetyPts += attackerBishopFactor(WHITE, KING_DEFENSE_ZONE, diagonal);
+                kingSafetyPts += attackerBishopFactor(WHITE, kingDefenseZone, diagonal);
             if (uint64_t diagonal = ((pieces[BLACK][PAWNS] & QSIDE_DIAG_REGION[1]) >> 9) & pieces[BLACK][PAWNS])
                 kingSafetyPts += defenderBishopFactor(diagonal);
         }
         else {
             if (uint64_t diagonal = ((pieces[BLACK][PAWNS] & KSIDE_DIAG_REGION[0]) >> 7) & pieces[BLACK][PAWNS])
-                kingSafetyPts += attackerBishopFactor(BLACK, KING_DEFENSE_ZONE, diagonal);
+                kingSafetyPts += attackerBishopFactor(BLACK, kingDefenseZone, diagonal);
             if (uint64_t diagonal = ((pieces[WHITE][PAWNS] & QSIDE_DIAG_REGION[1]) << 7) & pieces[WHITE][PAWNS])
                 kingSafetyPts += defenderBishopFactor(diagonal);
         }
