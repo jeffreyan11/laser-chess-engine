@@ -180,7 +180,6 @@ void getBestMoveThreader(Board *b, TimeManagement *timeParams, MoveList *movesTo
     for (int i = 0; i < numThreads; i++) {
         threadMemoryArray[i]->searchParams.reset();
         threadMemoryArray[i]->searchStats.reset();
-        threadMemoryArray[i]->searchParams.rootMoveNumber = (uint8_t) (b->getMoveNumber());
         threadMemoryArray[i]->searchParams.selectiveDepth = 0;
     }
 
@@ -245,6 +244,9 @@ void getBestMoveThreader(Board *b, TimeManagement *timeParams, MoveList *movesTo
     if (legalMoves.size() == 1 && timeParams->searchMode == TIME) {
         timeLimit = std::min(timeLimit / 32, ONE_SECOND);
     }
+
+    // Increment hash table age
+    transpositionTable.incrementAge();
 
 
     // Create threads for SMP if necessary
@@ -337,7 +339,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
                         cout << " time " << timeSoFar
                              << " nodes " << getNodes() << " nps " << nps
                              << " tbhits " << getTBHits()
-                             << " hashfull " << transpositionTable.estimateHashfull(threadMemoryArray[0]->searchParams.rootMoveNumber)
+                             << " hashfull " << transpositionTable.estimateHashfull()
                              << " pv " << retrievePV(&pvLine) << endl;
                     }
 
@@ -358,7 +360,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
                         cout << " time " << timeSoFar
                              << " nodes " << getNodes() << " nps " << nps
                              << " tbhits " << getTBHits()
-                             << " hashfull " << transpositionTable.estimateHashfull(threadMemoryArray[0]->searchParams.rootMoveNumber)
+                             << " hashfull " << transpositionTable.estimateHashfull()
                              << " pv " << retrievePV(&pvLine) << endl;
                     }
 
@@ -396,7 +398,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
                     cout << " time " << timeSoFar
                          << " nodes " << getNodes() << " nps " << nps
                          << " tbhits " << getTBHits()
-                         << " hashfull " << transpositionTable.estimateHashfull(threadMemoryArray[0]->searchParams.rootMoveNumber)
+                         << " hashfull " << transpositionTable.estimateHashfull()
                          << endl;
                 }
                 break;
@@ -466,7 +468,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
                 cout << " time " << timeSoFar
                      << " nodes " << getNodes() << " nps " << nps
                      << " tbhits " << getTBHits()
-                     << " hashfull " << transpositionTable.estimateHashfull(threadMemoryArray[0]->searchParams.rootMoveNumber)
+                     << " hashfull " << transpositionTable.estimateHashfull()
                      << " pv " << retrievePV(&pvLine) << endl;
             }
         }
@@ -758,10 +760,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
             // Hash the TB result
             int tbDepth = std::min(depth+4, MAX_DEPTH);
-            uint64_t hashData = packHashData(tbDepth, NULL_MOVE,
-                adjustHashScore(tbScore, ssi->ply), PV_NODE,
-                searchParams->rootMoveNumber);
-            transpositionTable.add(b, hashData, tbDepth, searchParams->rootMoveNumber);
+            uint64_t hashData = packHashData(
+                tbDepth, NULL_MOVE, adjustHashScore(tbScore, ssi->ply), PV_NODE, transpositionTable.getAge());
+            transpositionTable.add(b, hashData, tbDepth);
 
             return tbScore;
         }
@@ -1110,10 +1111,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // Beta cutoff
         if (score >= beta) {
             // Hash the cut move and score
-            uint64_t hashData = packHashData(depth, m,
-                adjustHashScore(score, ssi->ply), CUT_NODE,
-                searchParams->rootMoveNumber);
-            transpositionTable.add(b, hashData, depth, searchParams->rootMoveNumber);
+            uint64_t hashData = packHashData(
+                depth, m, adjustHashScore(score, ssi->ply), CUT_NODE, transpositionTable.getAge());
+            transpositionTable.add(b, hashData, depth);
 
             // Update killers and histories for quiet moves
             if (!isCapture(m)) {
@@ -1152,10 +1152,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
     // Exact scores indicate a principal variation
     if (prevAlpha < alpha && alpha < beta) {
-        uint64_t hashData = packHashData(depth, toHash,
-            adjustHashScore(alpha, ssi->ply), PV_NODE,
-            searchParams->rootMoveNumber);
-        transpositionTable.add(b, hashData, depth, searchParams->rootMoveNumber);
+        uint64_t hashData = packHashData(
+            depth, toHash, adjustHashScore(alpha, ssi->ply), PV_NODE, transpositionTable.getAge());
+        transpositionTable.add(b, hashData, depth);
 
         // Update histories for quiet moves
         if (!isCapture(toHash))
@@ -1168,17 +1167,15 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     else if (alpha <= prevAlpha) {
         // If we had a hash move, save it in case the node becomes a PV or cut node next time
         if (!isPVNode && hashed != NULL_MOVE) {
-            uint64_t hashData = packHashData(depth, hashed,
-                adjustHashScore(bestScore, ssi->ply), ALL_NODE,
-                searchParams->rootMoveNumber);
-            transpositionTable.add(b, hashData, depth, searchParams->rootMoveNumber);
+            uint64_t hashData = packHashData(
+                depth, hashed, adjustHashScore(bestScore, ssi->ply), ALL_NODE, transpositionTable.getAge());
+            transpositionTable.add(b, hashData, depth);
         }
         // Otherwise, just store no best move as expected
         else {
-            uint64_t hashData = packHashData(depth, NULL_MOVE,
-                adjustHashScore(bestScore, ssi->ply), ALL_NODE,
-                searchParams->rootMoveNumber);
-            transpositionTable.add(b, hashData, depth, searchParams->rootMoveNumber);
+            uint64_t hashData = packHashData(
+                depth, NULL_MOVE, adjustHashScore(bestScore, ssi->ply), ALL_NODE, transpositionTable.getAge());
+            transpositionTable.add(b, hashData, depth);
         }
     }
 
@@ -1305,10 +1302,9 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         int score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
 
         if (score >= beta) {
-            uint64_t hashData = packHashData(-plies, m,
-                adjustHashScore(score, searchParams->ply + plies), CUT_NODE,
-                searchParams->rootMoveNumber);
-            transpositionTable.add(b, hashData, -plies, searchParams->rootMoveNumber);
+            uint64_t hashData = packHashData(
+                -plies, m, adjustHashScore(score, searchParams->ply + plies), CUT_NODE, transpositionTable.getAge());
+            transpositionTable.add(b, hashData, -plies);
 
             return score;
         }
@@ -1338,10 +1334,9 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         int score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
 
         if (score >= beta) {
-            uint64_t hashData = packHashData(-plies, m,
-                adjustHashScore(score, searchParams->ply + plies), CUT_NODE,
-                searchParams->rootMoveNumber);
-            transpositionTable.add(b, hashData, -plies, searchParams->rootMoveNumber);
+            uint64_t hashData = packHashData(
+                -plies, m, adjustHashScore(score, searchParams->ply + plies), CUT_NODE, transpositionTable.getAge());
+            transpositionTable.add(b, hashData, -plies);
 
             return score;
         }
@@ -1377,10 +1372,9 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             threadMemoryArray[threadID]->twoFoldPositions.pop();
 
             if (score >= beta) {
-                uint64_t hashData = packHashData(-plies, m,
-                    adjustHashScore(score, searchParams->ply + plies), CUT_NODE,
-                    searchParams->rootMoveNumber);
-                transpositionTable.add(b, hashData, -plies, searchParams->rootMoveNumber);
+                uint64_t hashData = packHashData(
+                    -plies, m, adjustHashScore(score, searchParams->ply + plies), CUT_NODE, transpositionTable.getAge());
+                transpositionTable.add(b, hashData, -plies);
 
                 return score;
             }

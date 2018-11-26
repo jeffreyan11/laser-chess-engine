@@ -52,7 +52,7 @@ Hash::~Hash() {
 
 // Adds key and move into the hashtable. This function assumes that the key has
 // been checked with get and is not in the table.
-void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
+void Hash::add(Board &b, uint64_t data, int depth) {
     uint64_t h = b.getZobristKey();
     uint64_t index = h & (size-1);
     HashNode *node = table + index;
@@ -76,6 +76,7 @@ void Hash::add(Board &b, uint64_t data, int depth, uint8_t age) {
         if (score1 < score2)
             toReplace = &(node->slot2);
         // The node must be from a newer search space or a sufficiently high depth
+        // TODO entries are never stored when age wraps around at 255
         if (score1 >= -2 || score2 >= -2)
             toReplace->setEntry(b, data);
     }
@@ -116,13 +117,19 @@ void Hash::init(uint64_t MB) {
     size >>= 1;
 
     table = (HashNode *) calloc(size,  sizeof(HashNode));
+    age = 0;
+}
+
+void Hash::incrementAge() {
+    age++;
 }
 
 void Hash::clear() {
     std::memset(static_cast<void*>(table), 0, size * sizeof(HashNode));
+    age = 0;
 }
 
-int Hash::estimateHashfull(uint8_t age) {
+int Hash::estimateHashfull() {
     int used = 0;
     // This will never go out of bounds since a 1 MB table has 32768 slots
     for (int i = 0; i < 500; i++) {

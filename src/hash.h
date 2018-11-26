@@ -94,6 +94,7 @@ class Hash {
 private:
     HashNode *table;
     uint64_t size;
+    uint8_t age;
 
     void init(uint64_t MB);
 
@@ -103,12 +104,17 @@ public:
     Hash& operator=(const Hash &other) = delete;
     ~Hash();
 
-    void add(Board &b, uint64_t data, int depth, uint8_t age);
+    void add(Board &b, uint64_t data, int depth);
     uint64_t get(Board &b);
+
     uint64_t getSize();
     void setSize(uint64_t MB);
+
+    void incrementAge();
+    int getAge() const { return age; }
+
     void clear();
-    int estimateHashfull(uint8_t age);
+    int estimateHashfull();
 };
 
 #endif
