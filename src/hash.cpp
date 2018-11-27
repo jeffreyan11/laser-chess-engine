@@ -69,14 +69,13 @@ void Hash::add(Board &b, uint64_t data, int depth) {
     // entry with the new entry if the new entry's depth is high enough
     else {
         HashEntry *toReplace = &(node->slot1);
-        int score1 = 128*((int) (age - getHashAge(node->slot1.data)))
+        int score1 = 128 * ((int) ((uint8_t) (age - getHashAge(node->slot1.data))))
             + depth - getHashDepth(node->slot1.data);
-        int score2 = 128*((int) (age - getHashAge(node->slot2.data)))
+        int score2 = 128 * ((int) ((uint8_t) (age - getHashAge(node->slot2.data))))
             + depth - getHashDepth(node->slot2.data);
         if (score1 < score2)
             toReplace = &(node->slot2);
         // The node must be from a newer search space or a sufficiently high depth
-        // TODO entries are never stored when age wraps around at 255
         if (score1 >= -2 || score2 >= -2)
             toReplace->setEntry(b, data);
     }
