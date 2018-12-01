@@ -1323,7 +1323,8 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         Move m = legalMoves.get(i);
 
         // Static exchange evaluation pruning
-        if (!isCapture(m) && !b.isSEEAbove(color, m, 0))
+        if ((!isCapture(m) && !b.isSEEAbove(color, m, 0))
+         || ( isCapture(m) && !b.isSEEAbove(color, m, 400)))
             continue;
 
         Board copy = b.staticCopy();
