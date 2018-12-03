@@ -347,7 +347,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
                     deltaAlpha = 3 * deltaAlpha / 2;
                     if (aspAlpha < -NEAR_MATE_SCORE)
                         aspAlpha = -MATE_SCORE;
-                    timeChangeFactor *= 1.1;
+                    timeChangeFactor *= 1.15;
                 }
                 // Fail high: best score is at least beta
                 else if (bestScore >= aspBeta) {
@@ -476,18 +476,18 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
 
         if (bestMove == prevBest) {
             pvStreak++;
-            timeChangeFactor *= 0.94;
+            timeChangeFactor *= 0.92;
         }
         else {
             prevBest = bestMove;
             pvStreak = 1;
             if (timeChangeFactor < 1.0) timeChangeFactor = 1.0;
-            timeChangeFactor *= 1.25;
+            timeChangeFactor *= 1.3;
         }
 
         // Adjust search time based on PV and score behavior
         if (threadID == 0 && timeParams->searchMode == TIME)
-            timeChangeFactor *= 0.92 + std::min(7.0, sqrt(abs(prevScore - bestScore))) / 28.0;
+            timeChangeFactor *= 0.92 + std::min(7.0, sqrt(abs(prevScore - bestScore))) / 25.0;
         else
             timeChangeFactor = 1.0;
 
