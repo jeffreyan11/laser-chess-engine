@@ -79,11 +79,10 @@ class Board {
 public:
     Board();
     Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
-            bool _whiteCanQCastle, bool _blackCanQCastle,
-            uint16_t _epCaptureFile, int _fiftyMoveCounter, int _moveNumber,
-            int _playerToMove);
+          bool _whiteCanQCastle, bool _blackCanQCastle, uint16_t _epCaptureFile,
+          int _fiftyMoveCounter, int _moveNumber, int _playerToMove);
     ~Board();
-    Board staticCopy();
+    Board staticCopy() const;
 
     void doMove(Move m, int color);
     bool doPseudoLegalMove(Move m, int color);
@@ -91,61 +90,61 @@ public:
     void doNullMove();
     void undoNullMove(uint16_t _epCaptureFile);
 
-    PieceMoveList getPieceMoveList(int color);
-    MoveList getAllLegalMoves(int color);
-    void getAllPseudoLegalMoves(MoveList &legalMoves, int color);
-    void getPseudoLegalQuiets(MoveList &quiets, int color);
-    void getPseudoLegalCaptures(MoveList &captures, int color, bool includePromotions);
-    void getPseudoLegalPromotions(MoveList &moves, int color);
-    void getPseudoLegalChecks(MoveList &checks, int color);
-    void getPseudoLegalCheckEscapes(MoveList &escapes, int color);
+    PieceMoveList getPieceMoveList(int color) const;
+    MoveList getAllLegalMoves(int color) const;
+    void getAllPseudoLegalMoves(MoveList &legalMoves, int color) const;
+    void getPseudoLegalQuiets(MoveList &quiets, int color) const;
+    void getPseudoLegalCaptures(MoveList &captures, int color, bool includePromotions) const;
+    void getPseudoLegalPromotions(MoveList &moves, int color) const;
+    void getPseudoLegalChecks(MoveList &checks, int color) const;
+    void getPseudoLegalCheckEscapes(MoveList &escapes, int color) const;
 
     // Get a bitboard of all xray-ers attacking a square if a blocker has been moved or removed
-    uint64_t getXRayPieceMap(int color, int sq, uint64_t occ);
+    uint64_t getXRayPieceMap(int color, int sq, uint64_t occ) const;
     // Get all pieces of that color attacking the square
-    uint64_t getAttackMap(int color, int sq);
-    uint64_t getAttackMap(int sq, uint64_t occ);
-    int getPieceOnSquare(int color, int sq);
-    bool isCheckMove(int color, Move m);
-    uint64_t getRookXRays(int sq, uint64_t occ, uint64_t blockers);
-    uint64_t getBishopXRays(int sq, uint64_t occ, uint64_t blockers);
-    uint64_t getPinnedMap(int color);
+    uint64_t getAttackMap(int color, int sq) const;
+    uint64_t getAttackMap(int sq, uint64_t occ) const;
+    int getPieceOnSquare(int color, int sq) const;
+    bool isCheckMove(int color, Move m) const;
+    uint64_t getRookXRays(int sq, uint64_t occ, uint64_t blockers) const;
+    uint64_t getBishopXRays(int sq, uint64_t occ, uint64_t blockers) const;
+    uint64_t getPinnedMap(int color) const;
 
-    bool isInCheck(int color);
-    bool isDraw();
-    bool isInsufficientMaterial();
-    void getCheckMaps(int color, uint64_t *checkMaps);
+    bool isInCheck(int color) const;
+    bool isDraw() const;
+    bool isInsufficientMaterial() const;
+    void getCheckMaps(int color, uint64_t *checkMaps) const;
 
     // Useful for turning off some pruning late endgame
-    uint64_t getNonPawnMaterial(int color);
+    uint64_t getNonPawnMaterial(int color) const;
     // Static exchange evaluation code: for checking material trades on a single square
-    uint64_t getLeastValuableAttacker(uint64_t attackers, int color, int &piece);
-    bool isSEEAbove(int color, Move m, int cutoff);
-    int valueOfPiece(int piece);
+    uint64_t getLeastValuableAttacker(uint64_t attackers, int color, int &piece) const;
+    bool isSEEAbove(int color, Move m, int cutoff) const;
+    int valueOfPiece(int piece) const;
     // Most Valuable Victim / Least Valuable Attacker
-    int getMVVLVAScore(int color, Move m);
+    int getMVVLVAScore(int color, Move m) const;
 
     // Public move generators
-    uint64_t getWPawnCaptures(uint64_t pawns);
-    uint64_t getBPawnCaptures(uint64_t pawns);
-    uint64_t getKingSquares(int single);
+    uint64_t getWPawnCaptures(uint64_t pawns) const;
+    uint64_t getBPawnCaptures(uint64_t pawns) const;
+    uint64_t getKingSquares(int single) const;
 
     // Getter methods
-    bool getWhiteCanKCastle();
-    bool getBlackCanKCastle();
-    bool getWhiteCanQCastle();
-    bool getBlackCanQCastle();
-    bool getAnyCanCastle();
-    uint16_t getEPCaptureFile();
-    uint8_t getFiftyMoveCounter();
-    uint8_t getCastlingRights();
-    uint16_t getMoveNumber();
-    int getPlayerToMove();
-    uint64_t getPieces(int color, int piece);
-    uint64_t getAllPieces(int color);
-    int getKingSq(int color);
-    int *getMailbox();
-    uint64_t getZobristKey();
+    bool getWhiteCanKCastle() const;
+    bool getBlackCanKCastle() const;
+    bool getWhiteCanQCastle() const;
+    bool getBlackCanQCastle() const;
+    bool getAnyCanCastle() const;
+    uint16_t getEPCaptureFile() const;
+    uint8_t getFiftyMoveCounter() const;
+    uint8_t getCastlingRights() const;
+    uint16_t getMoveNumber() const;
+    int getPlayerToMove() const;
+    uint64_t getPieces(int color, int piece) const;
+    uint64_t getAllPieces(int color) const;
+    int getKingSq(int color) const;
+    int *getMailbox() const;
+    uint64_t getZobristKey() const;
 
     void initZobristKey(int *mailbox);
 
@@ -176,40 +175,34 @@ private:
     // Precomputed tables
     int kingSqs[2];
 
-    void addPawnMovesToList(MoveList &quiets, int color);
-    void addPawnCapturesToList(MoveList &captures, int color, uint64_t otherPieces, bool includePromotions);
+    void addPawnMovesToList(MoveList &quiets, int color) const;
+    void addPawnCapturesToList(MoveList &captures, int color, uint64_t otherPieces, bool includePromotions) const;
     template <bool isCapture>
-    void addPieceMovesToList(MoveList &moves, int color, uint64_t otherPieces = 0);
+    void addPieceMovesToList(MoveList &moves, int color, uint64_t otherPieces = 0) const;
     template <bool isCapture>
-    void addMovesToList(MoveList &moves, int stSq, uint64_t allEndSqs, uint64_t otherPieces = 0);
+    void addMovesToList(MoveList &moves, int stSq, uint64_t allEndSqs, uint64_t otherPieces = 0) const;
     template <bool isCapture>
-    void addPromotionsToList(MoveList &moves, int stSq, int endSq);
-    void addCastlesToList(MoveList &moves, int color);
+    void addPromotionsToList(MoveList &moves, int stSq, int endSq) const;
+    void addCastlesToList(MoveList &moves, int color) const;
 
     // Move generation
     // Takes into account blocking for sliders, but otherwise leaves
     // the occupancy of the end square up to the move generation function
     // This is necessary for captures
-    uint64_t getWPawnSingleMoves(uint64_t pawns);
-    uint64_t getBPawnSingleMoves(uint64_t pawns);
-    uint64_t getWPawnDoubleMoves(uint64_t pawns);
-    uint64_t getBPawnDoubleMoves(uint64_t pawns);
-    uint64_t getWPawnLeftCaptures(uint64_t pawns);
-    uint64_t getBPawnLeftCaptures(uint64_t pawns);
-    uint64_t getWPawnRightCaptures(uint64_t pawns);
-    uint64_t getBPawnRightCaptures(uint64_t pawns);
-    uint64_t getKnightSquares(int single);
-    uint64_t getBishopSquares(int single, uint64_t occ);
-    uint64_t getRookSquares(int single, uint64_t occ);
-    uint64_t getQueenSquares(int single, uint64_t occ);
-    uint64_t getOccupancy();
-    int epVictimSquare(int victimColor, uint16_t file);
-
-    // Kindergarten bitboard methods
-    uint64_t rankAttacks(uint64_t occ, int single);
-    uint64_t fileAttacks(uint64_t occ, int single);
-    uint64_t diagAttacks(uint64_t occ, int single);
-    uint64_t antiDiagAttacks(uint64_t occ, int single);
+    uint64_t getWPawnSingleMoves(uint64_t pawns) const;
+    uint64_t getBPawnSingleMoves(uint64_t pawns) const;
+    uint64_t getWPawnDoubleMoves(uint64_t pawns) const;
+    uint64_t getBPawnDoubleMoves(uint64_t pawns) const;
+    uint64_t getWPawnLeftCaptures(uint64_t pawns) const;
+    uint64_t getBPawnLeftCaptures(uint64_t pawns) const;
+    uint64_t getWPawnRightCaptures(uint64_t pawns) const;
+    uint64_t getBPawnRightCaptures(uint64_t pawns) const;
+    uint64_t getKnightSquares(int single) const;
+    uint64_t getBishopSquares(int single, uint64_t occ) const;
+    uint64_t getRookSquares(int single, uint64_t occ) const;
+    uint64_t getQueenSquares(int single, uint64_t occ) const;
+    uint64_t getOccupancy() const;
+    int epVictimSquare(int victimColor, uint16_t file) const;
 };
 
 #endif

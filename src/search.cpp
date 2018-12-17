@@ -141,9 +141,9 @@ static int probeLimit = 0;
 
 
 // Search functions
-void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
+void getBestMove(const Board *b, TimeManagement *timeParams, MoveList legalMoves,
     int tbScore, bool tbProbeSuccess, int threadID);
-void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha, int beta,
+void getBestMoveAtDepth(const Board *b, const MoveList *legalMoves, int depth, int alpha, int beta,
     int *bestMoveIndex, int *bestScore, unsigned int startMove, int threadID, SearchPV *pvLine);
 int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, SearchStackInfo *ssi, SearchPV *pvLine);
 int quiescence(Board &b, int plies, int alpha, int beta, int threadID);
@@ -164,8 +164,8 @@ double getPercentage(uint64_t numerator, uint64_t denominator);
 
 // Spawns the appropriate number of getBestMove threads and cleans up the helpers
 // when the main thread is done.
-void getBestMoveThreader(Board *b, TimeManagement *timeParams, MoveList *movesToSearch) {
-    int color = b->getPlayerToMove();
+void getBestMoveThreader(const Board *b, TimeManagement *timeParams, MoveList *movesToSearch) {
+    const int color = b->getPlayerToMove();
     MoveList legalMoves = b->getAllLegalMoves(color);
 
     // Special case if we are given a mate/stalemate position
@@ -271,7 +271,7 @@ void getBestMoveThreader(Board *b, TimeManagement *timeParams, MoveList *movesTo
 }
 
 // Finds a best move for a position according to the given search parameters.
-void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
+void getBestMove(const Board *b, TimeManagement *timeParams, MoveList legalMoves,
         int tbScore, bool tbProbeSuccess, int threadID) {
     Move ponder = NULL_MOVE;
     Move bestMove = legalMoves.get(0);
@@ -410,7 +410,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
 
             // Sort the remaining moves, using a simplified version of
             // move ordering from moveorder.cpp
-            int color = b->getPlayerToMove();
+            const int color = b->getPlayerToMove();
             ScoreList scores;
             for (unsigned int i = 0; i < legalMoves.size(); i++) {
                 if (i < multiPVNum) {
@@ -543,7 +543,7 @@ void getBestMove(Board *b, TimeManagement *timeParams, MoveList legalMoves,
 }
 
 // Returns the index of the best move in legalMoves
-void getBestMoveAtDepth(Board *b, MoveList *legalMoves, int depth, int alpha,
+void getBestMoveAtDepth(const Board *b, const MoveList *legalMoves, int depth, int alpha,
         int beta, int *bestMoveIndex, int *bestScore, unsigned int startMove,
         int threadID, SearchPV *pvLine) {
     SearchParameters *searchParams = &(threadMemoryArray[threadID]->searchParams);

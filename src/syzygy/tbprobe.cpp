@@ -46,7 +46,7 @@ extern uint64_t zobristTable[794];
 // of the form KQPvKRP, where "KQP" represents the white pieces if
 // mirror == 0 and the black pieces if mirror == 1.
 // No need to make this very efficient.
-static void prt_str(Board &b, char *str, int mirror) {
+static void prt_str(const Board &b, char *str, int mirror) {
     int color = (mirror == 0) ? WHITE : BLACK;
     for (int pt = KINGS; pt >= PAWNS; pt--)
         for (int i = count(b.getPieces(color, pt)); i > 0; i--)
@@ -61,7 +61,7 @@ static void prt_str(Board &b, char *str, int mirror) {
 
 // Given a position, produce a 64-bit material signature key.
 // Again no need to make this very efficient.
-static uint64 calc_key(Board &b, int mirror) {
+static uint64 calc_key(const Board &b, int mirror) {
     uint64 key = 0;
     int color = (mirror == 0) ? WHITE : BLACK;
 
@@ -97,7 +97,7 @@ static uint64 calc_key_from_pcs(int *pcs, int mirror) {
 }
 
 // probe_wdl_table and probe_dtz_table require similar adaptations.
-static int probe_wdl_table(Board &b, int *success) {
+static int probe_wdl_table(const Board &b, int *success) {
     struct TBEntry *ptr;
     struct TBHashEntry *ptr2;
     uint64 idx;
@@ -199,7 +199,7 @@ static int probe_wdl_table(Board &b, int *success) {
 
 // The value of wdl MUST correspond to the WDL value of the position without
 // en passant rights.
-static int probe_dtz_table(Board &b, int wdl, int *success) {
+static int probe_dtz_table(const Board &b, int wdl, int *success) {
     struct TBEntry *ptr;
     uint64 idx;
     int i, res;
@@ -362,7 +362,7 @@ static int probe_ab(Board &b, int alpha, int beta, int *success) {
 //  0 : draw
 //  1 : win, but draw under 50-move rule
 //  2 : win
-int probe_wdl(Board &b, int *success) {
+int probe_wdl(const Board &b, int *success) {
     *success = 1;
     int color = b.getPlayerToMove();
 
@@ -487,7 +487,7 @@ static int wdl_to_dtz[] = {
 // In short, if a move is available resulting in dtz + 50-move-counter <= 99,
 // then do not accept moves leading to dtz + 50-move-counter == 100.
 //
-int probe_dtz(Board &b, int *success) {
+int probe_dtz(const Board &b, int *success) {
     int wdl = probe_wdl(b, success);
     if (*success == 0) return 0;
 
@@ -597,7 +597,7 @@ static int wdl_to_value[5] = {
 //
 // A return value of 0 indicates that not all probes were successful and that
 // no moves were filtered out.
-int root_probe(Board *b, MoveList &rootMoves, ScoreList &scores, int &TBScore) {
+int root_probe(const Board *b, MoveList &rootMoves, ScoreList &scores, int &TBScore) {
     int success;
 
     int dtz = probe_dtz(*b, &success);
@@ -707,7 +707,7 @@ int root_probe(Board *b, MoveList &rootMoves, ScoreList &scores, int &TBScore) {
 //
 // A return value of 0 indicates that not all probes were successful and that
 // no moves were filtered out.
-int root_probe_wdl(Board *b, MoveList &rootMoves, ScoreList &scores, int &TBScore) {
+int root_probe_wdl(const Board *b, MoveList &rootMoves, ScoreList &scores, int &TBScore) {
     int success;
 
     int wdl = probe_wdl(*b, &success);

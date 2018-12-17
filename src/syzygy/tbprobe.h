@@ -26,9 +26,9 @@
 extern int TBlargest; // 5 if 5-piece tables, 6 if 6-piece tables were found.
 
 void init_tablebases(char *path);
-int probe_wdl(Board &b, int *success);
-int probe_dtz(Board &b, int *success);
-int root_probe(Board *b, MoveList &rootMoves, ScoreList &scores, int &TBScore);
-int root_probe_wdl(Board *b, MoveList &rootMoves, ScoreList &scores, int &TBScore);
+int probe_wdl(const Board &b, int *success);
+int probe_dtz(const Board &b, int *success);
+int root_probe(const Board *b, MoveList &rootMoves, ScoreList &scores, int &TBScore);
+int root_probe_wdl(const Board *b, MoveList &rootMoves, ScoreList &scores, int &TBScore);
 
 #endif

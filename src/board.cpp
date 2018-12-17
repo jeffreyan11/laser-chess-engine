@@ -128,7 +128,7 @@ Board::Board(int *mailboxBoard, bool _whiteCanKCastle, bool _blackCanKCastle,
 
 Board::~Board() {}
 
-Board Board::staticCopy() {
+Board Board::staticCopy() const {
     Board b;
     std::memcpy(static_cast<void*>(&b), this, sizeof(Board));
     return b;
@@ -398,7 +398,7 @@ void Board::undoNullMove(uint16_t _epCaptureFile) {
  * and a bitboard of potential legal moves for each knight, bishop, rook, and queen.
  * Used for mobility evaluation of pieces.
  */
-PieceMoveList Board::getPieceMoveList(int color) {
+PieceMoveList Board::getPieceMoveList(int color) const {
     PieceMoveList pml;
 
     uint64_t knights = pieces[color][KNIGHTS];
@@ -445,7 +445,7 @@ PieceMoveList Board::getPieceMoveList(int color) {
 }
 
 // Get all legal moves and captures
-MoveList Board::getAllLegalMoves(int color) {
+MoveList Board::getAllLegalMoves(int color) const {
     MoveList moves;
     getAllPseudoLegalMoves(moves, color);
 
@@ -469,7 +469,7 @@ MoveList Board::getAllLegalMoves(int color) {
  * Get the legal moves as a bitboard, then bitscan this to get the destination
  * square and store as a Move object.
  */
-void Board::getAllPseudoLegalMoves(MoveList &legalMoves, int color) {
+void Board::getAllPseudoLegalMoves(MoveList &legalMoves, int color) const {
     getPseudoLegalCaptures(legalMoves, color, true);
     getPseudoLegalQuiets(legalMoves, color);
 }
@@ -484,7 +484,7 @@ void Board::getAllPseudoLegalMoves(MoveList &legalMoves, int color) {
  * Pawn moves
  * King moves
  */
-void Board::getPseudoLegalQuiets(MoveList &quiets, int color) {
+void Board::getPseudoLegalQuiets(MoveList &quiets, int color) const {
     addCastlesToList(quiets, color);
 
     addPieceMovesToList<MOVEGEN_QUIETS>(quiets, color);
@@ -505,7 +505,7 @@ void Board::getPseudoLegalQuiets(MoveList &quiets, int color) {
  * Rook captures
  * Queen captures
  */
-void Board::getPseudoLegalCaptures(MoveList &captures, int color, bool includePromotions) {
+void Board::getPseudoLegalCaptures(MoveList &captures, int color, bool includePromotions) const {
     uint64_t otherPieces = allPieces[color^1];
 
     uint64_t kingMoves = getKingSquares(kingSqs[color]);
@@ -517,7 +517,7 @@ void Board::getPseudoLegalCaptures(MoveList &captures, int color, bool includePr
 }
 
 // Generates all queen promotions for quiescence search
-void Board::getPseudoLegalPromotions(MoveList &moves, int color) {
+void Board::getPseudoLegalPromotions(MoveList &moves, int color) const {
     uint64_t otherPieces = allPieces[color^1];
 
     uint64_t pawns = pieces[color][PAWNS];
@@ -582,7 +582,7 @@ void Board::getPseudoLegalPromotions(MoveList &moves, int color) {
  *
  * For simplicity, promotions and en passant are left out of this function.
  */
-void Board::getPseudoLegalChecks(MoveList &checks, int color) {
+void Board::getPseudoLegalChecks(MoveList &checks, int color) const {
     int kingSq = kingSqs[color^1];
     // Square parity for knight and bishop moves
     uint64_t kingParity = (pieces[color^1][KINGS] & LIGHT) ? LIGHT : DARK;
@@ -706,7 +706,7 @@ void Board::getPseudoLegalChecks(MoveList &checks, int color) {
 // This can only be used if we know the side to move is in check
 // Optimizations include looking for double check (king moves only),
 // otherwise we can only capture the checker or block if it is an xray piece
-void Board::getPseudoLegalCheckEscapes(MoveList &escapes, int color) {
+void Board::getPseudoLegalCheckEscapes(MoveList &escapes, int color) const {
     int kingSq = kingSqs[color];
     uint64_t otherPieces = allPieces[color^1];
     uint64_t attackMap = getAttackMap(color^1, kingSq);
@@ -787,7 +787,7 @@ void Board::getPseudoLegalCheckEscapes(MoveList &escapes, int color) {
 //------------------------------------------------------------------------------
 // We can do pawns in parallel, since the start square of a pawn move is
 // determined by its end square.
-void Board::addPawnMovesToList(MoveList &quiets, int color) {
+void Board::addPawnMovesToList(MoveList &quiets, int color) const {
     uint64_t pawns = pieces[color][PAWNS];
     uint64_t finalRank = (color == WHITE) ? RANK_8 : RANK_1;
     int sqDiff = (color == WHITE) ? -8 : 8;
@@ -825,7 +825,7 @@ void Board::addPawnMovesToList(MoveList &quiets, int color) {
 // For pawn captures, we can use a similar approach, but we must consider
 // left-hand and right-hand captures separately so we can tell which
 // pawn is doing the capturing.
-void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherPieces, bool includePromotions) {
+void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherPieces, bool includePromotions) const {
     uint64_t pawns = pieces[color][PAWNS];
     uint64_t finalRank = (color == WHITE) ? RANK_8 : RANK_1;
     int leftDiff = (color == WHITE) ? -7 : 9;
@@ -896,7 +896,7 @@ void Board::addPawnCapturesToList(MoveList &captures, int color, uint64_t otherP
 }
 
 template <bool isCapture>
-void Board::addPieceMovesToList(MoveList &moves, int color, uint64_t otherPieces) {
+void Board::addPieceMovesToList(MoveList &moves, int color, uint64_t otherPieces) const {
     uint64_t knights = pieces[color][KNIGHTS];
     while (knights) {
         int stSq = bitScanForward(knights);
@@ -938,7 +938,7 @@ void Board::addPieceMovesToList(MoveList &moves, int color, uint64_t otherPieces
 // Helper function that processes a bitboard of legal moves and adds all
 // moves into a list.
 template <bool isCapture>
-void Board::addMovesToList(MoveList &moves, int stSq, uint64_t allEndSqs, uint64_t otherPieces) {
+void Board::addMovesToList(MoveList &moves, int stSq, uint64_t allEndSqs, uint64_t otherPieces) const {
 
     uint64_t intersect = (isCapture) ? otherPieces : ~getOccupancy();
     uint64_t legal = allEndSqs & intersect;
@@ -953,7 +953,7 @@ void Board::addMovesToList(MoveList &moves, int stSq, uint64_t allEndSqs, uint64
 }
 
 template <bool isCapture>
-void Board::addPromotionsToList(MoveList &moves, int stSq, int endSq) {
+void Board::addPromotionsToList(MoveList &moves, int stSq, int endSq) const {
     Move mk = encodeMove(stSq, endSq);
     mk = setFlags(mk, MOVE_PROMO_N);
     Move mb = encodeMove(stSq, endSq);
@@ -975,7 +975,7 @@ void Board::addPromotionsToList(MoveList &moves, int stSq, int endSq) {
     moves.add(mb);
 }
 
-void Board::addCastlesToList(MoveList &moves, int color) {
+void Board::addCastlesToList(MoveList &moves, int color) const {
     // Add all possible castles
     if (color == WHITE) {
         // If castling rights still exist, squares in between king and rook are
@@ -1030,7 +1030,7 @@ void Board::addCastlesToList(MoveList &moves, int color) {
 
 // Get the attack map of all potential x-ray pieces (bishops, rooks, queens)
 // after a blocker has been removed.
-uint64_t Board::getXRayPieceMap(int color, int sq, uint64_t occ) {
+uint64_t Board::getXRayPieceMap(int color, int sq, uint64_t occ) const {
     uint64_t bishops = pieces[color][BISHOPS];
     uint64_t rooks = pieces[color][ROOKS];
     uint64_t queens = pieces[color][QUEENS];
@@ -1043,7 +1043,7 @@ uint64_t Board::getXRayPieceMap(int color, int sq, uint64_t occ) {
 
 // Given a color and a square, returns all pieces of the color that attack the
 // square. Useful for checks, captures
-uint64_t Board::getAttackMap(int color, int sq) {
+uint64_t Board::getAttackMap(int color, int sq) const {
     uint64_t occ = getOccupancy();
     uint64_t pawnCap = (color == WHITE)
                      ? getBPawnCaptures(indexToBit(sq))
@@ -1056,7 +1056,7 @@ uint64_t Board::getAttackMap(int color, int sq) {
 }
 
 // Get all pieces of both colors attacking a square
-uint64_t Board::getAttackMap(int sq, uint64_t occ) {
+uint64_t Board::getAttackMap(int sq, uint64_t occ) const {
     return (getBPawnCaptures(indexToBit(sq)) & pieces[WHITE][PAWNS])
          | (getWPawnCaptures(indexToBit(sq)) & pieces[BLACK][PAWNS])
          | (getKnightSquares(sq) & (pieces[WHITE][KNIGHTS] | pieces[BLACK][KNIGHTS]))
@@ -1066,7 +1066,7 @@ uint64_t Board::getAttackMap(int sq, uint64_t occ) {
 }
 
 // Returns the piece with given color on the given square, if any
-int Board::getPieceOnSquare(int color, int sq) {
+int Board::getPieceOnSquare(int color, int sq) const {
     uint64_t endSingle = indexToBit(sq);
     for (int pieceID = 0; pieceID <= 5; pieceID++) {
         if (pieces[color][pieceID] & endSingle)
@@ -1078,7 +1078,7 @@ int Board::getPieceOnSquare(int color, int sq) {
 }
 
 // Returns true if a move puts the opponent in check
-bool Board::isCheckMove(int color, Move m) {
+bool Board::isCheckMove(int color, Move m) const {
     int kingSq = kingSqs[color^1];
 
     // Special case for castling
@@ -1156,13 +1156,13 @@ bool Board::isCheckMove(int color, Move m) {
  * all squares between the first and second blocker.
  * Algorithm from http://chessprogramming.wikispaces.com/X-ray+Attacks+%28Bitboards%29#ModifyingOccupancy
  */
-uint64_t Board::getRookXRays(int sq, uint64_t occ, uint64_t blockers) {
+uint64_t Board::getRookXRays(int sq, uint64_t occ, uint64_t blockers) const {
     uint64_t attacks = getRookSquares(sq, occ);
     blockers &= attacks;
     return attacks ^ getRookSquares(sq, occ ^ blockers);
 }
 
-uint64_t Board::getBishopXRays(int sq, uint64_t occ, uint64_t blockers) {
+uint64_t Board::getBishopXRays(int sq, uint64_t occ, uint64_t blockers) const {
     uint64_t attacks = getBishopSquares(sq, occ);
     blockers &= attacks;
     return attacks ^ getBishopSquares(sq, occ ^ blockers);
@@ -1172,7 +1172,7 @@ uint64_t Board::getBishopXRays(int sq, uint64_t occ, uint64_t blockers) {
  * This function returns all pinned pieces for a given side.
  * Algorithm from http://chessprogramming.wikispaces.com/Checks+and+Pinned+Pieces+%28Bitboards%29
  */
-uint64_t Board::getPinnedMap(int color) {
+uint64_t Board::getPinnedMap(int color) const {
     uint64_t pinned = 0;
     uint64_t blockers = allPieces[color];
     int kingSq = kingSqs[color];
@@ -1200,11 +1200,11 @@ uint64_t Board::getPinnedMap(int color) {
 //------------------------------------------------------------------------------
 //-------------------King: check, draw, insufficient material-------------------
 //------------------------------------------------------------------------------
-bool Board::isInCheck(int color) {
+bool Board::isInCheck(int color) const {
     return getAttackMap(color^1, kingSqs[color]);
 }
 
-bool Board::isDraw() {
+bool Board::isDraw() const {
     if (fiftyMoveCounter >= 100) return true;
 
     if (isInsufficientMaterial())
@@ -1214,7 +1214,7 @@ bool Board::isDraw() {
 }
 
 // Check for guaranteed drawn positions, where helpmate is not possible.
-bool Board::isInsufficientMaterial() {
+bool Board::isInsufficientMaterial() const {
     int numPieces = count(allPieces[WHITE] | allPieces[BLACK]) - 2;
     if (numPieces < 2) {
         if (numPieces == 0)
@@ -1226,7 +1226,7 @@ bool Board::isInsufficientMaterial() {
     return false;
 }
 
-void Board::getCheckMaps(int color, uint64_t *checkMaps) {
+void Board::getCheckMaps(int color, uint64_t *checkMaps) const {
     int kingSq = kingSqs[color];
     uint64_t occ = getOccupancy();
     checkMaps[KNIGHTS-1] = getKnightSquares(kingSq);
@@ -1239,14 +1239,14 @@ void Board::getCheckMaps(int color, uint64_t *checkMaps) {
 //------------------------------------------------------------------------------
 //--------------------------------Move Ordering---------------------------------
 //------------------------------------------------------------------------------
-uint64_t Board::getNonPawnMaterial(int color) {
+uint64_t Board::getNonPawnMaterial(int color) const {
     return pieces[color][KNIGHTS] | pieces[color][BISHOPS]
          | pieces[color][ROOKS]   | pieces[color][QUEENS];
 }
 
 // Given a bitboard of attackers, finds the least valuable attacker of color and
 // returns a single occupancy bitboard of that piece
-uint64_t Board::getLeastValuableAttacker(uint64_t attackers, int color, int &piece) {
+uint64_t Board::getLeastValuableAttacker(uint64_t attackers, int color, int &piece) const {
     for (piece = 0; piece < 5; piece++) {
         uint64_t single = attackers & pieces[color][piece];
         if (single)
@@ -1259,7 +1259,7 @@ uint64_t Board::getLeastValuableAttacker(uint64_t attackers, int color, int &pie
 
 // Calculates whether the Static Exchange Evaluation for a move is greater than or equal to the cutoff.
 // Minimax algorithm based on Stockfish's SEE implementation.
-bool Board::isSEEAbove(int color, Move m, int cutoff) {
+bool Board::isSEEAbove(int color, Move m, int cutoff) const {
     static constexpr int SEE_PIECE_VALS[6] = {100, 400, 400, 600, 1150, 0};
 
     // Assume the SEE score for EP captures and castling is 0
@@ -1317,7 +1317,7 @@ bool Board::isSEEAbove(int color, Move m, int cutoff) {
     return color != seeColor;
 }
 
-int Board::valueOfPiece(int pieceID) {
+int Board::valueOfPiece(int pieceID) const {
     switch(pieceID) {
         // EP capture
         case -1:
@@ -1337,7 +1337,7 @@ int Board::valueOfPiece(int pieceID) {
 
 // Calculates a score for Most Valuable Victim / Least Valuable Attacker
 // capture ordering.
-int Board::getMVVLVAScore(int color, Move m) {
+int Board::getMVVLVAScore(int color, Move m) const {
     int endSq = getEndSq(m);
     int attacker = getPieceOnSquare(color, getStartSq(m));
     if (attacker == KINGS)
@@ -1351,57 +1351,57 @@ int Board::getMVVLVAScore(int color, Move m) {
 //------------------------------------------------------------------------------
 //-----------------------------Move Generation----------------------------------
 //------------------------------------------------------------------------------
-inline uint64_t Board::getWPawnSingleMoves(uint64_t pawns) {
+inline uint64_t Board::getWPawnSingleMoves(uint64_t pawns) const {
     return (pawns << 8) & ~getOccupancy();
 }
 
-inline uint64_t Board::getBPawnSingleMoves(uint64_t pawns) {
+inline uint64_t Board::getBPawnSingleMoves(uint64_t pawns) const {
     return (pawns >> 8) & ~getOccupancy();
 }
 
-uint64_t Board::getWPawnDoubleMoves(uint64_t pawns) {
+uint64_t Board::getWPawnDoubleMoves(uint64_t pawns) const {
     uint64_t open = ~getOccupancy();
     uint64_t temp = (pawns << 8) & open;
     pawns = (temp << 8) & open & RANK_4;
     return pawns;
 }
 
-uint64_t Board::getBPawnDoubleMoves(uint64_t pawns) {
+uint64_t Board::getBPawnDoubleMoves(uint64_t pawns) const {
     uint64_t open = ~getOccupancy();
     uint64_t temp = (pawns >> 8) & open;
     pawns = (temp >> 8) & open & RANK_5;
     return pawns;
 }
 
-inline uint64_t Board::getWPawnLeftCaptures(uint64_t pawns) {
+inline uint64_t Board::getWPawnLeftCaptures(uint64_t pawns) const {
     return (pawns << 7) & NOTH;
 }
 
-inline uint64_t Board::getBPawnLeftCaptures(uint64_t pawns) {
+inline uint64_t Board::getBPawnLeftCaptures(uint64_t pawns) const {
     return (pawns >> 9) & NOTH;
 }
 
-inline uint64_t Board::getWPawnRightCaptures(uint64_t pawns) {
+inline uint64_t Board::getWPawnRightCaptures(uint64_t pawns) const {
     return (pawns << 9) & NOTA;
 }
 
-inline uint64_t Board::getBPawnRightCaptures(uint64_t pawns) {
+inline uint64_t Board::getBPawnRightCaptures(uint64_t pawns) const {
     return (pawns >> 7) & NOTA;
 }
 
-uint64_t Board::getWPawnCaptures(uint64_t pawns) {
+uint64_t Board::getWPawnCaptures(uint64_t pawns) const {
     return getWPawnLeftCaptures(pawns) | getWPawnRightCaptures(pawns);
 }
 
-uint64_t Board::getBPawnCaptures(uint64_t pawns) {
+uint64_t Board::getBPawnCaptures(uint64_t pawns) const {
     return getBPawnLeftCaptures(pawns) | getBPawnRightCaptures(pawns);
 }
 
-inline uint64_t Board::getKnightSquares(int single) {
+inline uint64_t Board::getKnightSquares(int single) const {
     return KNIGHTMOVES[single];
 }
 
-uint64_t Board::getBishopSquares(int single, uint64_t occ) {
+uint64_t Board::getBishopSquares(int single, uint64_t occ) const {
     uint64_t *attTableLoc = magicBishops[single].table;
     occ &= magicBishops[single].mask;
     occ *= magicBishops[single].magic;
@@ -1409,7 +1409,7 @@ uint64_t Board::getBishopSquares(int single, uint64_t occ) {
     return attTableLoc[occ];
 }
 
-uint64_t Board::getRookSquares(int single, uint64_t occ) {
+uint64_t Board::getRookSquares(int single, uint64_t occ) const {
     uint64_t *attTableLoc = magicRooks[single].table;
     occ &= magicRooks[single].mask;
     occ *= magicRooks[single].magic;
@@ -1417,19 +1417,19 @@ uint64_t Board::getRookSquares(int single, uint64_t occ) {
     return attTableLoc[occ];
 }
 
-uint64_t Board::getQueenSquares(int single, uint64_t occ) {
+uint64_t Board::getQueenSquares(int single, uint64_t occ) const {
     return getBishopSquares(single, occ) | getRookSquares(single, occ);
 }
 
-uint64_t Board::getKingSquares(int single) {
+uint64_t Board::getKingSquares(int single) const {
     return KINGMOVES[single];
 }
 
-inline uint64_t Board::getOccupancy() {
+inline uint64_t Board::getOccupancy() const {
     return allPieces[WHITE] | allPieces[BLACK];
 }
 
-inline int Board::epVictimSquare(int victimColor, uint16_t file) {
+inline int Board::epVictimSquare(int victimColor, uint16_t file) const {
     return 8 * (3 + victimColor) + file;
 }
 
@@ -1437,59 +1437,59 @@ inline int Board::epVictimSquare(int victimColor, uint16_t file) {
 //------------------------------------------------------------------------------
 //---------------------------Public Getter Methods------------------------------
 //------------------------------------------------------------------------------
-bool Board::getWhiteCanKCastle() {
+bool Board::getWhiteCanKCastle() const {
     return castlingRights & WHITEKSIDE;
 }
 
-bool Board::getBlackCanKCastle() {
+bool Board::getBlackCanKCastle() const {
     return castlingRights & BLACKKSIDE;
 }
 
-bool Board::getWhiteCanQCastle() {
+bool Board::getWhiteCanQCastle() const {
     return castlingRights & WHITEQSIDE;
 }
 
-bool Board::getBlackCanQCastle() {
+bool Board::getBlackCanQCastle() const {
     return castlingRights & BLACKQSIDE;
 }
 
-bool Board::getAnyCanCastle() {
+bool Board::getAnyCanCastle() const {
     return (castlingRights != 0);
 }
 
-uint16_t Board::getEPCaptureFile() {
+uint16_t Board::getEPCaptureFile() const {
     return epCaptureFile;
 }
 
-uint8_t Board::getFiftyMoveCounter() {
+uint8_t Board::getFiftyMoveCounter() const {
     return fiftyMoveCounter;
 }
 
-uint8_t Board::getCastlingRights() {
+uint8_t Board::getCastlingRights() const {
     return castlingRights;
 }
 
-uint16_t Board::getMoveNumber() {
+uint16_t Board::getMoveNumber() const {
     return moveNumber;
 }
 
-int Board::getPlayerToMove() {
+int Board::getPlayerToMove() const {
     return playerToMove;
 }
 
-uint64_t Board::getPieces(int color, int piece) {
+uint64_t Board::getPieces(int color, int piece) const {
     return pieces[color][piece];
 }
 
-uint64_t Board::getAllPieces(int color) {
+uint64_t Board::getAllPieces(int color) const {
     return allPieces[color];
 }
 
-int Board::getKingSq(int color) {
+int Board::getKingSq(int color) const {
     return kingSqs[color];
 }
 
-int *Board::getMailbox() {
+int *Board::getMailbox() const {
     int *result = new int[64];
     for (int i = 0; i < 64; i++) {
         result[i] = -1;
@@ -1511,7 +1511,7 @@ int *Board::getMailbox() {
     return result;
 }
 
-uint64_t Board::getZobristKey() {
+uint64_t Board::getZobristKey() const {
     return zobristKey;
 }
 

@@ -148,14 +148,14 @@ public:
     }
     ~SearchArrayList() {}
 
-    unsigned int size() { return length; }
+    unsigned int size() const { return length; }
 
     void add(T o) {
         arrayList[length] = o;
         length++;
     }
 
-    T get(int i) { return arrayList[i]; }
+    T get(int i) const { return arrayList[i]; }
 
     void set(int i, T o) { arrayList[i] = o; }
 

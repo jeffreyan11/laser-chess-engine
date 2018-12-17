@@ -88,7 +88,7 @@ struct SearchStackInfo {
     int **followupMoveHistory;
 };
 
-void getBestMoveThreader(Board *b, TimeManagement *timeParams, MoveList *movesToSearch);
+void getBestMoveThreader(const Board *b, TimeManagement *timeParams, MoveList *movesToSearch);
 void clearTables();
 void setHashSize(uint64_t MB);
 void setEvalCacheSize(uint64_t MB);
