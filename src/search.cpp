@@ -277,7 +277,7 @@ void getBestMove(const Board *b, TimeManagement *timeParams, MoveList legalMoves
     Move bestMove = legalMoves.get(0);
     uint64_t timeSoFar;
 
-    int bestScore = -INFTY, bestMoveIndex;
+    int bestScore = -INFTY, bestMoveIndex = -1;
     int rootDepth = 1;
     Move prevBest = NULL_MOVE;
     int prevScore = -INFTY;
