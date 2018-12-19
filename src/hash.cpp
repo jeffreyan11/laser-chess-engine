@@ -59,10 +59,10 @@ void Hash::add(Board &b, uint64_t data, int depth) {
 
     // Decide whether to replace the entry
     // A more recent update to the same position should always be chosen
-    if ((node->slot1.zobristKey ^ node->slot1.data) == b.getZobristKey())
+    if (node->slot1.zobristKey == b.getZobristKey())
         node->slot1.setEntry(b, data);
     
-    else if ((node->slot2.zobristKey ^ node->slot2.data) == b.getZobristKey())
+    else if (node->slot2.zobristKey == b.getZobristKey())
         node->slot2.setEntry(b, data);
     
     // Replace an entry from a previous search space, or the lowest depth
@@ -87,9 +87,9 @@ uint64_t Hash::get(Board &b) {
     uint64_t index = h & (size-1);
     HashNode *node = table + index;
 
-    if ((node->slot1.zobristKey ^ node->slot1.data) == b.getZobristKey())
+    if (node->slot1.zobristKey == b.getZobristKey())
         return node->slot1.data;
-    else if ((node->slot2.zobristKey ^ node->slot2.data) == b.getZobristKey())
+    else if (node->slot2.zobristKey == b.getZobristKey())
         return node->slot2.data;
 
     return 0;
