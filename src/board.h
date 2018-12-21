@@ -127,6 +127,7 @@ public:
     // Public move generators
     uint64_t getWPawnCaptures(uint64_t pawns) const;
     uint64_t getBPawnCaptures(uint64_t pawns) const;
+    uint64_t getBishopSquares(int single, uint64_t occ) const;
     uint64_t getKingSquares(int single) const;
 
     // Getter methods
@@ -198,7 +199,6 @@ private:
     uint64_t getWPawnRightCaptures(uint64_t pawns) const;
     uint64_t getBPawnRightCaptures(uint64_t pawns) const;
     uint64_t getKnightSquares(int single) const;
-    uint64_t getBishopSquares(int single, uint64_t occ) const;
     uint64_t getRookSquares(int single, uint64_t occ) const;
     uint64_t getQueenSquares(int single, uint64_t occ) const;
     uint64_t getOccupancy() const;

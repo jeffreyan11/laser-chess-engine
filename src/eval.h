@@ -129,10 +129,10 @@ constexpr int pieceSquareTable[2][6][32] = {
 -20,-12,-10, -8,
   5,  0,  1,  2,
   0, 10,  5, 10,
-  0,  4,  6,  9,
-  1, 10,  9,  5,
-  2, 14, 10,  5,
- -8,  0, -5, -1
+  0,  4,  6, 10,
+  1, 10,  5,  5,
+  2, 11, 10,  5,
+-11,  0, -5, -1
 },
 { // Rooks
  -5,  0,  0,  0,
@@ -373,6 +373,8 @@ constexpr Score BISHOP_OUTPOST_BONUS = E(27, 18);
 constexpr Score BISHOP_OUTPOST_PAWN_DEF_BONUS = E(26, 14);
 constexpr Score BISHOP_POTENTIAL_OUTPOST_BONUS = E(10, 13);
 constexpr Score BISHOP_POTENTIAL_OUTPOST_PAWN_DEF_BONUS = E(15, 5);
+// A bonus for fianchettoed bishops that are not blocked by pawns
+constexpr Score BISHOP_FIANCHETTO_BONUS = E(18, 0);
 
 // Rooks
 constexpr Score ROOK_OPEN_FILE_BONUS = E(40, 12);

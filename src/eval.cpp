@@ -562,6 +562,12 @@ int Eval::evaluate(Board &b) {
                 if (potential & ei.attackMaps[color][PAWNS])
                     pieceEvalScore[color] += BISHOP_POTENTIAL_OUTPOST_PAWN_DEF_BONUS;
             }
+
+            // A bonus for fianchettoed bishops that are not blocked by pawns
+            // We can easily tell if a bishop is on the long diagonal since it can see two center squares at once
+            uint64_t fianchettoBishop = b.getBishopSquares(bishopSq, pieces[WHITE][PAWNS] | pieces[BLACK][PAWNS]) & CENTER_SQS;
+            if (fianchettoBishop & (fianchettoBishop - 1))
+                pieceEvalScore[color] += BISHOP_FIANCHETTO_BONUS;
         }
 
         //---------------------------------Rooks------------------------------------
