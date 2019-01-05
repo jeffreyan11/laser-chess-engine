@@ -1035,7 +1035,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
         // Singular extensions
         // If the TT move appears to be much better than all others, extend the move
-        if (depth >= 7 && reduction == 0 && extension == 0
+        if (depth >= 8 && reduction == 0 && extension == 0
          && m == hashed
          && abs(hashScore) < NEAR_MATE_SCORE
          && (nodeType == CUT_NODE || nodeType == PV_NODE)
@@ -1058,7 +1058,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
                     [b.getPieceOnSquare(color, getStartSq(seMove))][getEndSq(seMove)];
 
                 // The window is lowered more for higher depths
-                int SEWindow = hashScore - 10 - depth;
+                int SEWindow = hashScore - depth;
                 // Do a reduced search for fail-low confirmation
                 int SEDepth = depth / 2 - 1;
 
