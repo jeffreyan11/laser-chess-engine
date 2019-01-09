@@ -708,12 +708,12 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     int hashDepth = 0;
     uint8_t nodeType = NO_NODE_INFO;
 
-    uint64_t hashEntry = transpositionTable.get(b);
-    if (hashEntry != 0) {
-        hashScore = getHashScore(hashEntry);
-        nodeType = getHashNodeType(hashEntry);
-        hashDepth = getHashDepth(hashEntry);
-        hashed = getHashMove(hashEntry);
+    HashData *hashEntry = transpositionTable.get(b);
+    if (hashEntry != nullptr) {
+        hashScore = hashEntry->score;
+        nodeType = hashEntry->nodeType;
+        hashDepth = hashEntry->depth;
+        hashed = hashEntry->move;
 
         // Count hashed tb hits
         if (nodeType == PV_NODE && hashed == NULL_MOVE)
@@ -760,9 +760,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
             // Hash the TB result
             int tbDepth = std::min(depth+4, MAX_DEPTH);
-            uint64_t hashData = packHashData(
-                tbDepth, NULL_MOVE, adjustHashScore(tbScore, ssi->ply), PV_NODE, transpositionTable.getAge());
-            transpositionTable.add(b, hashData, tbDepth);
+            transpositionTable.add(b, adjustHashScore(tbScore, ssi->ply), NULL_MOVE, tbDepth, PV_NODE);
 
             return tbScore;
         }
@@ -875,12 +873,12 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         int iidDepth = isPVNode ? depth - depth/4 - 1 : (depth - 5) / 2;
         PVS(b, iidDepth, alpha, beta, threadID, isCutNode, ssi, &line);
 
-        uint64_t iidEntry = transpositionTable.get(b);
-        if (iidEntry != 0) {
-            hashScore = getHashScore(iidEntry);
-            nodeType = getHashNodeType(iidEntry);
-            hashDepth = getHashDepth(iidEntry);
-            hashed = getHashMove(iidEntry);
+        HashData *iidEntry = transpositionTable.get(b);
+        if (iidEntry != nullptr) {
+            hashScore = iidEntry->score;
+            nodeType = iidEntry->nodeType;
+            hashDepth = iidEntry->depth;
+            hashed = iidEntry->move;
         }
     }
 
@@ -1111,9 +1109,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // Beta cutoff
         if (score >= beta) {
             // Hash the cut move and score
-            uint64_t hashData = packHashData(
-                depth, m, adjustHashScore(score, ssi->ply), CUT_NODE, transpositionTable.getAge());
-            transpositionTable.add(b, hashData, depth);
+            transpositionTable.add(b, adjustHashScore(score, ssi->ply), m, depth, CUT_NODE);
 
             // Update killers and histories for quiet moves
             if (!isCapture(m)) {
@@ -1152,9 +1148,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
     // Exact scores indicate a principal variation
     if (prevAlpha < alpha && alpha < beta) {
-        uint64_t hashData = packHashData(
-            depth, toHash, adjustHashScore(alpha, ssi->ply), PV_NODE, transpositionTable.getAge());
-        transpositionTable.add(b, hashData, depth);
+        transpositionTable.add(b, adjustHashScore(alpha, ssi->ply), toHash, depth, PV_NODE);
 
         // Update histories for quiet moves
         if (!isCapture(toHash))
@@ -1167,15 +1161,11 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     else if (alpha <= prevAlpha) {
         // If we had a hash move, save it in case the node becomes a PV or cut node next time
         if (!isPVNode && hashed != NULL_MOVE) {
-            uint64_t hashData = packHashData(
-                depth, hashed, adjustHashScore(bestScore, ssi->ply), ALL_NODE, transpositionTable.getAge());
-            transpositionTable.add(b, hashData, depth);
+            transpositionTable.add(b, adjustHashScore(bestScore, ssi->ply), hashed, depth, ALL_NODE);
         }
         // Otherwise, just store no best move as expected
         else {
-            uint64_t hashData = packHashData(
-                depth, NULL_MOVE, adjustHashScore(bestScore, ssi->ply), ALL_NODE, transpositionTable.getAge());
-            transpositionTable.add(b, hashData, depth);
+            transpositionTable.add(b, adjustHashScore(bestScore, ssi->ply), NULL_MOVE, depth, ALL_NODE);
         }
     }
 
@@ -1211,10 +1201,10 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
 
     // Qsearch hash table probe
     int hashScore = -INFTY;
-    uint64_t hashEntry = transpositionTable.get(b);
+    HashData *hashEntry = transpositionTable.get(b);
     uint8_t nodeType = NO_NODE_INFO;
-    if (hashEntry != 0) {
-        hashScore = getHashScore(hashEntry);
+    if (hashEntry != nullptr) {
+        hashScore = hashEntry->score;
 
         // Adjust the hash score to mate distance from root if necessary
         if (hashScore >= MAX_PLY_MATE_SCORE)
@@ -1222,10 +1212,10 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         else if (hashScore <= -MAX_PLY_MATE_SCORE)
             hashScore += searchParams->ply + plies;
 
-        nodeType = getHashNodeType(hashEntry);
+        nodeType = hashEntry->nodeType;
         // Only used a hashed score if the search depth was at least
         // the current depth
-        if (getHashDepth(hashEntry) >= -plies) {
+        if (hashEntry->depth >= -plies) {
             // Check for the correct node type and bounds
             if ((nodeType == ALL_NODE && hashScore <= alpha)
              || (nodeType == CUT_NODE && hashScore >= beta)
@@ -1302,9 +1292,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         int score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
 
         if (score >= beta) {
-            uint64_t hashData = packHashData(
-                -plies, m, adjustHashScore(score, searchParams->ply + plies), CUT_NODE, transpositionTable.getAge());
-            transpositionTable.add(b, hashData, -plies);
+            transpositionTable.add(b, adjustHashScore(score, searchParams->ply + plies), m, -plies, CUT_NODE);
 
             return score;
         }
@@ -1335,9 +1323,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         int score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
 
         if (score >= beta) {
-            uint64_t hashData = packHashData(
-                -plies, m, adjustHashScore(score, searchParams->ply + plies), CUT_NODE, transpositionTable.getAge());
-            transpositionTable.add(b, hashData, -plies);
+            transpositionTable.add(b, adjustHashScore(score, searchParams->ply + plies), m, -plies, CUT_NODE);
 
             return score;
         }
@@ -1373,9 +1359,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             threadMemoryArray[threadID]->twoFoldPositions.pop();
 
             if (score >= beta) {
-                uint64_t hashData = packHashData(
-                    -plies, m, adjustHashScore(score, searchParams->ply + plies), CUT_NODE, transpositionTable.getAge());
-                transpositionTable.add(b, hashData, -plies);
+                transpositionTable.add(b, adjustHashScore(score, searchParams->ply + plies), m, -plies, CUT_NODE);
 
                 return score;
             }
