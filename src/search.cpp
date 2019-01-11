@@ -25,7 +25,6 @@
 #include <thread>
 #include <vector>
 #include "eval.h"
-#include "evalhash.h"
 #include "hash.h"
 #include "search.h"
 #include "moveorder.h"
@@ -114,7 +113,6 @@ void initReductionTable() {
 
 //-----------------------------Global variables---------------------------------
 static Hash transpositionTable(DEFAULT_HASH_SIZE);
-static EvalHash evalCache(DEFAULT_HASH_SIZE);
 static std::vector<ThreadMemory *> threadMemoryArray;
 
 // Variables for time management
@@ -711,7 +709,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     HashData *hashEntry = transpositionTable.get(b);
     if (hashEntry != nullptr) {
         hashScore = hashEntry->score;
-        nodeType = hashEntry->nodeType;
+        nodeType = hashEntry->ageNodeType & 0x3;
         hashDepth = hashEntry->depth;
         hashed = hashEntry->move;
 
@@ -719,23 +717,25 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         if (nodeType == PV_NODE && hashed == NULL_MOVE)
             searchStats->tbhits++;
 
-        // Adjust the hash score to mate distance from root if necessary
-        if (hashScore >= MAX_PLY_MATE_SCORE)
-            hashScore -= ssi->ply;
-        else if (hashScore <= -MAX_PLY_MATE_SCORE)
-            hashScore += ssi->ply;
+        if (hashScore != -INFTY) {
+            // Adjust the hash score to mate distance from root if necessary
+            if (hashScore >= MAX_PLY_MATE_SCORE)
+                hashScore -= ssi->ply;
+            else if (hashScore <= -MAX_PLY_MATE_SCORE)
+                hashScore += ssi->ply;
 
-        // Return hash score failing soft if hash depth >= current depth and:
-        //   The node is a hashed all node and score <= alpha
-        //   The node is a hashed cut node and score >= beta
-        //   The node is a hashed PV node and we are searching on a null window
-        //    (we do not return immediately on full PVS windows since this cuts
-        //     short the PV line)
-        if (!isPVNode && hashDepth >= depth) {
-            if ((nodeType == ALL_NODE && hashScore <= alpha)
-             || (nodeType == CUT_NODE && hashScore >= beta)
-             || (nodeType == PV_NODE)) {
-                return hashScore;
+            // Return hash score failing soft if hash depth >= current depth and:
+            //   The node is a hashed all node and score <= alpha
+            //   The node is a hashed cut node and score >= beta
+            //   The node is a hashed PV node and we are searching on a null window
+            //    (we do not return immediately on full PVS windows since this cuts
+            //     short the PV line)
+            if (!isPVNode && hashDepth >= depth) {
+                if ((nodeType == ALL_NODE && hashScore <= alpha)
+                 || (nodeType == CUT_NODE && hashScore >= beta)
+                 || (nodeType == PV_NODE)) {
+                    return hashScore;
+                }
             }
         }
     }
@@ -760,7 +760,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
             // Hash the TB result
             int tbDepth = std::min(depth+4, MAX_DEPTH);
-            transpositionTable.add(b, adjustHashScore(tbScore, ssi->ply), NULL_MOVE, tbDepth, PV_NODE);
+            transpositionTable.add(b, adjustHashScore(tbScore, ssi->ply), NULL_MOVE, INFTY, tbDepth, PV_NODE);
 
             return tbScore;
         }
@@ -775,16 +775,14 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     int staticEval = INFTY;
     ssi->staticEval = INFTY;
     if (!isInCheck) {
-        // Probe the eval cache for a saved evaluation
-        int ehe = evalCache.get(b);
-        if (ehe != 0) {
-            ssi->staticEval = staticEval = ehe - EVAL_HASH_OFFSET;
+        // Check the hash entry for a saved evaluation
+        if (hashEntry != nullptr && hashEntry->eval != INFTY) {
+            ssi->staticEval = staticEval = hashEntry->eval;
         }
         else {
             Eval e;
-            ssi->staticEval = staticEval = (color == WHITE) ? e.evaluate(b)
-                                                            : -e.evaluate(b);
-            evalCache.add(b, staticEval);
+            ssi->staticEval = staticEval = (color == WHITE) ? e.evaluate(b) : -e.evaluate(b);
+            transpositionTable.add(b, -INFTY, NULL_MOVE, staticEval, -8, NO_NODE_INFO);
         }
     }
 
@@ -876,7 +874,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         HashData *iidEntry = transpositionTable.get(b);
         if (iidEntry != nullptr) {
             hashScore = iidEntry->score;
-            nodeType = iidEntry->nodeType;
+            nodeType = iidEntry->ageNodeType & 0x3;
             hashDepth = iidEntry->depth;
             hashed = iidEntry->move;
         }
@@ -1109,7 +1107,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         // Beta cutoff
         if (score >= beta) {
             // Hash the cut move and score
-            transpositionTable.add(b, adjustHashScore(score, ssi->ply), m, depth, CUT_NODE);
+            transpositionTable.add(b, adjustHashScore(score, ssi->ply), m, ssi->staticEval, depth, CUT_NODE);
 
             // Update killers and histories for quiet moves
             if (!isCapture(m)) {
@@ -1148,7 +1146,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
 
     // Exact scores indicate a principal variation
     if (prevAlpha < alpha && alpha < beta) {
-        transpositionTable.add(b, adjustHashScore(alpha, ssi->ply), toHash, depth, PV_NODE);
+        transpositionTable.add(b, adjustHashScore(alpha, ssi->ply), toHash, ssi->staticEval, depth, PV_NODE);
 
         // Update histories for quiet moves
         if (!isCapture(toHash))
@@ -1161,11 +1159,11 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     else if (alpha <= prevAlpha) {
         // If we had a hash move, save it in case the node becomes a PV or cut node next time
         if (!isPVNode && hashed != NULL_MOVE) {
-            transpositionTable.add(b, adjustHashScore(bestScore, ssi->ply), hashed, depth, ALL_NODE);
+            transpositionTable.add(b, adjustHashScore(bestScore, ssi->ply), hashed, ssi->staticEval, depth, ALL_NODE);
         }
         // Otherwise, just store no best move as expected
         else {
-            transpositionTable.add(b, adjustHashScore(bestScore, ssi->ply), NULL_MOVE, depth, ALL_NODE);
+            transpositionTable.add(b, adjustHashScore(bestScore, ssi->ply), NULL_MOVE, ssi->staticEval, depth, ALL_NODE);
         }
     }
 
@@ -1206,55 +1204,62 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     if (hashEntry != nullptr) {
         hashScore = hashEntry->score;
 
-        // Adjust the hash score to mate distance from root if necessary
-        if (hashScore >= MAX_PLY_MATE_SCORE)
-            hashScore -= searchParams->ply + plies;
-        else if (hashScore <= -MAX_PLY_MATE_SCORE)
-            hashScore += searchParams->ply + plies;
+        if (hashScore != -INFTY) {
+            // Adjust the hash score to mate distance from root if necessary
+            if (hashScore >= MAX_PLY_MATE_SCORE)
+                hashScore -= searchParams->ply + plies;
+            else if (hashScore <= -MAX_PLY_MATE_SCORE)
+                hashScore += searchParams->ply + plies;
 
-        nodeType = hashEntry->nodeType;
-        // Only used a hashed score if the search depth was at least
-        // the current depth
-        if (hashEntry->depth >= -plies) {
-            // Check for the correct node type and bounds
-            if ((nodeType == ALL_NODE && hashScore <= alpha)
-             || (nodeType == CUT_NODE && hashScore >= beta)
-             || (nodeType == PV_NODE))
-                return hashScore;
+            nodeType = hashEntry->ageNodeType & 0x3;
+            // Only used a hashed score if the search depth was at least
+            // the current depth
+            if (hashEntry->depth >= -plies) {
+                // Check for the correct node type and bounds
+                if ((nodeType == ALL_NODE && hashScore <= alpha)
+                 || (nodeType == CUT_NODE && hashScore >= beta)
+                 || (nodeType == PV_NODE))
+                    return hashScore;
+            }
         }
     }
 
 
     // Stand pat: if our current position is already way too good or way too bad
     // we can simply stop the search here.
-    int standPat;
-    // Probe the eval cache for a saved calculation
-    int ehe = evalCache.get(b);
-    if (ehe != 0) {
-        standPat = ehe - EVAL_HASH_OFFSET;
+    int hashEval, staticEval;
+    // Check the hash entry for a saved evaluation
+    if (hashEntry != nullptr) {
+        if (hashEntry->eval != INFTY) {
+            hashEval = staticEval = hashEntry->eval;
+        }
+        else {
+            Eval e;
+            hashEval = staticEval = (color == WHITE) ? e.evaluate(b) : -e.evaluate(b);
+        }
     }
     else {
         Eval e;
-        standPat = (color == WHITE) ? e.evaluate(b) : -e.evaluate(b);
-        evalCache.add(b, standPat);
+        hashEval = staticEval = (color == WHITE) ? e.evaluate(b) : -e.evaluate(b);
+        transpositionTable.add(b, -INFTY, NULL_MOVE, hashEval, -8, NO_NODE_INFO);
     }
 
     // Use the TT score as a better "static" eval, if available.
     if (hashScore != -INFTY) {
-        if ((nodeType == ALL_NODE && hashScore < standPat)
-         || (nodeType == CUT_NODE && hashScore > standPat)
+        if ((nodeType == ALL_NODE && hashScore < staticEval)
+         || (nodeType == CUT_NODE && hashScore > staticEval)
          || (nodeType == PV_NODE))
-            standPat = hashScore;
+            staticEval = hashScore;
     }
 
     // The stand pat cutoff
-    if (standPat >= beta)
-        return standPat;
+    if (staticEval >= beta)
+        return staticEval;
 
-    if (alpha < standPat)
-        alpha = standPat;
+    if (alpha < staticEval)
+        alpha = staticEval;
 
-    int bestScore = standPat;
+    int bestScore = staticEval;
 
 
     // Generate captures and order by MVV/LVA
@@ -1269,14 +1274,14 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
               m = nextMove(legalMoves, scores, ++i)) {
         // Delta prune
-        int potentialEval = standPat + b.valueOfPiece(b.getPieceOnSquare(color^1, getEndSq(m)));
+        int potentialEval = staticEval + b.valueOfPiece(b.getPieceOnSquare(color^1, getEndSq(m)));
         if (potentialEval < alpha - 130) {
             bestScore = std::max(bestScore, potentialEval + 130);
             continue;
         }
         // Futility pruning
-        if (standPat < alpha - 80 && !b.isSEEAbove(color, m, 1)) {
-            bestScore = std::max(bestScore, standPat + 80);
+        if (staticEval < alpha - 80 && !b.isSEEAbove(color, m, 1)) {
+            bestScore = std::max(bestScore, staticEval + 80);
             continue;
         }
         // Static exchange evaluation pruning
@@ -1292,7 +1297,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         int score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
 
         if (score >= beta) {
-            transpositionTable.add(b, adjustHashScore(score, searchParams->ply + plies), m, -plies, CUT_NODE);
+            transpositionTable.add(b, adjustHashScore(score, searchParams->ply + plies), m, hashEval, -plies, CUT_NODE);
 
             return score;
         }
@@ -1323,7 +1328,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         int score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
 
         if (score >= beta) {
-            transpositionTable.add(b, adjustHashScore(score, searchParams->ply + plies), m, -plies, CUT_NODE);
+            transpositionTable.add(b, adjustHashScore(score, searchParams->ply + plies), m, hashEval, -plies, CUT_NODE);
 
             return score;
         }
@@ -1359,7 +1364,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             threadMemoryArray[threadID]->twoFoldPositions.pop();
 
             if (score >= beta) {
-                transpositionTable.add(b, adjustHashScore(score, searchParams->ply + plies), m, -plies, CUT_NODE);
+                transpositionTable.add(b, adjustHashScore(score, searchParams->ply + plies), m, hashEval, -plies, CUT_NODE);
 
                 return score;
             }
@@ -1474,17 +1479,12 @@ void stopPonder() {
 // These functions help to communicate with uci.cpp
 void clearTables() {
     transpositionTable.clear();
-    evalCache.clear();
     for (int i = 0; i < numThreads; i++)
         threadMemoryArray[i]->searchParams.resetHistoryTable();
 }
 
 void setHashSize(uint64_t MB) {
     transpositionTable.setSize(MB);
-}
-
-void setEvalCacheSize(uint64_t MB) {
-    evalCache.setSize(MB);
 }
 
 uint64_t getNodes() {

@@ -29,7 +29,7 @@ Hash::~Hash() {
 
 // Adds key and move into the hashtable. This function assumes that the key has
 // been checked with get and is not in the table.
-void Hash::add(Board &b, int score, Move move, int depth, uint8_t nodeType) {
+void Hash::add(Board &b, int score, Move move, int eval, int depth, uint8_t nodeType) {
     uint64_t h = b.getZobristKey();
     uint64_t index = h & (size-1);
     HashNode *node = table + index;
@@ -37,24 +37,24 @@ void Hash::add(Board &b, int score, Move move, int depth, uint8_t nodeType) {
     // Decide whether to replace the entry
     // A more recent update to the same position should always be chosen
     if (node->slot1.zobristKey == b.getZobristKey())
-        node->slot1.setEntry(b, score, move, depth, nodeType, age);
+        node->slot1.setEntry(b, score, move, eval, depth, nodeType, age);
 
     else if (node->slot2.zobristKey == b.getZobristKey())
-        node->slot2.setEntry(b, score, move, depth, nodeType, age);
+        node->slot2.setEntry(b, score, move, eval, depth, nodeType, age);
 
     // Replace an entry from a previous search space, or the lowest depth
     // entry with the new entry if the new entry's depth is high enough
     else {
         HashEntry *toReplace = &(node->slot1);
-        int score1 = 128 * ((int) ((uint8_t) (age - node->slot1.data.age)))
+        int score1 = 16 * ((int) ((uint8_t) (age - (node->slot1.data.ageNodeType >> 2))))
             + depth - node->slot1.data.depth;
-        int score2 = 128 * ((int) ((uint8_t) (age - node->slot2.data.age)))
+        int score2 = 16 * ((int) ((uint8_t) (age - (node->slot2.data.ageNodeType >> 2))))
             + depth - node->slot2.data.depth;
         if (score1 < score2)
             toReplace = &(node->slot2);
         // The node must be from a newer search space or a sufficiently high depth
         if (score1 >= -2 || score2 >= -2)
-            toReplace->setEntry(b, score, move, depth, nodeType, age);
+            toReplace->setEntry(b, score, move, eval, depth, nodeType, age);
     }
 }
 
@@ -109,8 +109,8 @@ int Hash::estimateHashfull() {
     int used = 0;
     // This will never go out of bounds since a 1 MB table has 32768 slots
     for (int i = 0; i < 500; i++) {
-        used += (table + i)->slot1.data.age == age;
-        used += (table + i)->slot2.data.age == age;
+        used += ((table + i)->slot1.data.ageNodeType >> 2) == age;
+        used += ((table + i)->slot2.data.ageNodeType >> 2) == age;
     }
     return used;
 }

@@ -33,10 +33,9 @@ constexpr uint8_t NO_NODE_INFO = 3;
 struct HashData {
     int16_t score;
     Move move;
+    int16_t eval;
     int8_t depth;
-    uint8_t nodeType;
-    uint8_t age;
-    int8_t _pad;
+    uint8_t ageNodeType;
 
     HashData() = default;
     ~HashData() = default;
@@ -51,13 +50,13 @@ struct HashEntry {
     HashEntry() = default;
     ~HashEntry() = default;
 
-    void setEntry(Board &b, int score, Move move, int depth, uint8_t nodeType, uint8_t age) {
+    void setEntry(Board &b, int score, Move move, int eval, int depth, uint8_t nodeType, uint8_t age) {
         zobristKey = b.getZobristKey();
         data.score = (int16_t) score;
         data.move = move;
+        data.eval = (int16_t) eval;
         data.depth = (int8_t) depth;
-        data.nodeType = nodeType;
-        data.age = age;
+        data.ageNodeType = (age << 2) | nodeType;
     }
 };
 
@@ -85,7 +84,7 @@ public:
     Hash& operator=(const Hash &other) = delete;
     ~Hash();
 
-    void add(Board &b, int score, Move move, int depth, uint8_t nodeType);
+    void add(Board &b, int score, Move move, int eval, int depth, uint8_t nodeType);
     HashData *get(Board &b);
 
     uint64_t getSize();

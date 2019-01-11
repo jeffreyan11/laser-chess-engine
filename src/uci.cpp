@@ -106,8 +106,6 @@ int main(int argc, char **argv) {
                  << " min " << MIN_THREADS << " max " << MAX_THREADS << endl;
             cout << "option name Hash type spin default " << DEFAULT_HASH_SIZE
                  << " min " << MIN_HASH_SIZE << " max " << MAX_HASH_SIZE << endl;
-            cout << "option name EvalCache type spin default " << DEFAULT_HASH_SIZE
-                 << " min " << MIN_HASH_SIZE << " max " << MAX_HASH_SIZE << endl;
             cout << "option name Ponder type check default false" << endl;
             cout << "option name MultiPV type spin default " << DEFAULT_MULTI_PV
                  << " min " << MIN_MULTI_PV << " max " << MAX_MULTI_PV << endl;
@@ -248,14 +246,6 @@ int main(int argc, char **argv) {
                     if (MB > MAX_HASH_SIZE)
                         MB = MAX_HASH_SIZE;
                     setHashSize(MB);
-                }
-                else if (inputVector.at(2) == "evalcache") {
-                    uint64_t MB = std::stoull(inputVector.at(4));
-                    if (MB < MIN_HASH_SIZE)
-                        MB = MIN_HASH_SIZE;
-                    if (MB > MAX_HASH_SIZE)
-                        MB = MAX_HASH_SIZE;
-                    setEvalCacheSize(MB);
                 }
                 else if (inputVector.at(2) == "ponder") {
                     // do nothing
