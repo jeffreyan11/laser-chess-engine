@@ -706,7 +706,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     int hashDepth = 0;
     uint8_t nodeType = NO_NODE_INFO;
 
-    HashData *hashEntry = transpositionTable.get(b);
+    HashEntry *hashEntry = transpositionTable.get(b);
     if (hashEntry != nullptr) {
         hashScore = hashEntry->score;
         nodeType = hashEntry->ageNodeType & 0x3;
@@ -871,7 +871,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
         int iidDepth = isPVNode ? depth - depth/4 - 1 : (depth - 5) / 2;
         PVS(b, iidDepth, alpha, beta, threadID, isCutNode, ssi, &line);
 
-        HashData *iidEntry = transpositionTable.get(b);
+        HashEntry *iidEntry = transpositionTable.get(b);
         if (iidEntry != nullptr) {
             hashScore = iidEntry->score;
             nodeType = iidEntry->ageNodeType & 0x3;
@@ -1199,7 +1199,7 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
 
     // Qsearch hash table probe
     int hashScore = -INFTY;
-    HashData *hashEntry = transpositionTable.get(b);
+    HashEntry *hashEntry = transpositionTable.get(b);
     uint8_t nodeType = NO_NODE_INFO;
     if (hashEntry != nullptr) {
         hashScore = hashEntry->score;

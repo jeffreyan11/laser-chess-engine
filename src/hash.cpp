@@ -46,10 +46,10 @@ void Hash::add(Board &b, int score, Move move, int eval, int depth, uint8_t node
     // entry with the new entry if the new entry's depth is high enough
     else {
         HashEntry *toReplace = &(node->slot1);
-        int score1 = 16 * ((int) ((uint8_t) (age - (node->slot1.data.ageNodeType >> 2))))
-            + depth - node->slot1.data.depth;
-        int score2 = 16 * ((int) ((uint8_t) (age - (node->slot2.data.ageNodeType >> 2))))
-            + depth - node->slot2.data.depth;
+        int score1 = 16 * ((int) ((uint8_t) (age - (node->slot1.ageNodeType >> 2))))
+            + depth - node->slot1.depth;
+        int score2 = 16 * ((int) ((uint8_t) (age - (node->slot2.ageNodeType >> 2))))
+            + depth - node->slot2.depth;
         if (score1 < score2)
             toReplace = &(node->slot2);
         // The node must be from a newer search space or a sufficiently high depth
@@ -59,20 +59,20 @@ void Hash::add(Board &b, int score, Move move, int eval, int depth, uint8_t node
 }
 
 // Get the hash entry, if any, associated with a board b.
-HashData *Hash::get(Board &b) {
+HashEntry *Hash::get(Board &b) {
     uint64_t h = b.getZobristKey();
     uint64_t index = h & (size-1);
     HashNode *node = table + index;
 
     if (node->slot1.zobristKey == b.getZobristKey())
-        return &(node->slot1.data);
+        return &(node->slot1);
     else if (node->slot2.zobristKey == b.getZobristKey())
-        return &(node->slot2.data);
+        return &(node->slot2);
 
     return nullptr;
 }
 
-uint64_t Hash::getSize() {
+uint64_t Hash::getSize() const {
     return (2 * size);
 }
 
@@ -105,12 +105,12 @@ void Hash::clear() {
     age = 0;
 }
 
-int Hash::estimateHashfull() {
+int Hash::estimateHashfull() const {
     int used = 0;
     // This will never go out of bounds since a 1 MB table has 32768 slots
     for (int i = 0; i < 500; i++) {
-        used += ((table + i)->slot1.data.ageNodeType >> 2) == age;
-        used += ((table + i)->slot2.data.ageNodeType >> 2) == age;
+        used += ((table + i)->slot1.ageNodeType >> 2) == age;
+        used += ((table + i)->slot2.ageNodeType >> 2) == age;
     }
     return used;
 }
