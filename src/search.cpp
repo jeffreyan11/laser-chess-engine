@@ -341,6 +341,7 @@ void getBestMove(const Board *b, TimeManagement *timeParams, MoveList legalMoves
                              << " pv " << retrievePV(&pvLine) << endl;
                     }
 
+                    aspBeta = (aspAlpha + aspBeta) / 2;
                     aspAlpha = bestScore - deltaAlpha;
                     deltaAlpha = 3 * deltaAlpha / 2;
                     if (aspAlpha < -NEAR_MATE_SCORE)
@@ -362,6 +363,7 @@ void getBestMove(const Board *b, TimeManagement *timeParams, MoveList legalMoves
                              << " pv " << retrievePV(&pvLine) << endl;
                     }
 
+                    aspAlpha = (aspAlpha + aspBeta) / 2;
                     aspBeta = bestScore + deltaBeta;
                     deltaBeta = 3 * deltaBeta / 2;
                     if (aspBeta > NEAR_MATE_SCORE)
