@@ -27,12 +27,11 @@ constexpr int SCORE_QUIET_MOVE = -(1 << 30);
 constexpr int SCORE_LOSING_CAPTURE = -(1 << 30) - (1 << 28);
 
 
-MoveOrder::MoveOrder(Board *_b, int _color, int _depth, bool _isPVNode,
-	SearchParameters *_searchParams, SearchStackInfo *_ssi, Move _hashed, MoveList _legalMoves) {
+MoveOrder::MoveOrder(Board *_b, int _color, int _depth, SearchParameters *_searchParams,
+    SearchStackInfo *_ssi, Move _hashed, MoveList _legalMoves) {
 	b = _b;
 	color = _color;
 	depth = _depth;
-	isPVNode = _isPVNode;
 	searchParams = _searchParams;
     ssi = _ssi;
     mgStage = STAGE_NONE;
@@ -40,6 +39,18 @@ MoveOrder::MoveOrder(Board *_b, int _color, int _depth, bool _isPVNode,
     index = 0;
     hashed = _hashed;
     legalMoves = _legalMoves;
+}
+
+MoveOrder::MoveOrder(Board *_b, int _color, int _depth, SearchParameters *_searchParams) {
+    b = _b;
+    color = _color;
+    depth = _depth;
+    searchParams = _searchParams;
+    ssi = nullptr;
+    mgStage = STAGE_QS_CAPTURES;
+    quietStart = 0;
+    index = 0;
+    hashed = NULL_MOVE;
 }
 
 // Returns true if there are still moves remaining, false if we have
@@ -79,6 +90,37 @@ void MoveOrder::generateMoves() {
 
         // We are done
         case STAGE_QUIETS:
+            break;
+
+
+        // QS captures, not including promotions
+        case STAGE_QS_CAPTURES:
+            mgStage = STAGE_QS_PROMOTIONS;
+            b->getPseudoLegalCaptures(legalMoves, color, false);
+            for (unsigned int i = 0; i < legalMoves.size(); i++) {
+                scores.add(b->getMVVLVAScore(color, legalMoves.get(i)));
+            }
+            break;
+
+        // QS promotions. We do not sort these, so fill the scores with junk
+        case STAGE_QS_PROMOTIONS:
+            mgStage = STAGE_QS_CHECKS;
+            b->getPseudoLegalPromotions(legalMoves, color);
+            for (unsigned int i = index; i < legalMoves.size(); i++)
+                scores.add(0);
+            break;
+
+        // QS checks: only on the first ply of q-search. We do not sort these, so fill the scores with junk
+        case STAGE_QS_CHECKS:
+            mgStage = STAGE_QS_DONE;
+            if (depth == 0) {
+                b->getPseudoLegalChecks(legalMoves, color);
+                for (unsigned int i = index; i < legalMoves.size(); i++)
+                    scores.add(0);
+            }
+            break;
+
+        case STAGE_QS_DONE:
             break;
     }
 }
@@ -140,7 +182,7 @@ Move MoveOrder::nextMove() {
     // If we are the end of our generated list, generate more.
     // If there are no moves left, return NULL_MOVE to indicate so.
     while (index >= scores.size()) {
-        if (mgStage == STAGE_QUIETS)
+        if (mgStage == STAGE_QUIETS || mgStage == STAGE_QS_DONE)
             return NULL_MOVE;
         else {
             generateMoves();

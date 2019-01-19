@@ -25,14 +25,14 @@
 #include "searchparams.h"
 
 enum MoveGenStage {
-    STAGE_NONE, STAGE_HASH_MOVE, STAGE_CAPTURES, STAGE_QUIETS
+    STAGE_NONE, STAGE_HASH_MOVE, STAGE_CAPTURES, STAGE_QUIETS,
+    STAGE_QS_CAPTURES, STAGE_QS_PROMOTIONS, STAGE_QS_CHECKS, STAGE_QS_DONE
 };
 
 struct MoveOrder {
     Board *b;
     int color;
     int depth;
-    bool isPVNode;
     SearchParameters *searchParams;
     SearchStackInfo *ssi;
     MoveGenStage mgStage;
@@ -42,8 +42,10 @@ struct MoveOrder {
     unsigned int quietStart;
     unsigned int index;
 
-    MoveOrder(Board *_b, int _color, int _depth, bool _isPVNode,
-        SearchParameters *_searchParams, SearchStackInfo *_ssi, Move _hashed, MoveList _legalMoves);
+    MoveOrder(Board *_b, int _color, int _depth, SearchParameters *_searchParams,
+        SearchStackInfo *_ssi, Move _hashed, MoveList _legalMoves);
+    // Overloaded constructor for quiescence search
+    MoveOrder(Board *_b, int _color, int _depth, SearchParameters *_searchParams);
 
     void generateMoves();
     Move nextMove();

@@ -890,7 +890,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     else
         b.getAllPseudoLegalMoves(legalMoves, color);
     // Initialize the module for move ordering
-    MoveOrder moveSorter(&b, color, depth, isPVNode, searchParams, ssi, hashed, legalMoves);
+    MoveOrder moveSorter(&b, color, depth, searchParams, ssi, hashed, legalMoves);
     moveSorter.generateMoves();
 
     // Keeps track of the best move for storing into the TT
@@ -1264,30 +1264,40 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
     int bestScore = staticEval;
 
 
-    // Generate captures and order by MVV/LVA
-    MoveList legalMoves;
-    b.getPseudoLegalCaptures(legalMoves, color, false);
-    ScoreList scores;
-    for (unsigned int i = 0; i < legalMoves.size(); i++) {
-        scores.add(b.getMVVLVAScore(color, legalMoves.get(i)));
-    }
+    // Initialize the module for move ordering
+    MoveOrder moveSorter(&b, color, -plies, searchParams);
+    moveSorter.generateMoves();
 
-    unsigned int i = 0;
-    for (Move m = nextMove(legalMoves, scores, i); m != NULL_MOVE;
-              m = nextMove(legalMoves, scores, ++i)) {
-        // Delta prune
-        int potentialEval = staticEval + b.valueOfPiece(b.getPieceOnSquare(color^1, getEndSq(m)));
-        if (potentialEval < alpha - 130) {
-            bestScore = std::max(bestScore, potentialEval + 130);
-            continue;
+    for (Move m = moveSorter.nextMove(); m != NULL_MOVE;
+              m = moveSorter.nextMove()) {
+        // If we are on the final stage of movegen, we are searching QS checks
+        bool isCheckMove = (moveSorter.mgStage == STAGE_QS_DONE);
+
+        // Non-check pruning
+        if (!isCheckMove) {
+            if (!isPromotion(m)) {
+                // Delta prune
+                int potentialEval = staticEval + b.valueOfPiece(b.getPieceOnSquare(color^1, getEndSq(m)));
+                if (potentialEval < alpha - 130) {
+                    bestScore = std::max(bestScore, potentialEval + 130);
+                    continue;
+                }
+                // Futility pruning
+                if (staticEval < alpha - 80 && !b.isSEEAbove(color, m, 1)) {
+                    bestScore = std::max(bestScore, staticEval + 80);
+                    continue;
+                }
+                // Static exchange evaluation pruning
+                if (!b.isSEEAbove(color, m, 0))
+                    continue;
+            }
+            // Promotion pruning
+            else if ((!isCapture(m) && !b.isSEEAbove(color, m, 0))
+                  || ( isCapture(m) && !b.isSEEAbove(color, m, 400)))
+                continue;
         }
-        // Futility pruning
-        if (staticEval < alpha - 80 && !b.isSEEAbove(color, m, 1)) {
-            bestScore = std::max(bestScore, staticEval + 80);
-            continue;
-        }
-        // Static exchange evaluation pruning
-        if (!b.isSEEAbove(color, m, 0))
+        // Check pruning
+        else if (!b.isSEEAbove(color, m, 0))
             continue;
 
 
@@ -1296,11 +1306,11 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             continue;
 
         searchStats->nodes++;
-        int score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
+        int score = isCheckMove ? -checkQuiescence(copy, plies+1, -beta, -alpha, threadID)
+                                : -quiescence(copy, plies+1, -beta, -alpha, threadID);
 
         if (score >= beta) {
             transpositionTable.add(b, adjustHashScore(score, searchParams->ply + plies), m, hashEval, -plies, CUT_NODE);
-
             return score;
         }
 
@@ -1308,74 +1318,6 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
             bestScore = score;
             if (score > alpha)
                 alpha = score;
-        }
-    }
-
-    // Generate and search promotions
-    legalMoves.clear();
-    b.getPseudoLegalPromotions(legalMoves, color);
-    for (i = 0; i < legalMoves.size(); i++) {
-        Move m = legalMoves.get(i);
-
-        // Static exchange evaluation pruning
-        if ((!isCapture(m) && !b.isSEEAbove(color, m, 0))
-         || ( isCapture(m) && !b.isSEEAbove(color, m, 400)))
-            continue;
-
-        Board copy = b.staticCopy();
-        if (!copy.doPseudoLegalMove(m, color))
-            continue;
-
-        searchStats->nodes++;
-        int score = -quiescence(copy, plies+1, -beta, -alpha, threadID);
-
-        if (score >= beta) {
-            transpositionTable.add(b, adjustHashScore(score, searchParams->ply + plies), m, hashEval, -plies, CUT_NODE);
-
-            return score;
-        }
-
-        if (score > bestScore) {
-            bestScore = score;
-            if (score > alpha)
-                alpha = score;
-        }
-    }
-
-    // Checks: only on the first ply of q-search
-    if (plies == 0) {
-        legalMoves.clear();
-        b.getPseudoLegalChecks(legalMoves, color);
-
-        for (i = 0; i < legalMoves.size(); i++) {
-            Move m = legalMoves.get(i);
-
-            // Static exchange evaluation pruning
-            if (!b.isSEEAbove(color, m, 0))
-                continue;
-
-            Board copy = b.staticCopy();
-            if (!copy.doPseudoLegalMove(m, color))
-                continue;
-
-            searchStats->nodes++;
-            threadMemoryArray[threadID]->twoFoldPositions.push(b.getZobristKey());
-
-            int score = -checkQuiescence(copy, plies+1, -beta, -alpha, threadID);
-
-            threadMemoryArray[threadID]->twoFoldPositions.pop();
-
-            if (score >= beta) {
-                transpositionTable.add(b, adjustHashScore(score, searchParams->ply + plies), m, hashEval, -plies, CUT_NODE);
-
-                return score;
-            }
-
-            if (score > bestScore) {
-                bestScore = score;
-                if (score > alpha)
-                    alpha = score;
-            }
         }
     }
 
