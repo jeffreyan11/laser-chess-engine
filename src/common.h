@@ -184,6 +184,6 @@ public:
 };
 
 typedef SearchArrayList<Move> MoveList;
-typedef SearchArrayList<int> ScoreList;
+typedef SearchArrayList<int16_t> ScoreList;
 
 #endif

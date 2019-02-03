@@ -29,6 +29,24 @@ enum MoveGenStage {
     STAGE_QS_CAPTURES, STAGE_QS_PROMOTIONS, STAGE_QS_CHECKS, STAGE_QS_DONE
 };
 
+struct ScoredMove {
+    Move m;
+    int16_t score;
+
+    ScoredMove() = default;
+    ScoredMove(Move _m, int16_t _score) {
+        m = _m;
+        score = _score;
+    }
+};
+
+inline bool operator==(const ScoredMove &lhs, const ScoredMove &rhs) { return lhs.score == rhs.score; }
+inline bool operator!=(const ScoredMove &lhs, const ScoredMove &rhs) { return !operator==(lhs,rhs); }
+inline bool operator< (const ScoredMove &lhs, const ScoredMove &rhs) { return lhs.score < rhs.score; }
+inline bool operator> (const ScoredMove &lhs, const ScoredMove &rhs) { return  operator< (rhs,lhs); }
+inline bool operator<=(const ScoredMove &lhs, const ScoredMove &rhs) { return !operator> (lhs,rhs); }
+inline bool operator>=(const ScoredMove &lhs, const ScoredMove &rhs) { return !operator< (lhs,rhs); }
+
 struct MoveOrder {
     Board *b;
     int color;
@@ -38,7 +56,8 @@ struct MoveOrder {
     MoveGenStage mgStage;
     Move hashed;
     MoveList legalMoves;
-    ScoreList scores;
+    SearchArrayList<ScoredMove> scores;
+    unsigned int scoreSize;
     unsigned int quietStart;
     unsigned int index;
 
