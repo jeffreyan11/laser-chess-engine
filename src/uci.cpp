@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
     string input;
     std::vector<string> inputVector;
     string name = "Laser";
-    string version = "1.7 beta";
+    string version = "1.7";
     string author = "Jeffrey An and Michael An";
     std::thread searchThread;
 
