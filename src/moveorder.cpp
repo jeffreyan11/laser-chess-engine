@@ -152,6 +152,8 @@ void MoveOrder::scoreQuiets() {
         // Score killers below even captures but above losing captures
         if (m == searchParams->killers[ssi->ply][0])
             scores.add(ScoredMove(m, SCORE_QUEEN_PROMO - 1));
+        else if (m == searchParams->killers[ssi->ply][1])
+            scores.add(ScoredMove(m, SCORE_QUEEN_PROMO - 2));
 
         // Order queen promotions somewhat high
         else if (getPromotion(m) == QUEENS)

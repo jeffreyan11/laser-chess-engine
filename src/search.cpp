@@ -698,6 +698,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     // For PVS, the node is a PV node if beta - alpha != 1 (not a null window)
     // We do not want to do most pruning techniques on PV nodes
     bool isPVNode = (beta - alpha != 1);
+    // Reset killers of children to keep them local to similar positions
+    searchParams->killers[ssi->ply+1][0] = NULL_MOVE;
+    searchParams->killers[ssi->ply+1][1] = NULL_MOVE;
 
 
     // Transposition table probe
@@ -860,6 +863,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             }
             else return nullScore;
         }
+
+        searchParams->killers[ssi->ply+1][0] = NULL_MOVE;
+        searchParams->killers[ssi->ply+1][1] = NULL_MOVE;
     }
 
 
@@ -1068,6 +1074,9 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
                     break;
                 }
             }
+
+            searchParams->killers[ssi->ply+1][0] = NULL_MOVE;
+            searchParams->killers[ssi->ply+1][1] = NULL_MOVE;
 
             // If all moves other than the hash move failed low, we extend for
             // the singular move
