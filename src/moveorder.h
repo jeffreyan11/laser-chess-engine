@@ -60,9 +60,12 @@ struct MoveOrder {
     unsigned int scoreSize;
     unsigned int quietStart;
     unsigned int index;
+    int captureMargin;
 
     MoveOrder(Board *_b, int _color, int _depth, SearchParameters *_searchParams,
         SearchStackInfo *_ssi, Move _hashed, MoveList _legalMoves);
+    MoveOrder(Board *_b, int _color, int _depth, SearchParameters *_searchParams,
+        SearchStackInfo *_ssi, Move _hashed, MoveList _legalMoves, int _captureMargin);
     // Overloaded constructor for quiescence search
     MoveOrder(Board *_b, int _color, int _depth, SearchParameters *_searchParams);
 

@@ -869,6 +869,48 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     }
 
 
+    // Create list of legal moves
+    MoveList legalMoves;
+    if (isInCheck)
+        b.getPseudoLegalCheckEscapes(legalMoves, color);
+    else
+        b.getAllPseudoLegalMoves(legalMoves, color);
+
+
+    // ProbCut
+    // If a winning capture scores much higher than beta on a shallow search,
+    // then we can assume a beta cutoff would happen on the full search as
+    // well, and return early.
+    // Idea from Stockfish
+    if (!isPVNode && !isInCheck
+     && depth >= 6 && staticEval >= beta - 100 - 20 * depth
+     && abs(beta) < MAX_PLY_MATE_SCORE) {
+        int probCutMargin = beta + 90;
+        int probCutCount = 0;
+        MoveOrder moveSorter(&b, color, depth, searchParams, ssi, NULL_MOVE, legalMoves, probCutMargin - staticEval);
+        moveSorter.generateMoves();
+
+        for (Move m = moveSorter.nextMove(); m != NULL_MOVE && probCutCount < 3 && isCapture(m);
+                  m = moveSorter.nextMove()) {
+            probCutCount++;
+            Board copy = b.staticCopy();
+            // Search every move except the hash move
+            if (m == hashed)
+                continue;
+            if (!copy.doPseudoLegalMove(m, color))
+                continue;
+
+            (ssi+1)->counterMoveHistory = searchParams->counterMoveHistory[b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)];
+            (ssi+2)->followupMoveHistory = searchParams->followupMoveHistory[b.getPieceOnSquare(color, getStartSq(m))][getEndSq(m)];
+
+            int score = -PVS(copy, depth - depth/4 - 4, -probCutMargin, -probCutMargin+1, threadID, !isCutNode, ssi+1, &line);
+
+            if (score >= probCutMargin)
+                return score;
+        }
+    }
+
+
     // Internal iterative deepening
     // When there is no hash move available, it is sometimes worth doing a
     // shallow search to try and look for one
@@ -889,12 +931,6 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     }
 
 
-    // Create list of legal moves
-    MoveList legalMoves;
-    if (isInCheck)
-        b.getPseudoLegalCheckEscapes(legalMoves, color);
-    else
-        b.getAllPseudoLegalMoves(legalMoves, color);
     // Initialize the module for move ordering
     MoveOrder moveSorter(&b, color, depth, searchParams, ssi, hashed, legalMoves);
     moveSorter.generateMoves();

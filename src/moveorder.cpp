@@ -39,6 +39,23 @@ MoveOrder::MoveOrder(Board *_b, int _color, int _depth, SearchParameters *_searc
     index = 0;
     hashed = _hashed;
     legalMoves = _legalMoves;
+    captureMargin = 0;
+}
+
+MoveOrder::MoveOrder(Board *_b, int _color, int _depth, SearchParameters *_searchParams,
+    SearchStackInfo *_ssi, Move _hashed, MoveList _legalMoves, int _captureMargin) {
+    b = _b;
+    color = _color;
+    depth = _depth;
+    searchParams = _searchParams;
+    ssi = _ssi;
+    mgStage = STAGE_NONE;
+    scoreSize = 0;
+    quietStart = 0;
+    index = 0;
+    hashed = _hashed;
+    legalMoves = _legalMoves;
+    captureMargin = _captureMargin;
 }
 
 MoveOrder::MoveOrder(Board *_b, int _color, int _depth, SearchParameters *_searchParams) {
@@ -204,7 +221,7 @@ Move MoveOrder::nextMove() {
 
     // Delay losing captures until after quiets have been searched
     if (mgStage == STAGE_CAPTURES && isCapture(scores.get(bestIndex).m)) {
-        if (!b->isSEEAbove(color, scores.get(bestIndex).m, 0)) {
+        if (!b->isSEEAbove(color, scores.get(bestIndex).m, captureMargin)) {
             scoreSize--;
             scores.swap(bestIndex, scoreSize);
             return nextMove();
