@@ -347,8 +347,8 @@ int Eval::evaluate(Board &b) {
     // Consider two definitions of space, valuing the center 4 files higher:
     //  1. Up to 3 squares behind a friendly pawn, not occupied by a pawn or attacked by an opposing pawn
     //  2. Up to 3 squares in front of an enemy pawn, not occupied by a pawn,
-    //     excluding squares attacked by an opposing pawn or attacked by an opposing piece and not defended
-    uint64_t whiteSafeSpace = ~ei.attackMaps[BLACK][PAWNS] & (ei.fullAttackMaps[WHITE] | ~ei.fullAttackMaps[BLACK]);
+    //     excluding squares attacked by an opposing pawn or attacked by two opposing pieces and not doubly defended
+    uint64_t whiteSafeSpace = ~(ei.attackMaps[BLACK][PAWNS] | (ei.doubleAttackMaps[BLACK] & ~ei.doubleAttackMaps[WHITE]));
     uint64_t whiteSpace = pieces[WHITE][PAWNS] >> 8;
     whiteSpace |= whiteSpace >> 8;
     whiteSpace |= whiteSpace >> 16;
@@ -363,7 +363,7 @@ int Eval::evaluate(Board &b) {
     valueMg += whiteSpaceScore;
     valueEg += whiteSpaceScore / 2;
 
-    uint64_t blackSafeSpace = ~ei.attackMaps[WHITE][PAWNS] & (ei.fullAttackMaps[BLACK] | ~ei.fullAttackMaps[WHITE]);
+    uint64_t blackSafeSpace = ~(ei.attackMaps[WHITE][PAWNS] | (ei.doubleAttackMaps[WHITE] & ~ei.doubleAttackMaps[BLACK]));
     uint64_t blackSpace = pieces[BLACK][PAWNS] << 8;
     blackSpace |= blackSpace << 8;
     blackSpace |= blackSpace << 16;
