@@ -661,7 +661,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
     // Draw check
     if (b.isDraw())
         return 0;
-    if (threadMemoryArray[threadID]->twoFoldPositions.find(b.getZobristKey()))
+    if (b.getFiftyMoveCounter() >= 2 && threadMemoryArray[threadID]->twoFoldPositions.find(b.getZobristKey()))
         return 0;
 
 
