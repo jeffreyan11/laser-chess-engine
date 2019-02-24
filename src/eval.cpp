@@ -601,6 +601,11 @@ int Eval::evaluate(Board &b) {
 
             psqtScores[color] += PSQT[color][QUEENS][queenSq];
             mobilityScore[color] += MOBILITY[QUEENS-1][count(mobilityMap)];
+
+            // Penalty if an enemy knight can safely threaten our queen on the next move
+            if (ei.attackMaps[color^1][KNIGHTS] & b.getKnightSquares(queenSq) & ~ei.attackMaps[color][PAWNS]
+              & ~(ei.doubleAttackMaps[color] & ~ei.doubleAttackMaps[color^1]))
+                pieceEvalScore[color] += KNIGHT_QUEEN_POTENTIAL_THREAT;
         }
 
         // King mobility

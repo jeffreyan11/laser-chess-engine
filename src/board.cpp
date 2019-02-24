@@ -1397,7 +1397,7 @@ uint64_t Board::getBPawnCaptures(uint64_t pawns) const {
     return getBPawnLeftCaptures(pawns) | getBPawnRightCaptures(pawns);
 }
 
-inline uint64_t Board::getKnightSquares(int single) const {
+uint64_t Board::getKnightSquares(int single) const {
     return KNIGHTMOVES[single];
 }
 

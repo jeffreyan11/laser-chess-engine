@@ -381,6 +381,9 @@ constexpr Score ROOK_OPEN_FILE_BONUS = E(37, 12);
 constexpr Score ROOK_SEMIOPEN_FILE_BONUS = E(21, 1);
 constexpr Score ROOK_PAWN_RANK_THREAT = E(7, 11);
 
+// Queens
+constexpr Score KNIGHT_QUEEN_POTENTIAL_THREAT = E(-13, -9);
+
 // Threats
 constexpr Score UNDEFENDED_PAWN = E(-3, -15);
 constexpr Score UNDEFENDED_MINOR = E(-25, -41);
