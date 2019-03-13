@@ -1319,17 +1319,10 @@ int quiescence(Board &b, int plies, int alpha, int beta, int threadID) {
         bool isCheckMove = (moveSorter.mgStage == STAGE_QS_DONE);
 
         // Futility pruning
-        if (!isCheckMove && !isPromotion(m)) {
-            int potentialEval = staticEval + b.valueOfPiece(b.getPieceOnSquare(color^1, getEndSq(m)));
-            if (potentialEval < alpha - 130) {
-                bestScore = std::max(bestScore, potentialEval + 130);
-                continue;
-            }
-
-            if (staticEval < alpha - 80 && !b.isSEEAbove(color, m, 1)) {
-                bestScore = std::max(bestScore, staticEval + 80);
-                continue;
-            }
+        if (!isCheckMove && !isPromotion(m)
+         && staticEval < alpha - 80 && !b.isSEEAbove(color, m, 1)) {
+            bestScore = std::max(bestScore, staticEval + 80);
+            continue;
         }
 
         // Static exchange evaluation pruning
