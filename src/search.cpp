@@ -1005,6 +1005,7 @@ int PVS(Board &b, int depth, int alpha, int beta, int threadID, bool isCutNode, 
             continue;
 
         if (!isPVNode
+         && m != hashed
          && bestScore > -MAX_PLY_MATE_SCORE
          && depth <= 5
          && !b.isSEEAbove(color, m, -100 * depth))
